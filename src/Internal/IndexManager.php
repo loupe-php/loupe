@@ -144,8 +144,7 @@ class IndexManager
     {
         $table = $schema->createTable(self::TABLE_NAME_DOCUMENTS);
 
-        $table->addColumn('id', Types::BIGINT)
-            ->setAutoincrement(true)
+        $table->addColumn('id', Types::INTEGER)
             ->setNotnull(true);
 
         $table->addColumn('index_name', Types::STRING)
@@ -157,7 +156,8 @@ class IndexManager
         $table->addColumn('document', Types::TEXT)
             ->setNotnull(true);
 
-        $table->addUniqueIndex(['id']);
+        $table->setPrimaryKey(['id']);
+        $table->addUniqueIndex(['user_id']);
         $table->addIndex(['index_name', 'user_id']);
     }
 
@@ -165,11 +165,10 @@ class IndexManager
     {
         $table = $schema->createTable(self::TABLE_NAME_ATTRIBUTES);
 
-        $table->addColumn('id', Types::BIGINT)
-            ->setAutoincrement(true)
+        $table->addColumn('id', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->addColumn('document', Types::BIGINT)
+        $table->addColumn('document', Types::INTEGER)
             ->setNotnull(true);
 
         $table->addColumn('attribute', Types::STRING)
@@ -193,8 +192,7 @@ class IndexManager
     {
         $table = $schema->createTable(self::TABLE_NAME_TERMS);
 
-        $table->addColumn('id', Types::BIGINT)
-            ->setAutoincrement(true)
+        $table->addColumn('id', Types::INTEGER)
             ->setNotnull(true);
 
         $table->addColumn('term', Types::STRING)
