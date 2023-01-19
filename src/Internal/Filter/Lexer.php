@@ -1,6 +1,6 @@
 <?php
 
-namespace Terminal42\Loupe\Internal\Lexer;
+namespace Terminal42\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\AbstractLexer;
 use Terminal42\Loupe\Internal\Index\IndexInfo;

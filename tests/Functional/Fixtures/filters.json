@@ -5,7 +5,8 @@
         "lastname": "Maier",
         "gender": "female",
         "departments": ["Development", "Engineering"],
-        "colors": ["Green", "Blue"]
+        "colors": ["Green", "Blue"],
+        "age": 40
     },
     {
         "id": 2,
@@ -13,7 +14,8 @@
         "lastname": "Koertig",
         "gender": "female",
         "departments": ["Development", "Backoffice"],
-        "colors": ["Red", "Orange"]
+        "colors": ["Red", "Orange"],
+        "age": 29
     },
     {
         "id": 3,
@@ -21,7 +23,8 @@
         "lastname": "Abendroth",
         "gender": "male",
         "departments": ["Development"],
-        "colors": ["Blue"]
+        "colors": ["Blue"],
+        "age": 32
     },
     {
         "id": 4,
@@ -29,7 +32,8 @@
         "lastname": "Kalb",
         "gender": "other",
         "departments": ["Engineering", "Project Management"],
-        "colors": ["Yellow", "Red"]
+        "colors": ["Yellow", "Red"],
+        "age": 58
     },
     {
         "id": 5,
@@ -37,6 +41,7 @@
         "lastname": "Gerste",
         "gender": "male",
         "departments": ["Backoffice"],
-        "colors": ["Purple"]
+        "colors": ["Purple"],
+        "age": 22
     }
 ]

@@ -7,6 +7,7 @@ use Doctrine\DBAL\Driver\AbstractSQLiteDriver;
 use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Types\Types;
+use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
 use Terminal42\Loupe\Internal\Index\Indexer;
 use Terminal42\Loupe\Internal\Search\Searcher;
@@ -16,7 +17,7 @@ class Engine
 
     private IndexInfo $indexInfo;
 
-    public function __construct(private Connection $connection, private Configuration $configuration)
+    public function __construct(private Connection $connection, private Configuration $configuration, private Parser $filterParser)
     {
         if (!$this->connection->getDriver() instanceof AbstractSQLiteDriver) {
             throw new \InvalidArgumentException('Only SQLite is supported.');
@@ -65,7 +66,7 @@ class Engine
 
     public function search(array $parameters): array
     {
-        $searcher = new Searcher($this, $parameters);
+        $searcher = new Searcher($this, $this->filterParser, $parameters);
 
         return $searcher->fetchResult();
     }

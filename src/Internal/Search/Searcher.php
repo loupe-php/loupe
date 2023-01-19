@@ -7,6 +7,7 @@ use Doctrine\DBAL\Schema\Index;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\Processor;
 use Terminal42\Loupe\Internal\Engine;
+use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
 use Terminal42\Loupe\Internal\Util;
 
@@ -14,7 +15,7 @@ class Searcher
 {
     private QueryBuilder $queryBuilder;
 
-    public function __construct(private Engine $engine, private array $searchParameters)
+    public function __construct(private Engine $engine, private Parser $filterParser, private array $searchParameters)
     {
         $this->searchParameters = (new Processor())->process(
             $this->getConfigTreeBuilderForSearchParameters()->buildTree(),
@@ -34,22 +35,24 @@ class Searcher
         $this->sortDocuments();
 
         dd($this->queryBuilder->getSQL());
-
-       // $this->sortDocuments();
+        $showAllAttributes = ['*'] === $this->searchParameters['attributesToReceive'];
+        $attributesToReceive = array_flip($this->searchParameters['attributesToReceive']);
 
         $hits = [];
         foreach ($this->queryBuilder->fetchAllAssociative() as $result) {
-            $hits[] = json_decode($result['document'], true);
+            $document = json_decode($result['document'], true);
+
+            $hits[] = $showAllAttributes ? $document : array_intersect_key($document, $attributesToReceive);
         }
 
         $end = (int) floor(microtime(true) * 1000);
 
         return [
             "hits" => $hits,
-            "estimatedTotalHits" => 66,
+          //  "estimatedTotalHits" => 66,
             "query" => $this->searchParameters['q'],
-            "limit" => 20,
-            "offset" => 0,
+          //  "limit" => 20,
+         //   "offset" => 0,
             "processingTimeMs" => $end - $start,
         ];
     }
@@ -65,6 +68,10 @@ class Searcher
             ->end()
             ->scalarNode('filter')
                 ->defaultValue('')
+            ->end()
+            ->arrayNode('attributesToReceive')
+                ->defaultValue(['*'])
+                ->scalarPrototype()->end()
             ->end()
             ->arrayNode('sort')
                 ->defaultValue([])
@@ -114,15 +121,22 @@ class Searcher
 
     private function filterDocuments(): void
     {
-        // TODO: write a lexer that understands this and converts to a valid filter expression (or re-use existing library)
+        if ('' === $this->searchParameters['filter']) {
+            return;
+        }
+
+        $ast = $this->filterParser->getAst($this->searchParameters['filter']);
+        dd($ast);
+
+        // TODO: Convert our AST to a valid filter expression (or re-use existing library)
         // and works with more complex queries over multiple attributes such as
         // "(genres = 'Drama' OR genres = 'War') AND (foobar = 'Foo' OR genres = 'War') AND foobar2 = 'foo'"
         $filters = [
             'multi' => [
-                ['genres', '=', 'Drama'],
+           //     ['genres', '=', 'Drama'],
             ],
             'single' => [
-                ['release_date', '>', 0],
+              //  ['release_date', '>', 0],
             ]
         ];
 

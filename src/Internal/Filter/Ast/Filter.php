@@ -1,6 +1,6 @@
 <?php
 
-namespace Terminal42\Loupe\Internal\Lexer\Ast;
+namespace Terminal42\Loupe\Internal\Filter\Ast;
 
 class Filter extends Node
 {

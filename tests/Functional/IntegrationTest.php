@@ -10,7 +10,7 @@ class IntegrationTest extends TestCase
 {
     private function getTestDb(): string
     {
-        return __DIR__ . '/../var/loupe.db';
+        return __DIR__ . '/../../var/loupe.db';
     }
 
     private function getDocumentFixtures(string $name): array
@@ -41,9 +41,9 @@ class IntegrationTest extends TestCase
 
         $results = $loupe->search($search);
 
-        unset($results['processingTimeMs']);
+        //unset($results['processingTimeMs']);
 
-        $this->assertSame($expectedResults, $results);
+        $this->assertSame($expectedResults, $results['hits']);
     }
 
     public function integrationTestsProvider(): \Generator
@@ -52,31 +52,23 @@ class IntegrationTest extends TestCase
             'filters',
             [
                 'filterableAttributes' => [
-                    'genres',
-                    'release_date',
+                    'departments',
+                    'gender',
                 ],
                 'sortableAttributes' => [
-                    'title'
+                    'firstname'
                 ]
-                /*
-                "typoTolerance" => [
-                    "enabled" => true,
-                    "minWordSizeForTypos" => [
-                        "oneTypo" => 5,
-                        "twoTypos" => 9
-                    ],
-                    "disableOnWords" => [
-                    ],
-                    "disableOnAttributes" => [
-                    ]
-                ]*/
             ],
             [
                 'q' => '',
-                'filter' => 'genres = "Drama"',
-                'sort' => ['title:asc']
+                'attributesToReceive' => ['id', 'firstname'],
+                'filter' => "(departments = 'Development' OR departments = 'Engineering') AND gender = 'female'",
+                'sort' => ['firstname:asc']
             ],
-            []
+            [
+                ['id' => 1, 'firstname' => 'Sandra'],
+                ['id' => 2, 'firstname' => 'Uta'],
+            ]
         ];
     }
 }

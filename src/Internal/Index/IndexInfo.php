@@ -4,6 +4,7 @@ namespace Terminal42\Loupe\Internal\Index;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Types\Types;
+use Terminal42\Loupe\Exception\InvalidConfigurationException;
 use Terminal42\Loupe\Exception\InvalidDocumentException;
 use Terminal42\Loupe\Exception\PrimaryKeyNotFoundException;
 use Terminal42\Loupe\Internal\Engine;
@@ -45,6 +46,12 @@ class IndexInfo
 
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
+        if (!array_key_exists($attributeName, $this->getDocumentSchema())) {
+            throw new InvalidConfigurationException(sprintf('The attribute "%s" does not exist on the document schema.',
+                $attributeName
+            ));
+        }
+
         return $this->getDocumentSchema()[$attributeName];
     }
 

@@ -1,15 +1,15 @@
 <?php
 
-namespace Terminal42\Loupe\Internal\Lexer;
+namespace Terminal42\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\Token;
 use Terminal42\Loupe\Exception\FilterFormatException;
-use Terminal42\Loupe\Internal\Lexer\Ast\Ast;
-use Terminal42\Loupe\Internal\Lexer\Ast\Concatenator;
-use Terminal42\Loupe\Internal\Lexer\Ast\Filter;
-use Terminal42\Loupe\Internal\Lexer\Ast\Group;
-use Terminal42\Loupe\Internal\Lexer\Ast\Node;
-use Terminal42\Loupe\Internal\Lexer\Ast\Operator;
+use Terminal42\Loupe\Internal\Filter\Ast\Ast;
+use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
+use Terminal42\Loupe\Internal\Filter\Ast\Filter;
+use Terminal42\Loupe\Internal\Filter\Ast\Group;
+use Terminal42\Loupe\Internal\Filter\Ast\Node;
+use Terminal42\Loupe\Internal\Filter\Ast\Operator;
 use Terminal42\Loupe\Internal\LoupeTypes;
 
 class Parser
@@ -18,15 +18,16 @@ class Parser
     private Ast $ast;
     private ?Group $currentGroup = null;
 
-    public function __construct(string $string, ?Lexer $lexer = null)
+    public function __construct(?Lexer $lexer = null)
     {
         $this->lexer = $lexer ?? new Lexer();
-        $this->lexer->setInput($string);
-        $this->ast = new Ast();
     }
 
-    public function getAst(): Ast
+    public function getAst(string $string): Ast
     {
+        $this->lexer->setInput($string);
+        $this->ast = new Ast();
+
         $this->lexer->moveNext();
 
         $start = true;

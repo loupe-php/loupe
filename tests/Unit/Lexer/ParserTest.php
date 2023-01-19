@@ -4,8 +4,7 @@ namespace Terminal42\Loupe\Tests\Unit\Lexer;
 
 use PHPUnit\Framework\TestCase;
 use Terminal42\Loupe\Exception\FilterFormatException;
-use Terminal42\Loupe\Internal\Lexer\Lexer;
-use Terminal42\Loupe\Internal\Lexer\Parser;
+use Terminal42\Loupe\Internal\Filter\Parser;
 
 class ParserTest extends TestCase
 {
@@ -14,9 +13,9 @@ class ParserTest extends TestCase
      */
     public function testValidFilter(string $filter, array $expectedAst): void
     {
-        $parser = new Parser($filter);
+        $parser = new Parser();
 
-        $this->assertSame($expectedAst, $parser->getAst()->toArray());
+        $this->assertSame($expectedAst, $parser->getAst($filter)->toArray());
     }
 
     public function filterProvider(): \Generator
@@ -72,8 +71,8 @@ class ParserTest extends TestCase
         $this->expectException(FilterFormatException::class);
         $this->expectExceptionMessage($expectedMessage);
 
-        $parser = new Parser($filter);
-        $parser->getAst();
+        $parser = new Parser();
+        $parser->getAst($filter);
     }
 
 
