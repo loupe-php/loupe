@@ -17,6 +17,7 @@ class IndexInfo
     public const TABLE_NAME_TERMS_DOCUMENTS = 'loupe_terms_documents';
     public const TABLE_NAME_TERMS = 'loupe_terms';
     public const TABLE_NAME_INDEX_INFO = 'loupe_info';
+    public const MAX_ATTRIBUTE_NAME_LENGTH = 30;
 
     private ?bool $needsSetup = null;
     private ?array $documentSchema = null;
@@ -288,10 +289,20 @@ class IndexInfo
 
     public static function validateAttributeName(string $name): void
     {
-        if (strlen($name) > InvalidDocumentException::MAX_ATTRIBUTE_NAME_LENGTH
+        if (strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
             || !preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
         ) {
             throw InvalidDocumentException::becauseInvalidAttributeName($name);
+        }
+    }
+
+    public static function isValidAttributeName(string $name): bool
+    {
+        try {
+            self::validateAttributeName($name);
+            return true;
+        } catch (InvalidDocumentException) {
+            return false;
         }
     }
 }

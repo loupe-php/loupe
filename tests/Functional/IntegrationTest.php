@@ -1,6 +1,6 @@
 <?php
 
-namespace Terminal42\Loupe\Tests;
+namespace Terminal42\Loupe\Tests\Functional;
 
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;

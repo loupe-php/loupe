@@ -67,13 +67,17 @@ class LoupeTypes
         return (string) $attributeValue;
     }
 
-    private static function convertToFloat(mixed $attributeValue): string
+    private static function convertToFloat(mixed $attributeValue): float
     {
         if (is_float($attributeValue)) {
             return $attributeValue;
         }
 
         if (is_int($attributeValue)) {
+            return (float) $attributeValue;
+        }
+
+        if (is_string($attributeValue)) {
             return (float) $attributeValue;
         }
 

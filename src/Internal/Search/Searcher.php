@@ -130,12 +130,12 @@ class Searcher
             $attribute = $filter[0];
             $operator = $filter[1];
             $value = $filter[2];
-            $subqueryAlias = 'multi_filter_' . $attribute;
+            $subQueryAlias = 'multi_filter_' . $attribute;
             $attributeTableAlias = 'multi_attribute_' . $attribute;
             $attributeDocumentRelationAlias = 'multi_documents_attribute_' . $attribute;
 
-            $subquery = $this->engine->getConnection()->createQueryBuilder();
-            $subquery
+            $subQuery = $this->engine->getConnection()->createQueryBuilder();
+            $subQuery
                 ->select('document')
                 ->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $attributeDocumentRelationAlias)
                 ->innerJoin(
@@ -151,7 +151,7 @@ class Searcher
 
             $column = is_float($value) ? 'numeric_value' : 'string_value';
 
-            $subquery->andWhere(
+            $subQuery->andWhere(
                 sprintf('%s.%s %s %s',
                     $attributeTableAlias,
                     $column,
@@ -163,9 +163,9 @@ class Searcher
             $this->queryBuilder
                 ->innerJoin(
                     'documents',
-                    '(' . $subquery->getSQL() . ')',
-                    $subqueryAlias,
-                    sprintf('%s.document = documents.id', $subqueryAlias)
+                    '(' . $subQuery->getSQL() . ')',
+                    $subQueryAlias,
+                    sprintf('%s.document = documents.id', $subQueryAlias)
                 );
         }
 

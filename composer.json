@@ -23,11 +23,16 @@
         "doctrine/dbal": "^3.5",
         "symfony/config": "^6.2",
         "patrickschur/language-detection": "^5.2",
-        "wamania/php-stemmer": "^3.0"
+        "wamania/php-stemmer": "^3.0",
+        "doctrine/lexer": "^3.0"
     },
     "require-dev": {
         "symfony/var-dumper": "^6.2",
         "phpunit/phpunit": "^9.5",
         "symfony/filesystem": "^6.2"
+    },
+    "scripts": {
+        "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
+        "functional-tests": "@php vendor/bin/phpunit --testsuite=functional"
     }
 }

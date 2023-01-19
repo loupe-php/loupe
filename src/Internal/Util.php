@@ -7,20 +7,6 @@ use Terminal42\Loupe\Exception\InvalidJsonException;
 
 class Util
 {
-    public static function getTypeFromVariable(mixed $variable): string
-    {
-        if (is_float($attributeValue) || is_string($attributeValue)) {
-            return $attributeValue;
-        }
-
-        if (is_int($attributeValue)) {
-            return (float) $attributeValue;
-        }
-    }
-
-
-
-
     public static function encodeJson(array $data, int $flags = 0): string
     {
         $json = json_encode($data, $flags);
