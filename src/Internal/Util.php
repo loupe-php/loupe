@@ -2,20 +2,12 @@
 
 namespace Terminal42\Loupe\Internal;
 
-use Terminal42\Loupe\Exception\InvalidAttributeNameException;
+use Terminal42\Loupe\Exception\InvalidDocumentException;
+use Terminal42\Loupe\Exception\InvalidJsonException;
 
 class Util
 {
-    public static function validateAttributeName(string $name): void
-    {
-        if (strlen($name) > InvalidAttributeNameException::MAX_ATTRIBUTE_NAME_LENGTH
-            || !preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
-        ) {
-            throw InvalidAttributeNameException::becauseFormatDoesNotMatch($name);
-        }
-    }
-
-    public static function convertToStringOrFloat(mixed $attributeValue): string|float
+    public static function getTypeFromVariable(mixed $variable): string
     {
         if (is_float($attributeValue) || is_string($attributeValue)) {
             return $attributeValue;
@@ -24,12 +16,20 @@ class Util
         if (is_int($attributeValue)) {
             return (float) $attributeValue;
         }
+    }
 
-        if (is_array($attributeValue)) {
-            return 'array';
+
+
+
+    public static function encodeJson(array $data, int $flags = 0): string
+    {
+        $json = json_encode($data, $flags);
+
+        if (false === $json) {
+            throw new InvalidJsonException(json_last_error());
         }
 
-        return (string) $attributeValue;
+        return $json;
     }
 }
 

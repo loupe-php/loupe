@@ -1,0 +1,42 @@
+[
+    {
+        "id": 1,
+        "firstname": "Sandra",
+        "lastname": "Maier",
+        "gender": "female",
+        "departments": ["Development", "Engineering"],
+        "colors": ["Green", "Blue"]
+    },
+    {
+        "id": 2,
+        "firstname": "Uta",
+        "lastname": "Koertig",
+        "gender": "female",
+        "departments": ["Development", "Backoffice"],
+        "colors": ["Red", "Orange"]
+    },
+    {
+        "id": 3,
+        "firstname": "Alexander",
+        "lastname": "Abendroth",
+        "gender": "male",
+        "departments": ["Development"],
+        "colors": ["Blue"]
+    },
+    {
+        "id": 4,
+        "firstname": "Jonas",
+        "lastname": "Kalb",
+        "gender": "other",
+        "departments": ["Engineering", "Project Management"],
+        "colors": ["Yellow", "Red"]
+    },
+    {
+        "id": 5,
+        "firstname": "Marko",
+        "lastname": "Gerste",
+        "gender": "male",
+        "departments": ["Backoffice"],
+        "colors": ["Purple"]
+    }
+]

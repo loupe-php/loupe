@@ -25,49 +25,59 @@ class IntegrationTest extends TestCase
         $fs->dumpFile($this->getTestDb(), '');
     }
 
-    public function testIntegration(): void
+    /**
+     * @dataProvider integrationTestsProvider
+     */
+    public function testIntegration(string $fixture, array $configuration, array $search, array $expectedResults): void
     {
-        $documents = $this->getDocumentFixtures('movies_short');
+        $documents = $this->getDocumentFixtures($fixture);
 
         $factory = new LoupeFactory();
-        $loupe = $factory->create($this->getTestDb(), [
-            'indexes' => [
-                'movies' => [
-                    'filterableAttributes' => [
-                        'genres'
-                    ],
-                    'sortableAttributes' => [
-                        'title'
-                    ]
-                    /*
-                    "typoTolerance" => [
-                        "enabled" => true,
-                        "minWordSizeForTypos" => [
-                            "oneTypo" => 5,
-                            "twoTypos" => 9
-                        ],
-                        "disableOnWords" => [
-                        ],
-                        "disableOnAttributes" => [
-                        ]
-                    ]*/
-                ]
-            ]
-        ]);
-
-        $loupe->createSchema();
-        $movies = $loupe->getIndex('movies');
+        $loupe = $factory->create($this->getTestDb(), $configuration);
 
         foreach ($documents as $document) {
-            $movies->addDocument($document);
+            $loupe->addDocument($document);
         }
 
-        $results = $movies->search([
-            'q' => '',
-            'filter' => 'genres = "Drama"',
-            'sort' => ['title:asc']
-        ]);
+        $results = $loupe->search($search);
 
-        $this->assertSame([], $results);
+        unset($results['processingTimeMs']);
+
+        $this->assertSame($expectedResults, $results);
+    }
+
+    public function integrationTestsProvider(): \Generator
+    {
+        yield 'foo' => [
+            'filters',
+            [
+                'filterableAttributes' => [
+                    'genres',
+                    'release_date',
+                ],
+                'sortableAttributes' => [
+                    'title'
+                ]
+                /*
+                "typoTolerance" => [
+                    "enabled" => true,
+                    "minWordSizeForTypos" => [
+                        "oneTypo" => 5,
+                        "twoTypos" => 9
+                    ],
+                    "disableOnWords" => [
+                    ],
+                    "disableOnAttributes" => [
+                    ]
+                ]*/
+            ],
+            [
+                'q' => '',
+                'filter' => 'genres = "Drama"',
+                'sort' => ['title:asc']
+            ],
+            []
+        ];
     }
 }
+
