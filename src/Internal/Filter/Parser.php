@@ -23,7 +23,10 @@ class Parser
         $this->lexer = $lexer ?? new Lexer();
     }
 
-    public function getAst(string $string): Ast
+    /**
+     * @throws FilterFormatException
+     */
+    public function getAst(string $string, array $allowedAttributeNames = []): Ast
     {
         $this->lexer->setInput($string);
         $this->ast = new Ast();
@@ -47,6 +50,10 @@ class Parser
 
             if ($this->lexer->token->type === Lexer::T_ATTRIBUTE_NAME) {
                 $attributeName = $this->lexer->token->value;
+
+                if (count($allowedAttributeNames) !== 0 && !in_array($attributeName, $allowedAttributeNames, true)) {
+                    $this->syntaxError('filterable attribute');
+                }
 
                 $this->assertOperator($this->lexer->lookahead);
                 $this->lexer->moveNext();
@@ -107,7 +114,7 @@ class Parser
         $type = $token->type ?? null;
 
         if (null === $type || $type < 10 || $type > 30) {
-            $this->syntaxError('valid operator');
+            $this->syntaxError('valid operator', $token);
         }
     }
 
@@ -116,14 +123,14 @@ class Parser
         $type = $token->type ?? null;
 
         if (null === $type || ($type !== Lexer::T_FLOAT && $type !== Lexer::T_STRING)) {
-            $this->syntaxError('valid string or float value');
+            $this->syntaxError('valid string or float value', $token);
         }
     }
 
     private function syntaxError(string $expected = '', Token $token = null)
     {
         if ($token === null) {
-            $token = $this->lexer->lookahead;
+            $token = $this->lexer->token;
         }
 
         $tokenPos = $token->position ?? '-1';

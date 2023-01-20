@@ -63,6 +63,16 @@ class ParserTest extends TestCase
             ]
         ];
     }
+
+    public function testNonFilterableAttribute(): void
+    {
+        $this->expectException(FilterFormatException::class);
+        $this->expectExceptionMessage("Col 0: Error: Expected filterable attribute, got 'genres'");
+
+        $parser = new Parser();
+        $parser->getAst('genres > 42.67', ['gender']);
+    }
+
     /**
      * @dataProvider invalidFilterProvider
      */
@@ -75,12 +85,11 @@ class ParserTest extends TestCase
         $parser->getAst($filter);
     }
 
-
     public function invalidFilterProvider(): \Generator
     {
         yield 'Must begin with either ( or an attribute name' => [
             '$whatever',
-            "Col 1: Error: Expected an attribute name or '(', got 'whatever'",
+            "Col 0: Error: Expected an attribute name or '(', got '$'",
         ];
 
         yield 'Attribute  name must be followed by operator' => [
@@ -90,12 +99,12 @@ class ParserTest extends TestCase
 
         yield 'Cannot close a non-opened group' => [
             'genres > 42 ) foobar < 60)',
-            "Col 14: Error: Expected an opened group statement, got 'foobar'"
+            "Col 12: Error: Expected an opened group statement, got ')'"
         ];
 
         yield 'Missed closing the group' => [
             'genres > 42 AND (foobar < 60',
-            "Col -1: Error: Expected a closing parenthesis, got end of string."
+            "Col 26: Error: Expected a closing parenthesis, got end of string."
         ];
     }
 }
