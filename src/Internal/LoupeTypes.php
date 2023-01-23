@@ -16,6 +16,19 @@ class LoupeTypes
 
     public const TYPE_STRING = 'string';
 
+    public static function convertToString(mixed $attributeValue): string
+    {
+        if (is_string($attributeValue)) {
+            return $attributeValue;
+        }
+
+        if (is_array($attributeValue)) {
+            return 'array';
+        }
+
+        return (string) $attributeValue;
+    }
+
     public static function convertValueToType(mixed $attributeValue, string $type): array|string|float
     {
         return match ($type) {
@@ -109,18 +122,5 @@ class LoupeTypes
         }
 
         return 0;
-    }
-
-    private static function convertToString(mixed $attributeValue): string
-    {
-        if (is_string($attributeValue)) {
-            return $attributeValue;
-        }
-
-        if (is_array($attributeValue)) {
-            return 'array';
-        }
-
-        return (string) $attributeValue;
     }
 }

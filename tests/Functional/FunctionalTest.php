@@ -6,186 +6,37 @@ namespace Terminal42\Loupe\Tests\Functional;
 
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Filesystem\Path;
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
+use Terminal42\Loupe\Internal\Util;
+use Terminal42\Loupe\Loupe;
 use Terminal42\Loupe\LoupeFactory;
 
 class FunctionalTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        $fs = new Filesystem();
-        $fs->remove($this->getTestDb());
-        $fs->dumpFile($this->getTestDb(), '');
-    }
-
-    public function integrationTestsProvider(): \Generator
-    {
-        yield 'Test case with complex filter' => [
-            'filters',
-            [
-                'filterableAttributes' => ['departments', 'gender'],
-                'sortableAttributes' => ['firstname'],
-            ],
-            [
-                'q' => '',
-                'attributesToReceive' => ['id', 'firstname'],
-                'filter' => "(departments = 'Backoffice' OR departments = 'Project Management') AND gender = 'female'",
-                'sort' => ['firstname:asc'],
-            ],
-            [
-                'hits' => [
-                    [
-                        'id' => 2,
-                        'firstname' => 'Uta',
-                    ],
-                ],
-                'query' => '',
-                'hitsPerPage' => 20,
-                'page' => 1,
-                'totalPages' => 1,
-                'totalHits' => 1,
-            ],
-            10, // Must finish in less than 10ms
-        ];
-
-        yield 'Test with 5000 movies and a bit more complex query' => [
-            'movies_5000',
-            [
-                'filterableAttributes' => ['genres', 'release_date'],
-                'sortableAttributes' => ['title'],
-            ],
-            [
-                'q' => '',
-                'attributesToReceive' => ['id', 'title'],
-                'filter' => "(genres = 'WAR' OR genres = 'Adventure') AND release_date > 0",
-                'sort' => ['title:asc'],
-            ],
-            [
-                'hits' => [
-                    [
-                        'id' => 7840,
-                        'title' => '10,000 BC',
-                    ],
-                    [
-                        'id' => 1492,
-                        'title' => '1492: Conquest of Paradise',
-                    ],
-                    [
-                        'id' => 2207,
-                        'title' => '16 Blocks',
-                    ],
-                    [
-                        'id' => 9510,
-                        'title' => '1½ Knights - In Search of the Ravishing Princess Herzelinde',
-                    ],
-                    [
-                        'id' => 2965,
-                        'title' => '20,000 Leagues Under the Sea',
-                    ],
-                    [
-                        'id' => 1271,
-                        'title' => '300',
-                    ],
-                    [
-                        'id' => 12138,
-                        'title' => '3000 Miles to Graceland',
-                    ],
-                    [
-                        'id' => 12244,
-                        'title' => '9',
-                    ],
-                    [
-                        'id' => 9487,
-                        'title' => "A Bug's Life",
-                    ],
-                    [
-                        'id' => 530,
-                        'title' => 'A Grand Day Out',
-                    ],
-                    [
-                        'id' => 9476,
-                        'title' => "A Knight's Tale",
-                    ],
-                    [
-                        'id' => 12403,
-                        'title' => 'A Perfect Getaway',
-                    ],
-                    [
-                        'id' => 10077,
-                        'title' => 'A Sound of Thunder',
-                    ],
-                    [
-                        'id' => 707,
-                        'title' => 'A View to a Kill',
-                    ],
-                    [
-                        'id' => 644,
-                        'title' => 'A.I. Artificial Intelligence',
-                    ],
-                    [
-                        'id' => 395,
-                        'title' => 'AVP: Alien vs. Predator',
-                    ],
-                    [
-                        'id' => 2701,
-                        'title' => 'Abraham',
-                    ],
-                    [
-                        'id' => 9273,
-                        'title' => 'Ace Ventura: When Nature Calls',
-                    ],
-                    [
-                        'id' => 10117,
-                        'title' => 'Action Jackson',
-                    ],
-                    [
-                        'id' => 11540,
-                        'title' => 'Adventures of Arsene Lupin',
-                    ],
-                ],
-                'query' => '',
-                'hitsPerPage' => 20,
-                'page' => 1,
-                'totalPages' => 36,
-                'totalHits' => 713,
-            ],
-            10, // Must finish in less than 10ms
-        ];
-    }
-
     /**
-     * @dataProvider integrationTestsProvider
+     * @var array<string, Loupe>
      */
-    public function testIntegration(
-        string $fixture,
-        array $configuration,
-        array $search,
-        array $expectedResults,
-        int $expectedMaxProcessingTime
-    ): void {
-        $documents = $this->getDocumentFixtures($fixture);
+    private array $loupeInstances = [];
 
-        $factory = new LoupeFactory();
-        $loupe = $factory->create($this->getTestDb(), $configuration);
+    public function testFunctional(): void
+    {
+        foreach ($this->getTests(__DIR__ . '/Tests') as $testData) {
+            $this->setName(sprintf('[Successful "%s"] %s', $testData['INDEX_FIXTURE'], $testData['TEST']));
 
-        foreach ($documents as $document) {
-            try {
-                $loupe->addDocument($document);
-            } catch (\Exception) {
-                // TODO: Should be able to replace an existing document.
-                continue;
-            }
+            $loupe = $this->setupLoupe(
+                'successful-' . $testData['INDEX_FIXTURE'],
+                $testData['INDEX_CONFIG'],
+                $testData['INDEX_FIXTURE']
+            );
+
+            $results = $loupe->search($testData['SEARCH']);
+
+            unset($results['processingTimeMs']);
+
+            $this->assertSame($testData['EXPECT'], $results);
         }
-
-        $results = $loupe->search($search);
-
-        $this->assertLessThanOrEqual(
-            $expectedMaxProcessingTime,
-            $results['processingTimeMs'],
-            'Performance degradation?'
-        );
-        unset($results['processingTimeMs']);
-
-        $this->assertSame($expectedResults, $results);
     }
 
     private function getDocumentFixtures(string $name): array
@@ -193,8 +44,91 @@ class FunctionalTest extends TestCase
         return json_decode(file_get_contents(__DIR__ . '/Fixtures/' . $name . '.json'), true);
     }
 
-    private function getTestDb(): string
+    private function getTestDb(string $key): string
     {
-        return __DIR__ . '/../../var/loupe.db';
+        return __DIR__ . '/../../var/' . $key . '.db';
+    }
+
+    private function getTests(string $directory): array
+    {
+        $tests = [];
+
+        foreach (Finder::create()->files()->name('*.txt')->in($directory) as $test) {
+            $testData = [
+                'INDEX_FIXTURE' => $test->getRelativePath(),
+                'INDEX_CONFIG' => require_once Path::join($test->getPath(), 'index-config.php'),
+            ];
+
+            $testData = array_merge($testData, $this->readTestFile($test));
+
+            $tests[] = $testData;
+        }
+
+        return $tests;
+    }
+
+    private function readTestFile(SplFileInfo $testFile): array
+    {
+        $tokens = preg_split('#(?:^|\n*)--([A-Z-]+)--\n#', $testFile->getContents(), -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        $sectionInfo = [
+            'TEST' => false,
+            'SEARCH' => true,
+            'EXPECT' => true,
+        ];
+
+        $section = null;
+        $data = [];
+        foreach ($tokens as $token) {
+            if ($section === null && empty($token)) {
+                continue; // skip leading blank
+            }
+
+            if ($section === null) {
+                if (! isset($sectionInfo[$token])) {
+                    throw new \RuntimeException(sprintf(
+                        'The test file "%s" must not contain a section named "%s".',
+                        $testFile->getRealPath(),
+                        $token
+                    ));
+                }
+                $section = $token;
+                continue;
+            }
+
+            $sectionData = $token;
+
+            if ($sectionInfo[$section]) {
+                $sectionData = Util::decodeJson($sectionData);
+            }
+
+            $data[$section] = $sectionData;
+            $section = $sectionData = null;
+        }
+
+        return $data;
+    }
+
+    private function setupLoupe(string $key, array $indexConfig, string $indexFixture): Loupe
+    {
+        if (isset($this->loupeInstances[$key])) {
+            return $this->loupeInstances[$key];
+        }
+
+        $dbPath = $this->getTestDb($key);
+
+        $fs = new Filesystem();
+        $fs->remove($dbPath);
+        $fs->dumpFile($dbPath, '');
+
+        $factory = new LoupeFactory();
+        $loupe = $factory->create($dbPath, $indexConfig);
+
+        // Index
+        foreach ($this->getDocumentFixtures($indexFixture) as $document) {
+            $loupe->addDocument($document);
+        }
+
+        return $this->loupeInstances[$key] = $loupe;
     }
 }

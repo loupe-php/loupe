@@ -13,15 +13,22 @@ class InvalidDocumentException extends \InvalidArgumentException implements Loup
         return new self(sprintf('Cannot sort on this type of attribute value for attribute "%s".', $attributeName));
     }
 
-    public static function becauseDoesNotMatchSchema(array $schema, mixed $primaryKey = null): self
+    public static function becauseDoesNotMatchSchema(array $schema, array $document, mixed $primaryKey = null): self
     {
         if ($primaryKey !== null) {
             return new self(
-                sprintf('Document ID "%s" does not match schema: %s', $primaryKey, json_encode($schema))
+                sprintf(
+                    'Document ID "%s" ("%s") does not match schema: %s',
+                    $primaryKey,
+                    json_encode($document),
+                    json_encode($schema)
+                )
             );
         }
 
-        return new self(sprintf('Document does not match schema: %s', json_encode($schema)));
+        return new self(
+            sprintf('Document ("%s")does not match schema: %s', json_encode($document), json_encode($schema))
+        );
     }
 
     public static function becauseInvalidAttributeName(string $attributeName): self

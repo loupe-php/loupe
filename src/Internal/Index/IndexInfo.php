@@ -174,6 +174,7 @@ class IndexInfo
         if (count(array_diff_key($documentSchema, $document)) !== 0) {
             throw InvalidDocumentException::becauseDoesNotMatchSchema(
                 $documentSchema,
+                $document,
                 $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
             );
         }
@@ -185,6 +186,7 @@ class IndexInfo
             )) {
                 throw InvalidDocumentException::becauseDoesNotMatchSchema(
                     $documentSchema,
+                    $document,
                     $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
                 );
             }
@@ -276,17 +278,16 @@ class IndexInfo
     {
         $table = $schema->createTable(self::TABLE_NAME_TERMS_DOCUMENTS);
 
-        $table->addColumn('id', Types::INTEGER)
-            ->setNotnull(true);
-
         $table->addColumn('term', Types::INTEGER)
             ->setNotnull(true);
 
         $table->addColumn('document', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->setPrimaryKey(['id']);
-        $table->addUniqueIndex(['term', 'document']);
+        $table->addColumn('frequency', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->setPrimaryKey(['term', 'document', 'frequency']);
     }
 
     private function addTermsToSchema(Schema $schema): void
@@ -297,6 +298,9 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->addColumn('term', Types::STRING)
+            ->setNotnull(true);
+
+        $table->addColumn('frequency', Types::INTEGER)
             ->setNotnull(true);
 
         $table->setPrimaryKey(['id']);
@@ -320,13 +324,9 @@ class IndexInfo
         $this->addIndexInfoToSchema($schema);
         $this->addDocumentsToSchema($schema);
         $this->addMultiAttributesToSchema($schema);
-
-        $this->addMultiAttributesToDocumentsRelationToSchema($schema);
-
-        return $schema;
-
         $this->addTermsToSchema($schema);
 
+        $this->addMultiAttributesToDocumentsRelationToSchema($schema);
         $this->addTermsToDocumentsRelationToSchema($schema);
 
         return $schema;

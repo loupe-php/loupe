@@ -29,7 +29,7 @@ class Indexer
             ->transactional(function () use ($document) {
                 $documentId = $this->indexDocument($document);
                 $this->indexMultiAttributes($document, $documentId);
-                //  $this->indexTerms($document, $documentId);
+                $this->indexTerms($document, $documentId);
             });
 
         return $this;
@@ -122,10 +122,10 @@ class Indexer
         }
     }
 
-    private function indexTerm(string $attributeName, string $term, int $documentId): void
+    private function indexTerm(string $term, int $documentId): void
     {
         $termId = $this->engine->getConnection()
-            ->executeQuery('SELECT id FROM loupe_terms WHERE term = :term', [
+            ->executeQuery(sprintf('SELECT id FROM %s WHERE term = :term', IndexInfo::TABLE_NAME_TERMS), [
                 'term' => $term,
             ])->fetchOne();
 
@@ -133,10 +133,49 @@ class Indexer
             $this->engine->getConnection()
                 ->insert(IndexInfo::TABLE_NAME_TERMS, [
                     'term' => $term,
+                    'frequency' => 1,
                 ]);
             $termId = $this->engine->getConnection()
                 ->lastInsertId();
+        } else {
+            $this->engine->getConnection()
+                ->update(IndexInfo::TABLE_NAME_TERMS, [
+                    'frequency' => 'frequency + 1',
+                ], [
+                    'id' => $termId,
+                ]);
         }
+
+        $relation = $this->engine->getConnection()
+            ->executeQuery(
+                sprintf(
+                    'SELECT term,document FROM %s WHERE term = :term AND document = :document',
+                    IndexInfo::TABLE_NAME_TERMS_DOCUMENTS
+                ),
+                [
+                'term' => $term,
+                'document' => $documentId,
+            ]
+            )->fetchOne();
+
+        if ($relation === false) {
+            $this->engine->getConnection()
+                ->insert(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, [
+                    'term' => $term,
+                    'document' => $documentId,
+                    'frequency' => 1,
+                ]);
+
+            return;
+        }
+
+        $this->engine->getConnection()
+            ->update(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, [
+                'frequency' => 'frequency + 1',
+            ], [
+                'term' => $term,
+                'document' => $documentId,
+            ]);
     }
 
     private function indexTerms(array $document, int $documentId): void
@@ -149,15 +188,11 @@ class Indexer
                 continue;
             }
 
-            $attributeValue = Util::convertToString($attributeValue);
+            $attributeValue = LoupeTypes::convertToString($attributeValue);
 
             foreach ($this->extractTerms($attributeValue) as $term) {
-                $this->indexTerm($attributeName, $term, $documentId);
+                $this->indexTerm($term, $documentId);
             }
         }
-
-        // $this->indexManager->getConnection()->
-
-        // INSERT OR REPLACE INTO tableName (...) values(...);
     }
 }

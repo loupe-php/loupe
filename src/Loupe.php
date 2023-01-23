@@ -15,7 +15,11 @@ final class Loupe
 
     public function addDocument(array $document): self
     {
-        $this->engine->addDocument($document);
+        try {
+            $this->engine->addDocument($document);
+        } catch (\Exception $e) {
+            dd($e);
+        }
 
         return $this;
     }

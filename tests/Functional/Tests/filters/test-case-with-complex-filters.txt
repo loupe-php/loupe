@@ -1,0 +1,25 @@
+--TEST--
+Check test case with complex filters
+
+--SEARCH--
+{
+	"q": "",
+	"attributesToReceive": ["id", "firstname"],
+	"filter": "(departments = 'Backoffice' OR departments = 'Project Management') AND gender = 'female'",
+	"sort": ["firstname:asc"]
+}
+
+--EXPECT--
+{
+	"hits": [
+        {
+            "id": 2,
+            "firstname": "Uta"
+        }
+	],
+	"query": "",
+	"hitsPerPage": 20,
+	"page": 1,
+	"totalPages": 1,
+	"totalHits": 1
+}

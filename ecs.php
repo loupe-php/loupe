@@ -19,6 +19,7 @@ return static function (ECSConfig $ecsConfig): void {
          SetList::SPACES,
          SetList::STRICT,
          SetList::SYMPLIFY,
+         SetList::PHPUNIT,
     ]);
 
     $ecsConfig->ruleWithConfiguration(OrderedClassElementsFixer::class, ['sort_algorithm' => 'alpha']);
