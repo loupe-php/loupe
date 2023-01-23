@@ -1,22 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Terminal42\Loupe\Internal\Filter\Ast;
 
 class Concatenator extends Node
 {
-    public function __construct(private string $concatenator)
-    {}
-
-    public function getConcatenator(): string
-    {
-        return $this->concatenator;
-    }
-
-    public function toArray(): array
-    {
-        return [
-            $this->getConcatenator()
-        ];
+    public function __construct(
+        private string $concatenator
+    ) {
     }
 
     public static function fromString(string $concatenator): self
@@ -26,5 +18,15 @@ class Concatenator extends Node
             'OR', '||' => 'OR',
             default => throw new \InvalidArgumentException('Invalid concatenator.')
         });
+    }
+
+    public function getConcatenator(): string
+    {
+        return $this->concatenator;
+    }
+
+    public function toArray(): array
+    {
+        return [$this->getConcatenator()];
     }
 }

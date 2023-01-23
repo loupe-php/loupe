@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Terminal42\Loupe\Internal\Filter\Ast;
 
 class Ast

@@ -1,18 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Terminal42\Loupe\Internal\Index;
 
-use Doctrine\DBAL\Types\Types;
-use Terminal42\Loupe\Exception\PrimaryKeyNotFoundException;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
 use Terminal42\Loupe\Internal\Util;
 
 class Indexer
 {
-    public function __construct(private Engine $engine)
-    {
-
+    public function __construct(
+        private Engine $engine
+    ) {
     }
 
     public function addDocument(array $document): self
@@ -25,14 +25,55 @@ class Indexer
             $indexInfo->validateDocument($document);
         }
 
-        $this->engine->getConnection()->transactional(function () use ($document) {
-            $documentId = $this->indexDocument($document);
-            $this->indexMultiAttributes($document, $documentId);
-          //  $this->indexTerms($document, $documentId);
-
-        });
+        $this->engine->getConnection()
+            ->transactional(function () use ($document) {
+                $documentId = $this->indexDocument($document);
+                $this->indexMultiAttributes($document, $documentId);
+                //  $this->indexTerms($document, $documentId);
+            });
 
         return $this;
+    }
+
+    private function extractTerms(string $attributeValue): array
+    {
+        // TODO: move into its own class
+
+        return explode(' ', $attributeValue);
+    }
+
+    private function indexAttributeValue(string $attribute, string|float $value, int $documentId)
+    {
+        $float = is_float($value);
+
+        $attributeId = $this->engine->getConnection()
+            ->executeQuery(
+                sprintf(
+                    'SELECT id FROM %s WHERE attribute = :attribute AND %s = :value',
+                    IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                    $float ? 'numeric_value' : 'string_value'
+                ),
+                [
+                    'attribute' => $attribute,
+                    'value' => $value,
+                ]
+            )->fetchOne();
+
+        if ($attributeId === false) {
+            $this->engine->getConnection()
+                ->insert(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES, [
+                    'attribute' => $attribute,
+                    $float ? 'numeric_value' : 'string_value' => $value,
+                ]);
+            $attributeId = $this->engine->getConnection()
+                ->lastInsertId();
+        }
+
+        $this->engine->getConnection()
+            ->insert(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, [
+                'attribute' => $attributeId,
+                'document' => $documentId,
+            ]);
     }
 
     /**
@@ -42,21 +83,23 @@ class Indexer
     {
         $data = [
             'user_id' => (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
-            'document' => Util::encodeJson($document)
+            'document' => Util::encodeJson($document),
         ];
 
         foreach ($this->engine->getIndexInfo()->getSingleFilterableAndSortableAttributes() as $attribute) {
             $data[$attribute] = LoupeTypes::convertValueToType(
                 $document[$attribute],
-                $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute)
+                $this->engine->getIndexInfo()
+                    ->getLoupeTypeForAttribute($attribute)
             );
         }
 
-        $this->engine->getConnection()->insert(IndexInfo::TABLE_NAME_DOCUMENTS, $data);
+        $this->engine->getConnection()
+            ->insert(IndexInfo::TABLE_NAME_DOCUMENTS, $data);
 
-        return (int) $this->engine->getConnection()->lastInsertId();
+        return (int) $this->engine->getConnection()
+            ->lastInsertId();
     }
-
 
     private function indexMultiAttributes(array $document, int $documentId): void
     {
@@ -65,7 +108,8 @@ class Indexer
 
             $convertedValue = LoupeTypes::convertValueToType(
                 $attributeValue,
-                $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute)
+                $this->engine->getIndexInfo()
+                    ->getLoupeTypeForAttribute($attribute)
             );
 
             if (is_array($convertedValue)) {
@@ -78,42 +122,30 @@ class Indexer
         }
     }
 
-
-    private function indexAttributeValue(string $attribute, string|float $value, int $documentId)
+    private function indexTerm(string $attributeName, string $term, int $documentId): void
     {
-        $float = is_float($value);
+        $termId = $this->engine->getConnection()
+            ->executeQuery('SELECT id FROM loupe_terms WHERE term = :term', [
+                'term' => $term,
+            ])->fetchOne();
 
-        $attributeId = $this->engine->getConnection()->executeQuery(
-            sprintf('SELECT id FROM %s WHERE attribute = :attribute AND %s = :value',
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $float ? 'numeric_value' : 'string_value'
-            ),
-            [
-                'attribute' => $attribute,
-                'value' => $value
-            ]
-        )->fetchOne();
-
-        if (false === $attributeId) {
-            $this->engine->getConnection()->insert(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES, [
-                'attribute' => $attribute,
-                $float ? 'numeric_value' : 'string_value' => $value
-            ]);
-            $attributeId = $this->engine->getConnection()->lastInsertId();
+        if ($termId === false) {
+            $this->engine->getConnection()
+                ->insert(IndexInfo::TABLE_NAME_TERMS, [
+                    'term' => $term,
+                ]);
+            $termId = $this->engine->getConnection()
+                ->lastInsertId();
         }
-
-        $this->engine->getConnection()->insert(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, [
-            'attribute' => $attributeId,
-            'document' => $documentId,
-        ]);
     }
 
     private function indexTerms(array $document, int $documentId): void
     {
-        $searchableAttributes = $this->engine->getConfiguration()->getValue('searchableAttributes');
+        $searchableAttributes = $this->engine->getConfiguration()
+            ->getValue('searchableAttributes');
 
         foreach ($document as $attributeName => $attributeValue) {
-            if (['*'] !== $searchableAttributes && !in_array($attributeName, $searchableAttributes, true)) {
+            if (['*'] !== $searchableAttributes && ! in_array($attributeName, $searchableAttributes, true)) {
                 continue;
             }
 
@@ -122,37 +154,10 @@ class Indexer
             foreach ($this->extractTerms($attributeValue) as $term) {
                 $this->indexTerm($attributeName, $term, $documentId);
             }
-
-
-
         }
 
-       // $this->indexManager->getConnection()->
+        // $this->indexManager->getConnection()->
 
         // INSERT OR REPLACE INTO tableName (...) values(...);
-    }
-
-    private function extractTerms(string $attributeValue): array
-    {
-        // TODO: move into its own class
-
-        return explode(" ", $attributeValue);
-    }
-
-    private function indexTerm(string $attributeName, string $term, int $documentId): void
-    {
-        $termId = $this->engine->getConnection()->executeQuery(
-            'SELECT id FROM loupe_terms WHERE term = :term',
-            ['term' => $term]
-        )->fetchOne();
-
-        if (false === $termId) {
-            $this->engine->getConnection()->insert(IndexInfo::TABLE_NAME_TERMS, [
-                'term' => $term,
-            ]);
-            $termId = $this->engine->getConnection()->lastInsertId();
-        }
-
-
     }
 }

@@ -1,24 +1,33 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Terminal42\Loupe\Internal\Search;
 
 use Doctrine\DBAL\Query\QueryBuilder;
-use Doctrine\DBAL\Schema\Index;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\Processor;
 use Terminal42\Loupe\Internal\Engine;
+use Terminal42\Loupe\Internal\Filter\Ast\Ast;
+use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
+use Terminal42\Loupe\Internal\Filter\Ast\Filter;
+use Terminal42\Loupe\Internal\Filter\Ast\Group;
+use Terminal42\Loupe\Internal\Filter\Ast\Node;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
-use Terminal42\Loupe\Internal\Util;
 
 class Searcher
 {
     private QueryBuilder $queryBuilder;
 
-    public function __construct(private Engine $engine, private Parser $filterParser, private array $searchParameters)
-    {
+    public function __construct(
+        private Engine $engine,
+        private Parser $filterParser,
+        private array $searchParameters
+    ) {
         $this->searchParameters = (new Processor())->process(
-            $this->getConfigTreeBuilderForSearchParameters()->buildTree(),
+            $this->getConfigTreeBuilderForSearchParameters()
+                ->buildTree(),
             [$this->searchParameters]
         );
     }
@@ -27,14 +36,15 @@ class Searcher
     {
         $start = (int) floor(microtime(true) * 1000);
 
-        $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
+        $this->queryBuilder = $this->engine->getConnection()
+            ->createQueryBuilder();
 
+        $this->selectTotalHits();
         $this->selectDocuments();
         $this->filterDocuments();
-        $this->groupDocuments();
         $this->sortDocuments();
+        $this->limitPagination();
 
-        dd($this->queryBuilder->getSQL());
         $showAllAttributes = ['*'] === $this->searchParameters['attributesToReceive'];
         $attributesToReceive = array_flip($this->searchParameters['attributesToReceive']);
 
@@ -45,18 +55,65 @@ class Searcher
             $hits[] = $showAllAttributes ? $document : array_intersect_key($document, $attributesToReceive);
         }
 
+        $totalHits = $result['totalHits'] ?? 0;
+        $totalPages = (int) ceil($totalHits / $this->searchParameters['hitsPerPage']);
         $end = (int) floor(microtime(true) * 1000);
 
         return [
-            "hits" => $hits,
-          //  "estimatedTotalHits" => 66,
-            "query" => $this->searchParameters['q'],
-          //  "limit" => 20,
-         //   "offset" => 0,
-            "processingTimeMs" => $end - $start,
+            'hits' => $hits,
+            'query' => $this->searchParameters['q'],
+            'processingTimeMs' => $end - $start,
+            'hitsPerPage' => $this->searchParameters['hitsPerPage'],
+            'page' => $this->searchParameters['page'],
+            'totalPages' => $totalPages,
+            'totalHits' => $totalHits,
         ];
     }
 
+    private function createSubQueryForMultiAttribute(Filter $node): string
+    {
+        $qb = $this->engine->getConnection()
+            ->createQueryBuilder();
+        $qb
+            ->select('document')
+            ->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, 'rel')
+            ->innerJoin(
+                'rel',
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                'attributes',
+                sprintf(
+                    'attributes.attribute=%s AND attributes.id = rel.attribute',
+                    $this->queryBuilder->createNamedParameter($node->attribute)
+                )
+            )
+        ;
+
+        $column = is_float($node->value) ? 'numeric_value' : 'string_value';
+
+        $qb->andWhere(
+            sprintf(
+                'attributes.%s %s %s',
+                $column,
+                $node->operator->value,
+                $this->queryBuilder->createNamedParameter($node->value)
+            )
+        );
+
+        return $qb->getSQL();
+    }
+
+    private function filterDocuments(): void
+    {
+        /** @var Ast $ast */
+        $ast = $this->searchParameters['filter'];
+        $whereStatement = [];
+
+        foreach ($ast->getNodes() as $node) {
+            $this->handleFilterAstNode($node, $whereStatement);
+        }
+
+        $this->queryBuilder->andWhere(implode(' ', $whereStatement));
+    }
 
     private function getConfigTreeBuilderForSearchParameters(): TreeBuilder
     {
@@ -64,154 +121,135 @@ class Searcher
         $rootNode = $treeBuilder->getRootNode();
         $rootNode->children()
             ->scalarNode('q')
-                ->defaultValue('')
+            ->defaultValue('')
             ->end()
             ->scalarNode('filter')
-                ->defaultValue('')
+            ->defaultValue('')
+            ->validate()
+            ->always(function (string $filter) {
+                return $this->filterParser->getAst(
+                    $filter,
+                    $this->engine->getConfiguration()
+                        ->getFilterableAttributes()
+                );
+            })
+            ->end()
             ->end()
             ->arrayNode('attributesToReceive')
-                ->defaultValue(['*'])
-                ->scalarPrototype()->end()
+            ->defaultValue(['*'])
+            ->scalarPrototype()
+            ->end()
             ->end()
             ->arrayNode('sort')
-                ->defaultValue([])
-                ->scalarPrototype()->end()
-                ->validate()
-                    ->always(function(array $sort) {
-                        $perAttribute = [];
-
-                        foreach ($sort as $v) {
-                            if (!is_string($v)) {
-                                throw new \InvalidArgumentException('Sort parameters must be an array of strings.');
-                            }
-
-                            $chunks = explode(':', $v, 2);
-
-                            if (2 !== count($chunks) || !in_array($chunks[1], ['asc', 'desc'], true)) {
-                                throw new \InvalidArgumentException('Sort parameters must be in the following format: ["title:asc"].');
-                            }
-
-                            IndexInfo::validateAttributeName($chunks[0]);
-
-                            if (!in_array($chunks[0], $this->engine->getConfiguration()->getValue('sortableAttributes'), true)) {
-                                throw new \InvalidArgumentException(sprintf(
-                                    'Cannot sort by "%s". It must be defined as sortable attribute.',
-                                    $chunks[0]
-                                ));
-                            }
-
-                            $perAttribute[$chunks[0]] = strtoupper($chunks[1]);
-                        }
-
-                        return $perAttribute;
-                    })
+            ->defaultValue([])
+            ->scalarPrototype()
             ->end()
-        ->end();
+            ->validate()
+            ->always(function (array $sort) {
+                $perAttribute = [];
+
+                foreach ($sort as $v) {
+                    if (! is_string($v)) {
+                        throw new \InvalidArgumentException('Sort parameters must be an array of strings.');
+                    }
+
+                    $chunks = explode(':', $v, 2);
+
+                    if (count($chunks) !== 2 || ! in_array($chunks[1], ['asc', 'desc'], true)) {
+                        throw new \InvalidArgumentException(
+                            'Sort parameters must be in the following format: ["title:asc"].'
+                        );
+                    }
+
+                    IndexInfo::validateAttributeName($chunks[0]);
+
+                    if (! in_array(
+                        $chunks[0],
+                        $this->engine->getConfiguration()
+                            ->getValue('sortableAttributes'),
+                        true
+                    )) {
+                        throw new \InvalidArgumentException(sprintf(
+                            'Cannot sort by "%s". It must be defined as sortable attribute.',
+                            $chunks[0]
+                        ));
+                    }
+
+                    $perAttribute[$chunks[0]] = strtoupper($chunks[1]);
+                }
+
+                return $perAttribute;
+            })
+            ->end()
+            ->end()
+            ->integerNode('hitsPerPage')
+            ->min(1)
+            ->defaultValue(20)
+            ->end()
+            ->integerNode('page')
+            ->min(1)
+            ->defaultValue(1)
+            ->end()
+            ->end();
 
         return $treeBuilder;
+    }
+
+    private function handleFilterAstNode(Node $node, array &$whereStatement): void
+    {
+        if ($node instanceof Group) {
+            $whereStatement[] = '(';
+            foreach ($node->getChildren() as $child) {
+                $this->handleFilterAstNode($child, $whereStatement);
+            }
+            $whereStatement[] = ')';
+        }
+
+        if ($node instanceof Filter) {
+            // Multi filterable need a sub query
+            if (in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+                $whereStatement[] = 'documents.id IN (';
+                $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
+                $whereStatement[] = ')';
+
+            // Single attributes are on the document itself
+            } else {
+                $whereStatement[] = 'documents.' . $node->attribute;
+                $whereStatement[] = $node->operator->value;
+                $whereStatement[] = $this->queryBuilder->createNamedParameter($node->value);
+            }
+        }
+
+        if ($node instanceof Concatenator) {
+            $whereStatement[] = $node->getConcatenator();
+        }
+    }
+
+    private function limitPagination(): void
+    {
+        $this->queryBuilder->setFirstResult(
+            ($this->searchParameters['page'] - 1) * $this->searchParameters['hitsPerPage']
+        );
+        $this->queryBuilder->setMaxResults($this->searchParameters['hitsPerPage']);
     }
 
     private function selectDocuments(): void
     {
         $this->queryBuilder
-            ->select('documents.document')
+            ->addSelect('documents.document')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS, 'documents')
         ;
     }
 
-    private function filterDocuments(): void
+    private function selectTotalHits(): void
     {
-        if ('' === $this->searchParameters['filter']) {
-            return;
-        }
-
-        $ast = $this->filterParser->getAst($this->searchParameters['filter']);
-        dd($ast);
-
-        // TODO: Convert our AST to a valid filter expression (or re-use existing library)
-        // and works with more complex queries over multiple attributes such as
-        // "(genres = 'Drama' OR genres = 'War') AND (foobar = 'Foo' OR genres = 'War') AND foobar2 = 'foo'"
-        $filters = [
-            'multi' => [
-           //     ['genres', '=', 'Drama'],
-            ],
-            'single' => [
-              //  ['release_date', '>', 0],
-            ]
-        ];
-
-        foreach ($filters['multi'] as $filter) {
-            $attribute = $filter[0];
-            $operator = $filter[1];
-            $value = $filter[2];
-            $subQueryAlias = 'multi_filter_' . $attribute;
-            $attributeTableAlias = 'multi_attribute_' . $attribute;
-            $attributeDocumentRelationAlias = 'multi_documents_attribute_' . $attribute;
-
-            $subQuery = $this->engine->getConnection()->createQueryBuilder();
-            $subQuery
-                ->select('document')
-                ->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $attributeDocumentRelationAlias)
-                ->innerJoin(
-                    $attributeDocumentRelationAlias,
-                    IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                    $attributeTableAlias,
-                    sprintf('%s.id = %s.attribute',
-                        $attributeTableAlias,
-                        $attributeDocumentRelationAlias,
-                    )
-                )
-            ;
-
-            $column = is_float($value) ? 'numeric_value' : 'string_value';
-
-            $subQuery->andWhere(
-                sprintf('%s.%s %s %s',
-                    $attributeTableAlias,
-                    $column,
-                    $operator,
-                    $this->queryBuilder->createNamedParameter($value)
-                )
-            );
-
-            $this->queryBuilder
-                ->innerJoin(
-                    'documents',
-                    '(' . $subQuery->getSQL() . ')',
-                    $subQueryAlias,
-                    sprintf('%s.document = documents.id', $subQueryAlias)
-                );
-        }
-
-        foreach ($filters['single'] as $filter) {
-            $attribute = $filter[0];
-            $operator = $filter[1];
-            $value = $filter[2];
-
-            $this->queryBuilder
-                ->andWhere(sprintf('documents.%s %s %s',
-                    $attribute,
-                    $operator,
-                    $this->queryBuilder->createNamedParameter($value)
-                ))
-            ;
-        }
-    }
-
-    private function groupDocuments(): void
-    {
-        $this->queryBuilder->addGroupBy('documents.id');
-
-        foreach (array_keys($this->searchParameters['sort']) as $sortAttribute) {
-            $this->queryBuilder->addGroupBy($sortAttribute);
-        }
+        $this->queryBuilder->addSelect('COUNT() OVER() AS totalHits');
     }
 
     private function sortDocuments(): void
     {
         foreach ($this->searchParameters['sort'] as $attributeName => $direction) {
-            $this->queryBuilder->addOrderBy($attributeName, $direction);
-
+            $this->queryBuilder->addOrderBy('documents.' . $attributeName, $direction);
         }
     }
 }

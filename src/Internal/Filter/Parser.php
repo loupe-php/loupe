@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Terminal42\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\Token;
@@ -14,18 +16,17 @@ use Terminal42\Loupe\Internal\LoupeTypes;
 
 class Parser
 {
-    private Lexer $lexer;
     private Ast $ast;
+
     private ?Group $currentGroup = null;
+
+    private Lexer $lexer;
 
     public function __construct(?Lexer $lexer = null)
     {
         $this->lexer = $lexer ?? new Lexer();
     }
 
-    /**
-     * @throws FilterFormatException
-     */
     public function getAst(string $string, array $allowedAttributeNames = []): Ast
     {
         $this->lexer->setInput($string);
@@ -36,13 +37,13 @@ class Parser
         $start = true;
 
         while (true) {
-            if (!$this->lexer->lookahead) {
+            if (! $this->lexer->lookahead) {
                 break;
             }
 
             $this->lexer->moveNext();
 
-            if ($start && !$this->lexer->token->isA(Lexer::T_ATTRIBUTE_NAME, Lexer::T_OPEN_PARENTHESIS)) {
+            if ($start && ! $this->lexer->token->isA(Lexer::T_ATTRIBUTE_NAME, Lexer::T_OPEN_PARENTHESIS)) {
                 $this->syntaxError('an attribute name or \'(\'');
             }
 
@@ -51,7 +52,7 @@ class Parser
             if ($this->lexer->token->type === Lexer::T_ATTRIBUTE_NAME) {
                 $attributeName = $this->lexer->token->value;
 
-                if (count($allowedAttributeNames) !== 0 && !in_array($attributeName, $allowedAttributeNames, true)) {
+                if (count($allowedAttributeNames) !== 0 && ! in_array($attributeName, $allowedAttributeNames, true)) {
                     $this->syntaxError('filterable attribute');
                 }
 
@@ -80,7 +81,7 @@ class Parser
             }
 
             if ($this->lexer->token->isA(Lexer::T_CLOSE_PARENTHESIS)) {
-                if (null === $this->currentGroup) {
+                if ($this->currentGroup === null) {
                     $this->syntaxError('an opened group statement');
                 }
 
@@ -90,7 +91,7 @@ class Parser
             }
         }
 
-        if (null !== $this->currentGroup) {
+        if ($this->currentGroup !== null) {
             $this->syntaxError('a closing parenthesis');
         }
 
@@ -99,7 +100,7 @@ class Parser
 
     private function addNode(Node $node): self
     {
-        if (null !== $this->currentGroup) {
+        if ($this->currentGroup !== null) {
             $this->currentGroup->addChild($node);
             return $this;
         }
@@ -113,7 +114,7 @@ class Parser
     {
         $type = $token->type ?? null;
 
-        if (null === $type || $type < 10 || $type > 30) {
+        if ($type === null || $type < 10 || $type > 30) {
             $this->syntaxError('valid operator', $token);
         }
     }
@@ -122,7 +123,7 @@ class Parser
     {
         $type = $token->type ?? null;
 
-        if (null === $type || ($type !== Lexer::T_FLOAT && $type !== Lexer::T_STRING)) {
+        if ($type === null || ($type !== Lexer::T_FLOAT && $type !== Lexer::T_STRING)) {
             $this->syntaxError('valid string or float value', $token);
         }
     }
@@ -135,7 +136,7 @@ class Parser
 
         $tokenPos = $token->position ?? '-1';
 
-        $message  = sprintf('Col %d: Error: ', $tokenPos);
+        $message = sprintf('Col %d: Error: ', $tokenPos);
         $message .= $expected !== '' ? sprintf('Expected %s, got ', $expected) : 'Unexpected ';
         $message .= $this->lexer->lookahead === null ? 'end of string.' : sprintf("'%s'", $token->value);
 

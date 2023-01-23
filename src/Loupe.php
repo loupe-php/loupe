@@ -1,16 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Terminal42\Loupe;
 
-use Doctrine\DBAL\Schema\Schema;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\Util;
 
 final class Loupe
 {
-    public function __construct(private Engine $engine)
-    {
+    public function __construct(
+        private Engine $engine
+    ) {
     }
 
     public function addDocument(array $document): self

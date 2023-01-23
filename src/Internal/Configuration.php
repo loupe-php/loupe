@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Terminal42\Loupe\Internal;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -9,8 +11,9 @@ use Terminal42\Loupe\Internal\Index\IndexInfo;
 
 final class Configuration
 {
-    public function __construct(private array $configuration)
-    {
+    public function __construct(
+        private array $configuration
+    ) {
         try {
             $this->configuration = (new Processor())->process(
                 self::getConfigTreeBuilder()->buildTree(),
@@ -21,15 +24,67 @@ final class Configuration
         }
     }
 
-    public function getPrimaryKey(): string
+    public static function getConfigTreeBuilder(): TreeBuilder
     {
-        return $this->getValue('primaryKey');
+        $treeBuilder = new TreeBuilder('loupe');
+        $rootNode = $treeBuilder->getRootNode();
+        $rootNode
+            ->children()
+            ->scalarNode('primaryKey')
+            ->defaultValue('id')
+            ->end()
+            ->arrayNode('searchableAttributes')
+            ->requiresAtLeastOneElement()
+            ->defaultValue(['*'])
+            ->scalarPrototype()
+            ->end()
+            ->validate()
+            ->always(function (array $attributes) {
+                foreach ($attributes as $attribute) {
+                    IndexInfo::validateAttributeName($attribute);
+                }
+
+                return $attributes;
+            })
+            ->end()
+            ->end()
+            ->arrayNode('filterableAttributes')
+            ->defaultValue([])
+            ->scalarPrototype()
+            ->end()
+            ->validate()
+            ->always(function (array $attributes) {
+                foreach ($attributes as $attribute) {
+                    IndexInfo::validateAttributeName($attribute);
+                }
+
+                return $attributes;
+            })
+            ->end()
+            ->end()
+            ->arrayNode('sortableAttributes')
+            ->defaultValue([])
+            ->scalarPrototype()
+            ->end()
+            ->validate()
+            ->always(function (array $attributes) {
+                foreach ($attributes as $attribute) {
+                    IndexInfo::validateAttributeName($attribute);
+                }
+
+                return $attributes;
+            })
+            ->end()
+            ->end()
+            ->end()
+            ->end();
+
+        return $treeBuilder;
     }
 
-
-    public function getSortableAttributes(): array
+    public function getFilterableAndSortableAttributes(): array
     {
-        return $this->getValue('sortableAttributes');
+        return array_unique(array_merge($this->getFilterableAttributes(), $this->getSortableAttributes()));
     }
 
     public function getFilterableAttributes(): array
@@ -37,72 +92,18 @@ final class Configuration
         return $this->getValue('filterableAttributes');
     }
 
-    public function getFilterableAndSortableAttributes(): array
+    public function getPrimaryKey(): string
     {
-        return array_unique(array_merge(
-            $this->getFilterableAttributes(),
-            $this->getSortableAttributes()
-        ));
+        return $this->getValue('primaryKey');
+    }
+
+    public function getSortableAttributes(): array
+    {
+        return $this->getValue('sortableAttributes');
     }
 
     public function getValue(string $configKey): mixed
     {
         return $this->configuration[$configKey] ?? null;
-    }
-
-
-    public static function getConfigTreeBuilder(): TreeBuilder
-    {
-        $treeBuilder = new TreeBuilder('loupe');
-        $rootNode = $treeBuilder->getRootNode();
-        $rootNode
-            ->children()
-                ->scalarNode('primaryKey')
-                    ->defaultValue('id')
-                ->end()
-                ->arrayNode('searchableAttributes')
-                    ->requiresAtLeastOneElement()
-                    ->defaultValue(['*'])
-                    ->scalarPrototype()->end()
-                    ->validate()
-                        ->always(function(array $attributes) {
-                            foreach ($attributes as $attribute) {
-                                IndexInfo::validateAttributeName($attribute);
-                            }
-
-                            return $attributes;
-                        })
-                    ->end()
-                ->end()
-                ->arrayNode('filterableAttributes')
-                    ->defaultValue([])
-                    ->scalarPrototype()->end()
-                    ->validate()
-                        ->always(function(array $attributes) {
-                            foreach ($attributes as $attribute) {
-                                IndexInfo::validateAttributeName($attribute);
-                            }
-
-                            return $attributes;
-                        })
-                    ->end()
-                ->end()
-                ->arrayNode('sortableAttributes')
-                    ->defaultValue([])
-                    ->scalarPrototype()->end()
-                    ->validate()
-                        ->always(function(array $attributes) {
-                            foreach ($attributes as $attribute) {
-                                IndexInfo::validateAttributeName($attribute);
-                            }
-
-                            return $attributes;
-                        })
-                    ->end()
-                ->end()
-            ->end()
-        ->end();
-
-        return $treeBuilder;
     }
 }

@@ -1,17 +1,30 @@
 <?php
 
-namespace Terminal42\Loupe\Internal;
+declare(strict_types=1);
 
-use Terminal42\Loupe\Exception\InvalidDocumentException;
-use Terminal42\Loupe\Exception\InvalidJsonException;
+namespace Terminal42\Loupe\Internal;
 
 class LoupeTypes
 {
-    public const TYPE_STRING = 'string';
-    public const TYPE_NUMBER = 'number';
-    public const TYPE_ARRAY_STRING = 'array<string>';
+    public const TYPE_ARRAY_EMPTY = 'array';
+
     public const TYPE_ARRAY_NUMBER = 'array<number>';
 
+    public const TYPE_ARRAY_STRING = 'array<string>';
+
+    public const TYPE_NUMBER = 'number';
+
+    public const TYPE_STRING = 'string';
+
+    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float
+    {
+        return match ($type) {
+            self::TYPE_STRING => self::convertToString($attributeValue),
+            self::TYPE_NUMBER => self::convertToFloat($attributeValue),
+            self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
+            self::TYPE_ARRAY_NUMBER => self::convertToArrayOfFloats($attributeValue),
+        };
+    }
 
     public static function getTypeFromValue(mixed $variable): string
     {
@@ -30,20 +43,12 @@ class LoupeTypes
                 // Everything else will be converted to a string
                 return self::TYPE_ARRAY_STRING;
             }
+
+            return self::TYPE_ARRAY_EMPTY;
         }
 
         // Everything else will be converted to a string
         return self::TYPE_STRING;
-    }
-
-    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float
-    {
-        return match ($type) {
-            self::TYPE_STRING => self::convertToString($attributeValue),
-            self::TYPE_NUMBER => self::convertToFloat($attributeValue),
-            self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
-            self::TYPE_ARRAY_NUMBER => self::convertToArrayOfFloats($attributeValue),
-        };
     }
 
     public static function isSingleType(string $type): bool
@@ -54,17 +59,39 @@ class LoupeTypes
         };
     }
 
-    private static function convertToString(mixed $attributeValue): string
+    public static function typeMatchesType(string $schemaType, string $checkType): bool
     {
-        if (is_string($attributeValue)) {
-            return $attributeValue;
+        if ($schemaType === $checkType) {
+            return true;
         }
 
-        if (is_array($attributeValue)) {
-            return 'array';
+        if ($checkType === self::TYPE_ARRAY_EMPTY) {
+            return $schemaType === self::TYPE_ARRAY_NUMBER || $schemaType === self::TYPE_ARRAY_STRING;
         }
 
-        return (string) $attributeValue;
+        return false;
+    }
+
+    private static function convertToArrayOfFloats(array $attributeValue): array
+    {
+        $result = [];
+
+        foreach ($attributeValue as $k => $v) {
+            $result[$k] = self::convertToFloat($v);
+        }
+
+        return $result;
+    }
+
+    private static function convertToArrayOfStrings(array $attributeValue): array
+    {
+        $result = [];
+
+        foreach ($attributeValue as $k => $v) {
+            $result[$k] = self::convertToString($v);
+        }
+
+        return $result;
     }
 
     private static function convertToFloat(mixed $attributeValue): float
@@ -84,26 +111,16 @@ class LoupeTypes
         return 0;
     }
 
-    private static function convertToArrayOfStrings(array $attributeValue): array
+    private static function convertToString(mixed $attributeValue): string
     {
-        $result = [];
-
-        foreach ($attributeValue as $k => $v) {
-            $result[$k] = self::convertToString($v);
+        if (is_string($attributeValue)) {
+            return $attributeValue;
         }
 
-        return $result;
-    }
-
-    private static function convertToArrayOfFloats(array $attributeValue): array
-    {
-        $result = [];
-
-        foreach ($attributeValue as $k => $v) {
-            $result[$k] = self::convertToFloat($v);
+        if (is_array($attributeValue)) {
+            return 'array';
         }
 
-        return $result;
+        return (string) $attributeValue;
     }
 }
-

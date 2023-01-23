@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Terminal42\Loupe\Internal;
 
-use Terminal42\Loupe\Exception\InvalidDocumentException;
 use Terminal42\Loupe\Exception\InvalidJsonException;
 
 class Util
@@ -11,11 +12,10 @@ class Util
     {
         $json = json_encode($data, $flags);
 
-        if (false === $json) {
+        if ($json === false) {
             throw new InvalidJsonException(json_last_error());
         }
 
         return $json;
     }
 }
-
