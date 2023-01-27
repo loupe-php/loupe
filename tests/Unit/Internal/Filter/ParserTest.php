@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Unit\Lexer;
+namespace Terminal42\Loupe\Tests\Unit\Internal\Filter;
 
 use PHPUnit\Framework\TestCase;
 use Terminal42\Loupe\Exception\FilterFormatException;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Engine;
@@ -13,11 +14,22 @@ class LoupeFactory
 {
     public function create(string $dbPath, array $configuration): Loupe
     {
-        $configuration = new Configuration($configuration);
-        $dsn = 'pdo-sqlite://notused:inthis@case/' . realpath($dbPath);
+        return $this->createFromConnection(DriverManager::getConnection([
+            'url' => 'pdo-sqlite://notused:inthis@case/' . realpath($dbPath),
+        ]), $configuration);
+    }
 
-        return new Loupe(new Engine(DriverManager::getConnection([
-            'url' => $dsn,
-        ]), $configuration, new Parser()));
+    public function createInMemory(array $configuration): Loupe
+    {
+        return $this->createFromConnection(DriverManager::getConnection([
+            'url' => 'pdo-sqlite://:memory:',
+        ]), $configuration);
+    }
+
+    private function createFromConnection(Connection $connection, array $configuration): Loupe
+    {
+        $configuration = new Configuration($configuration);
+
+        return new Loupe(new Engine($connection, $configuration, new Parser()));
     }
 }

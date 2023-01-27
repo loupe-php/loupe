@@ -1,5 +1,5 @@
 --TEST--
-Check test case with complex filters
+Test case with complex filters
 
 --SEARCH--
 {

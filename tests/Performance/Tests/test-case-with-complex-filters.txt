@@ -1,0 +1,41 @@
+--TEST--
+Performance test case with complex filters
+
+--SEARCH--
+{
+	"q": "",
+	"attributesToReceive": ["id", "title"],
+	"hitsPerPage": 5,
+	"filter": "(genres = 'War' OR genres = 'Adventure') AND release_date > 0",
+	"sort": ["title:asc"]
+}
+
+--EXPECT--
+{
+	"hits": [{
+		"id": 252178,
+		"title": "'71"
+	}, {
+		"id": 7840,
+		"title": "10,000 BC"
+	}, {
+		"id": 302666,
+		"title": "10.0 Earthquake"
+	}, {
+		"id": 16123,
+		"title": "100 Million BC"
+	}, {
+		"id": 13654,
+		"title": "101 Dalmatians II: Patch's London Adventure"
+	}],
+	"query": "",
+	"hitsPerPage": 5,
+	"page": 1,
+	"totalPages": 646,
+	"totalHits": 3226
+}
+
+--EXPECT-MAX-PROCESSING-TIME--
+30
+
+

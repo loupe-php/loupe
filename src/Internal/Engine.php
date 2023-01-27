@@ -14,6 +14,8 @@ use Terminal42\Loupe\Internal\Search\Searcher;
 
 class Engine
 {
+    private const MIN_SQLITE_VERSION = '3.40.0';
+
     private IndexInfo $indexInfo;
 
     public function __construct(
@@ -23,6 +25,15 @@ class Engine
     ) {
         if (! $this->connection->getDriver() instanceof AbstractSQLiteDriver) {
             throw new \InvalidArgumentException('Only SQLite is supported.');
+        }
+
+        $version = $this->connection->executeQuery('select sqlite_version()')
+            ->fetchOne();
+        if (version_compare($version, self::MIN_SQLITE_VERSION, '<')) {
+            throw new \InvalidArgumentException(sprintf(
+                'You need at least version "%s" of SQLite.',
+                self::MIN_SQLITE_VERSION
+            ));
         }
 
         $this->registerSQLiteFunctions();
@@ -46,6 +57,23 @@ class Engine
     public function getConnection(): Connection
     {
         return $this->connection;
+    }
+
+    public function getDocument(int|string $identifier): ?array
+    {
+        $document = $this->getConnection()
+            ->fetchOne(
+                sprintf('SELECT document FROM %s WHERE user_id = :id', IndexInfo::TABLE_NAME_DOCUMENTS),
+                [
+                    'id' => LoupeTypes::convertToString($identifier),
+                ]
+            );
+
+        if ($document) {
+            return Util::decodeJson($document);
+        }
+
+        return null;
     }
 
     public function getIndexInfo(): IndexInfo

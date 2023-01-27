@@ -250,7 +250,7 @@ class IndexInfo
         $table->addColumn('document', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->setPrimaryKey(['attribute', 'document']);
+        $table->setPrimaryKey(['attribute', 'document'], 'attribute_document');
     }
 
     private function addMultiAttributesToSchema(Schema $schema): void
@@ -287,7 +287,7 @@ class IndexInfo
         $table->addColumn('frequency', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->setPrimaryKey(['term', 'document', 'frequency']);
+        $table->setPrimaryKey(['term', 'document']);
     }
 
     private function addTermsToSchema(Schema $schema): void

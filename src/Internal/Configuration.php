@@ -92,6 +92,11 @@ final class Configuration
         return $this->getValue('filterableAttributes');
     }
 
+    public function getHash(): string
+    {
+        return sha1(LoupeTypes::convertToString($this->configuration));
+    }
+
     public function getPrimaryKey(): string
     {
         return $this->getValue('primaryKey');

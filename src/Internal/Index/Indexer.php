@@ -45,35 +45,30 @@ class Indexer
     private function indexAttributeValue(string $attribute, string|float $value, int $documentId)
     {
         $float = is_float($value);
+        $valueColumn = $float ? 'numeric_value' : 'string_value';
 
-        $attributeId = $this->engine->getConnection()
-            ->executeQuery(
-                sprintf(
-                    'SELECT id FROM %s WHERE attribute = :attribute AND %s = :value',
-                    IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                    $float ? 'numeric_value' : 'string_value'
-                ),
-                [
-                    'attribute' => $attribute,
-                    'value' => $value,
-                ]
-            )->fetchOne();
+        $data = [
+            'attribute' => $attribute,
+            $valueColumn => $value,
+        ];
 
-        if ($attributeId === false) {
-            $this->engine->getConnection()
-                ->insert(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES, [
-                    'attribute' => $attribute,
-                    $float ? 'numeric_value' : 'string_value' => $value,
-                ]);
-            $attributeId = $this->engine->getConnection()
-                ->lastInsertId();
-        }
+        $attributeId = Util::upsert(
+            $this->engine->getConnection(),
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+            $data,
+            ['attribute', $valueColumn],
+            'id'
+        );
 
-        $this->engine->getConnection()
-            ->insert(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, [
+        Util::upsert(
+            $this->engine->getConnection(),
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            [
                 'attribute' => $attributeId,
                 'document' => $documentId,
-            ]);
+            ],
+            ['attribute', 'document']
+        );
     }
 
     /**
@@ -94,11 +89,13 @@ class Indexer
             );
         }
 
-        $this->engine->getConnection()
-            ->insert(IndexInfo::TABLE_NAME_DOCUMENTS, $data);
-
-        return (int) $this->engine->getConnection()
-            ->lastInsertId();
+        return Util::upsert(
+            $this->engine->getConnection(),
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+            $data,
+            ['user_id'],
+            'id'
+        );
     }
 
     private function indexMultiAttributes(array $document, int $documentId): void
@@ -124,58 +121,34 @@ class Indexer
 
     private function indexTerm(string $term, int $documentId): void
     {
-        $termId = $this->engine->getConnection()
-            ->executeQuery(sprintf('SELECT id FROM %s WHERE term = :term', IndexInfo::TABLE_NAME_TERMS), [
+        $termId = Util::upsert(
+            $this->engine->getConnection(),
+            IndexInfo::TABLE_NAME_TERMS,
+            [
                 'term' => $term,
-            ])->fetchOne();
-
-        if ($termId === false) {
-            $this->engine->getConnection()
-                ->insert(IndexInfo::TABLE_NAME_TERMS, [
-                    'term' => $term,
-                    'frequency' => 1,
-                ]);
-            $termId = $this->engine->getConnection()
-                ->lastInsertId();
-        } else {
-            $this->engine->getConnection()
-                ->update(IndexInfo::TABLE_NAME_TERMS, [
-                    'frequency' => 'frequency + 1',
-                ], [
-                    'id' => $termId,
-                ]);
-        }
-
-        $relation = $this->engine->getConnection()
-            ->executeQuery(
-                sprintf(
-                    'SELECT term,document FROM %s WHERE term = :term AND document = :document',
-                    IndexInfo::TABLE_NAME_TERMS_DOCUMENTS
-                ),
-                [
-                'term' => $term,
-                'document' => $documentId,
-            ]
-            )->fetchOne();
-
-        if ($relation === false) {
-            $this->engine->getConnection()
-                ->insert(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, [
-                    'term' => $term,
-                    'document' => $documentId,
-                    'frequency' => 1,
-                ]);
-
-            return;
-        }
-
-        $this->engine->getConnection()
-            ->update(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, [
+                'frequency' => 1,
+            ],
+            ['term'],
+            'id',
+            [
                 'frequency' => 'frequency + 1',
-            ], [
-                'term' => $term,
+            ]
+        );
+
+        Util::upsert(
+            $this->engine->getConnection(),
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            [
+                'term' => $termId,
                 'document' => $documentId,
-            ]);
+                'frequency' => 1,
+            ],
+            ['term', 'document'],
+            '',
+            [
+                'frequency' => 'frequency + 1',
+            ]
+        );
     }
 
     private function indexTerms(array $document, int $documentId): void

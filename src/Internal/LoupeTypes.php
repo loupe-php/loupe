@@ -23,7 +23,26 @@ class LoupeTypes
         }
 
         if (is_array($attributeValue)) {
-            return 'array';
+            if (array_is_list($attributeValue)) {
+                sort($attributeValue);
+            } else {
+                ksort($attributeValue);
+            }
+
+            $strings = [];
+            foreach ($attributeValue as $k => $v) {
+                $recursive = self::convertToString($v);
+                if ($recursive !== '') {
+                    $strings[] = $k . '.' . self::convertToString($v);
+                }
+            }
+
+            return implode('.', $strings);
+        }
+
+        // Ignore objects
+        if (is_object($attributeValue)) {
+            return '';
         }
 
         return (string) $attributeValue;

@@ -27,7 +27,7 @@ class InvalidDocumentException extends \InvalidArgumentException implements Loup
         }
 
         return new self(
-            sprintf('Document ("%s")does not match schema: %s', json_encode($document), json_encode($schema))
+            sprintf('Document ("%s") does not match schema: %s', json_encode($document), json_encode($schema))
         );
     }
 
