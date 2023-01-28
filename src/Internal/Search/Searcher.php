@@ -15,6 +15,8 @@ use Terminal42\Loupe\Internal\Filter\Ast\Group;
 use Terminal42\Loupe\Internal\Filter\Ast\Node;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
+use Terminal42\Loupe\Internal\Util;
+use voku\helper\UTF8;
 
 class Searcher
 {
@@ -42,6 +44,7 @@ class Searcher
         $this->selectTotalHits();
         $this->selectDocuments();
         $this->filterDocuments();
+        $this->searchDocuments();
         $this->sortDocuments();
         $this->limitPagination();
 
@@ -50,7 +53,7 @@ class Searcher
 
         $hits = [];
         foreach ($this->queryBuilder->fetchAllAssociative() as $result) {
-            $document = json_decode($result['document'], true);
+            $document = Util::decodeJson($result['document']);
 
             $hits[] = $showAllAttributes ? $document : array_intersect_key($document, $attributesToReceive);
         }
@@ -76,14 +79,26 @@ class Searcher
             ->createQueryBuilder();
         $qb
             ->select('document')
-            ->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, 'rel')
+            ->from(
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
+            )
             ->innerJoin(
-                'rel',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                'attributes',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                 sprintf(
-                    'attributes.attribute=%s AND attributes.id = rel.attribute',
-                    $this->queryBuilder->createNamedParameter($node->attribute)
+                    '%s.attribute=%s AND %s.id = %s.attribute',
+                    $this->engine->getIndexInfo()
+                        ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $this->queryBuilder->createNamedParameter($node->attribute),
+                    $this->engine->getIndexInfo()
+                        ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $this->engine->getIndexInfo()
+                        ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                 )
             )
         ;
@@ -92,7 +107,9 @@ class Searcher
 
         $qb->andWhere(
             sprintf(
-                'attributes.%s %s %s',
+                '%s.%s %s %s',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                 $column,
                 $node->operator->value,
                 $this->queryBuilder->createNamedParameter($node->value)
@@ -102,10 +119,85 @@ class Searcher
         return $qb->getSQL();
     }
 
+    private function createSubQueryForTerm(string $term): string
+    {
+        $qb = $this->engine->getConnection()
+            ->createQueryBuilder();
+        $qb
+            ->select('document')
+            ->from(
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS)
+            )
+            ->innerJoin(
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+                IndexInfo::TABLE_NAME_TERMS,
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                sprintf(
+                    '%s.id = %s.term',
+                    $this->engine->getIndexInfo()
+                        ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                    $this->engine->getIndexInfo()
+                        ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+                )
+            )
+        ;
+
+        $termParameter = $this->queryBuilder->createNamedParameter($term);
+        $levenshteinDistance = 1; // TODO
+
+        /*
+         * WHERE
+         *    term LIKE '<first_char>%'
+         *    AND
+         *    (
+         *      term = '<term>'
+         *      OR
+         *      max_levenshtein(<term>, term, <distance>)
+         *    )
+         */
+        $where = [];
+        $where[] = sprintf(
+            '%s.term LIKE %s',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+            $this->queryBuilder->createNamedParameter(UTF8::first_char($term) . '%')
+        );
+        $where[] = 'AND';
+        $where[] = '(';
+        $where[] = sprintf(
+            '%s.term = %s',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+            $termParameter
+        );
+        $where[] = 'OR';
+        $where[] = sprintf(
+            'max_levenshtein(%s, %s.term, %d)',
+            $termParameter,
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+            $levenshteinDistance
+        );
+        $where[] = ')';
+
+        $qb->where(implode(' ', $where));
+
+        return $qb->getSQL();
+    }
+
     private function filterDocuments(): void
     {
-        /** @var Ast $ast */
+        /** @var Ast|string $ast */
         $ast = $this->searchParameters['filter'];
+
+        if ($ast === '') {
+            return;
+        }
+
         $whereStatement = [];
 
         foreach ($ast->getNodes() as $node) {
@@ -208,13 +300,17 @@ class Searcher
         if ($node instanceof Filter) {
             // Multi filterable need a sub query
             if (in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-                $whereStatement[] = 'documents.id IN (';
+                $whereStatement[] = $this->engine->getIndexInfo()->getAliasForTable(
+                    IndexInfo::TABLE_NAME_DOCUMENTS
+                ) . '.id IN (';
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
 
             // Single attributes are on the document itself
             } else {
-                $whereStatement[] = 'documents.' . $node->attribute;
+                $whereStatement[] = $this->engine->getIndexInfo()->getAliasForTable(
+                    IndexInfo::TABLE_NAME_DOCUMENTS
+                ) . '.' . $node->attribute;
                 $whereStatement[] = $node->operator->value;
                 $whereStatement[] = $this->queryBuilder->createNamedParameter($node->value);
             }
@@ -233,11 +329,42 @@ class Searcher
         $this->queryBuilder->setMaxResults($this->searchParameters['hitsPerPage']);
     }
 
+    private function searchDocuments(): void
+    {
+        $query = $this->searchParameters['q'];
+
+        if ($query === '') {
+            return;
+        }
+
+        $terms = $this->engine->getTokenizer()
+            ->tokenize($query);
+
+        $ors = [];
+
+        foreach ($terms as $term) {
+            $whereStatement = [];
+            $whereStatement[] = $this->engine->getIndexInfo()->getAliasForTable(
+                IndexInfo::TABLE_NAME_DOCUMENTS
+            ) . '.id IN (';
+            $whereStatement[] = $this->createSubQueryForTerm($term);
+            $whereStatement[] = ')';
+
+            $ors[] = implode(' ', $whereStatement);
+        }
+
+        $this->queryBuilder->andWhere('(' . implode(') OR (', $ors) . ')');
+    }
+
     private function selectDocuments(): void
     {
         $this->queryBuilder
-            ->addSelect('documents.document')
-            ->from(IndexInfo::TABLE_NAME_DOCUMENTS, 'documents')
+            ->addSelect($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document')
+            ->from(
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+            )
         ;
     }
 
@@ -249,7 +376,11 @@ class Searcher
     private function sortDocuments(): void
     {
         foreach ($this->searchParameters['sort'] as $attributeName => $direction) {
-            $this->queryBuilder->addOrderBy('documents.' . $attributeName, $direction);
+            $this->queryBuilder->addOrderBy(
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attributeName,
+                $direction
+            );
         }
     }
 }

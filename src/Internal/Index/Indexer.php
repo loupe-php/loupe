@@ -37,9 +37,8 @@ class Indexer
 
     private function extractTerms(string $attributeValue): array
     {
-        // TODO: move into its own class
-
-        return explode(' ', $attributeValue);
+        return $this->engine->getTokenizer()
+            ->tokenize($attributeValue);
     }
 
     private function indexAttributeValue(string $attribute, string|float $value, int $documentId)

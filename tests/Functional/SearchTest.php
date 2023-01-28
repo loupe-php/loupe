@@ -11,6 +11,7 @@ class SearchTest extends AbstractFunctionalTest
         $loupe = $this->setupSharedLoupe([
             'filterableAttributes' => ['departments', 'gender'],
             'sortableAttributes' => ['firstname'],
+            'searchableAttributes' => ['firstname', 'lastname'],
         ], 'filters');
 
         $sectionInfo = [

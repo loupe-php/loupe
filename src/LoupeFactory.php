@@ -9,6 +9,7 @@ use Doctrine\DBAL\DriverManager;
 use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Filter\Parser;
+use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
 
 class LoupeFactory
 {
@@ -30,6 +31,6 @@ class LoupeFactory
     {
         $configuration = new Configuration($configuration);
 
-        return new Loupe(new Engine($connection, $configuration, new Parser()));
+        return new Loupe(new Engine($connection, $configuration, new Tokenizer(), new Parser()));
     }
 }

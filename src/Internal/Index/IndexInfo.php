@@ -16,17 +16,17 @@ class IndexInfo
 {
     public const MAX_ATTRIBUTE_NAME_LENGTH = 30;
 
-    public const TABLE_NAME_DOCUMENTS = 'loupe_documents';
+    public const TABLE_NAME_DOCUMENTS = 'documents';
 
-    public const TABLE_NAME_INDEX_INFO = 'loupe_info';
+    public const TABLE_NAME_INDEX_INFO = 'info';
 
-    public const TABLE_NAME_MULTI_ATTRIBUTES = 'loupe_multi_attributes';
+    public const TABLE_NAME_MULTI_ATTRIBUTES = 'multi_attributes';
 
-    public const TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS = 'loupe_multi_attributes_documents';
+    public const TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS = 'multi_attributes_documents';
 
-    public const TABLE_NAME_TERMS = 'loupe_terms';
+    public const TABLE_NAME_TERMS = 'terms';
 
-    public const TABLE_NAME_TERMS_DOCUMENTS = 'loupe_terms_documents';
+    public const TABLE_NAME_TERMS_DOCUMENTS = 'terms_documents';
 
     private ?array $documentSchema = null;
 
@@ -72,6 +72,19 @@ class IndexInfo
             ]);
 
         $this->needsSetup = false;
+    }
+
+    public function getAliasForTable(string $table): string
+    {
+        return match ($table) {
+            self::TABLE_NAME_DOCUMENTS => 'd',
+            self::TABLE_NAME_INDEX_INFO => 'i',
+            self::TABLE_NAME_MULTI_ATTRIBUTES => 'ma',
+            self::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS => 'mad',
+            self::TABLE_NAME_TERMS => 't',
+            self::TABLE_NAME_TERMS_DOCUMENTS => 'td',
+            default => throw new \LogicException(sprintf('Forgot to define an alias for %s.', $table))
+        };
     }
 
     public function getDocumentSchema(): array

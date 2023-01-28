@@ -18,6 +18,6 @@ class Levenshtein
         // So we don't have to e.g. count to a distance of 10 if $max is 2, we can early return.
         // Not sure if worth it, though as implementing it in PHP would be slower than in C so it might end up having
         // the same performance.
-        return levenshtein($string1, $string2) >= $max;
+        return levenshtein($string1, $string2) <= $max;
     }
 }
