@@ -1,0 +1,40 @@
+--TEST--
+Searches thousands of documents for "Botman" (typo)
+
+--SEARCH--
+{
+	"q": "Botman",
+	"attributesToReceive": ["id", "title"],
+	"hitsPerPage": 5,
+	"sort": ["title:asc"]
+}
+
+--EXPECT--
+{
+	"hits": [{
+		"id": 320061,
+		"title": "Batkid Begins"
+	}, {
+		"id": 268,
+		"title": "Batman"
+	}, {
+		"id": 2661,
+		"title": "Batman"
+	}, {
+		"id": 456348,
+		"title": "Batman & Bill"
+	}, {
+		"id": 15805,
+		"title": "Batman & Mr. Freeze: SubZero"
+	}],
+	"query": "Botman",
+	"hitsPerPage": 5,
+	"page": 1,
+	"totalPages": 13,
+	"totalHits": 63
+}
+
+--EXPECT-MAX-PROCESSING-TIME--
+600
+
+

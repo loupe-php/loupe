@@ -156,7 +156,13 @@ class Searcher
          *    (
          *      term = '<term>'
          *      OR
-         *      max_levenshtein(<term>, term, <distance>)
+         *      (
+         *          LENGTH(term) >= <term> - <lev-distance>
+         *          AND
+         *          LENGTH(term) <= <term> + <lev-distance>
+          *         AND
+         *          <levmax_levenshtein(<term>, term, <distance>)
+         *       )
          *    )
          */
         $where = [];
@@ -175,6 +181,21 @@ class Searcher
             $termParameter
         );
         $where[] = 'OR';
+        $where[] = '(';
+        $where[] = sprintf(
+            '%s.length >= %d',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+            UTF8::strlen($term) - 1
+        );
+        $where[] = 'AND';
+        $where[] = sprintf(
+            '%s.length <= %d',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+            UTF8::strlen($term) + 1
+        );
+        $where[] = 'AND';
         $where[] = sprintf(
             'max_levenshtein(%s, %s.term, %d)',
             $termParameter,
@@ -182,6 +203,7 @@ class Searcher
                 ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
             $levenshteinDistance
         );
+        $where[] = ')';
         $where[] = ')';
 
         $qb->where(implode(' ', $where));

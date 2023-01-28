@@ -11,6 +11,7 @@ use Terminal42\Loupe\Exception\InvalidDocumentException;
 use Terminal42\Loupe\Exception\PrimaryKeyNotFoundException;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
+use Terminal42\Loupe\Internal\Util;
 
 class IndexInfo
 {
@@ -97,7 +98,7 @@ class IndexInfo
                 ->where("key = 'documentSchema'")
                 ->fetchOne();
 
-            $this->documentSchema = json_decode($schema, true);
+            $this->documentSchema = Util::decodeJson($schema);
         }
 
         return $this->documentSchema;
@@ -313,11 +314,14 @@ class IndexInfo
         $table->addColumn('term', Types::STRING)
             ->setNotnull(true);
 
+        $table->addColumn('length', Types::INTEGER)
+            ->setNotnull(true);
+
         $table->addColumn('frequency', Types::INTEGER)
             ->setNotnull(true);
 
         $table->setPrimaryKey(['id']);
-        $table->addUniqueIndex(['term']);
+        $table->addUniqueIndex(['term', 'length']);
     }
 
     private function createSchema(): void

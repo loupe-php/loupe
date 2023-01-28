@@ -7,6 +7,7 @@ namespace Terminal42\Loupe\Internal\Index;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
 use Terminal42\Loupe\Internal\Util;
+use voku\helper\UTF8;
 
 class Indexer
 {
@@ -125,6 +126,7 @@ class Indexer
             IndexInfo::TABLE_NAME_TERMS,
             [
                 'term' => $term,
+                'length' => UTF8::strlen($term),
                 'frequency' => 1,
             ],
             ['term'],
