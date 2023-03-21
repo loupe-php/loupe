@@ -121,31 +121,6 @@ class Searcher
 
     private function createSubQueryForTerm(string $term): string
     {
-        $qb = $this->engine->getConnection()
-            ->createQueryBuilder();
-        $qb
-            ->select('document')
-            ->from(
-                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS)
-            )
-            ->innerJoin(
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
-                IndexInfo::TABLE_NAME_TERMS,
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                sprintf(
-                    '%s.id = %s.term',
-                    $this->engine->getIndexInfo()
-                        ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                    $this->engine->getIndexInfo()
-                        ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
-                )
-            )
-        ;
-
         $termParameter = $this->queryBuilder->createNamedParameter($term);
         $levenshteinDistance = 1; // TODO
 
@@ -206,9 +181,25 @@ class Searcher
         $where[] = ')';
         $where[] = ')';
 
-        $qb->where(implode(' ', $where));
+        $termQuery = sprintf(
+            'SELECT %s.id FROM %s %s WHERE %s',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+            IndexInfo::TABLE_NAME_TERMS,
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+            implode(' ', $where)
+        );
 
-        return $qb->getSQL();
+        return sprintf(
+            'SELECT DISTINCT document FROM %s %s WHERE %s.term IN (%s)',
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+            $termQuery
+        );
     }
 
     private function filterDocuments(): void

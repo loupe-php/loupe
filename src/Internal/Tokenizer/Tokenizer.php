@@ -50,7 +50,7 @@ class Tokenizer
         foreach ($iterator->getPartsIterator() as $term) {
             if ($iterator->getRuleStatus() !== \IntlBreakIterator::WORD_NONE) {
                 $terms[] = UTF8::strtolower($term);
-                $terms[] = $this->stem($term, $language);
+                $terms[] = UTF8::strtolower($this->stem($term, $language));
             }
         }
 

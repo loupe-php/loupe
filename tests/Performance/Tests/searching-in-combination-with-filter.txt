@@ -41,6 +41,5 @@ Searches thousands of documents for "Botman" (typo) and a genre filter
 }
 
 --EXPECT-MAX-PROCESSING-TIME--
-600
-
+30
 
