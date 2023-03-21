@@ -35,7 +35,7 @@ class InvalidDocumentException extends \InvalidArgumentException implements Loup
     {
         return new self(
             sprintf(
-                'A valid attribute name starts with a letter or underscore, followed by any number of letters, numbers, or underscores. It must not exceed %d characters. "%s" given.',
+                'A valid attribute name starts with a letter, followed by any number of letters, numbers, or underscores. It must not exceed %d characters. "%s" given.',
                 IndexInfo::MAX_ATTRIBUTE_NAME_LENGTH,
                 $attributeName
             )

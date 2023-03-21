@@ -175,7 +175,7 @@ class IndexInfo
     public static function validateAttributeName(string $name): void
     {
         if (strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
-            || ! preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
+            || ! preg_match('/^[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
         ) {
             throw InvalidDocumentException::becauseInvalidAttributeName($name);
         }
