@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PhpCsFixer\Fixer\ClassNotation\OrderedClassElementsFixer;
+use PhpCsFixer\Fixer\Operator\ConcatSpaceFixer;
 use Symplify\EasyCodingStandard\Config\ECSConfig;
 use Symplify\EasyCodingStandard\ValueObject\Set\SetList;
 
@@ -23,4 +24,6 @@ return static function (ECSConfig $ecsConfig): void {
     ]);
 
     $ecsConfig->ruleWithConfiguration(OrderedClassElementsFixer::class, ['sort_algorithm' => 'alpha']);
+   // $ecsConfig->ruleWithConfiguration(ConcatSpaceFixer::class, ['spacing' => 'none']);
+
 };

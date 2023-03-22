@@ -1,0 +1,36 @@
+--TEST--
+Test filtering by geo distance (search for places to eat near the center of Milano)
+
+--SEARCH--
+{
+	"q": "",
+	"attributesToRetrieve": ["id", "name", "_geo"],
+	"filter": "_geoRadius(45.472735, 9.184019, 2000)",
+    "sort": ["_geoPoint(45.472735, 9.184019):asc"]
+}
+
+--EXPECT--
+{
+	"hits": [{
+            "id": 1,
+            "name": "Nàpiz' Milano",
+            "_geo": {
+                "lat": 45.4777599,
+                "lng": 9.1967508
+            }
+        },
+        {
+            "id": 3,
+            "name": "Artico Gelateria Tradizionale",
+            "_geo": {
+                "lat": 45.4632046,
+                "lng": 9.1719421
+            }
+        }
+    ],
+    "query": "",
+    "hitsPerPage": 20,
+    "page": 1,
+    "totalPages": 1,
+    "totalHits": 2
+}

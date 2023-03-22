@@ -15,10 +15,14 @@ class Lexer extends AbstractLexer
 
     public const T_CLOSE_PARENTHESIS = 6;
 
+    public const T_COMMA = 8;
+
     // Operators are between 10 and 30
     public const T_EQUALS = 11;
 
     public const T_FLOAT = 5;
+
+    public const T_GEO_RADIUS = 101;
 
     public const T_GREATER_THAN = 12;
 
@@ -69,6 +73,9 @@ class Lexer extends AbstractLexer
             case $value === '||':
                 return self::T_OR;
 
+            case $value === '_geoRadius':
+                return self::T_GEO_RADIUS;
+
                 // Attribute names
             case IndexInfo::isValidAttributeName($value):
                 return self::T_ATTRIBUTE_NAME;
@@ -90,6 +97,9 @@ class Lexer extends AbstractLexer
 
             case $value === '!':
                 return self::T_NEGATE;
+
+            case $value === ',':
+                return self::T_COMMA;
         }
 
         return self::T_NONE;

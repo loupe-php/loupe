@@ -13,15 +13,6 @@ class Filter extends Node
     ) {
     }
 
-    public function getIdentifier(): string
-    {
-        $array = $this->toArray();
-
-        ksort($array);
-
-        return json_encode(array_values($array));
-    }
-
     public function toArray(): array
     {
         return [

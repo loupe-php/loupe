@@ -20,7 +20,7 @@ Loupe…
 ## TODOs
 
 * Order by relevance based on a typical TF-IDF Cosine similarity algorithm
-* Filtering by Geo distance
+* Levenshtein distance settings
 
 
 ## Acknowledgement

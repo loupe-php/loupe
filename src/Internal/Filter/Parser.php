@@ -6,9 +6,11 @@ namespace Terminal42\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\Token;
 use Terminal42\Loupe\Exception\FilterFormatException;
+use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Filter\Ast\Ast;
 use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
 use Terminal42\Loupe\Internal\Filter\Ast\Filter;
+use Terminal42\Loupe\Internal\Filter\Ast\GeoDistance;
 use Terminal42\Loupe\Internal\Filter\Ast\Group;
 use Terminal42\Loupe\Internal\Filter\Ast\Node;
 use Terminal42\Loupe\Internal\Filter\Ast\Operator;
@@ -43,33 +45,24 @@ class Parser
 
             $this->lexer->moveNext();
 
-            if ($start && ! $this->lexer->token->isA(Lexer::T_ATTRIBUTE_NAME, Lexer::T_OPEN_PARENTHESIS)) {
-                $this->syntaxError('an attribute name or \'(\'');
+            if ($start && ! $this->lexer->token->isA(
+                Lexer::T_ATTRIBUTE_NAME,
+                Lexer::T_GEO_RADIUS,
+                Lexer::T_OPEN_PARENTHESIS
+            )) {
+                $this->syntaxError('an attribute name, _geoRadius() or \'(\'');
             }
 
             $start = false;
 
+            if ($this->lexer->token->type === Lexer::T_GEO_RADIUS) {
+                $this->handleGeoRadius($allowedAttributeNames);
+                continue;
+            }
+
             if ($this->lexer->token->type === Lexer::T_ATTRIBUTE_NAME) {
-                $attributeName = $this->lexer->token->value;
-
-                if (count($allowedAttributeNames) !== 0 && ! in_array($attributeName, $allowedAttributeNames, true)) {
-                    $this->syntaxError('filterable attribute');
-                }
-
-                $this->assertOperator($this->lexer->lookahead);
-                $this->lexer->moveNext();
-                $operator = $this->lexer->token->value;
-
-                $this->assertStringOrFloat($this->lexer->lookahead);
-                $this->lexer->moveNext();
-
-                if ($this->lexer->token->type === Lexer::T_FLOAT) {
-                    $value = LoupeTypes::convertValueToType($this->lexer->token->value, LoupeTypes::TYPE_NUMBER);
-                } else {
-                    $value = LoupeTypes::convertValueToType($this->lexer->token->value, LoupeTypes::TYPE_STRING);
-                }
-
-                $this->addNode(new Filter($attributeName, Operator::fromString($operator), $value));
+                $this->handleAttribute($allowedAttributeNames);
+                continue;
             }
 
             if ($this->lexer->token->isA(Lexer::T_AND, Lexer::T_OR)) {
@@ -110,6 +103,26 @@ class Parser
         return $this;
     }
 
+    private function assertClosingParenthesis(?Token $token): void
+    {
+        $this->assertTokenTypes($token, [Lexer::T_CLOSE_PARENTHESIS], "')'");
+    }
+
+    private function assertComma(?Token $token): void
+    {
+        $this->assertTokenTypes($token, [Lexer::T_COMMA], "','");
+    }
+
+    private function assertFloat(?Token $token): void
+    {
+        $this->assertTokenTypes($token, [Lexer::T_FLOAT], 'valid float value');
+    }
+
+    private function assertOpeningParenthesis(?Token $token): void
+    {
+        $this->assertTokenTypes($token, [Lexer::T_OPEN_PARENTHESIS], "'('");
+    }
+
     private function assertOperator(?Token $token): void
     {
         $type = $token->type ?? null;
@@ -121,11 +134,74 @@ class Parser
 
     private function assertStringOrFloat(?Token $token): void
     {
+        $this->assertTokenTypes($token, [Lexer::T_FLOAT, Lexer::T_STRING], 'valid string or float value');
+    }
+
+    private function assertTokenTypes(?Token $token, array $types, string $error): void
+    {
         $type = $token->type ?? null;
 
-        if ($type === null || ($type !== Lexer::T_FLOAT && $type !== Lexer::T_STRING)) {
-            $this->syntaxError('valid string or float value', $token);
+        if ($type === null || ! in_array($type, $types, true)) {
+            $this->syntaxError($error, $token);
         }
+    }
+
+    private function handleAttribute(array $allowedAttributeNames): void
+    {
+        $attributeName = $this->lexer->token->value;
+
+        if (count($allowedAttributeNames) !== 0 && ! in_array($attributeName, $allowedAttributeNames, true)) {
+            $this->syntaxError('filterable attribute');
+        }
+
+        $this->assertOperator($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $operator = $this->lexer->token->value;
+
+        $this->assertStringOrFloat($this->lexer->lookahead);
+        $this->lexer->moveNext();
+
+        if ($this->lexer->token->type === Lexer::T_FLOAT) {
+            $value = LoupeTypes::convertValueToType($this->lexer->token->value, LoupeTypes::TYPE_NUMBER);
+        } else {
+            $value = LoupeTypes::convertValueToType($this->lexer->token->value, LoupeTypes::TYPE_STRING);
+        }
+
+        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $value));
+    }
+
+    private function handleGeoRadius(array $allowedAttributeNames): void
+    {
+        if (count($allowedAttributeNames) !== 0 && ! in_array(
+            Configuration::GEO_ATTRIBUTE_NAME,
+            $allowedAttributeNames,
+            true
+        )) {
+            throw new FilterFormatException(
+                'Cannot use "_geoRadius()" without having defined "_geo" as filterable attribute.'
+            );
+        }
+
+        $this->assertOpeningParenthesis($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $this->assertFloat($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $lat = (float) $this->lexer->token->value;
+        $this->assertComma($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $this->assertFloat($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $lng = (float) $this->lexer->token->value;
+        $this->assertComma($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $this->assertFloat($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $distance = (float) $this->lexer->token->value;
+        $this->assertClosingParenthesis($this->lexer->lookahead);
+
+        $this->addNode(new GeoDistance($lat, $lng, $distance));
+
+        $this->lexer->moveNext();
     }
 
     private function syntaxError(string $expected = '', Token $token = null)

@@ -11,6 +11,7 @@ use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Filter\Ast\Ast;
 use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
 use Terminal42\Loupe\Internal\Filter\Ast\Filter;
+use Terminal42\Loupe\Internal\Filter\Ast\GeoDistance;
 use Terminal42\Loupe\Internal\Filter\Ast\Group;
 use Terminal42\Loupe\Internal\Filter\Ast\Node;
 use Terminal42\Loupe\Internal\Filter\Parser;
@@ -53,6 +54,7 @@ class Searcher
         $attributesToRetrieve = array_flip($this->searchParameters['attributesToRetrieve']);
 
         $hits = [];
+
         foreach ($this->queryBuilder->fetchAllAssociative() as $result) {
             $document = Util::decodeJson($result['document']);
 
@@ -275,6 +277,9 @@ class Searcher
 
     private function handleFilterAstNode(Node $node, array &$whereStatement): void
     {
+        $documentAlias = $this->engine->getIndexInfo()
+            ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+
         if ($node instanceof Group) {
             $whereStatement[] = '(';
             foreach ($node->getChildren() as $child) {
@@ -286,20 +291,60 @@ class Searcher
         if ($node instanceof Filter) {
             // Multi filterable need a sub query
             if (in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-                $whereStatement[] = $this->engine->getIndexInfo()->getAliasForTable(
-                    IndexInfo::TABLE_NAME_DOCUMENTS
-                ) . '.id IN (';
+                $whereStatement[] = $documentAlias . '.id IN (';
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
 
             // Single attributes are on the document itself
             } else {
-                $whereStatement[] = $this->engine->getIndexInfo()->getAliasForTable(
-                    IndexInfo::TABLE_NAME_DOCUMENTS
-                ) . '.' . $node->attribute;
+                $whereStatement[] = $documentAlias . '.' . $node->attribute;
                 $whereStatement[] = $node->operator->value;
                 $whereStatement[] = $this->queryBuilder->createNamedParameter($node->value);
             }
+        }
+
+        if ($node instanceof GeoDistance) {
+            // Start a group
+            $whereStatement[] = '(';
+
+            // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
+            // the actual distance is compared. This can use indexes.
+            $bounds = $node->getBbox();
+
+            // Latitude
+            $whereStatement[] = $documentAlias . '._geo_lat';
+            $whereStatement[] = '>=';
+            $whereStatement[] = $bounds->getSouth();
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $documentAlias . '._geo_lat';
+            $whereStatement[] = '<=';
+            $whereStatement[] = $bounds->getNorth();
+
+            // Longitude
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $documentAlias . '._geo_lng';
+            $whereStatement[] = '>=';
+            $whereStatement[] = $bounds->getWest();
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $documentAlias . '._geo_lng';
+            $whereStatement[] = '<=';
+            $whereStatement[] = $bounds->getEast();
+
+            // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
+            // but not within the radius (which is a circle).
+            $whereStatement[] = 'AND';
+            $whereStatement[] = sprintf(
+                'geo_distance(%f, %f, %s, %s)',
+                $node->lat,
+                $node->lng,
+                $documentAlias . '._geo_lat',
+                $documentAlias . '._geo_lng',
+            );
+            $whereStatement[] = '<=';
+            $whereStatement[] = $node->distance;
+
+            // End group
+            $whereStatement[] = ')';
         }
 
         if ($node instanceof Concatenator) {
@@ -361,8 +406,10 @@ class Searcher
 
     private function sortDocuments(): void
     {
-        /** @var Sorting $sorting */
         $sorting = $this->searchParameters['sort'];
-        $sorting->applySorters($this->queryBuilder);
+
+        if ($sorting instanceof Sorting) {
+            $sorting->applySorters($this->queryBuilder);
+        }
     }
 }
