@@ -9,14 +9,13 @@ use Doctrine\DBAL\Types\Types;
 use Terminal42\Loupe\Exception\InvalidConfigurationException;
 use Terminal42\Loupe\Exception\InvalidDocumentException;
 use Terminal42\Loupe\Exception\PrimaryKeyNotFoundException;
+use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
 use Terminal42\Loupe\Internal\Util;
 
 class IndexInfo
 {
-    public const MAX_ATTRIBUTE_NAME_LENGTH = 30;
-
     public const TABLE_NAME_DOCUMENTS = 'documents';
 
     public const TABLE_NAME_INDEX_INFO = 'info';
@@ -52,12 +51,16 @@ class IndexInfo
         $documentSchema = [];
 
         foreach ($document as $attributeName => $attributeValue) {
-            self::validateAttributeName($attributeName);
+            Configuration::validateAttributeName($attributeName);
 
             $loupeType = LoupeTypes::getTypeFromValue($attributeValue);
 
+            if ($attributeName === Configuration::GEO_ATTRIBUTE_NAME && $loupeType !== LoupeTypes::TYPE_GEO) {
+                throw InvalidDocumentException::becauseGeoAttributeHasWrongValueFormat($attributeName);
+            }
+
             if (in_array($attributeName, $sortableAttributes, true) && ! LoupeTypes::isSingleType($loupeType)) {
-                throw InvalidDocumentException::becauseAttributeNotSortable($attributeName);
+                throw InvalidConfigurationException::becauseAttributeNotSortable($attributeName);
             }
 
             $documentSchema[$attributeName] = $loupeType;
@@ -153,9 +156,9 @@ class IndexInfo
     public static function isValidAttributeName(string $name): bool
     {
         try {
-            self::validateAttributeName($name);
+            Configuration::validateAttributeName($name);
             return true;
-        } catch (InvalidDocumentException) {
+        } catch (InvalidConfigurationException) {
             return false;
         }
     }
@@ -170,15 +173,6 @@ class IndexInfo
             ->createSchemaManager()
             ->tablesExist([self::TABLE_NAME_INDEX_INFO])
         ;
-    }
-
-    public static function validateAttributeName(string $name): void
-    {
-        if (strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
-            || ! preg_match('/^[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
-        ) {
-            throw InvalidDocumentException::becauseInvalidAttributeName($name);
-        }
     }
 
     public function validateDocument(array $document): void
@@ -223,8 +217,18 @@ class IndexInfo
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['user_id']);
 
+        $columns = [];
+
         foreach ($this->getSingleFilterableAndSortableAttributes() as $attribute) {
-            $dbalType = match ($this->getLoupeTypeForAttribute($attribute)) {
+            $loupeType = $this->getLoupeTypeForAttribute($attribute);
+
+            if ($loupeType === LoupeTypes::TYPE_GEO) {
+                $columns['_geo_lat'] = Types::FLOAT;
+                $columns['_geo_lng'] = Types::FLOAT;
+                continue;
+            }
+
+            $dbalType = match ($loupeType) {
                 LoupeTypes::TYPE_STRING => Types::STRING,
                 LoupeTypes::TYPE_NUMBER => Types::FLOAT,
                 default => null
@@ -234,6 +238,10 @@ class IndexInfo
                 continue;
             }
 
+            $columns[$attribute] = $dbalType;
+        }
+
+        foreach ($columns as $attribute => $dbalType) {
             $table->addColumn($attribute, $dbalType)
                 ->setNotnull(false);
 

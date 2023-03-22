@@ -4,7 +4,7 @@ Performance test case with complex filters
 --SEARCH--
 {
 	"q": "",
-	"attributesToReceive": ["id", "title"],
+	"attributesToRetrieve": ["id", "title"],
 	"hitsPerPage": 5,
 	"filter": "(genres = 'War' OR genres = 'Adventure') AND release_date > 0",
 	"sort": ["title:asc"]

@@ -4,7 +4,7 @@ Searches thousands of documents for "Botman" (typo)
 --SEARCH--
 {
 	"q": "Botman",
-	"attributesToReceive": ["id", "title"],
+	"attributesToRetrieve": ["id", "title"],
 	"hitsPerPage": 5,
 	"sort": ["title:asc"]
 }

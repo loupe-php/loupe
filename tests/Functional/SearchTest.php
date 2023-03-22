@@ -30,4 +30,28 @@ class SearchTest extends AbstractFunctionalTest
             $this->assertSame($testData['EXPECT'], $results);
         }
     }
+
+    public function testSearchingWithGeo(): void
+    {
+        $loupe = $this->setupSharedLoupe([
+            'filterableAttributes' => ['_geo', 'type'],
+            'sortableAttributes' => ['_geo', 'rating'],
+        ], 'restaurants');
+
+        $sectionInfo = [
+            'TEST' => false,
+            'SEARCH' => true,
+            'EXPECT' => true,
+        ];
+
+        foreach ($this->getTests(__DIR__ . '/Tests/Geo', $sectionInfo) as $testData) {
+            $this->setName(sprintf('%s [%s] %s', __METHOD__, $testData['TEST_FILE'], $testData['TEST']));
+
+            $results = $loupe->search($testData['SEARCH']);
+
+            unset($results['processingTimeMs']);
+
+            $this->assertSame($testData['EXPECT'], $results);
+        }
+    }
 }

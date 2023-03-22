@@ -15,6 +15,7 @@ use Terminal42\Loupe\Internal\Filter\Ast\Group;
 use Terminal42\Loupe\Internal\Filter\Ast\Node;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
+use Terminal42\Loupe\Internal\Search\Sorting\GeoPoint;
 use Terminal42\Loupe\Internal\Util;
 use voku\helper\UTF8;
 
@@ -48,14 +49,18 @@ class Searcher
         $this->sortDocuments();
         $this->limitPagination();
 
-        $showAllAttributes = ['*'] === $this->searchParameters['attributesToReceive'];
-        $attributesToReceive = array_flip($this->searchParameters['attributesToReceive']);
+        $showAllAttributes = ['*'] === $this->searchParameters['attributesToRetrieve'];
+        $attributesToRetrieve = array_flip($this->searchParameters['attributesToRetrieve']);
 
         $hits = [];
         foreach ($this->queryBuilder->fetchAllAssociative() as $result) {
             $document = Util::decodeJson($result['document']);
 
-            $hits[] = $showAllAttributes ? $document : array_intersect_key($document, $attributesToReceive);
+            if (array_key_exists(GeoPoint::DISTANCE_ALIAS, $result)) {
+                $document['_geoDistance'] = (int) round($result[GeoPoint::DISTANCE_ALIAS]);
+            }
+
+            $hits[] = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
         }
 
         $totalHits = $result['totalHits'] ?? 0;
@@ -240,7 +245,7 @@ class Searcher
             })
             ->end()
             ->end()
-            ->arrayNode('attributesToReceive')
+            ->arrayNode('attributesToRetrieve')
             ->defaultValue(['*'])
             ->scalarPrototype()
             ->end()
@@ -251,39 +256,7 @@ class Searcher
             ->end()
             ->validate()
             ->always(function (array $sort) {
-                $perAttribute = [];
-
-                foreach ($sort as $v) {
-                    if (! is_string($v)) {
-                        throw new \InvalidArgumentException('Sort parameters must be an array of strings.');
-                    }
-
-                    $chunks = explode(':', $v, 2);
-
-                    if (count($chunks) !== 2 || ! in_array($chunks[1], ['asc', 'desc'], true)) {
-                        throw new \InvalidArgumentException(
-                            'Sort parameters must be in the following format: ["title:asc"].'
-                        );
-                    }
-
-                    IndexInfo::validateAttributeName($chunks[0]);
-
-                    if (! in_array(
-                        $chunks[0],
-                        $this->engine->getConfiguration()
-                            ->getValue('sortableAttributes'),
-                        true
-                    )) {
-                        throw new \InvalidArgumentException(sprintf(
-                            'Cannot sort by "%s". It must be defined as sortable attribute.',
-                            $chunks[0]
-                        ));
-                    }
-
-                    $perAttribute[$chunks[0]] = strtoupper($chunks[1]);
-                }
-
-                return $perAttribute;
+                return Sorting::fromArray($sort, $this->engine);
             })
             ->end()
             ->end()
@@ -388,12 +361,8 @@ class Searcher
 
     private function sortDocuments(): void
     {
-        foreach ($this->searchParameters['sort'] as $attributeName => $direction) {
-            $this->queryBuilder->addOrderBy(
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attributeName,
-                $direction
-            );
-        }
+        /** @var Sorting $sorting */
+        $sorting = $this->searchParameters['sort'];
+        $sorting->applySorters($this->queryBuilder);
     }
 }

@@ -26,6 +26,20 @@ class IndexTest extends AbstractFunctionalTest
         ]);
     }
 
+    public function testCannotUseGeoAttributeWithWrongType(): void
+    {
+        $this->expectException(InvalidDocumentException::class);
+        $this->expectExceptionMessage(
+            'The "_geo" attribute must have two keys only, which have to be named "lat" and "lng".'
+        );
+
+        $loupe = $this->setupLoupe([]);
+        $loupe->addDocument([
+            'id' => '42',
+            '_geo' => 'incorrect',
+        ]);
+    }
+
     public function testReplacingTheSameDocumentWorks(): void
     {
         $loupe = $this->setupLoupe([

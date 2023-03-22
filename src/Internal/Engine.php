@@ -108,6 +108,10 @@ class Engine
                     'callback' => [Levenshtein::class, 'maxLevenshtein'],
                     'numArgs' => 3,
                 ],
+                'geo_distance' => [
+                    'callback' => [Geo::class, 'geoDistance'],
+                    'numArgs' => 4,
+                ],
             ]
         );
     }

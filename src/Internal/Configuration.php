@@ -7,10 +7,13 @@ namespace Terminal42\Loupe\Internal;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\Processor;
 use Terminal42\Loupe\Exception\InvalidConfigurationException;
-use Terminal42\Loupe\Internal\Index\IndexInfo;
 
 final class Configuration
 {
+    public const GEO_ATTRIBUTE_NAME = '_geo';
+
+    public const MAX_ATTRIBUTE_NAME_LENGTH = 30;
+
     public function __construct(
         private array $configuration
     ) {
@@ -41,7 +44,7 @@ final class Configuration
             ->validate()
             ->always(function (array $attributes) {
                 foreach ($attributes as $attribute) {
-                    IndexInfo::validateAttributeName($attribute);
+                    self::validateAttributeName($attribute);
                 }
 
                 return $attributes;
@@ -55,7 +58,7 @@ final class Configuration
             ->validate()
             ->always(function (array $attributes) {
                 foreach ($attributes as $attribute) {
-                    IndexInfo::validateAttributeName($attribute);
+                    self::validateAttributeName($attribute);
                 }
 
                 return $attributes;
@@ -69,7 +72,7 @@ final class Configuration
             ->validate()
             ->always(function (array $attributes) {
                 foreach ($attributes as $attribute) {
-                    IndexInfo::validateAttributeName($attribute);
+                    self::validateAttributeName($attribute);
                 }
 
                 return $attributes;
@@ -110,5 +113,18 @@ final class Configuration
     public function getValue(string $configKey): mixed
     {
         return $this->configuration[$configKey] ?? null;
+    }
+
+    public static function validateAttributeName(string $name): void
+    {
+        if ($name === self::GEO_ATTRIBUTE_NAME) {
+            return;
+        }
+
+        if (strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
+            || ! preg_match('/^[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
+        ) {
+            throw InvalidConfigurationException::becauseInvalidAttributeName($name);
+        }
     }
 }

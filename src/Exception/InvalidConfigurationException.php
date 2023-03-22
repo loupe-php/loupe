@@ -4,6 +4,23 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Exception;
 
+use Terminal42\Loupe\Internal\Configuration;
+
 class InvalidConfigurationException extends \InvalidArgumentException implements LoupeExceptionInterface
 {
+    public static function becauseAttributeNotSortable(string $attributeName): self
+    {
+        return new self(sprintf('Cannot sort on this type of attribute value for attribute "%s".', $attributeName));
+    }
+
+    public static function becauseInvalidAttributeName(string $attributeName): self
+    {
+        return new self(
+            sprintf(
+                'A valid attribute name starts with a letter, followed by any number of letters, numbers, or underscores. It must not exceed %d characters. "%s" given.',
+                Configuration::MAX_ATTRIBUTE_NAME_LENGTH,
+                $attributeName
+            )
+        );
+    }
 }

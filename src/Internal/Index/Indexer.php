@@ -82,11 +82,16 @@ class Indexer
         ];
 
         foreach ($this->engine->getIndexInfo()->getSingleFilterableAndSortableAttributes() as $attribute) {
-            $data[$attribute] = LoupeTypes::convertValueToType(
-                $document[$attribute],
-                $this->engine->getIndexInfo()
-                    ->getLoupeTypeForAttribute($attribute)
-            );
+            $loupeType = $this->engine->getIndexInfo()
+                ->getLoupeTypeForAttribute($attribute);
+
+            if ($loupeType === LoupeTypes::TYPE_GEO) {
+                $data['_geo_lat'] = $document[$attribute]['lat'];
+                $data['_geo_lng'] = $document[$attribute]['lng'];
+                continue;
+            }
+
+            $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
         }
 
         return Util::upsert(

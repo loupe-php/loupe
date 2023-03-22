@@ -12,6 +12,8 @@ class LoupeTypes
 
     public const TYPE_ARRAY_STRING = 'array<string>';
 
+    public const TYPE_GEO = 'geo';
+
     public const TYPE_NUMBER = 'number';
 
     public const TYPE_STRING = 'string';
@@ -54,7 +56,7 @@ class LoupeTypes
             self::TYPE_STRING => self::convertToString($attributeValue),
             self::TYPE_NUMBER => self::convertToFloat($attributeValue),
             self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
-            self::TYPE_ARRAY_NUMBER => self::convertToArrayOfFloats($attributeValue),
+            self::TYPE_ARRAY_NUMBER, self::TYPE_GEO => self::convertToArrayOfFloats($attributeValue),
         };
     }
 
@@ -65,18 +67,32 @@ class LoupeTypes
         }
 
         if (is_array($variable)) {
+            $count = \count($variable);
+            $keys = array_keys($variable);
+
+            if ($count === 0) {
+                return self::TYPE_ARRAY_EMPTY;
+            }
+
+            if ($count === 2 && in_array('lat', $keys, true) && in_array('lng', $keys, true)) {
+                return self::TYPE_GEO;
+            }
+
+            $allNumbers = true;
             foreach ($variable as $v) {
                 $type = self::getTypeFromValue($v);
 
-                if ($type === self::TYPE_NUMBER) {
-                    return self::TYPE_ARRAY_NUMBER;
+                if ($type !== self::TYPE_NUMBER) {
+                    $allNumbers = false;
                 }
-
-                // Everything else will be converted to a string
-                return self::TYPE_ARRAY_STRING;
             }
 
-            return self::TYPE_ARRAY_EMPTY;
+            if ($allNumbers) {
+                return self::TYPE_ARRAY_NUMBER;
+            }
+
+            // Everything else will be converted to a string
+            return self::TYPE_ARRAY_STRING;
         }
 
         // Everything else will be converted to a string
@@ -85,10 +101,8 @@ class LoupeTypes
 
     public static function isSingleType(string $type): bool
     {
-        return match ($type) {
-            self::TYPE_STRING, self::TYPE_NUMBER => true,
-            default => false
-        };
+        // The Geo type is not exactly a single type but it has to be treated as such
+        return in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO], true);
     }
 
     public static function typeMatchesType(string $schemaType, string $checkType): bool

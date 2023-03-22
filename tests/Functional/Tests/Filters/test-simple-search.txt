@@ -4,7 +4,7 @@ Test simple search
 --SEARCH--
 {
 	"q": "Uta",
-	"attributesToReceive": ["id", "firstname", "lastname"],
+	"attributesToRetrieve": ["id", "firstname", "lastname"],
 	"sort": ["firstname:asc"]
 }
 

@@ -4,7 +4,7 @@ Test case with complex filters
 --SEARCH--
 {
 	"q": "",
-	"attributesToReceive": ["id", "firstname"],
+	"attributesToRetrieve": ["id", "firstname"],
 	"filter": "(departments = 'Backoffice' OR departments = 'Project Management') AND gender = 'female'",
 	"sort": ["firstname:asc"]
 }

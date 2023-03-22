@@ -4,7 +4,7 @@ Searches thousands of documents for "Botman" (typo) and a genre filter
 --SEARCH--
 {
 	"q": "Botman",
-	"attributesToReceive": ["id", "title", "genres"],
+	"attributesToRetrieve": ["id", "title", "genres"],
 	"hitsPerPage": 5,
     "filter": "genres = 'Action'",
 	"sort": ["title:asc"]

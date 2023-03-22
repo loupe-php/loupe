@@ -1,0 +1,35 @@
+--TEST--
+Test sorting
+
+--SEARCH--
+{
+	"q": "",
+	"attributesToRetrieve": ["firstname"],
+	"sort": ["firstname:asc"]
+}
+
+--EXPECT--
+{
+	"hits": [
+        {
+            "firstname": "Alexander"
+        },
+        {
+            "firstname": "Jonas"
+        },
+        {
+            "firstname": "Marko"
+        },
+        {
+            "firstname": "Sandra"
+        },
+        {
+            "firstname": "Uta"
+        }
+	],
+	"query": "",
+	"hitsPerPage": 20,
+	"page": 1,
+	"totalPages": 1,
+	"totalHits": 5
+}

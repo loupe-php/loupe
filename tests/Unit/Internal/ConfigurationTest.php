@@ -10,17 +10,12 @@ use Terminal42\Loupe\Internal\Configuration;
 
 class ConfigurationTest extends TestCase
 {
-    /**
-     * @dataProvider invalidAttributeNameProvider
-     */
-    public function testInvalidAttributeName(string $attribute): void
+    public function invalidAttributeNameProvider(): \Generator
     {
-        $this->expectException(InvalidConfigurationException::class);
-        $this->expectExceptionMessage(sprintf('Invalid configuration for path "loupe.filterableAttributes": A valid attribute name starts with a letter, followed by any number of letters, numbers, or underscores. It must not exceed 30 characters. "%s" given.', $attribute));
-
-        new Configuration([
-            'filterableAttributes' => [$attribute],
-        ]);
+        yield ['_underscore'];
+        yield ['$dollar_sign'];
+        yield ['*asterisk'];
+        yield ['invalid-dash'];
     }
 
     public function testHash(): void
@@ -45,11 +40,21 @@ class ConfigurationTest extends TestCase
         $this->assertTrue($configurationB->getHash() !== $configurationC->getHash());
     }
 
-    public function invalidAttributeNameProvider(): \Generator
+    /**
+     * @dataProvider invalidAttributeNameProvider
+     */
+    public function testInvalidAttributeName(string $attributeName): void
     {
-        yield ['_underscore'];
-        yield ['$dollar_sign'];
-        yield ['*asterisk'];
-        yield ['invalid-dash'];
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage(
+            sprintf(
+                'Invalid configuration for path "loupe.filterableAttributes": A valid attribute name starts with a letter, followed by any number of letters, numbers, or underscores. It must not exceed 30 characters. "%s" given.',
+                $attributeName
+            )
+        );
+
+        new Configuration([
+            'filterableAttributes' => [$attributeName],
+        ]);
     }
 }
