@@ -17,6 +17,11 @@ Loupe…
   experience but without all the hassle of an additional service to manage. SQLite is everywhere and all it needs is 
   your file system.
 
+## TODOs
+
+* Order by relevance based on a typical TF-IDF Cosine similarity algorithm
+* Filtering by Geo distance
+
 
 ## Acknowledgement
 
