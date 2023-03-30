@@ -1,0 +1,25 @@
+--TEST--
+Test searching for "Koerteg" also finds "Koertig"
+
+--SEARCH--
+{
+	"q": "Koerteg",
+	"attributesToRetrieve": ["id", "firstname", "lastname"],
+	"sort": ["firstname:asc"]
+}
+
+--EXPECT--
+{
+	"hits": [
+        {
+            "id": 2,
+            "firstname": "Uta",
+            "lastname": "Koertig"
+        }
+	],
+	"query": "Koerteg",
+	"hitsPerPage": 20,
+	"page": 1,
+	"totalPages": 1,
+	"totalHits": 1
+}

@@ -1,0 +1,25 @@
+--TEST--
+Test searching for "Hukcleberry" also finds "Huckleberry" (2 typos)
+
+--SEARCH--
+{
+	"q": "Hukcleberry",
+	"attributesToRetrieve": ["id", "firstname", "lastname"],
+	"sort": ["firstname:asc"]
+}
+
+--EXPECT--
+{
+	"hits": [
+        {
+            "id": 6,
+            "firstname": "Huckleberry",
+            "lastname": "Finn"
+        }
+	],
+	"query": "Hukcleberry",
+	"hitsPerPage": 20,
+	"page": 1,
+	"totalPages": 1,
+	"totalHits": 1
+}

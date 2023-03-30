@@ -129,64 +129,84 @@ class Searcher
     private function createSubQueryForTerm(string $term): string
     {
         $termParameter = $this->queryBuilder->createNamedParameter($term);
-        $levenshteinDistance = 1; // TODO
+        $termLength = (int) mb_strlen($term);
 
-        /*
-         * WHERE
-         *    term LIKE '<first_char>%'
-         *    AND
-         *    (
-         *      term = '<term>'
-         *      OR
-         *      (
-         *          LENGTH(term) >= <term> - <lev-distance>
-         *          AND
-         *          LENGTH(term) <= <term> + <lev-distance>
-          *         AND
-         *          <levmax_levenshtein(<term>, term, <distance>)
-         *       )
-         *    )
-         */
+        $levenshteinDistance = match (true) {
+            $termLength >= 9 => 2,
+            $termLength >= 5 => 2,
+            default => 0
+        };
+
         $where = [];
-        $where[] = sprintf(
-            '%s.term LIKE %s',
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-            $this->queryBuilder->createNamedParameter(UTF8::first_char($term) . '%')
-        );
-        $where[] = 'AND';
-        $where[] = '(';
-        $where[] = sprintf(
-            '%s.term = %s',
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-            $termParameter
-        );
-        $where[] = 'OR';
-        $where[] = '(';
-        $where[] = sprintf(
-            '%s.length >= %d',
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-            UTF8::strlen($term) - 1
-        );
-        $where[] = 'AND';
-        $where[] = sprintf(
-            '%s.length <= %d',
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-            UTF8::strlen($term) + 1
-        );
-        $where[] = 'AND';
-        $where[] = sprintf(
-            'max_levenshtein(%s, %s.term, %d)',
-            $termParameter,
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-            $levenshteinDistance
-        );
-        $where[] = ')';
-        $where[] = ')';
+
+        if ($levenshteinDistance === 0) {
+            /*
+             * WHERE
+                  term = '<term>'
+             */
+            $where[] = sprintf(
+                '%s.term = %s',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $termParameter
+            );
+        } else {
+            /*
+             * WHERE
+             *    term LIKE '<first_char>%'
+             *    AND
+             *    (
+             *      term = '<term>'
+             *      OR
+             *      (
+             *          LENGTH(term) >= <term> - <lev-distance>
+             *          AND
+             *          LENGTH(term) <= <term> + <lev-distance>
+              *         AND
+             *          max_levenshtein(<term>, term, <distance>)
+             *       )
+             *    )
+             */
+            $where[] = sprintf(
+                '%s.term LIKE %s',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $this->queryBuilder->createNamedParameter(UTF8::first_char($term) . '%')
+            );
+            $where[] = 'AND';
+            $where[] = '(';
+            $where[] = sprintf(
+                '%s.term = %s',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $termParameter
+            );
+            $where[] = 'OR';
+            $where[] = '(';
+            $where[] = sprintf(
+                '%s.length >= %d',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                UTF8::strlen($term) - 1
+            );
+            $where[] = 'AND';
+            $where[] = sprintf(
+                '%s.length <= %d',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                UTF8::strlen($term) + 1
+            );
+            $where[] = 'AND';
+            $where[] = sprintf(
+                'max_levenshtein(%s, %s.term, %d)',
+                $termParameter,
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $levenshteinDistance
+            );
+            $where[] = ')';
+            $where[] = ')';
+        }
 
         $termQuery = sprintf(
             'SELECT %s.id FROM %s %s WHERE %s',

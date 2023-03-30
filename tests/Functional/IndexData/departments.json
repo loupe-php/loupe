@@ -43,5 +43,14 @@
         "departments": ["Backoffice"],
         "colors": ["Purple"],
         "age": 22
+    },
+    {
+        "id": 6,
+        "firstname": "Huckleberry",
+        "lastname": "Finn",
+        "gender": "male",
+        "departments": ["Backoffice"],
+        "colors": ["Green"],
+        "age": 18
     }
 ]

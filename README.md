@@ -20,8 +20,6 @@ Loupe…
 ## TODOs
 
 * Order by relevance based on a typical TF-IDF Cosine similarity algorithm
-* Levenshtein distance settings
-
 
 ## Acknowledgement
 
@@ -34,3 +32,18 @@ reasons for this are simple:
    switching to MeiliSearch instead should be as easy as possible.
 
 I even took the liberty to copy some of their test data to feed Loupe for functional tests.
+
+## Internals
+
+### Typo tolerance
+
+Loupe accepts one typo for query terms containing five or more characters, and up to two typos if the term is at least 
+nine characters long.
+
+If your dataset contains seven, searching for `sevem` or `sevan` will match `seven`. But `tow` won't match `two` as it's
+less than 5 characters.
+
+In Loupe, the first character always has to match.
+
+In Loupe, this cannot be adjusted. Loupe just tries to give you better search results out of the box. If you need 
+anything else, take a different search engine or consider contributing if you have a good use case.
