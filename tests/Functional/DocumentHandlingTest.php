@@ -11,7 +11,7 @@ class DocumentHandlingTest extends AbstractFunctionalTest
         $loupe = $this->setupLoupe([
             'filterableAttributes' => ['departments', 'gender'],
             'sortableAttributes' => ['firstname'],
-        ], 'filters');
+        ], 'departments');
 
         $this->assertSame([
             'id' => 1,
