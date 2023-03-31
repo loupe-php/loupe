@@ -32,7 +32,7 @@ class Tokenizer
         return __DIR__ . '/../../../Resources/language-ngrams';
     }
 
-    public function tokenize(string $string): array
+    public function tokenize(string $string): TokenCollection
     {
         $language = $this->language->detect($string)
             ->limit(0, 3);
@@ -40,21 +40,31 @@ class Tokenizer
         return $this->doTokenize($string, (string) $language);
     }
 
-    private function doTokenize(string $string, string $language): array
+    private function doTokenize(string $string, string $language): TokenCollection
     {
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language);
         $iterator->setText($string);
 
-        $terms = [];
+        $collection = new TokenCollection();
+        $position = 0;
 
         foreach ($iterator->getPartsIterator() as $term) {
-            if ($iterator->getRuleStatus() !== \IntlBreakIterator::WORD_NONE) {
-                $terms[] = UTF8::strtolower($term);
-                $terms[] = UTF8::strtolower($this->stem($term, $language));
+            if ($iterator->getRuleStatus() === \IntlBreakIterator::WORD_NONE) {
+                $position += mb_strlen($term);
+                continue;
             }
+
+            $token = new Token(
+                UTF8::strtolower($term),
+                $position,
+                [UTF8::strtolower($this->stem($term, $language))]
+            );
+
+            $collection->add($token);
+            $position += $token->getLength();
         }
 
-        return array_values(array_unique($terms));
+        return $collection;
     }
 
     private function getStemmerForLanguage(string $language): ?Stemmer

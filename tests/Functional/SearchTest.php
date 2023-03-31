@@ -8,7 +8,7 @@ use Terminal42\Loupe\Loupe;
 
 class SearchTest extends AbstractFunctionalTest
 {
-    public function testSearch(): void
+    public function testSearchingOnDepartments(): void
     {
         $loupe = $this->setupSharedLoupe([
             'filterableAttributes' => ['departments', 'gender'],
@@ -16,10 +16,21 @@ class SearchTest extends AbstractFunctionalTest
             'searchableAttributes' => ['firstname', 'lastname'],
         ], 'departments');
 
-        $this->runTests('Search', $loupe);
+        $this->runTests('Departments', $loupe);
     }
 
-    public function testSearchingWithGeo(): void
+    public function testSearchingOnMoviesShort(): void
+    {
+        $loupe = $this->setupSharedLoupe([
+            'searchableAttributes' => ['title', 'overview'],
+            'filterableAttributes' => ['genres'],
+            'sortableAttributes' => ['title'],
+        ], 'movies_short');
+
+        $this->runTests('Movies', $loupe);
+    }
+
+    public function testSearchingOnRestaurantsWithGeo(): void
     {
         $loupe = $this->setupSharedLoupe([
             'filterableAttributes' => ['_geo', 'type'],

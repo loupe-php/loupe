@@ -10,6 +10,7 @@ use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\Indexer;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
+use Terminal42\Loupe\Internal\Search\Highlighter\Highlighter;
 use Terminal42\Loupe\Internal\Search\Searcher;
 use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
 
@@ -23,6 +24,7 @@ class Engine
         private Connection $connection,
         private Configuration $configuration,
         private Tokenizer $tokenizer,
+        private Highlighter $highlighter,
         private Parser $filterParser
     ) {
         if (! $this->connection->getDriver() instanceof AbstractSQLiteDriver) {
@@ -76,6 +78,11 @@ class Engine
         }
 
         return null;
+    }
+
+    public function getHighlighter(): Highlighter
+    {
+        return $this->highlighter;
     }
 
     public function getIndexInfo(): IndexInfo

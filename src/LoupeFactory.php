@@ -9,6 +9,7 @@ use Doctrine\DBAL\DriverManager;
 use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Filter\Parser;
+use Terminal42\Loupe\Internal\Search\Highlighter\Highlighter;
 use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
 
 class LoupeFactory
@@ -30,7 +31,10 @@ class LoupeFactory
     private function createFromConnection(Connection $connection, array $configuration): Loupe
     {
         $configuration = new Configuration($configuration);
+        $tokenizer = new Tokenizer();
 
-        return new Loupe(new Engine($connection, $configuration, new Tokenizer(), new Parser()));
+        return new Loupe(new Engine($connection, $configuration, $tokenizer, new Highlighter(
+            $tokenizer
+        ), new Parser()));
     }
 }

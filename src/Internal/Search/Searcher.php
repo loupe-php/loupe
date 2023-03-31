@@ -7,6 +7,7 @@ namespace Terminal42\Loupe\Internal\Search;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\Processor;
+use Terminal42\Loupe\Exception\InvalidSearchParametersException;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Filter\Ast\Ast;
 use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
@@ -17,6 +18,7 @@ use Terminal42\Loupe\Internal\Filter\Ast\Node;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
 use Terminal42\Loupe\Internal\Search\Sorting\GeoPoint;
+use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Util;
 use voku\helper\UTF8;
 
@@ -43,10 +45,12 @@ class Searcher
         $this->queryBuilder = $this->engine->getConnection()
             ->createQueryBuilder();
 
+        $tokens = $this->extractTokens();
+
         $this->selectTotalHits();
         $this->selectDocuments();
         $this->filterDocuments();
-        $this->searchDocuments();
+        $this->searchDocuments($tokens);
         $this->sortDocuments();
         $this->limitPagination();
 
@@ -62,7 +66,11 @@ class Searcher
                 $document['_geoDistance'] = (int) round($result[GeoPoint::DISTANCE_ALIAS]);
             }
 
-            $hits[] = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
+            $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
+
+            $this->highlight($hit, $tokens);
+
+            $hits[] = $hit;
         }
 
         $totalHits = $result['totalHits'] ?? 0;
@@ -229,6 +237,18 @@ class Searcher
         );
     }
 
+    private function extractTokens(): TokenCollection
+    {
+        $query = $this->searchParameters['q'];
+
+        if ($query === '') {
+            return new TokenCollection();
+        }
+
+        return $this->engine->getTokenizer()
+            ->tokenize($query);
+    }
+
     private function filterDocuments(): void
     {
         /** @var Ast|string $ast */
@@ -270,6 +290,21 @@ class Searcher
             ->arrayNode('attributesToRetrieve')
             ->defaultValue(['*'])
             ->scalarPrototype()
+            ->end()
+            ->end()
+            ->arrayNode('attributesToHighlight')
+            ->defaultValue([])
+            ->scalarPrototype()
+            ->validate()
+            ->always(function (string $attribute) {
+                // TODO: Support ['*']?
+                if (! \in_array($attribute, $this->engine->getConfiguration() ->getSearchableAttributes(), true)) {
+                    throw InvalidSearchParametersException::cannotHighlightBecauseNotSearchable($attribute);
+                }
+
+                return $attribute;
+            })
+            ->end()
             ->end()
             ->end()
             ->arrayNode('sort')
@@ -372,6 +407,28 @@ class Searcher
         }
     }
 
+    private function highlight(array &$hit, TokenCollection $tokenCollection)
+    {
+        if ($this->searchParameters['attributesToHighlight'] === []) {
+            return;
+        }
+
+        $formatted = $hit;
+
+        foreach ($this->searchParameters['attributesToHighlight'] as $attribute) {
+            if (! isset($formatted[$attribute])) {
+                continue;
+            }
+
+            $highlightResult = $this->engine->getHighlighter()
+                ->highlight($formatted[$attribute], $tokenCollection);
+
+            $formatted[$attribute] = $highlightResult->getHighlightedText();
+        }
+
+        $hit['_formatted'] = $formatted;
+    }
+
     private function limitPagination(): void
     {
         $this->queryBuilder->setFirstResult(
@@ -380,20 +437,15 @@ class Searcher
         $this->queryBuilder->setMaxResults($this->searchParameters['hitsPerPage']);
     }
 
-    private function searchDocuments(): void
+    private function searchDocuments(TokenCollection $tokenCollection): void
     {
-        $query = $this->searchParameters['q'];
-
-        if ($query === '') {
+        if ($tokenCollection->empty()) {
             return;
         }
 
-        $terms = $this->engine->getTokenizer()
-            ->tokenize($query);
-
         $ors = [];
 
-        foreach ($terms as $term) {
+        foreach ($tokenCollection->allTokensWithVariants() as $term) {
             $whereStatement = [];
             $whereStatement[] = $this->engine->getIndexInfo()->getAliasForTable(
                 IndexInfo::TABLE_NAME_DOCUMENTS

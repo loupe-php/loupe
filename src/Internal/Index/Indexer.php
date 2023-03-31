@@ -6,6 +6,7 @@ namespace Terminal42\Loupe\Internal\Index;
 
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
+use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Util;
 use voku\helper\UTF8;
 
@@ -36,7 +37,7 @@ class Indexer
         return $this;
     }
 
-    private function extractTerms(string $attributeValue): array
+    private function extractTokens(string $attributeValue): TokenCollection
     {
         return $this->engine->getTokenizer()
             ->tokenize($attributeValue);
@@ -169,7 +170,7 @@ class Indexer
 
             $attributeValue = LoupeTypes::convertToString($attributeValue);
 
-            foreach ($this->extractTerms($attributeValue) as $term) {
+            foreach ($this->extractTokens($attributeValue)->allTokensWithVariants() as $term) {
                 $this->indexTerm($term, $documentId);
             }
         }

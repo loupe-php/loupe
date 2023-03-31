@@ -105,6 +105,11 @@ final class Configuration
         return $this->getValue('primaryKey');
     }
 
+    public function getSearchableAttributes(): array
+    {
+        return $this->getValue('searchableAttributes');
+    }
+
     public function getSortableAttributes(): array
     {
         return $this->getValue('sortableAttributes');
