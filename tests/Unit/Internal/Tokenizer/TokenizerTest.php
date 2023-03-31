@@ -27,6 +27,7 @@ class TokenizerTest extends TestCase
             'von',
             'nichts',
             'nicht',
-        ], $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.')->allTokensWithVariants());
+        ], $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.')
+            ->allTokensWithVariants());
     }
 }

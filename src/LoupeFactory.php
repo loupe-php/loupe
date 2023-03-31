@@ -33,8 +33,14 @@ class LoupeFactory
         $configuration = new Configuration($configuration);
         $tokenizer = new Tokenizer();
 
-        return new Loupe(new Engine($connection, $configuration, $tokenizer, new Highlighter(
-            $tokenizer
-        ), new Parser()));
+        return new Loupe(
+            new Engine(
+                $connection,
+                $configuration,
+                $tokenizer,
+                new Highlighter($configuration, $tokenizer),
+                new Parser()
+            )
+        );
     }
 }

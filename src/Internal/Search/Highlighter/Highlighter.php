@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Search\Highlighter;
 
+use Terminal42\Loupe\Internal\Configuration;
+use Terminal42\Loupe\Internal\Tokenizer\Token;
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
 use voku\helper\UTF8;
@@ -11,11 +13,12 @@ use voku\helper\UTF8;
 class Highlighter
 {
     public function __construct(
+        private Configuration $configuration,
         private Tokenizer $tokenizer
     ) {
     }
 
-    public function highlight(string $text, TokenCollection $tokens): HighlightResult
+    public function highlight(string $text, TokenCollection $queryTokens, int $levenshteinDistance = 0): HighlightResult
     {
         if ($text === '') {
             return new HighlightResult($text, []);
@@ -24,13 +27,11 @@ class Highlighter
         $matches = [];
 
         foreach ($this->tokenizer->tokenize($text)->all() as $textToken) {
-            foreach ($tokens->all() as $token) {
-                if ($textToken->matchesToken($token)) {
-                    $matches[] = [
-                        'start' => $textToken->getStartPosition(),
-                        'length' => $textToken->getLength(),
-                    ];
-                }
+            if ($this->matches($textToken, $queryTokens)) {
+                $matches[] = [
+                    'start' => $textToken->getStartPosition(),
+                    'length' => $textToken->getLength(),
+                ];
             }
         }
 
@@ -87,5 +88,28 @@ class Highlighter
         }
 
         return $spans;
+    }
+
+    private function matches(Token $textToken, TokenCollection $queryTokens)
+    {
+        foreach ($queryTokens->all() as $queryToken) {
+            foreach ($queryToken->all() as $term) {
+                $levenshteinDistance = $this->configuration->getLevenshteinDistanceForTerm($term);
+
+                if ($levenshteinDistance === 0) {
+                    if (\in_array($term, $textToken->all(), true)) {
+                        return true;
+                    }
+                } else {
+                    foreach ($textToken->all() as $textTerm) {
+                        if (levenshtein($term, $textTerm) <= $levenshteinDistance) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 }

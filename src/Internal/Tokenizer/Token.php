@@ -39,15 +39,4 @@ class Token
     {
         return $this->variants;
     }
-
-    public function matchesToken(self $token): bool
-    {
-        foreach ($token->all() as $v) {
-            if (\in_array($v, $this->all(), true)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }
