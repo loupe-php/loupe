@@ -73,12 +73,16 @@ class Highlighter
         foreach ($matches as $match) {
             $end = $match['start'] + $match['length'];
 
-            if ($end === $lastEnd) {
-                // TODO: merge spans
+            // Merge matches that are exactly after one another
+            if ($lastEnd === $match['start'] - 1) {
+                $highestEnd = max($spans['ends']);
+                unset($spans['ends'][array_search($highestEnd, $spans['ends'], true)]);
+            } else {
+                $spans['starts'][] = $match['start'];
             }
 
-            $spans['starts'][] = $match['start'];
             $spans['ends'][] = $end;
+            $lastEnd = $end;
         }
 
         return $spans;

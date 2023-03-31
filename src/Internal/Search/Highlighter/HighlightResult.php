@@ -15,12 +15,10 @@ class HighlightResult
     ) {
     }
 
-
     public function getHighlightedText(): string
     {
         return $this->highlightedText;
     }
-
 
     public function getMatches(): array
     {
