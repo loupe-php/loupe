@@ -137,13 +137,8 @@ class Searcher
     private function createSubQueryForTerm(string $term): string
     {
         $termParameter = $this->queryBuilder->createNamedParameter($term);
-        $termLength = (int) mb_strlen($term);
-
-        $levenshteinDistance = match (true) {
-            $termLength >= 9 => 2,
-            $termLength >= 5 => 2,
-            default => 0
-        };
+        $levenshteinDistance = $this->engine->getConfiguration()
+            ->getLevenshteinDistanceForTerm($term);
 
         $where = [];
 

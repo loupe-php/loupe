@@ -7,6 +7,7 @@ namespace Terminal42\Loupe\Internal;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\Processor;
 use Terminal42\Loupe\Exception\InvalidConfigurationException;
+use voku\helper\UTF8;
 
 final class Configuration
 {
@@ -98,6 +99,17 @@ final class Configuration
     public function getHash(): string
     {
         return sha1(LoupeTypes::convertToString($this->configuration));
+    }
+
+    public function getLevenshteinDistanceForTerm(string $term): int
+    {
+        $termLength = (int) UTF8::strlen($term);
+
+        return match (true) {
+            $termLength >= 9 => 2,
+            $termLength >= 5 => 2,
+            default => 0
+        };
     }
 
     public function getPrimaryKey(): string

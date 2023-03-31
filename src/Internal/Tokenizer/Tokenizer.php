@@ -50,7 +50,7 @@ class Tokenizer
 
         foreach ($iterator->getPartsIterator() as $term) {
             if ($iterator->getRuleStatus() === \IntlBreakIterator::WORD_NONE) {
-                $position += mb_strlen($term);
+                $position += UTF8::strlen($term);
                 continue;
             }
 

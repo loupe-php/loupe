@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Tokenizer;
 
+use voku\helper\UTF8;
+
 class Token
 {
     public function __construct(
@@ -20,7 +22,7 @@ class Token
 
     public function getLength(): int
     {
-        return mb_strlen($this->getToken());
+        return UTF8::strlen($this->getToken());
     }
 
     public function getStartPosition(): int

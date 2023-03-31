@@ -6,6 +6,7 @@ namespace Terminal42\Loupe\Internal\Search\Highlighter;
 
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
+use voku\helper\UTF8;
 
 class Highlighter
 {
@@ -48,7 +49,7 @@ class Highlighter
         $highlightedText = '';
         $spans = $this->extractSpansFromMatches($matches);
 
-        foreach (mb_str_split($text) as $pos => $char) {
+        foreach (UTF8::str_split($text) as $pos => $char) {
             if (in_array($pos, $spans['starts'], true)) {
                 $highlightedText .= $startTag;
             }
