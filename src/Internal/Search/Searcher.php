@@ -297,8 +297,7 @@ class Searcher
             ->scalarPrototype()
             ->validate()
             ->always(function (string $attribute) {
-                // TODO: Support ['*']?
-                if (! \in_array($attribute, $this->engine->getConfiguration() ->getSearchableAttributes(), true)) {
+                if (! \in_array($attribute, $this->engine->getConfiguration()->getSearchableAttributes(), true)) {
                     throw InvalidSearchParametersException::cannotHighlightBecauseNotSearchable($attribute);
                 }
 
@@ -306,6 +305,9 @@ class Searcher
             })
             ->end()
             ->end()
+            ->end()
+            ->booleanNode('showMatchesPosition')
+            ->defaultFalse()
             ->end()
             ->arrayNode('sort')
             ->defaultValue([])
@@ -409,13 +411,22 @@ class Searcher
 
     private function highlight(array &$hit, TokenCollection $tokenCollection)
     {
-        if ($this->searchParameters['attributesToHighlight'] === []) {
+        if ($this->searchParameters['attributesToHighlight'] === [] && ! $this->searchParameters['showMatchesPosition']) {
             return;
         }
 
         $formatted = $hit;
+        $matchesPosition = [];
 
-        foreach ($this->searchParameters['attributesToHighlight'] as $attribute) {
+        $highlightAllAttributes = ['*'] === $this->searchParameters['attributesToHighlight'];
+        $attributesToHighlight = $highlightAllAttributes ?
+            $this->engine->getConfiguration()
+                ->getSearchableAttributes() :
+            $this->searchParameters['attributesToHighlight']
+        ;
+
+        foreach ($this->engine->getConfiguration()->getSearchableAttributes() as $attribute) {
+            // Do not include any attribute not required by the result (limited by attributesToRetrieve)
             if (! isset($formatted[$attribute])) {
                 continue;
             }
@@ -423,10 +434,22 @@ class Searcher
             $highlightResult = $this->engine->getHighlighter()
                 ->highlight($formatted[$attribute], $tokenCollection);
 
-            $formatted[$attribute] = $highlightResult->getHighlightedText();
+            if (in_array($attribute, $attributesToHighlight, true)) {
+                $formatted[$attribute] = $highlightResult->getHighlightedText();
+            }
+
+            if ($this->searchParameters['showMatchesPosition'] && $highlightResult->getMatches() !== []) {
+                $matchesPosition[$attribute] = $highlightResult->getMatches();
+            }
         }
 
-        $hit['_formatted'] = $formatted;
+        if ($attributesToHighlight !== []) {
+            $hit['_formatted'] = $formatted;
+        }
+
+        if ($matchesPosition !== []) {
+            $hit['_matchesPosition'] = $matchesPosition;
+        }
     }
 
     private function limitPagination(): void
