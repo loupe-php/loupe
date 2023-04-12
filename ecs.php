@@ -19,7 +19,6 @@ return static function (ECSConfig $ecsConfig): void {
          SetList::DOCBLOCK,
          SetList::SPACES,
          SetList::STRICT,
-         SetList::SYMPLIFY,
          SetList::PHPUNIT,
     ]);
 
