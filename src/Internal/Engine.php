@@ -16,7 +16,7 @@ use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
 
 class Engine
 {
-    private const MIN_SQLITE_VERSION = '3.40.0';
+    private const MIN_SQLITE_VERSION = '3.35.0'; // Introduction of LN()
 
     private IndexInfo $indexInfo;
 
@@ -45,10 +45,10 @@ class Engine
         $this->indexInfo = new IndexInfo($this);
     }
 
-    public function addDocument(array $document): self
+    public function addDocuments(array $documents): self
     {
         $indexer = new Indexer($this);
-        $indexer->addDocument($document);
+        $indexer->addDocuments($documents);
 
         return $this;
     }

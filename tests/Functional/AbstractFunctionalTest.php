@@ -149,9 +149,7 @@ abstract class AbstractFunctionalTest extends TestCase
             return;
         }
 
-        foreach ($this->loadDocumentsFromFixture($indexFixture) as $document) {
-            $loupe->addDocument($document);
-        }
+        $loupe->addDocuments($this->loadDocumentsFromFixture($indexFixture));
     }
 
     private function loadDocumentsFromFixture(string $name): array

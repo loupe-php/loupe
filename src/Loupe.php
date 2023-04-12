@@ -16,7 +16,12 @@ final class Loupe
 
     public function addDocument(array $document): self
     {
-        $this->engine->addDocument($document);
+        return $this->addDocuments([$document]);
+    }
+
+    public function addDocuments(array $documents): self
+    {
+        $this->engine->addDocuments($documents);
 
         return $this;
     }

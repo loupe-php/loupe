@@ -17,21 +17,31 @@ class Indexer
     ) {
     }
 
-    public function addDocument(array $document): self
+    public function addDocuments(array $documents): self
     {
+        $firstDocument = reset($documents);
+
         $indexInfo = $this->engine->getIndexInfo();
 
         if ($indexInfo->needsSetup()) {
-            $indexInfo->setup($document);
-        } else {
-            $indexInfo->validateDocument($document);
+            $indexInfo->setup($firstDocument);
         }
 
         $this->engine->getConnection()
-            ->transactional(function () use ($document) {
-                $documentId = $this->indexDocument($document);
-                $this->indexMultiAttributes($document, $documentId);
-                $this->indexTerms($document, $documentId);
+            ->transactional(function () use ($indexInfo, $documents) {
+                foreach ($documents as $document) {
+                    $indexInfo->validateDocument($document);
+
+                    $this->engine->getConnection()
+                        ->transactional(function () use ($document) {
+                            $documentId = $this->indexDocument($document);
+                            $this->indexMultiAttributes($document, $documentId);
+                            $this->indexTerms($document, $documentId);
+                        });
+                }
+
+                // Update IDF only once
+                $this->updateInverseDocumentFrequencies();
             });
 
         return $this;
@@ -125,7 +135,7 @@ class Indexer
         }
     }
 
-    private function indexTerm(string $term, int $documentId): void
+    private function indexTerm(string $term, int $documentId, float $normalizedTermFrequency): void
     {
         $termId = Util::upsert(
             $this->engine->getConnection(),
@@ -133,13 +143,10 @@ class Indexer
             [
                 'term' => $term,
                 'length' => UTF8::strlen($term),
-                'frequency' => 1,
+                'idf' => 1,
             ],
             ['term'],
-            'id',
-            [
-                'frequency' => 'frequency + 1',
-            ]
+            'id'
         );
 
         Util::upsert(
@@ -148,13 +155,10 @@ class Indexer
             [
                 'term' => $termId,
                 'document' => $documentId,
-                'frequency' => 1,
+                'ntf' => $normalizedTermFrequency,
             ],
             ['term', 'document'],
-            '',
-            [
-                'frequency' => 'frequency + 1',
-            ]
+            ''
         );
     }
 
@@ -162,6 +166,9 @@ class Indexer
     {
         $searchableAttributes = $this->engine->getConfiguration()
             ->getValue('searchableAttributes');
+
+        $termsAndFrequency = [];
+        $totalTermsInDocument = 0;
 
         foreach ($document as $attributeName => $attributeValue) {
             if (['*'] !== $searchableAttributes && ! in_array($attributeName, $searchableAttributes, true)) {
@@ -171,8 +178,53 @@ class Indexer
             $attributeValue = LoupeTypes::convertToString($attributeValue);
 
             foreach ($this->extractTokens($attributeValue)->allTokensWithVariants() as $term) {
-                $this->indexTerm($term, $documentId);
+                // Prefix with a nonsense character to ensure PHP also treats numerics like strings in this array.
+                $term = 't' . $term;
+
+                if (! isset($termsAndFrequency[$term])) {
+                    $termsAndFrequency[$term] = 1;
+                } else {
+                    $termsAndFrequency[$term]++;
+                }
+
+                $totalTermsInDocument++;
             }
         }
+
+        if ($totalTermsInDocument === 0) {
+            return;
+        }
+
+        foreach ($termsAndFrequency as $term => $frequency) {
+            // Remove the prefix again
+            $this->indexTerm(substr($term, 1), $documentId, $frequency / $totalTermsInDocument);
+        }
+    }
+
+    private function updateInverseDocumentFrequencies(): void
+    {
+        // TODO: Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
+
+        $query = <<<'QUERY'
+            UPDATE 
+              %s 
+            SET 
+              idf = 1.0 + LN(
+                (SELECT COUNT(*) FROM %s)
+                    /
+                (SELECT COUNT(*) FROM %s AS td WHERE td.term = id )
+              )
+QUERY;
+
+        $query = sprintf(
+            $query,
+            IndexInfo::TABLE_NAME_TERMS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+        );
+
+        $this->engine->getConnection()
+            ->executeQuery($query);
     }
 }

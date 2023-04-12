@@ -306,7 +306,8 @@ class IndexInfo
         $table->addColumn('document', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->addColumn('frequency', Types::INTEGER)
+        // Normalized term frequency
+        $table->addColumn('ntf', Types::FLOAT)
             ->setNotnull(true);
 
         $table->setPrimaryKey(['term', 'document']);
@@ -325,7 +326,8 @@ class IndexInfo
         $table->addColumn('length', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->addColumn('frequency', Types::INTEGER)
+        // Inversed Document Frequency
+        $table->addColumn('idf', Types::FLOAT)
             ->setNotnull(true);
 
         $table->setPrimaryKey(['id']);

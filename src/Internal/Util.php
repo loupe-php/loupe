@@ -42,8 +42,7 @@ class Util
         string $table,
         array $insertData,
         array $uniqueIndexColumns,
-        string $insertIdColumn = '',
-        array $updateSet = []
+        string $insertIdColumn = ''
     ): ?int {
         if (count($insertData) === 0) {
             throw new \InvalidArgumentException('Need to provide data to insert.');
@@ -69,14 +68,8 @@ class Util
         $qb = $connection->createQueryBuilder()
             ->update($table);
 
-        if (count($updateSet) === 0) {
-            foreach ($insertData as $columnName => $value) {
-                $qb->set($columnName, $qb->createPositionalParameter($value));
-            }
-        } else {
-            foreach ($updateSet as $columnName => $value) {
-                $qb->set($columnName, $value);
-            }
+        foreach ($insertData as $columnName => $value) {
+            $qb->set($columnName, $qb->createPositionalParameter($value));
         }
 
         foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
