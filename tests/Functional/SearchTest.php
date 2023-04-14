@@ -8,6 +8,16 @@ use Terminal42\Loupe\Loupe;
 
 class SearchTest extends AbstractFunctionalTest
 {
+    public function testRelevance(): void
+    {
+        $loupe = $this->setupSharedLoupe([
+            'searchableAttributes' => ['content'],
+            'sortableAttributes' => ['content'],
+        ], 'relevance', $this->createTestDb('relevance'));
+
+        $this->runTests('Relevance', $loupe);
+    }
+
     public function testSearchingOnDepartments(): void
     {
         $loupe = $this->setupSharedLoupe([

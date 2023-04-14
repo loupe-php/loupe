@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Search\Sorting;
 
-use Doctrine\DBAL\Query\QueryBuilder;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
+use Terminal42\Loupe\Internal\Search\Searcher;
 
 class Simple extends AbstractSorter
 {
@@ -16,9 +16,9 @@ class Simple extends AbstractSorter
     ) {
     }
 
-    public function apply(QueryBuilder $queryBuilder, Engine $engine): void
+    public function apply(Searcher $searcher, Engine $engine): void
     {
-        $queryBuilder->addOrderBy(
+        $searcher->getQueryBuilder()->addOrderBy(
             $engine->getIndexInfo()
                 ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $this->attributeName,
             $this->direction->getSQL()

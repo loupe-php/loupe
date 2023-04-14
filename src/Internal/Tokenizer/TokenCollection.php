@@ -65,4 +65,11 @@ class TokenCollection
     {
         return $this->tokens === [];
     }
+
+    public function limit(int $limit): self
+    {
+        $this->tokens = array_slice($this->tokens, 0, $limit);
+
+        return $this;
+    }
 }

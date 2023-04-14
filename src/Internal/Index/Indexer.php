@@ -205,15 +205,16 @@ class Indexer
     {
         // TODO: Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
 
+        // Notice the * 1.0 additions to the COUNT() SELECTS in order to force floating point calculations
         $query = <<<'QUERY'
             UPDATE 
               %s 
             SET 
-              idf = 1.0 + LN(
-                (SELECT COUNT(*) FROM %s)
+              idf = 1.0 + (LN(
+                (SELECT COUNT(*) FROM %s) * 1.0
                     /
-                (SELECT COUNT(*) FROM %s AS td WHERE td.term = id )
-              )
+                (SELECT COUNT(*) FROM %s AS td WHERE td.term = id ) * 1.0
+              ))
 QUERY;
 
         $query = sprintf(

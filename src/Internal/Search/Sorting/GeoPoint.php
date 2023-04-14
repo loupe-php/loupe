@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Search\Sorting;
 
-use Doctrine\DBAL\Query\QueryBuilder;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
+use Terminal42\Loupe\Internal\Search\Searcher;
 
 class GeoPoint extends AbstractSorter
 {
@@ -25,12 +25,12 @@ class GeoPoint extends AbstractSorter
     ) {
     }
 
-    public function apply(QueryBuilder $queryBuilder, Engine $engine): void
+    public function apply(Searcher $searcher, Engine $engine): void
     {
         $alias = $engine->getIndexInfo()
             ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
 
-        $queryBuilder->addSelect(sprintf(
+        $searcher->getQueryBuilder()->addSelect(sprintf(
             'geo_distance(%f, %f, %s, %s) AS %s',
             $this->lat,
             $this->lng,
@@ -39,7 +39,7 @@ class GeoPoint extends AbstractSorter
             self::DISTANCE_ALIAS
         ));
 
-        $queryBuilder->addOrderBy(self::DISTANCE_ALIAS, $this->direction->getSQL());
+        $searcher->getQueryBuilder()->addOrderBy(self::DISTANCE_ALIAS, $this->direction->getSQL());
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self

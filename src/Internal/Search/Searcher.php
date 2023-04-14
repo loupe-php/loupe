@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Terminal42\Loupe\Internal\Search;
 
 use Doctrine\DBAL\Query\QueryBuilder;
+use Doctrine\DBAL\Result;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\Processor;
 use Terminal42\Loupe\Exception\InvalidSearchParametersException;
@@ -18,13 +19,29 @@ use Terminal42\Loupe\Internal\Filter\Ast\Node;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
 use Terminal42\Loupe\Internal\Search\Sorting\GeoPoint;
+use Terminal42\Loupe\Internal\Search\Sorting\Relevance;
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Util;
 use voku\helper\UTF8;
 
 class Searcher
 {
+    public const CTE_TERM_DOCUMENT_MATCHES = '_cte_term_document_matches';
+
+    public const CTE_TERM_MATCHES = '_cte_term_matches';
+
+    /**
+     * @var array<string, array{'cols': array, 'sql': string}>
+     */
+    private array $CTEs = [];
+
+    private string $id;
+
     private QueryBuilder $queryBuilder;
+
+    private Sorting $sorting;
+
+    private ?TokenCollection $tokens = null;
 
     public function __construct(
         private Engine $engine,
@@ -36,6 +53,9 @@ class Searcher
                 ->buildTree(),
             [$this->searchParameters]
         );
+
+        $this->sorting = Sorting::fromArray($this->searchParameters['sort'], $this->engine);
+        $this->id = uniqid('lqi', true);
     }
 
     public function fetchResult(): array
@@ -45,7 +65,7 @@ class Searcher
         $this->queryBuilder = $this->engine->getConnection()
             ->createQueryBuilder();
 
-        $tokens = $this->extractTokens();
+        $tokens = $this->getTokens();
 
         $this->selectTotalHits();
         $this->selectDocuments();
@@ -59,7 +79,7 @@ class Searcher
 
         $hits = [];
 
-        foreach ($this->queryBuilder->fetchAllAssociative() as $result) {
+        foreach ($this->query()->iterateAssociative() as $result) {
             $document = Util::decodeJson($result['document']);
 
             if (array_key_exists(GeoPoint::DISTANCE_ALIAS, $result)) {
@@ -86,6 +106,86 @@ class Searcher
             'totalPages' => $totalPages,
             'totalHits' => $totalHits,
         ];
+    }
+
+    public function getCTEs(): array
+    {
+        return $this->CTEs;
+    }
+
+    public function getQueryBuilder(): QueryBuilder
+    {
+        return $this->queryBuilder;
+    }
+
+    public function getQueryId(): string
+    {
+        return $this->id;
+    }
+
+    public function getTokens(): TokenCollection
+    {
+        if ($this->tokens instanceof TokenCollection) {
+            return $this->tokens;
+        }
+
+        $query = $this->searchParameters['q'];
+
+        if ($query === '') {
+            return $this->tokens = new TokenCollection();
+        }
+
+        return $this->tokens = $this->engine->getTokenizer()
+            ->tokenize($query)
+            ->limit(10) // TODO: Test and document this
+        ;
+    }
+
+    private function addTermDocumentMatchesCTE(): void
+    {
+        // No term matches CTE -> no term document matches CTE
+        if (! isset($this->CTEs[self::CTE_TERM_MATCHES])) {
+            return;
+        }
+
+        $termsDocumentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS);
+
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.ntf * ' . sprintf('(SELECT idf FROM %s WHERE td.term=id)', self::CTE_TERM_MATCHES));
+        $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
+        $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', self::CTE_TERM_MATCHES));
+        $cteSelectQb->addOrderBy($termsDocumentsAlias . '.document');
+        $cteSelectQb->addOrderBy($termsDocumentsAlias . '.term');
+
+        $this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES]['cols'] = ['document', 'tfidf'];
+        $this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES]['sql'] = $cteSelectQb->getSQL();
+    }
+
+    private function addTermMatchesCTE(TokenCollection $tokenCollection): void
+    {
+        if ($tokenCollection->empty()) {
+            return;
+        }
+
+        $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
+
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->addSelect($termsAlias . '.id');
+        $cteSelectQb->addSelect($termsAlias . '.idf');
+        $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
+
+        $ors = [];
+
+        foreach ($tokenCollection->allTokensWithVariants() as $term) {
+            $ors[] = $this->createWherePartForTerm($term);
+        }
+
+        $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
+        $cteSelectQb->orderBy($termsAlias . '.id');
+
+        $this->CTEs[self::CTE_TERM_MATCHES]['cols'] = ['id', 'idf'];
+        $this->CTEs[self::CTE_TERM_MATCHES]['sql'] = $cteSelectQb->getSQL();
     }
 
     private function createSubQueryForMultiAttribute(Filter $node): string
@@ -134,7 +234,7 @@ class Searcher
         return $qb->getSQL();
     }
 
-    private function createSubQueryForTerm(string $term): string
+    private function createWherePartForTerm(string $term): string
     {
         $termParameter = $this->queryBuilder->createNamedParameter($term);
         $levenshteinDistance = $this->engine->getConfiguration()
@@ -211,37 +311,7 @@ class Searcher
             $where[] = ')';
         }
 
-        $termQuery = sprintf(
-            'SELECT %s.id FROM %s %s WHERE %s',
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-            IndexInfo::TABLE_NAME_TERMS,
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-            implode(' ', $where)
-        );
-
-        return sprintf(
-            'SELECT DISTINCT document FROM %s %s WHERE %s.term IN (%s)',
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
-            $this->engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
-            $termQuery
-        );
-    }
-
-    private function extractTokens(): TokenCollection
-    {
-        $query = $this->searchParameters['q'];
-
-        if ($query === '') {
-            return new TokenCollection();
-        }
-
-        return $this->engine->getTokenizer()
-            ->tokenize($query);
+        return implode(' ', $where);
     }
 
     private function filterDocuments(): void
@@ -305,12 +375,15 @@ class Searcher
             ->defaultFalse()
             ->end()
             ->arrayNode('sort')
-            ->defaultValue([])
+            ->defaultValue([Relevance::RELEVANCE_ALIAS . ':desc'])
             ->scalarPrototype()
             ->end()
             ->validate()
             ->always(function (array $sort) {
-                return Sorting::fromArray($sort, $this->engine);
+                // Throws if not valid value
+                Sorting::fromArray($sort, $this->engine);
+
+                return $sort;
             })
             ->end()
             ->end()
@@ -455,26 +528,48 @@ class Searcher
         $this->queryBuilder->setMaxResults($this->searchParameters['hitsPerPage']);
     }
 
+    private function query(): Result
+    {
+        $queryParts = [];
+
+        if ($this->CTEs !== []) {
+            $queryParts[] = 'WITH';
+            foreach ($this->CTEs as $name => $config) {
+                $queryParts[] = sprintf(
+                    '%s (%s) AS (%s)',
+                    $name,
+                    implode(',', $config['cols']),
+                    $config['sql']
+                );
+                $queryParts[] = ',';
+            }
+
+            array_pop($queryParts);
+        }
+
+        $queryParts[] = $this->queryBuilder->getSQL();
+        //dd(implode(' ', $queryParts), $this->queryBuilder->getParameters());
+        return $this->engine->getConnection()->executeQuery(
+            implode(' ', $queryParts),
+            $this->queryBuilder->getParameters(),
+            $this->queryBuilder->getParameterTypes(),
+        );
+    }
+
     private function searchDocuments(TokenCollection $tokenCollection): void
     {
-        if ($tokenCollection->empty()) {
+        $this->addTermMatchesCTE($tokenCollection);
+        $this->addTermDocumentMatchesCTE();
+
+        if (! isset($this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES])) {
             return;
         }
 
-        $ors = [];
-
-        foreach ($tokenCollection->allTokensWithVariants() as $term) {
-            $whereStatement = [];
-            $whereStatement[] = $this->engine->getIndexInfo()->getAliasForTable(
-                IndexInfo::TABLE_NAME_DOCUMENTS
-            ) . '.id IN (';
-            $whereStatement[] = $this->createSubQueryForTerm($term);
-            $whereStatement[] = ')';
-
-            $ors[] = implode(' ', $whereStatement);
-        }
-
-        $this->queryBuilder->andWhere('(' . implode(') OR (', $ors) . ')');
+        $this->queryBuilder->andWhere(sprintf(
+            '%s.id IN (SELECT DISTINCT document FROM %s)',
+            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+            self::CTE_TERM_DOCUMENT_MATCHES
+        ));
     }
 
     private function selectDocuments(): void
@@ -496,10 +591,6 @@ class Searcher
 
     private function sortDocuments(): void
     {
-        $sorting = $this->searchParameters['sort'];
-
-        if ($sorting instanceof Sorting) {
-            $sorting->applySorters($this->queryBuilder);
-        }
+        $this->sorting->applySorters($this);
     }
 }

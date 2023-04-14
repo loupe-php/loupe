@@ -119,6 +119,10 @@ class Engine
                     'callback' => [Geo::class, 'geoDistance'],
                     'numArgs' => 4,
                 ],
+                'loupe_relevance' => [
+                    'callback' => [CosineSimilarity::class, 'fromQuery'],
+                    'numArgs' => 3,
+                ],
             ]
         );
     }

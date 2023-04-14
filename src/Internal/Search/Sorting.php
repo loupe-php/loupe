@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Search;
 
-use Doctrine\DBAL\Query\QueryBuilder;
 use Terminal42\Loupe\Exception\SortFormatException;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Search\Sorting\AbstractSorter;
 use Terminal42\Loupe\Internal\Search\Sorting\Direction;
 use Terminal42\Loupe\Internal\Search\Sorting\GeoPoint;
+use Terminal42\Loupe\Internal\Search\Sorting\Relevance;
 use Terminal42\Loupe\Internal\Search\Sorting\Simple;
 
 class Sorting
 {
-    private const SORTERS = [Simple::class, GeoPoint::class];
+    private const SORTERS = [Relevance::class, Simple::class, GeoPoint::class];
 
     /**
      * @param array<AbstractSorter> $sorters
@@ -25,10 +25,10 @@ class Sorting
     ) {
     }
 
-    public function applySorters(QueryBuilder $queryBuilder): void
+    public function applySorters(Searcher $searcher): void
     {
         foreach ($this->sorters as $sorter) {
-            $sorter->apply($queryBuilder, $this->engine);
+            $sorter->apply($searcher, $this->engine);
         }
     }
 

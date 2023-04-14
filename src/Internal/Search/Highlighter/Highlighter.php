@@ -18,7 +18,7 @@ class Highlighter
     ) {
     }
 
-    public function highlight(string $text, TokenCollection $queryTokens, int $levenshteinDistance = 0): HighlightResult
+    public function highlight(string $text, TokenCollection $queryTokens): HighlightResult
     {
         if ($text === '') {
             return new HighlightResult($text, []);
