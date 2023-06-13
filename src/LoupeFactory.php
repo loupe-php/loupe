@@ -6,6 +6,7 @@ namespace Terminal42\Loupe;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Terminal42\Loupe\Exception\InvalidConfigurationException;
 use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Filter\Parser;
@@ -16,6 +17,10 @@ class LoupeFactory
 {
     public function create(string $dbPath, array $configuration): Loupe
     {
+        if (!file_exists($dbPath)) {
+            throw InvalidConfigurationException::becauseInvalidDbPath($dbPath);
+        }
+
         return $this->createFromConnection(DriverManager::getConnection([
             'url' => 'pdo-sqlite://notused:inthis@case/' . realpath($dbPath),
         ]), $configuration);

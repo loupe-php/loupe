@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Index;
 
+use Terminal42\Loupe\Exception\IndexException;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
@@ -17,6 +18,9 @@ class Indexer
     ) {
     }
 
+    /**
+     * @throws IndexException
+     */
     public function addDocuments(array $documents): self
     {
         $firstDocument = reset($documents);
@@ -27,22 +31,26 @@ class Indexer
             $indexInfo->setup($firstDocument);
         }
 
-        $this->engine->getConnection()
-            ->transactional(function () use ($indexInfo, $documents) {
-                foreach ($documents as $document) {
-                    $indexInfo->validateDocument($document);
+        try {
+            $this->engine->getConnection()
+                ->transactional(function () use ($indexInfo, $documents) {
+                    foreach ($documents as $document) {
+                        $indexInfo->validateDocument($document);
 
-                    $this->engine->getConnection()
-                        ->transactional(function () use ($document) {
-                            $documentId = $this->indexDocument($document);
-                            $this->indexMultiAttributes($document, $documentId);
-                            $this->indexTerms($document, $documentId);
-                        });
-                }
+                        $this->engine->getConnection()
+                            ->transactional(function () use ($document) {
+                                $documentId = $this->indexDocument($document);
+                                $this->indexMultiAttributes($document, $documentId);
+                                $this->indexTerms($document, $documentId);
+                            });
+                    }
 
-                // Update IDF only once
-                $this->updateInverseDocumentFrequencies();
-            });
+                    // Update IDF only once
+                    $this->updateInverseDocumentFrequencies();
+                });
+        } catch (\Throwable $e) {
+            throw new IndexException($e->getMessage(), 0, $e);
+        }
 
         return $this;
     }

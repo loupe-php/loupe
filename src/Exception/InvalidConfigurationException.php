@@ -23,4 +23,14 @@ class InvalidConfigurationException extends \InvalidArgumentException implements
             )
         );
     }
+
+    public static function becauseInvalidDbPath(string $dbPath): self
+    {
+        return new self(
+            sprintf(
+                '"%s" does not exist, create an empty database file first.',
+                $dbPath
+            )
+        );
+    }
 }
