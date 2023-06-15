@@ -53,6 +53,18 @@ class Engine
         return $this;
     }
 
+    public function countDocuments(): int
+    {
+        if ($this->getIndexInfo()->needsSetup()) {
+            return 0;
+        }
+
+        return (int) $this->connection->createQueryBuilder()
+            ->select('COUNT(*)')
+            ->from(IndexInfo::TABLE_NAME_DOCUMENTS)
+            ->fetchOne();
+    }
+
     public function getConfiguration(): Configuration
     {
         return $this->configuration;

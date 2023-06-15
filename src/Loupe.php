@@ -33,6 +33,11 @@ final class Loupe
         return $this;
     }
 
+    public function countDocuments(): int
+    {
+        return $this->engine->countDocuments();
+    }
+
     public function getConfiguration(): Configuration
     {
         return $this->engine->getConfiguration();

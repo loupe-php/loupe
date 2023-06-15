@@ -17,7 +17,7 @@ class LoupeFactory
 {
     public function create(string $dbPath, array $configuration): Loupe
     {
-        if (!file_exists($dbPath)) {
+        if (! file_exists($dbPath)) {
             throw InvalidConfigurationException::becauseInvalidDbPath($dbPath);
         }
 

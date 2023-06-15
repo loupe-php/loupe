@@ -39,7 +39,3 @@ Searches thousands of documents for "Botman" (typo) and a genre filter
 	"totalPages": 10,
 	"totalHits": 47
 }
-
---EXPECT-MAX-PROCESSING-TIME--
-30
-

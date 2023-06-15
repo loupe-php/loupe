@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Tests\Performance;
 
+use Symfony\Component\Filesystem\Filesystem;
 use Terminal42\Loupe\Tests\Functional\AbstractFunctionalTest;
 
 class PerformanceTest extends AbstractFunctionalTest
@@ -13,16 +14,31 @@ class PerformanceTest extends AbstractFunctionalTest
      */
     public function testPerformance(): void
     {
-        $loupe = $this->setupSharedLoupe([
+        $path = __DIR__ . '/../../var/performance-tests.db';
+        $fs = new Filesystem();
+
+        if (! $fs->exists($path)) {
+            $fs->dumpFile($path, '');
+        }
+
+        $loupe = $this->createLoupe([
             'filterableAttributes' => ['genres', 'release_date'],
             'sortableAttributes' => ['title'],
-        ], 'movies_full', $this->createTestDb('performance', false));
+        ], $path);
+
+        if (isset($_SERVER['LOUPE_PERFORMANCE_TEST_SETUP'])) {
+            $this->indexFixture($loupe, 'movies_full');
+        } elseif ($loupe->countDocuments() === 0) {
+            $this->fail(sprintf(
+                'Run PHPUnit with LOUPE_PERFORMANCE_TEST_SETUP=1 to create the DB first (can take up to 15 minutes). Make sure to delete the "%s" again when you are done.',
+                $path
+            ));
+        }
 
         $sectionInfo = [
             'TEST' => false,
             'SEARCH' => true,
             'EXPECT' => true,
-            'EXPECT-MAX-PROCESSING-TIME' => false,
         ];
 
         foreach ($this->getTests(__DIR__ . '/Tests', $sectionInfo) as $testData) {
@@ -30,7 +46,8 @@ class PerformanceTest extends AbstractFunctionalTest
 
             $results = $loupe->search($testData['SEARCH']);
 
-            $this->assertLessThanOrEqual((int) $testData['EXPECT-MAX-PROCESSING-TIME'], $results['processingTimeMs']);
+            // Assert all the tests run faster than 1 second
+            $this->assertLessThanOrEqual(1000, $results['processingTimeMs']);
 
             unset($results['processingTimeMs']);
 

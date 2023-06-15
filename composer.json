@@ -26,7 +26,7 @@
         "patrickschur/language-detection": "^5.2",
         "wamania/php-stemmer": "^3.0",
         "doctrine/lexer": "^3.0",
-        "voku/portable-utf8": "^5.4",
+        "voku/portable-utf8": "^6.0",
         "mjaschen/phpgeo": "^4.2"
     },
     "require-dev": {

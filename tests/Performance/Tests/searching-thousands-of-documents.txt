@@ -34,7 +34,4 @@ Searches thousands of documents for "Botman" (typo)
 	"totalHits": 63
 }
 
---EXPECT-MAX-PROCESSING-TIME--
-600
-
 

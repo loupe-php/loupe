@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Index;
 
+use Doctrine\DBAL\Connection;
 use Terminal42\Loupe\Exception\IndexException;
+use Terminal42\Loupe\Exception\LoupeExceptionInterface;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
@@ -19,7 +21,7 @@ class Indexer
     }
 
     /**
-     * @throws IndexException
+     * @throws LoupeExceptionInterface
      */
     public function addDocuments(array $documents): self
     {
@@ -49,6 +51,10 @@ class Indexer
                     $this->updateInverseDocumentFrequencies();
                 });
         } catch (\Throwable $e) {
+            if ($e instanceof LoupeExceptionInterface) {
+                throw $e;
+            }
+
             throw new IndexException($e->getMessage(), 0, $e);
         }
 
@@ -71,7 +77,7 @@ class Indexer
             $valueColumn => $value,
         ];
 
-        $attributeId = Util::upsert(
+        $attributeId = $this->upsert(
             $this->engine->getConnection(),
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
             $data,
@@ -79,7 +85,7 @@ class Indexer
             'id'
         );
 
-        Util::upsert(
+        $this->upsert(
             $this->engine->getConnection(),
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
             [
@@ -113,7 +119,7 @@ class Indexer
             $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
         }
 
-        return Util::upsert(
+        return $this->upsert(
             $this->engine->getConnection(),
             IndexInfo::TABLE_NAME_DOCUMENTS,
             $data,
@@ -145,7 +151,7 @@ class Indexer
 
     private function indexTerm(string $term, int $documentId, float $normalizedTermFrequency): void
     {
-        $termId = Util::upsert(
+        $termId = $this->upsert(
             $this->engine->getConnection(),
             IndexInfo::TABLE_NAME_TERMS,
             [
@@ -157,7 +163,7 @@ class Indexer
             'id'
         );
 
-        Util::upsert(
+        $this->upsert(
             $this->engine->getConnection(),
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             [
@@ -235,5 +241,55 @@ QUERY;
 
         $this->engine->getConnection()
             ->executeQuery($query);
+    }
+
+    /**
+     * Unfortunately, we cannot use proper UPSERTs here (ON DUPLICATE() UPDATE) as somehow RETURNING does not work
+     * properly with Doctrine. Maybe we can improve that one day.
+     *
+     * @return int The ID of the $insertIdColumn (either new when INSERT or existing when UPDATE)
+     */
+    private function upsert(
+        Connection $connection,
+        string $table,
+        array $insertData,
+        array $uniqueIndexColumns,
+        string $insertIdColumn = ''
+    ): ?int {
+        if (count($insertData) === 0) {
+            throw new \InvalidArgumentException('Need to provide data to insert.');
+        }
+
+        $qb = $connection->createQueryBuilder()
+            ->select(array_filter(array_merge([$insertIdColumn], $uniqueIndexColumns)))
+            ->from($table);
+
+        foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
+            $qb->andWhere($uniqueIndexColumn . '=' . $qb->createPositionalParameter($insertData[$uniqueIndexColumn]));
+        }
+
+        $existing = $qb->executeQuery()
+            ->fetchAssociative();
+
+        if ($existing === false) {
+            $connection->insert($table, $insertData);
+
+            return (int) $connection->lastInsertId();
+        }
+
+        $qb = $connection->createQueryBuilder()
+            ->update($table);
+
+        foreach ($insertData as $columnName => $value) {
+            $qb->set($columnName, $qb->createPositionalParameter($value));
+        }
+
+        foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
+            $qb->andWhere($uniqueIndexColumn . '=' . $qb->createPositionalParameter($insertData[$uniqueIndexColumn]));
+        }
+
+        $qb->executeQuery();
+
+        return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }
 }

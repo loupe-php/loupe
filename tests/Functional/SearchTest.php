@@ -13,7 +13,7 @@ class SearchTest extends AbstractFunctionalTest
         $loupe = $this->setupSharedLoupe([
             'searchableAttributes' => ['content'],
             'sortableAttributes' => ['content'],
-        ], 'relevance', $this->createTestDb('relevance'));
+        ], 'relevance');
 
         $this->runTests('Relevance', $loupe);
     }
@@ -29,6 +29,17 @@ class SearchTest extends AbstractFunctionalTest
         $this->runTests('Departments', $loupe);
     }
 
+    public function testSearchingOnMovies5000(): void
+    {
+        $loupe = $this->setupSharedLoupe([
+            'searchableAttributes' => ['title', 'overview'],
+            'filterableAttributes' => ['genres'],
+            'sortableAttributes' => ['title'],
+        ], 'movies_5000');
+
+        $this->runTests('Movies5000', $loupe);
+    }
+
     public function testSearchingOnMoviesShort(): void
     {
         $loupe = $this->setupSharedLoupe([
@@ -37,7 +48,7 @@ class SearchTest extends AbstractFunctionalTest
             'sortableAttributes' => ['title'],
         ], 'movies_short');
 
-        $this->runTests('Movies', $loupe);
+        $this->runTests('MoviesShort', $loupe);
     }
 
     public function testSearchingOnRestaurantsWithGeo(): void

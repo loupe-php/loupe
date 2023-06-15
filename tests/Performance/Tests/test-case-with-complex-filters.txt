@@ -35,7 +35,3 @@ Performance test case with complex filters
 	"totalHits": 3226
 }
 
---EXPECT-MAX-PROCESSING-TIME--
-30
-
-

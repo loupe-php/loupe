@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Terminal42\Loupe\Tests\Functional;
 
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
 use Terminal42\Loupe\Internal\Util;
@@ -19,21 +18,17 @@ abstract class AbstractFunctionalTest extends TestCase
      */
     private static array $loupeInstances = [];
 
-    protected function createTestDb(string $name, bool $forceEmpty = true): string
+    protected function createLoupe(array $loupeConfig, string $dbPath = ''): Loupe
     {
-        $path = __DIR__ . '/../../var/' . $name . '.db';
+        $factory = new LoupeFactory();
 
-        $fs = new Filesystem();
-
-        if ($forceEmpty) {
-            $fs->remove($path);
+        if ($dbPath === '') {
+            $loupe = $factory->createInMemory($loupeConfig);
+        } else {
+            $loupe = $factory->create($dbPath, $loupeConfig);
         }
 
-        if (! $fs->exists($path)) {
-            $fs->dumpFile($path, '');
-        }
-
-        return __DIR__ . '/../../var/' . $name . '.db';
+        return $loupe;
     }
 
     protected function getTests(string $directory, array $sectionInfo): array
@@ -56,6 +51,15 @@ abstract class AbstractFunctionalTest extends TestCase
         }
 
         return $tests;
+    }
+
+    protected function indexFixture(Loupe $loupe, string $indexFixture = ''): void
+    {
+        if ($indexFixture === '') {
+            return;
+        }
+
+        $loupe->addDocuments($this->loadDocumentsFromFixture($indexFixture));
     }
 
     /**
@@ -114,9 +118,9 @@ abstract class AbstractFunctionalTest extends TestCase
      * Shared across all tests for performance improvement. That way the indexing process doesn't have to
      * be repeated. Should only be used for idempotent tests (= searching only, not changing documents).
      */
-    protected function setupSharedLoupe(array $loupeConfig, string $indexFixture = '', string $dbPath = '')
+    protected function setupSharedLoupe(array $loupeConfig, string $indexFixture = '')
     {
-        $loupe = $this->createLoupe($loupeConfig, $dbPath);
+        $loupe = $this->createLoupe($loupeConfig);
 
         $configHash = $loupe->getConfiguration()
             ->getHash();
@@ -128,28 +132,6 @@ abstract class AbstractFunctionalTest extends TestCase
         $this->indexFixture($loupe, $indexFixture);
 
         return self::$loupeInstances[$configHash] = $loupe;
-    }
-
-    private function createLoupe(array $loupeConfig, string $dbPath = ''): Loupe
-    {
-        $factory = new LoupeFactory();
-
-        if ($dbPath === '') {
-            $loupe = $factory->createInMemory($loupeConfig);
-        } else {
-            $loupe = $factory->create($dbPath, $loupeConfig);
-        }
-
-        return $loupe;
-    }
-
-    private function indexFixture(Loupe $loupe, string $indexFixture = ''): void
-    {
-        if ($indexFixture === '') {
-            return;
-        }
-
-        $loupe->addDocuments($this->loadDocumentsFromFixture($indexFixture));
     }
 
     private function loadDocumentsFromFixture(string $name): array
