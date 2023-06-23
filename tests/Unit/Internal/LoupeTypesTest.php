@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Tests\Unit\Internal;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Terminal42\Loupe\Internal\LoupeTypes;
 
 class LoupeTypesTest extends TestCase
 {
-    public function getTypeFromValueProvider(): \Generator
+    public static function getTypeFromValueProvider(): \Generator
     {
         yield 'String' => ['foobar', LoupeTypes::TYPE_STRING];
 
@@ -63,9 +64,7 @@ class LoupeTypesTest extends TestCase
         ]));
     }
 
-    /**
-     * @dataProvider getTypeFromValueProvider
-     */
+    #[DataProvider('getTypeFromValueProvider')]
     public function testGetTypeFromValue(mixed $value, string $expectedType): void
     {
         $this->assertSame($expectedType, LoupeTypes::getTypeFromValue($value));

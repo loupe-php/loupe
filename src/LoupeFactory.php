@@ -14,7 +14,7 @@ use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
 
 class LoupeFactory
 {
-    public function create(string $dbPath, array $configuration): Loupe
+    public function create(string $dbPath, Configuration $configuration): Loupe
     {
         if (! file_exists($dbPath)) {
             throw InvalidConfigurationException::becauseInvalidDbPath($dbPath);
@@ -25,16 +25,15 @@ class LoupeFactory
         ]), $configuration);
     }
 
-    public function createInMemory(array $configuration): Loupe
+    public function createInMemory(Configuration $configuration): Loupe
     {
         return $this->createFromConnection(DriverManager::getConnection([
             'url' => 'pdo-sqlite://:memory:',
         ]), $configuration);
     }
 
-    private function createFromConnection(Connection $connection, array $configuration): Loupe
+    private function createFromConnection(Connection $connection, Configuration $configuration): Loupe
     {
-        $configuration = new Configuration($configuration);
         $tokenizer = new Tokenizer();
 
         return new Loupe(

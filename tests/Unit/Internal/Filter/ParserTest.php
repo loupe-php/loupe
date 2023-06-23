@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Tests\Unit\Internal\Filter;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Terminal42\Loupe\Exception\FilterFormatException;
 use Terminal42\Loupe\Internal\Filter\Parser;
 
 class ParserTest extends TestCase
 {
-    public function filterProvider(): \Generator
+    public static function filterProvider(): \Generator
     {
         yield 'Basic string filter' => [
             "genres = 'Drama'",
@@ -99,7 +100,7 @@ class ParserTest extends TestCase
         ];
     }
 
-    public function invalidFilterProvider(): \Generator
+    public static function invalidFilterProvider(): \Generator
     {
         yield 'Must begin with either ( or an attribute name' => [
             '$whatever',
@@ -153,9 +154,7 @@ class ParserTest extends TestCase
         $parser->getAst('_geoRadius(45.472735, 9.184019, 2000)', ['gender']);
     }
 
-    /**
-     * @dataProvider invalidFilterProvider
-     */
+    #[DataProvider('invalidFilterProvider')]
     public function testInvalidFilter(string $filter, string $expectedMessage): void
     {
         $this->expectException(FilterFormatException::class);
@@ -174,9 +173,7 @@ class ParserTest extends TestCase
         $parser->getAst('genres > 42.67', ['gender']);
     }
 
-    /**
-     * @dataProvider filterProvider
-     */
+    #[DataProvider('filterProvider')]
     public function testValidFilter(string $filter, array $expectedAst): void
     {
         $parser = new Parser();

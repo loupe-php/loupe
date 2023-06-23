@@ -8,33 +8,128 @@ use Terminal42\Loupe\Internal\Search\Sorting\Relevance;
 
 final class SearchParameters
 {
-    public array $attributesToHighlight = [];
+    private array $attributesToHighlight = [];
 
-    public array $attributesToRetrieve = ['*'];
+    private array $attributesToRetrieve = ['*'];
 
-    public string $filter = '';
+    private string $filter = '';
 
-    public int $hitsPerPage = 20;
+    private int $hitsPerPage = 20;
 
-    public int $page = 1;
+    private int $page = 1;
 
-    public string $query = '';
+    private string $query = '';
 
-    public bool $showMatchesPosition = false;
+    private bool $showMatchesPosition = false;
 
-    public array $sort = [Relevance::RELEVANCE_ALIAS . ':desc'];
+    private array $sort = [Relevance::RELEVANCE_ALIAS . ':desc'];
 
-    public static function fromArray(array $search): self
+    public static function create(): self
     {
-        $parameters = new self();
+        return new self();
+    }
 
-        foreach ($search as $k => $v) {
-            if ($k === 'q') {
-                $k = 'query';
-            }
-            $parameters->{$k} = $v;
-        }
+    public function getAttributesToHighlight(): array
+    {
+        return $this->attributesToHighlight;
+    }
 
-        return $parameters;
+    public function getAttributesToRetrieve(): array
+    {
+        return $this->attributesToRetrieve;
+    }
+
+    public function getFilter(): string
+    {
+        return $this->filter;
+    }
+
+    public function getHitsPerPage(): int
+    {
+        return $this->hitsPerPage;
+    }
+
+    public function getPage(): int
+    {
+        return $this->page;
+    }
+
+    public function getQuery(): string
+    {
+        return $this->query;
+    }
+
+    public function getSort(): array
+    {
+        return $this->sort;
+    }
+
+    public function showMatchesPosition(): bool
+    {
+        return $this->showMatchesPosition;
+    }
+
+    public function withAttributesToHighlight(array $attributesToHighlight): self
+    {
+        $clone = clone $this;
+        $clone->attributesToHighlight = $attributesToHighlight;
+
+        return $clone;
+    }
+
+    public function withAttributesToRetrieve(array $attributesToRetrieve): self
+    {
+        $clone = clone $this;
+        $clone->attributesToRetrieve = $attributesToRetrieve;
+
+        return $clone;
+    }
+
+    public function withFilter(string $filter): self
+    {
+        $clone = clone $this;
+        $clone->filter = $filter;
+
+        return $clone;
+    }
+
+    public function withHitsPerPage(int $hitsPerPage): self
+    {
+        $clone = clone $this;
+        $clone->hitsPerPage = $hitsPerPage;
+
+        return $clone;
+    }
+
+    public function withPage(int $page): self
+    {
+        $clone = clone $this;
+        $clone->page = $page;
+
+        return $clone;
+    }
+
+    public function withQuery(string $query): self
+    {
+        $clone = clone $this;
+        $clone->query = $query;
+
+        return $clone;
+    }
+
+    public function withShowMatchesPosition(bool $showMatchesPosition): self
+    {
+        $clone = clone $this;
+        $clone->showMatchesPosition = $showMatchesPosition;
+
+        return $clone;
+    }
+
+    public function withSort(array $sort): self
+    {
+        $clone = clone $this;
+        $clone->sort = $sort;
+
+        return $clone;
     }
 }

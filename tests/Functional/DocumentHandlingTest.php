@@ -4,14 +4,22 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Tests\Functional;
 
-class DocumentHandlingTest extends AbstractFunctionalTest
+use PHPUnit\Framework\TestCase;
+use Terminal42\Loupe\Configuration;
+
+class DocumentHandlingTest extends TestCase
 {
+    use FunctionalTestTrait;
+
     public function testGetDocument(): void
     {
-        $loupe = $this->setupLoupe([
-            'filterableAttributes' => ['departments', 'gender'],
-            'sortableAttributes' => ['firstname'],
-        ], 'departments');
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'departments');
 
         $this->assertSame([
             'id' => 1,

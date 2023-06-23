@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Tests\Functional;
 
+use PHPUnit\Framework\TestCase;
+use Terminal42\Loupe\Configuration;
 use Terminal42\Loupe\Exception\InvalidDocumentException;
 
-class IndexTest extends AbstractFunctionalTest
+class IndexTest extends TestCase
 {
+    use FunctionalTestTrait;
+
     public function testCannotChangeSchema(): void
     {
         $this->expectException(InvalidDocumentException::class);
@@ -15,10 +19,12 @@ class IndexTest extends AbstractFunctionalTest
             'Document ("{"completely":"different-schema"}") does not match schema: {"id":"number","firstname":"string","lastname":"string","gender":"string","departments":"array<string>","colors":"array<string>","age":"number"}'
         );
 
-        $loupe = $this->setupLoupe([
-            'filterableAttributes' => ['departments', 'gender'],
-            'sortableAttributes' => ['firstname'],
-        ]);
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
 
         $loupe->addDocument($this->getSandraDocument());
         $loupe->addDocument([
@@ -33,7 +39,7 @@ class IndexTest extends AbstractFunctionalTest
             'The "_geo" attribute must have two keys only, which have to be named "lat" and "lng".'
         );
 
-        $loupe = $this->setupLoupe([]);
+        $loupe = $this->createLoupe(Configuration::create());
         $loupe->addDocument([
             'id' => '42',
             '_geo' => 'incorrect',
@@ -42,10 +48,12 @@ class IndexTest extends AbstractFunctionalTest
 
     public function testReplacingTheSameDocumentWorks(): void
     {
-        $loupe = $this->setupLoupe([
-            'filterableAttributes' => ['departments', 'gender'],
-            'sortableAttributes' => ['firstname'],
-        ]);
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
 
         $sandra = $this->getSandraDocument();
 

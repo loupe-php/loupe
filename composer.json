@@ -31,10 +31,10 @@
     },
     "require-dev": {
         "symfony/var-dumper": "^6.2",
-        "phpunit/phpunit": "^9.5",
         "symfony/filesystem": "^6.2",
         "symplify/easy-coding-standard": "11.2.4.72",
-        "symfony/finder": "^6.2"
+        "symfony/finder": "^6.2",
+        "phpunit/phpunit": "^10.0"
     },
     "scripts": {
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",

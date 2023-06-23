@@ -44,7 +44,7 @@ class Searcher
         private Parser $filterParser,
         private SearchParameters $searchParameters
     ) {
-        $this->sorting = Sorting::fromArray($this->searchParameters->sort, $this->engine);
+        $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
         $this->id = uniqid('lqi', true);
     }
 
@@ -64,8 +64,8 @@ class Searcher
         $this->sortDocuments();
         $this->limitPagination();
 
-        $showAllAttributes = ['*'] === $this->searchParameters->attributesToRetrieve;
-        $attributesToRetrieve = array_flip($this->searchParameters->attributesToRetrieve);
+        $showAllAttributes = ['*'] === $this->searchParameters->getAttributesToRetrieve();
+        $attributesToRetrieve = array_flip($this->searchParameters->getAttributesToRetrieve());
 
         $hits = [];
 
@@ -84,15 +84,15 @@ class Searcher
         }
 
         $totalHits = $result['totalHits'] ?? 0;
-        $totalPages = (int) ceil($totalHits / $this->searchParameters->hitsPerPage);
+        $totalPages = (int) ceil($totalHits / $this->searchParameters->getHitsPerPage());
         $end = (int) floor(microtime(true) * 1000);
 
         return [
             'hits' => $hits,
-            'query' => $this->searchParameters->query,
+            'query' => $this->searchParameters->getQuery(),
             'processingTimeMs' => $end - $start,
-            'hitsPerPage' => $this->searchParameters->hitsPerPage,
-            'page' => $this->searchParameters->page,
+            'hitsPerPage' => $this->searchParameters->getHitsPerPage(),
+            'page' => $this->searchParameters->getPage(),
             'totalPages' => $totalPages,
             'totalHits' => $totalHits,
         ];
@@ -119,12 +119,12 @@ class Searcher
             return $this->tokens;
         }
 
-        if ($this->searchParameters->query === '') {
+        if ($this->searchParameters->getQuery() === '') {
             return $this->tokens = new TokenCollection();
         }
 
         return $this->tokens = $this->engine->getTokenizer()
-            ->tokenize($this->searchParameters->query)
+            ->tokenize($this->searchParameters->getQuery())
             ->limit(10) // TODO: Test and document this
         ;
     }
@@ -301,12 +301,12 @@ class Searcher
 
     private function filterDocuments(): void
     {
-        if ($this->searchParameters->filter === '') {
+        if ($this->searchParameters->getFilter() === '') {
             return;
         }
 
         $ast = $this->filterParser->getAst(
-            $this->searchParameters->filter,
+            $this->searchParameters->getFilter(),
             $this->engine->getConfiguration()->getFilterableAttributes()
         );
 
@@ -398,17 +398,17 @@ class Searcher
 
     private function highlight(array &$hit, TokenCollection $tokenCollection)
     {
-        if ($this->searchParameters->attributesToHighlight === [] && ! $this->searchParameters->showMatchesPosition) {
+        if ($this->searchParameters->getAttributesToHighlight() === [] && ! $this->searchParameters->showMatchesPosition()) {
             return;
         }
 
         $formatted = $hit;
         $matchesPosition = [];
 
-        $highlightAllAttributes = ['*'] === $this->searchParameters->attributesToHighlight;
+        $highlightAllAttributes = ['*'] === $this->searchParameters->getAttributesToHighlight();
         $attributesToHighlight = $highlightAllAttributes ?
             $this->engine->getConfiguration()->getSearchableAttributes() :
-            $this->searchParameters->attributesToHighlight
+            $this->searchParameters->getAttributesToHighlight()
         ;
 
         foreach ($this->engine->getConfiguration()->getSearchableAttributes() as $attribute) {
@@ -424,7 +424,7 @@ class Searcher
                 $formatted[$attribute] = $highlightResult->getHighlightedText();
             }
 
-            if ($this->searchParameters->showMatchesPosition && $highlightResult->getMatches() !== []) {
+            if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
                 $matchesPosition[$attribute] = $highlightResult->getMatches();
             }
         }
@@ -441,9 +441,9 @@ class Searcher
     private function limitPagination(): void
     {
         $this->queryBuilder->setFirstResult(
-            ($this->searchParameters->page - 1) * $this->searchParameters->hitsPerPage
+            ($this->searchParameters->getPage() - 1) * $this->searchParameters->getHitsPerPage()
         );
-        $this->queryBuilder->setMaxResults($this->searchParameters->hitsPerPage);
+        $this->queryBuilder->setMaxResults($this->searchParameters->getHitsPerPage());
     }
 
     private function query(): Result

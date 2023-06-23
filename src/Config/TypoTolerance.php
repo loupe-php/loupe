@@ -20,6 +20,11 @@ final class TypoTolerance
         5 => 1,
     ];
 
+    public static function create(): self
+    {
+        return new self();
+    }
+
     public function disable(): self
     {
         $clone = clone $this;

@@ -29,6 +29,11 @@ final class Configuration
         $this->typoTolerance = new TypoTolerance();
     }
 
+    public static function create(): self
+    {
+        return new self();
+    }
+
     public function getFilterableAndSortableAttributes(): array
     {
         return array_unique(array_merge($this->filterableAttributes, $this->sortableAttributes));

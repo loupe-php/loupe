@@ -5,7 +5,7 @@ An SQLite based, PHP-only fulltext search engine inspired by MeiliSearch.
 Loupe…
 
 * …is completely dependency-free (other than PHP and SQLite, you don't need anything - no containers, no nothing)
-* …is typo-tolerant (based on Levenshtein)
+* …is typo-tolerant (based on the State Set Index Algorithm and Levenshtein)
 * …is very easy to use
 * …is easily fast enough for at least 50k documents (50k is defensive)
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
