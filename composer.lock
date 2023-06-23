@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4c869411cbe84379fe638da70745e6e3",
+    "content-hash": "b1262c69b460bd42d25071cd20155dc0",
     "packages": [
         {
             "name": "doctrine/cache",
@@ -1342,6 +1342,52 @@
                 }
             ],
             "time": "2022-11-03T14:55:06+00:00"
+        },
+        {
+            "name": "toflar/state-set-index",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Toflar/state-set-index.git",
+                "reference": "3188569e712d6c1e3f902cf492d66f0a40e6fef7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Toflar/state-set-index/zipball/3188569e712d6c1e3f902cf492d66f0a40e6fef7",
+                "reference": "3188569e712d6c1e3f902cf492d66f0a40e6fef7",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^10.2",
+                "symplify/easy-coding-standard": "^11.3"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Toflar\\StateSetIndex\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Yanick Witschi",
+                    "email": "yanick.witschi@terminal42.ch"
+                }
+            ],
+            "description": "Implementation of the State Set Index Algorithm",
+            "support": {
+                "issues": "https://github.com/Toflar/state-set-index/issues",
+                "source": "https://github.com/Toflar/state-set-index/tree/main"
+            },
+            "time": "2023-06-23T07:33:41+00:00"
         },
         {
             "name": "voku/portable-ascii",
@@ -3502,7 +3548,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "toflar/state-set-index": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

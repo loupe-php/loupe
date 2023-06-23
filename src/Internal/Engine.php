@@ -12,13 +12,19 @@ use Terminal42\Loupe\Internal\Index\Indexer;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
 use Terminal42\Loupe\Internal\Search\Highlighter\Highlighter;
 use Terminal42\Loupe\Internal\Search\Searcher;
+use Terminal42\Loupe\Internal\StateSet\Alphabet;
+use Terminal42\Loupe\Internal\StateSet\StateSet;
 use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
+use Toflar\StateSetIndex\Config;
+use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
     private const MIN_SQLITE_VERSION = '3.35.0'; // Introduction of LN()
 
     private IndexInfo $indexInfo;
+
+    private StateSetIndex $stateSetIndex;
 
     public function __construct(
         private Connection $connection,
@@ -31,7 +37,7 @@ class Engine
             throw new \InvalidArgumentException('Only SQLite is supported.');
         }
 
-        $version = $this->connection->executeQuery('select sqlite_version()')
+        $version = $this->connection->executeQuery('SELECT sqlite_version()')
             ->fetchOne();
         if (version_compare($version, self::MIN_SQLITE_VERSION, '<')) {
             throw new \InvalidArgumentException(sprintf(
@@ -40,9 +46,17 @@ class Engine
             ));
         }
 
+        // Use Write-Ahead Logging if possible
+        $this->connection->executeQuery('PRAGMA journal_mode=WAL;');
+
         $this->registerSQLiteFunctions();
 
         $this->indexInfo = new IndexInfo($this);
+        $this->stateSetIndex = new StateSetIndex(
+            new Config(16, 23), // TODO: should come from Configuration
+            new Alphabet($this),
+            new StateSet($this)
+        );
     }
 
     public function addDocuments(array $documents): self
@@ -102,6 +116,11 @@ class Engine
         return $this->indexInfo;
     }
 
+    public function getStateSetIndex(): StateSetIndex
+    {
+        return $this->stateSetIndex;
+    }
+
     public function getTokenizer(): Tokenizer
     {
         return $this->tokenizer;
@@ -112,6 +131,55 @@ class Engine
         $searcher = new Searcher($this, $this->filterParser, $parameters);
 
         return $searcher->fetchResult();
+    }
+
+    /**
+     * Unfortunately, we cannot use proper UPSERTs here (ON DUPLICATE() UPDATE) as somehow RETURNING does not work
+     * properly with Doctrine. Maybe we can improve that one day.
+     *
+     * @return int The ID of the $insertIdColumn (either new when INSERT or existing when UPDATE)
+     */
+    public function upsert(
+        string $table,
+        array $insertData,
+        array $uniqueIndexColumns,
+        string $insertIdColumn = ''
+    ): ?int {
+        if (count($insertData) === 0) {
+            throw new \InvalidArgumentException('Need to provide data to insert.');
+        }
+
+        $qb = $this->getConnection()->createQueryBuilder()
+            ->select(array_filter(array_merge([$insertIdColumn], $uniqueIndexColumns)))
+            ->from($table);
+
+        foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
+            $qb->andWhere($uniqueIndexColumn . '=' . $qb->createPositionalParameter($insertData[$uniqueIndexColumn]));
+        }
+
+        $existing = $qb->executeQuery()
+            ->fetchAssociative();
+
+        if ($existing === false) {
+            $this->getConnection()->insert($table, $insertData);
+
+            return (int) $this->getConnection()->lastInsertId();
+        }
+
+        $qb = $this->getConnection()->createQueryBuilder()
+            ->update($table);
+
+        foreach ($insertData as $columnName => $value) {
+            $qb->set($columnName, $qb->createPositionalParameter($value));
+        }
+
+        foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
+            $qb->andWhere($uniqueIndexColumn . '=' . $qb->createPositionalParameter($insertData[$uniqueIndexColumn]));
+        }
+
+        $qb->executeQuery();
+
+        return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }
 
     private function registerSQLiteFunctions()

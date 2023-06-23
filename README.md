@@ -39,7 +39,5 @@ nine characters long.
 If your dataset contains seven, searching for `sevem` or `sevan` will match `seven`. But `tow` won't match `two` as it's
 less than 5 characters.
 
-In Loupe, the first character always has to match.
-
 In Loupe, this cannot be adjusted. Loupe just tries to give you better search results out of the box. If you need 
 anything else, take a different search engine or consider contributing if you have a good use case.

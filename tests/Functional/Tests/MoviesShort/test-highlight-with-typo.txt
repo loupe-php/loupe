@@ -3,7 +3,7 @@ Test highlighting with typos
 
 --SEARCH--
 {
-	"q": "asassin",
+	"q": "bsassin",
 	"attributesToRetrieve": ["id", "title", "overview"],
 	"attributesToHighlight": ["title", "overview"],
 	"sort": ["title:asc"]
@@ -23,7 +23,7 @@ Test highlighting with typos
             }
         }
 	],
-	"query": "asassin",
+	"query": "bsassin",
 	"hitsPerPage": 20,
 	"page": 1,
 	"totalPages": 1,

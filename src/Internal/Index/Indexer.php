@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Index;
 
-use Doctrine\DBAL\Connection;
 use Terminal42\Loupe\Exception\IndexException;
 use Terminal42\Loupe\Exception\LoupeExceptionInterface;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
+use Terminal42\Loupe\Internal\StateSet\Alphabet;
+use Terminal42\Loupe\Internal\StateSet\StateSet;
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Util;
 use voku\helper\UTF8;
@@ -47,6 +48,8 @@ class Indexer
                             });
                     }
 
+                    $this->persistStateSet();
+
                     // Update IDF only once
                     $this->updateInverseDocumentFrequencies();
                 });
@@ -77,16 +80,14 @@ class Indexer
             $valueColumn => $value,
         ];
 
-        $attributeId = $this->upsert(
-            $this->engine->getConnection(),
+        $attributeId = $this->engine->upsert(
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
             $data,
             ['attribute', $valueColumn],
             'id'
         );
 
-        $this->upsert(
-            $this->engine->getConnection(),
+        $this->engine->upsert(
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
             [
                 'attribute' => $attributeId,
@@ -119,8 +120,7 @@ class Indexer
             $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
         }
 
-        return $this->upsert(
-            $this->engine->getConnection(),
+        return $this->engine->upsert(
             IndexInfo::TABLE_NAME_DOCUMENTS,
             $data,
             ['user_id'],
@@ -151,11 +151,12 @@ class Indexer
 
     private function indexTerm(string $term, int $documentId, float $normalizedTermFrequency): void
     {
-        $termId = $this->upsert(
-            $this->engine->getConnection(),
+        $state = $this->engine->getStateSetIndex()->index([$term])[$term];
+        $termId = $this->engine->upsert(
             IndexInfo::TABLE_NAME_TERMS,
             [
                 'term' => $term,
+                'state' => $state,
                 'length' => UTF8::strlen($term),
                 'idf' => 1,
             ],
@@ -163,8 +164,7 @@ class Indexer
             'id'
         );
 
-        $this->upsert(
-            $this->engine->getConnection(),
+        $this->engine->upsert(
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             [
                 'term' => $termId,
@@ -215,6 +215,17 @@ class Indexer
         }
     }
 
+    private function persistStateSet(): void
+    {
+        /** @var Alphabet $alphabet */
+        $alphabet = $this->engine->getStateSetIndex()->getAlphabet();
+        $alphabet->persist();
+
+        /** @var StateSet $stateSet */
+        $stateSet = $this->engine->getStateSetIndex()->getStateSet();
+        $stateSet->persist();
+    }
+
     private function updateInverseDocumentFrequencies(): void
     {
         // TODO: Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
@@ -241,55 +252,5 @@ QUERY;
 
         $this->engine->getConnection()
             ->executeQuery($query);
-    }
-
-    /**
-     * Unfortunately, we cannot use proper UPSERTs here (ON DUPLICATE() UPDATE) as somehow RETURNING does not work
-     * properly with Doctrine. Maybe we can improve that one day.
-     *
-     * @return int The ID of the $insertIdColumn (either new when INSERT or existing when UPDATE)
-     */
-    private function upsert(
-        Connection $connection,
-        string $table,
-        array $insertData,
-        array $uniqueIndexColumns,
-        string $insertIdColumn = ''
-    ): ?int {
-        if (count($insertData) === 0) {
-            throw new \InvalidArgumentException('Need to provide data to insert.');
-        }
-
-        $qb = $connection->createQueryBuilder()
-            ->select(array_filter(array_merge([$insertIdColumn], $uniqueIndexColumns)))
-            ->from($table);
-
-        foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
-            $qb->andWhere($uniqueIndexColumn . '=' . $qb->createPositionalParameter($insertData[$uniqueIndexColumn]));
-        }
-
-        $existing = $qb->executeQuery()
-            ->fetchAssociative();
-
-        if ($existing === false) {
-            $connection->insert($table, $insertData);
-
-            return (int) $connection->lastInsertId();
-        }
-
-        $qb = $connection->createQueryBuilder()
-            ->update($table);
-
-        foreach ($insertData as $columnName => $value) {
-            $qb->set($columnName, $qb->createPositionalParameter($value));
-        }
-
-        foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
-            $qb->andWhere($uniqueIndexColumn . '=' . $qb->createPositionalParameter($insertData[$uniqueIndexColumn]));
-        }
-
-        $qb->executeQuery();
-
-        return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }
 }

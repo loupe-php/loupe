@@ -16,6 +16,8 @@ use Terminal42\Loupe\Internal\Util;
 
 class IndexInfo
 {
+    public const TABLE_NAME_ALPHABET = 'alphabet';
+
     public const TABLE_NAME_DOCUMENTS = 'documents';
 
     public const TABLE_NAME_INDEX_INFO = 'info';
@@ -23,6 +25,8 @@ class IndexInfo
     public const TABLE_NAME_MULTI_ATTRIBUTES = 'multi_attributes';
 
     public const TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS = 'multi_attributes_documents';
+
+    public const TABLE_NAME_STATE_SET = 'state_set';
 
     public const TABLE_NAME_TERMS = 'terms';
 
@@ -201,6 +205,19 @@ class IndexInfo
         }
     }
 
+    private function addAlphabetToSchema(Schema $schema): void
+    {
+        $table = $schema->createTable(self::TABLE_NAME_ALPHABET);
+
+        $table->addColumn('char', Types::STRING)
+            ->setNotnull(true);
+
+        $table->addColumn('label', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->addUniqueIndex(['char', 'label']);
+    }
+
     private function addDocumentsToSchema(Schema $schema): void
     {
         $table = $schema->createTable(self::TABLE_NAME_DOCUMENTS);
@@ -296,6 +313,23 @@ class IndexInfo
         $table->addUniqueIndex(['attribute', 'numeric_value']);
     }
 
+    private function addStateSetToSchema(Schema $schema): void
+    {
+        $table = $schema->createTable(self::TABLE_NAME_STATE_SET);
+
+        $table->addColumn('state', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->addColumn('parent', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->addColumn('mapped_char', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->addUniqueIndex(['state', 'parent', 'mapped_char']);
+        $table->addIndex(['mapped_char']);
+    }
+
     private function addTermsToDocumentsRelationToSchema(Schema $schema): void
     {
         $table = $schema->createTable(self::TABLE_NAME_TERMS_DOCUMENTS);
@@ -323,6 +357,9 @@ class IndexInfo
         $table->addColumn('term', Types::STRING)
             ->setNotnull(true);
 
+        $table->addColumn('state', Types::STRING)
+            ->setNotnull(true);
+
         $table->addColumn('length', Types::INTEGER)
             ->setNotnull(true);
 
@@ -331,7 +368,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['id']);
-        $table->addUniqueIndex(['term', 'length']);
+        $table->addUniqueIndex(['term', 'state', 'length']);
     }
 
     private function createSchema(): void
@@ -352,6 +389,8 @@ class IndexInfo
         $this->addDocumentsToSchema($schema);
         $this->addMultiAttributesToSchema($schema);
         $this->addTermsToSchema($schema);
+        $this->addAlphabetToSchema($schema);
+        $this->addStateSetToSchema($schema);
 
         $this->addMultiAttributesToDocumentsRelationToSchema($schema);
         $this->addTermsToDocumentsRelationToSchema($schema);

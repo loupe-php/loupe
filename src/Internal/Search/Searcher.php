@@ -245,7 +245,7 @@ class Searcher
         if ($levenshteinDistance === 0) {
             /*
              * WHERE
-                  term = '<term>'
+             *     term = '<term>'
              */
             $where[] = sprintf(
                 '%s.term = %s',
@@ -256,28 +256,18 @@ class Searcher
         } else {
             /*
              * WHERE
-             *    term LIKE '<first_char>%'
-             *    AND
-             *    (
-             *      term = '<term>'
-             *      OR
-             *      (
-             *          LENGTH(term) >= <term> - <lev-distance>
-             *          AND
-             *          LENGTH(term) <= <term> + <lev-distance>
-              *         AND
-             *          max_levenshtein(<term>, term, <distance>)
+             *     term = '<term>'
+             *     OR
+             *     (
+             *         state IN (:states)
+             *         AND
+             *         LENGTH(term) >= <term> - <lev-distance>
+             *         AND
+             *         LENGTH(term) <= <term> + <lev-distance>
+             *         AND
+             *         max_levenshtein(<term>, term, <distance>)
              *       )
-             *    )
              */
-            $where[] = sprintf(
-                '%s.term LIKE %s',
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $this->queryBuilder->createNamedParameter(UTF8::first_char($term) . '%')
-            );
-            $where[] = 'AND';
-            $where[] = '(';
             $where[] = sprintf(
                 '%s.term = %s',
                 $this->engine->getIndexInfo()
@@ -286,6 +276,13 @@ class Searcher
             );
             $where[] = 'OR';
             $where[] = '(';
+            $where[] = sprintf(
+                '%s.state IN (%s)',
+                $this->engine->getIndexInfo()
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                implode(',', $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance))
+            );
+            $where[] = 'AND';
             $where[] = sprintf(
                 '%s.length >= %d',
                 $this->engine->getIndexInfo()
@@ -307,7 +304,6 @@ class Searcher
                     ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
                 $levenshteinDistance
             );
-            $where[] = ')';
             $where[] = ')';
         }
 
@@ -548,7 +544,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-        //dd(implode(' ', $queryParts), $this->queryBuilder->getParameters());
+
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
