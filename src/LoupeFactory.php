@@ -34,7 +34,7 @@ class LoupeFactory
 
     private function createFromConnection(Connection $connection, Configuration $configuration): Loupe
     {
-        $tokenizer = new Tokenizer();
+        $tokenizer = new Tokenizer(10);
 
         return new Loupe(
             new Engine(

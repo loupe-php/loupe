@@ -258,6 +258,26 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
     }
 
+    public function testIgnoresTooLongQuery(): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('This is a very long query that should be shortened because it is just way too long')
+            ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => 'This is a very long query that should be shortened',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
     public function testRelevance(): void
     {
         $configuration = Configuration::create()

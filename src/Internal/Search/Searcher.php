@@ -89,7 +89,7 @@ class Searcher
 
         return [
             'hits' => $hits,
-            'query' => $this->searchParameters->getQuery(),
+            'query' => $this->createAnalyzedQuery($tokens),
             'processingTimeMs' => $end - $start,
             'hitsPerPage' => $this->searchParameters->getHitsPerPage(),
             'page' => $this->searchParameters->getPage(),
@@ -125,7 +125,6 @@ class Searcher
 
         return $this->tokens = $this->engine->getTokenizer()
             ->tokenize($this->searchParameters->getQuery())
-            ->limit(10) // TODO: Test and document this
         ;
     }
 
@@ -174,6 +173,17 @@ class Searcher
 
         $this->CTEs[self::CTE_TERM_MATCHES]['cols'] = ['id', 'idf'];
         $this->CTEs[self::CTE_TERM_MATCHES]['sql'] = $cteSelectQb->getSQL();
+    }
+
+    private function createAnalyzedQuery(TokenCollection $tokens): string
+    {
+        $lastToken = $tokens->last();
+
+        if ($lastToken === null) {
+            return $this->searchParameters->getQuery();
+        }
+
+        return mb_substr($this->searchParameters->getQuery(), 0, $lastToken->getStartPosition() + $lastToken->getLength());
     }
 
     private function createSubQueryForMultiAttribute(Filter $node): string

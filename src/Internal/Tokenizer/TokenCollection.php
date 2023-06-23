@@ -61,15 +61,22 @@ class TokenCollection
         return array_unique($tokens);
     }
 
+    public function count(): int
+    {
+        return count($this->tokens);
+    }
+
     public function empty(): bool
     {
         return $this->tokens === [];
     }
 
-    public function limit(int $limit): self
+    public function last(): ?Token
     {
-        $this->tokens = array_slice($this->tokens, 0, $limit);
+        if ($this->empty()) {
+            return null;
+        }
 
-        return $this;
+        return end($this->tokens);
     }
 }

@@ -21,8 +21,9 @@ class Tokenizer
      */
     private array $stemmers = [];
 
-    public function __construct()
-    {
+    public function __construct(
+        private int $maxTokens
+    ) {
         $this->language = new Language([], self::getNgramsDir());
         $this->language->setMaxNgrams(9000);
     }
@@ -52,6 +53,10 @@ class Tokenizer
             if ($iterator->getRuleStatus() === \IntlBreakIterator::WORD_NONE) {
                 $position += UTF8::strlen($term);
                 continue;
+            }
+
+            if ($collection->count() >= $this->maxTokens) {
+                break;
             }
 
             $token = new Token(
