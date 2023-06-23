@@ -19,28 +19,6 @@ class ConfigurationTest extends TestCase
         yield ['invalid-dash'];
     }
 
-    public function testHash(): void
-    {
-        $configurationA = Configuration::create()
-            ->withFilterableAttributes(['departments', 'gender'])
-            ->withSortableAttributes(['firstname'])
-        ;
-
-        $configurationB = Configuration::create()
-            ->withFilterableAttributes(['gender', 'departments'])
-            ->withSortableAttributes(['firstname'])
-        ;
-
-        $configurationC = Configuration::create()
-            ->withFilterableAttributes(['gender', 'departments'])
-            ->withSortableAttributes(['firstname', 'lastname'])
-        ;
-
-        $this->assertTrue($configurationA->getHash() === $configurationB->getHash());
-        $this->assertTrue($configurationA->getHash() !== $configurationC->getHash());
-        $this->assertTrue($configurationB->getHash() !== $configurationC->getHash());
-    }
-
     #[DataProvider('invalidAttributeNameProvider')]
     public function testInvalidAttributeName(string $attributeName): void
     {

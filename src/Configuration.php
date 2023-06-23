@@ -44,12 +44,6 @@ final class Configuration
         return $this->filterableAttributes;
     }
 
-    // TODO: REMOVE ME
-    public function getHash(): string
-    {
-        return sha1(LoupeTypes::convertToString(get_object_vars($this)));
-    }
-
     public function getPrimaryKey(): string
     {
         return $this->primaryKey;
