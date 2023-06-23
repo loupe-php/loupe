@@ -103,7 +103,7 @@ class Indexer
     private function indexDocument(array $document): int
     {
         $data = [
-            'user_id' => (string) $document[$this->engine->getConfiguration()->primaryKey],
+            'user_id' => (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
             'document' => Util::encodeJson($document),
         ];
 
@@ -178,7 +178,7 @@ class Indexer
 
     private function indexTerms(array $document, int $documentId): void
     {
-        $searchableAttributes = $this->engine->getConfiguration()->searchableAttributes;
+        $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
         $termsAndFrequency = [];
         $totalTermsInDocument = 0;
 

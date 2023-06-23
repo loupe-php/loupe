@@ -43,8 +43,8 @@ class IndexInfo
 
     public function setup(array $document)
     {
-        $primaryKey = $this->engine->getConfiguration()->primaryKey;
-        $sortableAttributes = $this->engine->getConfiguration()->sortableAttributes;
+        $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
+        $sortableAttributes = $this->engine->getConfiguration()->getSortableAttributes();
 
         if (! array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
@@ -125,7 +125,7 @@ class IndexInfo
     {
         $result = [];
 
-        foreach ($this->engine->getConfiguration()->filterableAttributes as $attributeName) {
+        foreach ($this->engine->getConfiguration()->getFilterableAttributes() as $attributeName) {
             if (LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
                 continue;
             }
@@ -183,7 +183,7 @@ class IndexInfo
             throw InvalidDocumentException::becauseDoesNotMatchSchema(
                 $documentSchema,
                 $document,
-                $document[$this->engine->getConfiguration()->primaryKey] ?? null
+                $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
             );
         }
 
@@ -195,7 +195,7 @@ class IndexInfo
                 throw InvalidDocumentException::becauseDoesNotMatchSchema(
                     $documentSchema,
                     $document,
-                    $document[$this->engine->getConfiguration()->primaryKey] ?? null
+                    $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
                 );
             }
         }

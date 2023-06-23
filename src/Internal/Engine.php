@@ -53,9 +53,6 @@ class Engine
 
         $this->registerSQLiteFunctions();
 
-        // Validate configuration
-        $this->configuration->validate();
-
         $this->indexInfo = new IndexInfo($this);
         $this->stateSetIndex = new StateSetIndex(
             new Config(16, 23), // TODO: should come from Configuration

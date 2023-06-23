@@ -14,13 +14,13 @@ final class Configuration
 
     public const MAX_ATTRIBUTE_NAME_LENGTH = 30;
 
-    public array $filterableAttributes = [];
+    private array $filterableAttributes = [];
 
-    public string $primaryKey = 'id';
+    private string $primaryKey = 'id';
 
-    public array $searchableAttributes = ['*'];
+    private array $searchableAttributes = ['*'];
 
-    public array $sortableAttributes = [];
+    private array $sortableAttributes = [];
 
     public static function fromArray(array $configuration): self
     {
@@ -30,12 +30,19 @@ final class Configuration
             $parameters->{$k} = $v;
         }
 
+        $parameters->validate();
+
         return $parameters;
     }
 
     public function getFilterableAndSortableAttributes(): array
     {
         return array_unique(array_merge($this->filterableAttributes, $this->sortableAttributes));
+    }
+
+    public function getFilterableAttributes(): array
+    {
+        return $this->filterableAttributes;
     }
 
     public function getHash(): string
@@ -54,7 +61,78 @@ final class Configuration
         };
     }
 
-    public function validate(): void
+
+    public function getPrimaryKey(): string
+    {
+        return $this->primaryKey;
+    }
+
+
+    public function getSearchableAttributes(): array
+    {
+        return $this->searchableAttributes;
+    }
+
+
+    public function getSortableAttributes(): array
+    {
+        return $this->sortableAttributes;
+    }
+
+    public static function validateAttributeName(string $name): void
+    {
+        if ($name === self::GEO_ATTRIBUTE_NAME) {
+            return;
+        }
+
+        if (strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
+            || ! preg_match('/^[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
+        ) {
+            throw InvalidConfigurationException::becauseInvalidAttributeName($name);
+        }
+    }
+
+    public function withFilterableAttributes(array $filterableAttributes): self
+    {
+        $clone = clone $this;
+        $clone->filterableAttributes = $filterableAttributes;
+
+        $clone->validate();
+
+        return $this;
+    }
+
+    public function withPrimaryKey(string $primaryKey): self
+    {
+        $clone = clone $this;
+        $clone->primaryKey = $primaryKey;
+
+        $clone->validate();
+
+        return $this;
+    }
+
+    public function withSearchableAttributes(array $searchableAttributes): self
+    {
+        $clone = clone $this;
+        $clone->searchableAttributes = $searchableAttributes;
+
+        $clone->validate();
+
+        return $this;
+    }
+
+    public function withSortableAttributes(array $sortableAttributes): self
+    {
+        $clone = clone $this;
+        $clone->sortableAttributes = $sortableAttributes;
+
+        $clone->validate();
+
+        return $this;
+    }
+
+    private function validate(): void
     {
         if (['*'] !== $this->searchableAttributes) {
             foreach ($this->searchableAttributes as $searchableAttribute) {
@@ -68,19 +146,6 @@ final class Configuration
 
         foreach ($this->sortableAttributes as $searchableAttribute) {
             self::validateAttributeName($searchableAttribute);
-        }
-    }
-
-    public static function validateAttributeName(string $name): void
-    {
-        if ($name === self::GEO_ATTRIBUTE_NAME) {
-            return;
-        }
-
-        if (strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
-            || ! preg_match('/^[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
-        ) {
-            throw InvalidConfigurationException::becauseInvalidAttributeName($name);
         }
     }
 }

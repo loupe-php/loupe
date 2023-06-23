@@ -32,6 +32,6 @@ class Simple extends AbstractSorter
 
     public static function supports(string $value, Engine $engine): bool
     {
-        return in_array($value, $engine->getConfiguration()->sortableAttributes, true);
+        return in_array($value, $engine->getConfiguration()->getSortableAttributes(), true);
     }
 }

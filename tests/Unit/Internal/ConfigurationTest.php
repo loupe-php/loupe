@@ -53,10 +53,8 @@ class ConfigurationTest extends TestCase
             )
         );
 
-        $configuration = Configuration::fromArray([
+        Configuration::fromArray([
             'filterableAttributes' => [$attributeName],
         ]);
-
-        $configuration->validate();
     }
 }
