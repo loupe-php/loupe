@@ -94,7 +94,7 @@ class Highlighter
     {
         foreach ($queryTokens->all() as $queryToken) {
             foreach ($queryToken->all() as $term) {
-                $levenshteinDistance = $this->configuration->getLevenshteinDistanceForTerm($term);
+                $levenshteinDistance = $this->configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($term);
 
                 if ($levenshteinDistance === 0) {
                     if (\in_array($term, $textToken->all(), true)) {

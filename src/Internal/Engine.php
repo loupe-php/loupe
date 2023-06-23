@@ -55,7 +55,10 @@ class Engine
 
         $this->indexInfo = new IndexInfo($this);
         $this->stateSetIndex = new StateSetIndex(
-            new Config(16, 23), // TODO: should come from Configuration
+            new Config(
+                $this->configuration->getTypoTolerance()->getIndexLength(),
+                $this->configuration->getTypoTolerance()->getAlphabetSize(),
+            ),
             new Alphabet($this),
             new StateSet($this)
         );

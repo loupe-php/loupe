@@ -226,6 +226,7 @@ class Searcher
     {
         $termParameter = $this->queryBuilder->createNamedParameter($term);
         $levenshteinDistance = $this->engine->getConfiguration()
+            ->getTypoTolerance()
             ->getLevenshteinDistanceForTerm($term);
 
         $where = [];

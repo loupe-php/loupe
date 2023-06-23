@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe;
 
+use Terminal42\Loupe\Config\TypoTolerance;
 use Terminal42\Loupe\Exception\InvalidConfigurationException;
 use Terminal42\Loupe\Internal\LoupeTypes;
-use voku\helper\UTF8;
 
 final class Configuration
 {
@@ -22,17 +22,11 @@ final class Configuration
 
     private array $sortableAttributes = [];
 
-    public static function fromArray(array $configuration): self
+    private TypoTolerance $typoTolerance;
+
+    public function __construct()
     {
-        $parameters = new self();
-
-        foreach ($configuration as $k => $v) {
-            $parameters->{$k} = $v;
-        }
-
-        $parameters->validate();
-
-        return $parameters;
+        $this->typoTolerance = new TypoTolerance();
     }
 
     public function getFilterableAndSortableAttributes(): array
@@ -45,38 +39,30 @@ final class Configuration
         return $this->filterableAttributes;
     }
 
+    // TODO: REMOVE ME
     public function getHash(): string
     {
         return sha1(LoupeTypes::convertToString(get_object_vars($this)));
     }
-
-    public function getLevenshteinDistanceForTerm(string $term): int
-    {
-        $termLength = (int) UTF8::strlen($term);
-
-        return match (true) {
-            $termLength >= 9 => 2,
-            $termLength >= 5 => 2,
-            default => 0
-        };
-    }
-
 
     public function getPrimaryKey(): string
     {
         return $this->primaryKey;
     }
 
-
     public function getSearchableAttributes(): array
     {
         return $this->searchableAttributes;
     }
 
-
     public function getSortableAttributes(): array
     {
         return $this->sortableAttributes;
+    }
+
+    public function getTypoTolerance(): TypoTolerance
+    {
+        return $this->typoTolerance;
     }
 
     public static function validateAttributeName(string $name): void
@@ -94,12 +80,12 @@ final class Configuration
 
     public function withFilterableAttributes(array $filterableAttributes): self
     {
+        self::validateAttributeNames($filterableAttributes);
+
         $clone = clone $this;
         $clone->filterableAttributes = $filterableAttributes;
 
-        $clone->validate();
-
-        return $this;
+        return $clone;
     }
 
     public function withPrimaryKey(string $primaryKey): self
@@ -107,45 +93,43 @@ final class Configuration
         $clone = clone $this;
         $clone->primaryKey = $primaryKey;
 
-        $clone->validate();
-
-        return $this;
+        return $clone;
     }
 
     public function withSearchableAttributes(array $searchableAttributes): self
     {
+        if (['*'] !== $searchableAttributes) {
+            self::validateAttributeNames($searchableAttributes);
+        }
+
         $clone = clone $this;
         $clone->searchableAttributes = $searchableAttributes;
 
-        $clone->validate();
-
-        return $this;
+        return $clone;
     }
 
     public function withSortableAttributes(array $sortableAttributes): self
     {
+        self::validateAttributeNames($sortableAttributes);
+
         $clone = clone $this;
         $clone->sortableAttributes = $sortableAttributes;
 
-        $clone->validate();
-
-        return $this;
+        return $clone;
     }
 
-    private function validate(): void
+    public function withTypoTolerance(TypoTolerance $tolerance): self
     {
-        if (['*'] !== $this->searchableAttributes) {
-            foreach ($this->searchableAttributes as $searchableAttribute) {
-                self::validateAttributeName($searchableAttribute);
-            }
-        }
+        $clone = clone $this;
+        $clone->typoTolerance = $tolerance;
 
-        foreach ($this->filterableAttributes as $searchableAttribute) {
-            self::validateAttributeName($searchableAttribute);
-        }
+        return $clone;
+    }
 
-        foreach ($this->sortableAttributes as $searchableAttribute) {
-            self::validateAttributeName($searchableAttribute);
+    private static function validateAttributeNames(array $names): void
+    {
+        foreach ($names as $name) {
+            self::validateAttributeName($name);
         }
     }
 }

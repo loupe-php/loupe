@@ -151,7 +151,12 @@ class Indexer
 
     private function indexTerm(string $term, int $documentId, float $normalizedTermFrequency): void
     {
-        $state = $this->engine->getStateSetIndex()->index([$term])[$term];
+        if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+            $state = 0;
+        } else {
+            $state = $this->engine->getStateSetIndex()->index([$term])[$term];
+        }
+
         $termId = $this->engine->upsert(
             IndexInfo::TABLE_NAME_TERMS,
             [

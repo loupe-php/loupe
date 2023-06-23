@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Unit\Internal;
+namespace Terminal42\Loupe\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Terminal42\Loupe\Configuration;
@@ -20,20 +20,20 @@ class ConfigurationTest extends TestCase
 
     public function testHash(): void
     {
-        $configurationA = Configuration::fromArray([
-            'filterableAttributes' => ['departments', 'gender'],
-            'sortableAttributes' => ['firstname'],
-        ]);
+        $configurationA = (new Configuration())
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
 
-        $configurationB = Configuration::fromArray([
-            'sortableAttributes' => ['firstname'],
-            'filterableAttributes' => ['gender', 'departments'],
-        ]);
+        $configurationB = (new Configuration())
+            ->withFilterableAttributes(['gender', 'departments'])
+            ->withSortableAttributes(['firstname'])
+        ;
 
-        $configurationC = Configuration::fromArray([
-            'sortableAttributes' => ['firstname', 'lastname'],
-            'filterableAttributes' => ['gender', 'departments'],
-        ]);
+        $configurationC = (new Configuration())
+            ->withFilterableAttributes(['gender', 'departments'])
+            ->withSortableAttributes(['firstname', 'lastname'])
+        ;
 
         $this->assertTrue($configurationA->getHash() === $configurationB->getHash());
         $this->assertTrue($configurationA->getHash() !== $configurationC->getHash());
@@ -53,8 +53,7 @@ class ConfigurationTest extends TestCase
             )
         );
 
-        Configuration::fromArray([
-            'filterableAttributes' => [$attributeName],
-        ]);
+        $configuration = new Configuration();
+        $configuration->withFilterableAttributes([$attributeName]);
     }
 }
