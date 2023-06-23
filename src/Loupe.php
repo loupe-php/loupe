@@ -48,7 +48,7 @@ final class Loupe
         return $this->engine->getDocument($identifier);
     }
 
-    public function search(array $parameters): array
+    public function search(SearchParameters $parameters): array
     {
         return $this->engine->search($parameters);
     }

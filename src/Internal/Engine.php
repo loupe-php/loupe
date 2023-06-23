@@ -15,6 +15,7 @@ use Terminal42\Loupe\Internal\Search\Searcher;
 use Terminal42\Loupe\Internal\StateSet\Alphabet;
 use Terminal42\Loupe\Internal\StateSet\StateSet;
 use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
+use Terminal42\Loupe\SearchParameters;
 use Toflar\StateSetIndex\Config;
 use Toflar\StateSetIndex\StateSetIndex;
 
@@ -126,7 +127,7 @@ class Engine
         return $this->tokenizer;
     }
 
-    public function search(array $parameters): array
+    public function search(SearchParameters $parameters): array
     {
         $searcher = new Searcher($this, $this->filterParser, $parameters);
 

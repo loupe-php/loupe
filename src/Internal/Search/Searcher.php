@@ -6,11 +6,7 @@ namespace Terminal42\Loupe\Internal\Search;
 
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
-use Symfony\Component\Config\Definition\Builder\TreeBuilder;
-use Symfony\Component\Config\Definition\Processor;
-use Terminal42\Loupe\Exception\InvalidSearchParametersException;
 use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\Filter\Ast\Ast;
 use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
 use Terminal42\Loupe\Internal\Filter\Ast\Filter;
 use Terminal42\Loupe\Internal\Filter\Ast\GeoDistance;
@@ -19,9 +15,9 @@ use Terminal42\Loupe\Internal\Filter\Ast\Node;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
 use Terminal42\Loupe\Internal\Search\Sorting\GeoPoint;
-use Terminal42\Loupe\Internal\Search\Sorting\Relevance;
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Util;
+use Terminal42\Loupe\SearchParameters;
 use voku\helper\UTF8;
 
 class Searcher
@@ -46,15 +42,9 @@ class Searcher
     public function __construct(
         private Engine $engine,
         private Parser $filterParser,
-        private array $searchParameters
+        private SearchParameters $searchParameters
     ) {
-        $this->searchParameters = (new Processor())->process(
-            $this->getConfigTreeBuilderForSearchParameters()
-                ->buildTree(),
-            [$this->searchParameters]
-        );
-
-        $this->sorting = Sorting::fromArray($this->searchParameters['sort'], $this->engine);
+        $this->sorting = Sorting::fromArray($this->searchParameters->sort, $this->engine);
         $this->id = uniqid('lqi', true);
     }
 
@@ -74,8 +64,8 @@ class Searcher
         $this->sortDocuments();
         $this->limitPagination();
 
-        $showAllAttributes = ['*'] === $this->searchParameters['attributesToRetrieve'];
-        $attributesToRetrieve = array_flip($this->searchParameters['attributesToRetrieve']);
+        $showAllAttributes = ['*'] === $this->searchParameters->attributesToRetrieve;
+        $attributesToRetrieve = array_flip($this->searchParameters->attributesToRetrieve);
 
         $hits = [];
 
@@ -94,15 +84,15 @@ class Searcher
         }
 
         $totalHits = $result['totalHits'] ?? 0;
-        $totalPages = (int) ceil($totalHits / $this->searchParameters['hitsPerPage']);
+        $totalPages = (int) ceil($totalHits / $this->searchParameters->hitsPerPage);
         $end = (int) floor(microtime(true) * 1000);
 
         return [
             'hits' => $hits,
-            'query' => $this->searchParameters['q'],
+            'query' => $this->searchParameters->query,
             'processingTimeMs' => $end - $start,
-            'hitsPerPage' => $this->searchParameters['hitsPerPage'],
-            'page' => $this->searchParameters['page'],
+            'hitsPerPage' => $this->searchParameters->hitsPerPage,
+            'page' => $this->searchParameters->page,
             'totalPages' => $totalPages,
             'totalHits' => $totalHits,
         ];
@@ -129,14 +119,12 @@ class Searcher
             return $this->tokens;
         }
 
-        $query = $this->searchParameters['q'];
-
-        if ($query === '') {
+        if ($this->searchParameters->query === '') {
             return $this->tokens = new TokenCollection();
         }
 
         return $this->tokens = $this->engine->getTokenizer()
-            ->tokenize($query)
+            ->tokenize($this->searchParameters->query)
             ->limit(10) // TODO: Test and document this
         ;
     }
@@ -312,12 +300,14 @@ class Searcher
 
     private function filterDocuments(): void
     {
-        /** @var Ast|string $ast */
-        $ast = $this->searchParameters['filter'];
-
-        if ($ast === '') {
+        if ($this->searchParameters->filter === '') {
             return;
         }
+
+        $ast = $this->filterParser->getAst(
+            $this->searchParameters->filter,
+            $this->engine->getConfiguration()->getFilterableAttributes()
+        );
 
         $whereStatement = [];
 
@@ -326,74 +316,6 @@ class Searcher
         }
 
         $this->queryBuilder->andWhere(implode(' ', $whereStatement));
-    }
-
-    private function getConfigTreeBuilderForSearchParameters(): TreeBuilder
-    {
-        $treeBuilder = new TreeBuilder('searchParams');
-        $rootNode = $treeBuilder->getRootNode();
-        $rootNode->children()
-            ->scalarNode('q')
-            ->defaultValue('')
-            ->end()
-            ->scalarNode('filter')
-            ->defaultValue('')
-            ->validate()
-            ->always(function (string $filter) {
-                return $this->filterParser->getAst(
-                    $filter,
-                    $this->engine->getConfiguration()
-                        ->getFilterableAttributes()
-                );
-            })
-            ->end()
-            ->end()
-            ->arrayNode('attributesToRetrieve')
-            ->defaultValue(['*'])
-            ->scalarPrototype()
-            ->end()
-            ->end()
-            ->arrayNode('attributesToHighlight')
-            ->defaultValue([])
-            ->scalarPrototype()
-            ->validate()
-            ->always(function (string $attribute) {
-                if (! \in_array($attribute, $this->engine->getConfiguration()->getSearchableAttributes(), true)) {
-                    throw InvalidSearchParametersException::cannotHighlightBecauseNotSearchable($attribute);
-                }
-
-                return $attribute;
-            })
-            ->end()
-            ->end()
-            ->end()
-            ->booleanNode('showMatchesPosition')
-            ->defaultFalse()
-            ->end()
-            ->arrayNode('sort')
-            ->defaultValue([Relevance::RELEVANCE_ALIAS . ':desc'])
-            ->scalarPrototype()
-            ->end()
-            ->validate()
-            ->always(function (array $sort) {
-                // Throws if not valid value
-                Sorting::fromArray($sort, $this->engine);
-
-                return $sort;
-            })
-            ->end()
-            ->end()
-            ->integerNode('hitsPerPage')
-            ->min(1)
-            ->defaultValue(20)
-            ->end()
-            ->integerNode('page')
-            ->min(1)
-            ->defaultValue(1)
-            ->end()
-            ->end();
-
-        return $treeBuilder;
     }
 
     private function handleFilterAstNode(Node $node, array &$whereStatement): void
@@ -475,18 +397,18 @@ class Searcher
 
     private function highlight(array &$hit, TokenCollection $tokenCollection)
     {
-        if ($this->searchParameters['attributesToHighlight'] === [] && ! $this->searchParameters['showMatchesPosition']) {
+        if ($this->searchParameters->attributesToHighlight === [] && ! $this->searchParameters->showMatchesPosition) {
             return;
         }
 
         $formatted = $hit;
         $matchesPosition = [];
 
-        $highlightAllAttributes = ['*'] === $this->searchParameters['attributesToHighlight'];
+        $highlightAllAttributes = ['*'] === $this->searchParameters->attributesToHighlight;
         $attributesToHighlight = $highlightAllAttributes ?
             $this->engine->getConfiguration()
                 ->getSearchableAttributes() :
-            $this->searchParameters['attributesToHighlight']
+            $this->searchParameters->attributesToHighlight
         ;
 
         foreach ($this->engine->getConfiguration()->getSearchableAttributes() as $attribute) {
@@ -502,7 +424,7 @@ class Searcher
                 $formatted[$attribute] = $highlightResult->getHighlightedText();
             }
 
-            if ($this->searchParameters['showMatchesPosition'] && $highlightResult->getMatches() !== []) {
+            if ($this->searchParameters->showMatchesPosition && $highlightResult->getMatches() !== []) {
                 $matchesPosition[$attribute] = $highlightResult->getMatches();
             }
         }
@@ -519,9 +441,9 @@ class Searcher
     private function limitPagination(): void
     {
         $this->queryBuilder->setFirstResult(
-            ($this->searchParameters['page'] - 1) * $this->searchParameters['hitsPerPage']
+            ($this->searchParameters->page - 1) * $this->searchParameters->hitsPerPage
         );
-        $this->queryBuilder->setMaxResults($this->searchParameters['hitsPerPage']);
+        $this->queryBuilder->setMaxResults($this->searchParameters->hitsPerPage);
     }
 
     private function query(): Result
