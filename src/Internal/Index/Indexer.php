@@ -231,7 +231,19 @@ class Indexer
 
     private function updateInverseDocumentFrequencies(): void
     {
-        // TODO: Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
+        // Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
+        $query = <<<'QUERY'
+            DELETE FROM %s WHERE id NOT IN (SELECT term FROM %s)
+           QUERY;
+
+        $query = sprintf(
+            $query,
+            IndexInfo::TABLE_NAME_TERMS,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+        );
+
+        $this->engine->getConnection()
+            ->executeQuery($query);
 
         // Notice the * 1.0 additions to the COUNT() SELECTS in order to force floating point calculations
         $query = <<<'QUERY'

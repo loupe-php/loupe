@@ -6,7 +6,6 @@ namespace Terminal42\Loupe;
 
 use Terminal42\Loupe\Config\TypoTolerance;
 use Terminal42\Loupe\Exception\InvalidConfigurationException;
-use Terminal42\Loupe\Internal\LoupeTypes;
 
 final class Configuration
 {
