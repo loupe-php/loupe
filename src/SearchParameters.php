@@ -6,7 +6,7 @@ namespace Terminal42\Loupe;
 
 use Terminal42\Loupe\Internal\Search\Sorting\Relevance;
 
-class SearchParameters
+final class SearchParameters
 {
     public array $attributesToHighlight = [];
 

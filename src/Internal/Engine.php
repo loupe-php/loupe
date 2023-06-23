@@ -7,6 +7,7 @@ namespace Terminal42\Loupe\Internal;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\AbstractSQLiteDriver;
 use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
+use Terminal42\Loupe\Configuration;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Index\Indexer;
 use Terminal42\Loupe\Internal\Index\IndexInfo;
@@ -51,6 +52,9 @@ class Engine
         $this->connection->executeQuery('PRAGMA journal_mode=WAL;');
 
         $this->registerSQLiteFunctions();
+
+        // Validate configuration
+        $this->configuration->validate();
 
         $this->indexInfo = new IndexInfo($this);
         $this->stateSetIndex = new StateSetIndex(

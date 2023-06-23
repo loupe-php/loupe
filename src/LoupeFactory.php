@@ -7,7 +7,6 @@ namespace Terminal42\Loupe;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Terminal42\Loupe\Exception\InvalidConfigurationException;
-use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\Filter\Parser;
 use Terminal42\Loupe\Internal\Search\Highlighter\Highlighter;

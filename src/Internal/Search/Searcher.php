@@ -306,7 +306,7 @@ class Searcher
 
         $ast = $this->filterParser->getAst(
             $this->searchParameters->filter,
-            $this->engine->getConfiguration()->getFilterableAttributes()
+            $this->engine->getConfiguration()->filterableAttributes
         );
 
         $whereStatement = [];
@@ -406,12 +406,11 @@ class Searcher
 
         $highlightAllAttributes = ['*'] === $this->searchParameters->attributesToHighlight;
         $attributesToHighlight = $highlightAllAttributes ?
-            $this->engine->getConfiguration()
-                ->getSearchableAttributes() :
+            $this->engine->getConfiguration()->searchableAttributes :
             $this->searchParameters->attributesToHighlight
         ;
 
-        foreach ($this->engine->getConfiguration()->getSearchableAttributes() as $attribute) {
+        foreach ($this->engine->getConfiguration()->searchableAttributes as $attribute) {
             // Do not include any attribute not required by the result (limited by attributesToRetrieve)
             if (! isset($formatted[$attribute])) {
                 continue;

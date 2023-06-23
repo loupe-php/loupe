@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Terminal42\Loupe\Tests\Unit\Internal;
 
 use PHPUnit\Framework\TestCase;
+use Terminal42\Loupe\Configuration;
 use Terminal42\Loupe\Exception\InvalidConfigurationException;
-use Terminal42\Loupe\Internal\Configuration;
 
 class ConfigurationTest extends TestCase
 {
@@ -20,17 +20,17 @@ class ConfigurationTest extends TestCase
 
     public function testHash(): void
     {
-        $configurationA = new Configuration([
+        $configurationA = Configuration::fromArray([
             'filterableAttributes' => ['departments', 'gender'],
             'sortableAttributes' => ['firstname'],
         ]);
 
-        $configurationB = new Configuration([
+        $configurationB = Configuration::fromArray([
             'sortableAttributes' => ['firstname'],
             'filterableAttributes' => ['gender', 'departments'],
         ]);
 
-        $configurationC = new Configuration([
+        $configurationC = Configuration::fromArray([
             'sortableAttributes' => ['firstname', 'lastname'],
             'filterableAttributes' => ['gender', 'departments'],
         ]);
@@ -48,13 +48,15 @@ class ConfigurationTest extends TestCase
         $this->expectException(InvalidConfigurationException::class);
         $this->expectExceptionMessage(
             sprintf(
-                'Invalid configuration for path "loupe.filterableAttributes": A valid attribute name starts with a letter, followed by any number of letters, numbers, or underscores. It must not exceed 30 characters. "%s" given.',
+                'A valid attribute name starts with a letter, followed by any number of letters, numbers, or underscores. It must not exceed 30 characters. "%s" given.',
                 $attributeName
             )
         );
 
-        new Configuration([
+        $configuration = Configuration::fromArray([
             'filterableAttributes' => [$attributeName],
         ]);
+
+        $configuration->validate();
     }
 }

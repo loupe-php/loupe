@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Terminal42\Loupe\Internal\Search\Highlighter;
 
-use Terminal42\Loupe\Internal\Configuration;
+use Terminal42\Loupe\Configuration;
 use Terminal42\Loupe\Internal\Tokenizer\Token;
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;

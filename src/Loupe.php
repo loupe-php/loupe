@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Terminal42\Loupe;
 
 use Terminal42\Loupe\Exception\IndexException;
-use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Engine;
 
 final class Loupe

@@ -6,10 +6,10 @@ namespace Terminal42\Loupe\Internal\Index;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Types\Types;
+use Terminal42\Loupe\Configuration;
 use Terminal42\Loupe\Exception\InvalidConfigurationException;
 use Terminal42\Loupe\Exception\InvalidDocumentException;
 use Terminal42\Loupe\Exception\PrimaryKeyNotFoundException;
-use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Engine;
 use Terminal42\Loupe\Internal\LoupeTypes;
 use Terminal42\Loupe\Internal\Util;
@@ -43,10 +43,8 @@ class IndexInfo
 
     public function setup(array $document)
     {
-        $primaryKey = $this->engine->getConfiguration()
-            ->getPrimaryKey();
-        $sortableAttributes = $this->engine->getConfiguration()
-            ->getSortableAttributes();
+        $primaryKey = $this->engine->getConfiguration()->primaryKey;
+        $sortableAttributes = $this->engine->getConfiguration()->sortableAttributes;
 
         if (! array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
@@ -125,11 +123,9 @@ class IndexInfo
 
     public function getMultiFilterableAttributes(): array
     {
-        $filterable = $this->engine->getConfiguration()
-            ->getFilterableAttributes();
         $result = [];
 
-        foreach ($filterable as $attributeName) {
+        foreach ($this->engine->getConfiguration()->filterableAttributes as $attributeName) {
             if (LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
                 continue;
             }
@@ -187,7 +183,7 @@ class IndexInfo
             throw InvalidDocumentException::becauseDoesNotMatchSchema(
                 $documentSchema,
                 $document,
-                $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
+                $document[$this->engine->getConfiguration()->primaryKey] ?? null
             );
         }
 
@@ -199,7 +195,7 @@ class IndexInfo
                 throw InvalidDocumentException::becauseDoesNotMatchSchema(
                     $documentSchema,
                     $document,
-                    $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
+                    $document[$this->engine->getConfiguration()->primaryKey] ?? null
                 );
             }
         }

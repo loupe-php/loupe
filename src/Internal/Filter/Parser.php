@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Terminal42\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\Token;
+use Terminal42\Loupe\Configuration;
 use Terminal42\Loupe\Exception\FilterFormatException;
-use Terminal42\Loupe\Internal\Configuration;
 use Terminal42\Loupe\Internal\Filter\Ast\Ast;
 use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
 use Terminal42\Loupe\Internal\Filter\Ast\Filter;

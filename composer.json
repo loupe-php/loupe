@@ -22,7 +22,6 @@
         "php": "^8.1",
         "ext-intl": "*",
         "doctrine/dbal": "^3.5",
-        "symfony/config": "^6.2",
         "patrickschur/language-detection": "^5.2",
         "wamania/php-stemmer": "^3.0",
         "doctrine/lexer": "^3.0",
