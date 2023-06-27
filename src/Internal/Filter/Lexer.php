@@ -50,7 +50,7 @@ class Lexer extends AbstractLexer
 
     protected function getNonCatchablePatterns()
     {
-        return ['\s+'];
+        return ['\s+', '(.)'];
     }
 
     protected function getType(string &$value)

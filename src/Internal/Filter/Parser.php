@@ -158,6 +158,12 @@ class Parser
         $this->lexer->moveNext();
         $operator = $this->lexer->token->value;
 
+        // Greater than or smaller than operators
+        if ($this->lexer->lookahead->type === Lexer::T_EQUALS) {
+            $this->lexer->moveNext();
+            $operator .= $this->lexer->token->value;
+        }
+
         $this->assertStringOrFloat($this->lexer->lookahead);
         $this->lexer->moveNext();
 

@@ -46,6 +46,28 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Greater than or equals filter' => [
+            'genres >= 42.67',
+            [
+                [
+                    'attribute' => 'genres',
+                    'operator' => '>=',
+                    'value' => 42.67,
+                ],
+            ],
+        ];
+
+        yield 'Smaller than or equals filter' => [
+            'genres <= 42.67',
+            [
+                [
+                    'attribute' => 'genres',
+                    'operator' => '<=',
+                    'value' => 42.67,
+                ],
+            ],
+        ];
+
         yield 'Basic geo filter' => [
             '_geoRadius(45.472735, 9.184019, 2000)',
             [
