@@ -26,6 +26,8 @@ class Searcher
 
     public const CTE_TERM_MATCHES = '_cte_term_matches';
 
+    public const MAX_QUERY_TOKENS = 10; // TODO: Could also be configurable?
+
     /**
      * @var array<string, array{'cols': array, 'sql': string}>
      */
@@ -124,7 +126,7 @@ class Searcher
         }
 
         return $this->tokens = $this->engine->getTokenizer()
-            ->tokenize($this->searchParameters->getQuery())
+            ->tokenize($this->searchParameters->getQuery(), self::MAX_QUERY_TOKENS)
         ;
     }
 

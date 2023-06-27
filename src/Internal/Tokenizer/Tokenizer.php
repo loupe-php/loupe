@@ -21,9 +21,8 @@ class Tokenizer
      */
     private array $stemmers = [];
 
-    public function __construct(
-        private int $maxTokens
-    ) {
+    public function __construct()
+    {
         $this->language = new Language([], self::getNgramsDir());
         $this->language->setMaxNgrams(9000);
     }
@@ -33,15 +32,15 @@ class Tokenizer
         return __DIR__ . '/../../../Resources/language-ngrams';
     }
 
-    public function tokenize(string $string): TokenCollection
+    public function tokenize(string $string, ?int $maxTokens = null): TokenCollection
     {
         $language = $this->language->detect($string)
             ->limit(0, 3);
 
-        return $this->doTokenize($string, (string) $language);
+        return $this->doTokenize($string, (string) $language, $maxTokens);
     }
 
-    private function doTokenize(string $string, string $language): TokenCollection
+    private function doTokenize(string $string, string $language, ?int $maxTokens = null): TokenCollection
     {
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language);
         $iterator->setText($string);
@@ -55,7 +54,7 @@ class Tokenizer
                 continue;
             }
 
-            if ($collection->count() >= $this->maxTokens) {
+            if ($maxTokens !== null && $collection->count() >= $maxTokens) {
                 break;
             }
 

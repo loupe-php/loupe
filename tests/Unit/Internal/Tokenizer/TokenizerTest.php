@@ -11,8 +11,8 @@ class TokenizerTest extends TestCase
 {
     public function testMaximumTokens(): void
     {
-        $tokenizer = new Tokenizer(5);
-        $tokens = $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.');
+        $tokenizer = new Tokenizer();
+        $tokens = $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.', 5);
 
         $this->assertSame(5, $tokens->count());
 
@@ -24,13 +24,13 @@ class TokenizerTest extends TestCase
             'ist',
             'hase',
             'has',
-        ], $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.')
+        ], $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.', 5)
             ->allTokensWithVariants());
     }
 
     public function testTokenize(): void
     {
-        $tokenizer = new Tokenizer(10);
+        $tokenizer = new Tokenizer();
         $this->assertSame([
             'hallo',
             'mein',
