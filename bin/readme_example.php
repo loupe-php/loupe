@@ -14,7 +14,7 @@ $configuration = Configuration::create()
     ->withSearchableAttributes(['firstname', 'lastname']) // optional, by default it's ['*'] - everything is indexed
     ->withFilterableAttributes(['departments', 'age'])
     ->withSortableAttributes(['lastname'])
-    ->withTypoTolerance(TypoTolerance::create()) // can be fine-tuned but is enabled by default
+    ->withTypoTolerance(TypoTolerance::create()->withFirstCharTypoCountsDouble(false)) // can be further fine-tuned but is enabled by default
 ;
 
 $loupeFactory = new LoupeFactory();
