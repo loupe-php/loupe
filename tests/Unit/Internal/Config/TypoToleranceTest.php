@@ -36,7 +36,7 @@ class TypoToleranceTest extends TestCase
         $typoTolerance = new TypoTolerance();
         $typoTolerance = $typoTolerance->withAlphabetSize(10);
         $typoTolerance = $typoTolerance->withIndexLength(8);
-        $typoTolerance = $typoTolerance->withTermThresholds([
+        $typoTolerance = $typoTolerance->withTypoThresholds([
             8 => 2,
             3 => 1,
         ]);
@@ -52,7 +52,7 @@ class TypoToleranceTest extends TestCase
     public function testWrongThresholdOrderIsFixedAutomatically(): void
     {
         $typoTolerance = new TypoTolerance();
-        $typoTolerance = $typoTolerance->withTermThresholds([
+        $typoTolerance = $typoTolerance->withTypoThresholds([
             3 => 1,
             8 => 2,
         ]);

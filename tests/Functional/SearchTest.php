@@ -591,7 +591,7 @@ class SearchTest extends TestCase
         ];
 
         yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 4) - no match with threshold to 3' => [
-            TypoTolerance::create()->withTermThresholds([
+            TypoTolerance::create()->withTypoThresholds([
                 8 => 3,
             ]),
             'Gukcleberry',
@@ -606,7 +606,7 @@ class SearchTest extends TestCase
         ];
 
         yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 4) - match with threshold to 3 and first counts double disabled' => [
-            TypoTolerance::create()->withTermThresholds([
+            TypoTolerance::create()->withTypoThresholds([
                 8 => 3,
             ])->withFirstCharTypoCountsDouble(false),
             'Gukcleberry',

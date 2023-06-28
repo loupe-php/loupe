@@ -17,7 +17,7 @@ final class TypoTolerance
 
     private bool $isDisabled = false;
 
-    private array $termThresholds = [
+    private array $typoThresholds = [
         9 => 2,
         5 => 1,
     ];
@@ -31,7 +31,7 @@ final class TypoTolerance
     {
         $clone = clone $this;
         $clone->isDisabled = true;
-        $clone->termThresholds = [];
+        $clone->typoThresholds = [];
 
         return $clone;
     }
@@ -59,7 +59,7 @@ final class TypoTolerance
 
         $termLength = (int) UTF8::strlen($term);
 
-        foreach ($this->termThresholds as $threshold => $distance) {
+        foreach ($this->typoThresholds as $threshold => $distance) {
             if ($termLength >= $threshold) {
                 return $distance;
             }
@@ -97,18 +97,18 @@ final class TypoTolerance
         return $clone;
     }
 
-    public function withTermThresholds(array $termThresholds): self
+    public function withTypoThresholds(array $typoThresholds): self
     {
-        krsort($termThresholds);
+        krsort($typoThresholds);
 
-        foreach ($termThresholds as $threshold => $distance) {
+        foreach ($typoThresholds as $threshold => $distance) {
             if (! is_int($threshold) || ! is_int($distance)) {
                 throw new InvalidConfigurationException('Invalid threshold configuration format.');
             }
         }
 
         $clone = clone $this;
-        $clone->termThresholds = $termThresholds;
+        $clone->typoThresholds = $typoThresholds;
 
         return $clone;
     }
