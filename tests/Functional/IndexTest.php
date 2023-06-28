@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Functional;
+namespace Loupe\Loupe\Tests\Functional;
 
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\InvalidDocumentException;
 use PHPUnit\Framework\TestCase;
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\Exception\InvalidDocumentException;
 
 class IndexTest extends TestCase
 {

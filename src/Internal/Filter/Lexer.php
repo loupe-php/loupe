@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Filter;
+namespace Loupe\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\AbstractLexer;
-use Terminal42\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\Index\IndexInfo;
 
 class Lexer extends AbstractLexer
 {

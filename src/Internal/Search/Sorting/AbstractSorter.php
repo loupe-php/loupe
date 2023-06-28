@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Search\Sorting;
+namespace Loupe\Loupe\Internal\Search\Sorting;
 
-use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\Search\Searcher;
+use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Search\Searcher;
 
 abstract class AbstractSorter
 {

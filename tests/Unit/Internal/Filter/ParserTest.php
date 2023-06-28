@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Unit\Internal\Filter;
+namespace Loupe\Loupe\Tests\Unit\Internal\Filter;
 
+use Loupe\Loupe\Exception\FilterFormatException;
+use Loupe\Loupe\Internal\Filter\Parser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Terminal42\Loupe\Exception\FilterFormatException;
-use Terminal42\Loupe\Internal\Filter\Parser;
 
 class ParserTest extends TestCase
 {

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Unit\Internal\Tokenizer;
 
+use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use PHPUnit\Framework\TestCase;
-use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
 
 class TokenizerTest extends TestCase
 {

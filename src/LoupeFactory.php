@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe;
+namespace Loupe\Loupe;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
-use Terminal42\Loupe\Exception\InvalidConfigurationException;
-use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\Filter\Parser;
-use Terminal42\Loupe\Internal\Search\Highlighter\Highlighter;
-use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
+use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Filter\Parser;
+use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
+use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 
 class LoupeFactory
 {

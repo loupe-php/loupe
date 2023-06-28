@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal;
+namespace Loupe\Loupe\Internal;
 
 use Location\Coordinate;
 use Location\Distance\Haversine;

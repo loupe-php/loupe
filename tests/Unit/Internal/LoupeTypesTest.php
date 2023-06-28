@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Unit\Internal;
+namespace Loupe\Loupe\Tests\Unit\Internal;
 
+use Loupe\Loupe\Internal\LoupeTypes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Terminal42\Loupe\Internal\LoupeTypes;
 
 class LoupeTypesTest extends TestCase
 {

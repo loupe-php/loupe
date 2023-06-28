@@ -1,15 +1,15 @@
 {
-    "name": "terminal42/loupe",
+    "name": "loupe/loupe",
     "description": "A full text search engine with tokenization, stemming, typo tolerance, filters and geo support based on only PHP and SQlite",
     "type": "library",
     "autoload": {
         "psr-4": {
-            "Terminal42\\Loupe\\": "src/"
+            "Loupe\\Loupe\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Terminal42\\Loupe\\Tests\\": "tests/"
+            "Loupe\\Loupe\\Tests\\": "tests/"
         }
     },
     "authors": [

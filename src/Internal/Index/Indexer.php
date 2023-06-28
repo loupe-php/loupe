@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Index;
+namespace Loupe\Loupe\Internal\Index;
 
-use Terminal42\Loupe\Exception\IndexException;
-use Terminal42\Loupe\Exception\LoupeExceptionInterface;
-use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\LoupeTypes;
-use Terminal42\Loupe\Internal\StateSet\Alphabet;
-use Terminal42\Loupe\Internal\StateSet\StateSet;
-use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
-use Terminal42\Loupe\Internal\Util;
+use Loupe\Loupe\Exception\IndexException;
+use Loupe\Loupe\Exception\LoupeExceptionInterface;
+use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\StateSet\Alphabet;
+use Loupe\Loupe\Internal\StateSet\StateSet;
+use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
+use Loupe\Loupe\Internal\Util;
 use voku\helper\UTF8;
 
 class Indexer

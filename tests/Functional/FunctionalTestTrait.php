@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Functional;
+namespace Loupe\Loupe\Tests\Functional;
 
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\Loupe;
-use Terminal42\Loupe\LoupeFactory;
-use Terminal42\Loupe\SearchParameters;
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Loupe;
+use Loupe\Loupe\LoupeFactory;
+use Loupe\Loupe\SearchParameters;
 
 trait FunctionalTestTrait
 {

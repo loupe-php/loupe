@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal;
+namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\AbstractSQLiteDriver;
 use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\Internal\Filter\Parser;
-use Terminal42\Loupe\Internal\Index\Indexer;
-use Terminal42\Loupe\Internal\Index\IndexInfo;
-use Terminal42\Loupe\Internal\Search\Highlighter\Highlighter;
-use Terminal42\Loupe\Internal\Search\Searcher;
-use Terminal42\Loupe\Internal\StateSet\Alphabet;
-use Terminal42\Loupe\Internal\StateSet\StateSet;
-use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
-use Terminal42\Loupe\SearchParameters;
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Internal\Filter\Parser;
+use Loupe\Loupe\Internal\Index\Indexer;
+use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
+use Loupe\Loupe\Internal\Search\Searcher;
+use Loupe\Loupe\Internal\StateSet\Alphabet;
+use Loupe\Loupe\Internal\StateSet\StateSet;
+use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
+use Loupe\Loupe\SearchParameters;
 use Toflar\StateSetIndex\Config;
 use Toflar\StateSetIndex\StateSetIndex;
 

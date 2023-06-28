@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Search;
+namespace Loupe\Loupe\Internal\Search;
 
-use Terminal42\Loupe\Exception\SortFormatException;
-use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\Search\Sorting\AbstractSorter;
-use Terminal42\Loupe\Internal\Search\Sorting\Direction;
-use Terminal42\Loupe\Internal\Search\Sorting\GeoPoint;
-use Terminal42\Loupe\Internal\Search\Sorting\Relevance;
-use Terminal42\Loupe\Internal\Search\Sorting\Simple;
+use Loupe\Loupe\Exception\SortFormatException;
+use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Search\Sorting\AbstractSorter;
+use Loupe\Loupe\Internal\Search\Sorting\Direction;
+use Loupe\Loupe\Internal\Search\Sorting\GeoPoint;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
+use Loupe\Loupe\Internal\Search\Sorting\Simple;
 
 class Sorting
 {

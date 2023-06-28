@@ -13,7 +13,7 @@ Every document has to have an identifier in Loupe. By default, Loupe expects eve
 key. But you can adjust that to your needs: 
 
 ```php
-$configuration = \Terminal42\Loupe\Configuration::create()
+$configuration = \Loupe\Loupe\Configuration::create()
     ->withPrimaryKey('uuid')
 ```
 
@@ -23,7 +23,7 @@ By default, Loupe indexes all the attributes of your documents. This makes the s
 So be sure to configure, which attributes you want to search through later on:
 
 ```php
-$configuration = \Terminal42\Loupe\Configuration::create()
+$configuration = \Loupe\Loupe\Configuration::create()
     ->withSearchableAttributes(['firstname', 'lastname'])
 ```
 
@@ -34,7 +34,7 @@ such before you start indexing. Notice that the attributes can be single values 
 does everything for you:
 
 ```php
-$configuration = \Terminal42\Loupe\Configuration::create()
+$configuration = \Loupe\Loupe\Configuration::create()
     ->withFilterableAttributes(['departments', 'age'])
 ```
 
@@ -43,7 +43,7 @@ $configuration = \Terminal42\Loupe\Configuration::create()
 Loupe can order your results by any scalar attribute of your document:
 
 ```php
-$configuration = \Terminal42\Loupe\Configuration::create()
+$configuration = \Loupe\Loupe\Configuration::create()
     ->withSortableAttributes(['age', 'lastname'])
 ```
 
@@ -56,7 +56,7 @@ considered when searching. By default, this value is configured to `10` but you 
 higher the value, the higher the chance that the process takes too long or uses up too many resources.
 
 ```php
-$configuration = \Terminal42\Loupe\Configuration::create()
+$configuration = \Loupe\Loupe\Configuration::create()
     ->withMaxQueryTokens(12)
 ```
 
@@ -73,9 +73,9 @@ index size small. [Download the paper and read all the details here][Paper].
 Typo tolerance is configured as a sub object of the `Configuration` class:
 
 ```php
-$typoTolerance = \Terminal42\Loupe\Config\TypoTolerance::create();
+$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create();
 
-$configuration = \Terminal42\Loupe\Configuration::create()
+$configuration = \Loupe\Loupe\Configuration::create()
     ->withTypoTolerance($typoTolerance)
 ```
 
@@ -86,7 +86,7 @@ In the following examples, we're thus only going to look at the `TypoTolerance` 
 By default, typo tolerance is enabled, but you can disable typo tolerance entirely. It's as easy as this:
 
 ```php
-$typoTolerance = \Terminal42\Loupe\Config\TypoTolerance::create()
+$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
     ->disable()
 ;
 ```
@@ -111,7 +111,7 @@ performance. If you are not, you might want to try adjusting those values in eit
 The alphabet size is configured to `20` by default. The index size to `16`.
 
 ```php
-$typoTolerance = \Terminal42\Loupe\Config\TypoTolerance::create()
+$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
     ->withAlphabetSize(4)
     ->withIndexLength(18)
 ;
@@ -127,7 +127,7 @@ character long words. You can configure those thresholds. The key is the thresho
 allowed typos:
 
 ```php
-$typoTolerance = \Terminal42\Loupe\Config\TypoTolerance::create()
+$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
     ->withTypoThresholds([
         8 => 2, // 8 or more characters allow for 2 typos
         3 => 1, // 3 - 7 characters, allow one typo
@@ -141,7 +141,7 @@ Typos at the beginning of a word are not as likely as typos in between words. Th
 typo at the first character of a word as two typos by default. You can disable this behavior like so:
 
 ```php
-$typoTolerance = \Terminal42\Loupe\Config\TypoTolerance::create()
+$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
     ->withFirstCharTypoCountsDouble(false)
 ;
 ```

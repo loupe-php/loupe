@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Search\Highlighter;
+namespace Loupe\Loupe\Internal\Search\Highlighter;
 
 class HighlightResult
 {

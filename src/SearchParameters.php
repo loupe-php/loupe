@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe;
+namespace Loupe\Loupe;
 
-use Terminal42\Loupe\Internal\Search\Sorting\Relevance;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 
 final class SearchParameters
 {

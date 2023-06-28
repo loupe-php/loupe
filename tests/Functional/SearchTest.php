@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Functional;
+namespace Loupe\Loupe\Tests\Functional;
 
+use Loupe\Loupe\Config\TypoTolerance;
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Loupe;
+use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Terminal42\Loupe\Config\TypoTolerance;
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\Loupe;
-use Terminal42\Loupe\SearchParameters;
 
 class SearchTest extends TestCase
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Tokenizer;
+namespace Loupe\Loupe\Internal\Tokenizer;
 
 class TokenCollection
 {

@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Search;
+namespace Loupe\Loupe\Internal\Search;
 
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
-use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
-use Terminal42\Loupe\Internal\Filter\Ast\Filter;
-use Terminal42\Loupe\Internal\Filter\Ast\GeoDistance;
-use Terminal42\Loupe\Internal\Filter\Ast\Group;
-use Terminal42\Loupe\Internal\Filter\Ast\Node;
-use Terminal42\Loupe\Internal\Filter\Parser;
-use Terminal42\Loupe\Internal\Index\IndexInfo;
-use Terminal42\Loupe\Internal\Search\Sorting\GeoPoint;
-use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
-use Terminal42\Loupe\Internal\Util;
-use Terminal42\Loupe\SearchParameters;
+use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
+use Loupe\Loupe\Internal\Filter\Ast\Filter;
+use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
+use Loupe\Loupe\Internal\Filter\Ast\Group;
+use Loupe\Loupe\Internal\Filter\Ast\Node;
+use Loupe\Loupe\Internal\Filter\Parser;
+use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\Search\Sorting\GeoPoint;
+use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
+use Loupe\Loupe\Internal\Util;
+use Loupe\Loupe\SearchParameters;
 use voku\helper\UTF8;
 
 class Searcher

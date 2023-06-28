@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Filter\Ast;
+namespace Loupe\Loupe\Internal\Filter\Ast;
 
 class Filter extends Node
 {

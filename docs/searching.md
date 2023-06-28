@@ -4,7 +4,7 @@ Searching Loupe is achieved by using the `SearchParameters` object. That one is 
 result back:
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create();
+$searchParameters = \Loupe\Loupe\SearchParameters::create();
 $results = $loupe->search($searchParameters);
 
 print_r($results);
@@ -15,7 +15,7 @@ print_r($results);
 The one thing you'd expect from a search engine is to search for a query:
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withQuery('Hello World')
 ;
 ```
@@ -26,7 +26,7 @@ Loupe also supports phrase search, so if you want to query for documents contain
 have to use `"` to encapsulate your query:
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withQuery('"Hello World"')
 ;
 ```
@@ -40,7 +40,7 @@ By default, Loupe returns all the attributes of the documents you've indexed. If
 of them, you can specify which ones you want to retrieve:
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withAttributesToRetrieve(['id', 'firstname'])
 ;
 ```
@@ -60,7 +60,7 @@ following operators:
 Note that you can only filter [on attributes that you have defined to be filerable in the configuration][Config].
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withFilter("(departments = 'Backoffice' OR departments = 'Project Management') AND age > 17")
 ;
 ```
@@ -76,7 +76,7 @@ attributes or by multiple ones and specify whether to sort ascending or descendi
 Note that you can only sort [on attributes that you have defined to be sortable in the configuration][Config].
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withSort(['lastname:asc', '_relevance:desc']) // First by lastname alphabetically and then by best match
 ;
 ```
@@ -87,14 +87,14 @@ When searching Loupe, it will always return the current `page`, `totalPages` as 
 results. You can navigate through the pages by specifying the desired page in the search parameters:
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withPage(3);
 ```
 
 By default, Loupe returns `20` results per page but you can configure this as well:
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withHitsPerPage(50);
 ```
 
@@ -104,7 +104,7 @@ $searchParameters = \Terminal42\Loupe\SearchParameters::create()
 You can enable term highlighting by telling Loupe, which attributes you're interested in:
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withAttributesToHighlight(['title', 'overview'])
 ```
 
@@ -132,7 +132,7 @@ If you need to somehow highlight things differently, you can also ask Loupe to r
 combine with `withAttributesToHighlight()` if you need both):
 
 ```php
-$searchParameters = \Terminal42\Loupe\SearchParameters::create()
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withShowMatchesPosition(true);
 ```
 
@@ -172,7 +172,7 @@ First, we have to index some restaurants. See [the `restaurants.json` from the t
 Then we need to define the `_geo` attribute as being `filterable` and `sortable`:
 
 ```php
-$configuration = \Terminal42\Loupe\Configuration::create()
+$configuration = \Loupe\Loupe\Configuration::create()
     ->withFilterableAttributes(['_geo'])
     ->withSortableAttributes(['_geo'])
 ;

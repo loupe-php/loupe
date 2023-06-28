@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Index;
+namespace Loupe\Loupe\Internal\Index;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Types\Types;
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\Exception\InvalidConfigurationException;
-use Terminal42\Loupe\Exception\InvalidDocumentException;
-use Terminal42\Loupe\Exception\PrimaryKeyNotFoundException;
-use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\LoupeTypes;
-use Terminal42\Loupe\Internal\Util;
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Exception\InvalidDocumentException;
+use Loupe\Loupe\Exception\PrimaryKeyNotFoundException;
+use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Util;
 
 class IndexInfo
 {

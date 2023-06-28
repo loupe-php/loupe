@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Config;
+namespace Loupe\Loupe\Config;
 
-use Terminal42\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Exception\InvalidConfigurationException;
 use voku\helper\UTF8;
 
 final class TypoTolerance

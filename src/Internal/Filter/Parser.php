@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Filter;
+namespace Loupe\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\Token;
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\Exception\FilterFormatException;
-use Terminal42\Loupe\Internal\Filter\Ast\Ast;
-use Terminal42\Loupe\Internal\Filter\Ast\Concatenator;
-use Terminal42\Loupe\Internal\Filter\Ast\Filter;
-use Terminal42\Loupe\Internal\Filter\Ast\GeoDistance;
-use Terminal42\Loupe\Internal\Filter\Ast\Group;
-use Terminal42\Loupe\Internal\Filter\Ast\Node;
-use Terminal42\Loupe\Internal\Filter\Ast\Operator;
-use Terminal42\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\FilterFormatException;
+use Loupe\Loupe\Internal\Filter\Ast\Ast;
+use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
+use Loupe\Loupe\Internal\Filter\Ast\Filter;
+use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
+use Loupe\Loupe\Internal\Filter\Ast\Group;
+use Loupe\Loupe\Internal\Filter\Ast\Node;
+use Loupe\Loupe\Internal\Filter\Ast\Operator;
+use Loupe\Loupe\Internal\LoupeTypes;
 
 class Parser
 {

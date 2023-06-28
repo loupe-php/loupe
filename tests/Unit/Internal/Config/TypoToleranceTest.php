@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Unit\Internal\Config;
+namespace Loupe\Loupe\Tests\Unit\Internal\Config;
 
+use Loupe\Loupe\Config\TypoTolerance;
 use PHPUnit\Framework\TestCase;
-use Terminal42\Loupe\Config\TypoTolerance;
 
 class TypoToleranceTest extends TestCase
 {

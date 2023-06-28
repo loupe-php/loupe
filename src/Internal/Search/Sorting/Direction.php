@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Search\Sorting;
+namespace Loupe\Loupe\Internal\Search\Sorting;
 
 enum Direction: string
 {

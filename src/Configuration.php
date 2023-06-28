@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe;
+namespace Loupe\Loupe;
 
-use Terminal42\Loupe\Config\TypoTolerance;
-use Terminal42\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Config\TypoTolerance;
+use Loupe\Loupe\Exception\InvalidConfigurationException;
 
 final class Configuration
 {

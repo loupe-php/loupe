@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal;
+namespace Loupe\Loupe\Internal;
 
-use Terminal42\Loupe\Exception\InvalidJsonException;
+use Loupe\Loupe\Exception\InvalidJsonException;
 
 class Util
 {

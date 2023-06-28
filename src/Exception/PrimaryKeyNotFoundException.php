@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Exception;
+namespace Loupe\Loupe\Exception;
 
 class PrimaryKeyNotFoundException extends \InvalidArgumentException implements LoupeExceptionInterface
 {

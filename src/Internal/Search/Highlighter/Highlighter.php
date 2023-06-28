@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\Search\Highlighter;
+namespace Loupe\Loupe\Internal\Search\Highlighter;
 
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\Internal\Levenshtein;
-use Terminal42\Loupe\Internal\Tokenizer\Token;
-use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
-use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Internal\Levenshtein;
+use Loupe\Loupe\Internal\Tokenizer\Token;
+use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
+use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use voku\helper\UTF8;
 
 class Highlighter

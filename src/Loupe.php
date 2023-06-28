@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe;
+namespace Loupe\Loupe;
 
-use Terminal42\Loupe\Exception\IndexException;
-use Terminal42\Loupe\Internal\Engine;
+use Loupe\Loupe\Exception\IndexException;
+use Loupe\Loupe\Internal\Engine;
 
 final class Loupe
 {

@@ -38,10 +38,10 @@ namespace App;
 
 require_once 'vendor/autoload.php';
 
-use Terminal42\Loupe\Config\TypoTolerance;
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\LoupeFactory;
-use Terminal42\Loupe\SearchParameters;
+use Loupe\Loupe\Config\TypoTolerance;
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\LoupeFactory;
+use Loupe\Loupe\SearchParameters;
 
 $configuration = Configuration::create()
     ->withPrimaryKey('uuid') // optional, by default it's 'id'

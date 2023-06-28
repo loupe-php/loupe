@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Exception;
+namespace Loupe\Loupe\Exception;
 
-use Terminal42\Loupe\Configuration;
+use Loupe\Loupe\Configuration;
 
 class InvalidConfigurationException extends \InvalidArgumentException implements LoupeExceptionInterface
 {

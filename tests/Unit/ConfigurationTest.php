@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Tests\Unit;
+namespace Loupe\Loupe\Tests\Unit;
 
+use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Terminal42\Loupe\Configuration;
-use Terminal42\Loupe\Exception\InvalidConfigurationException;
 
 class ConfigurationTest extends TestCase
 {

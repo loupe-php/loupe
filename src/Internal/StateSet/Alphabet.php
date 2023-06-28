@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Terminal42\Loupe\Internal\StateSet;
+namespace Loupe\Loupe\Internal\StateSet;
 
-use Terminal42\Loupe\Internal\Engine;
-use Terminal42\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\IndexInfo;
 use Toflar\StateSetIndex\Alphabet\AlphabetInterface;
 use Toflar\StateSetIndex\Alphabet\InMemoryAlphabet;
 
