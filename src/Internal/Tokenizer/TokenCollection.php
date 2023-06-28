@@ -36,12 +36,12 @@ class TokenCollection
     /**
      * @return array<string>
      */
-    public function allTokens(): array
+    public function allTerms(): array
     {
         $tokens = [];
 
         foreach ($this->all() as $token) {
-            $tokens[] = $token->getToken();
+            $tokens[] = $token->getTerm();
         }
 
         return array_unique($tokens);
@@ -50,12 +50,12 @@ class TokenCollection
     /**
      * @return array<string>
      */
-    public function allTokensWithVariants(): array
+    public function allTermsWithVariants(): array
     {
         $tokens = [];
 
         foreach ($this->all() as $token) {
-            $tokens = array_merge($tokens, $token->all());
+            $tokens = array_merge($tokens, $token->allTerms());
         }
 
         return array_unique($tokens);

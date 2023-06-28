@@ -336,11 +336,10 @@ class IndexInfo
         $table->addColumn('document', Types::INTEGER)
             ->setNotnull(true);
 
-        // Normalized term frequency
-        $table->addColumn('ntf', Types::FLOAT)
+        $table->addColumn('position', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->setPrimaryKey(['term', 'document']);
+        $table->setPrimaryKey(['term', 'document', 'position']);
     }
 
     private function addTermsToSchema(Schema $schema): void

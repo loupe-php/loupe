@@ -25,7 +25,7 @@ class TokenizerTest extends TestCase
             'hase',
             'has',
         ], $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.', 5)
-            ->allTokensWithVariants());
+            ->allTermsWithVariants());
     }
 
     public function testTokenize(): void
@@ -47,6 +47,26 @@ class TokenizerTest extends TestCase
             'nichts',
             'nicht',
         ], $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.')
-            ->allTokensWithVariants());
+            ->allTermsWithVariants());
+    }
+
+    public function testTokenizeWithPhrases(): void
+    {
+        $tokenizer = new Tokenizer();
+        $this->assertSame([
+            'hallo',
+            'mein',
+            'name',
+            'ist',
+            'hase',
+            'und',
+            'ich',
+            'weiß',
+            'weiss',
+            'von',
+            'nichts',
+            'nicht',
+        ], $tokenizer->tokenize('Hallo, mein "Name ist Hase" und ich weiß von nichts.')
+            ->allTermsWithVariants());
     }
 }

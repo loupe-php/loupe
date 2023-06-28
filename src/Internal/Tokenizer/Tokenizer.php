@@ -47,8 +47,15 @@ class Tokenizer
 
         $collection = new TokenCollection();
         $position = 0;
+        $phrase = false;
 
         foreach ($iterator->getPartsIterator() as $term) {
+            if ($term === '"') {
+                $position++;
+                $phrase = ! $phrase;
+                continue;
+            }
+
             if ($iterator->getRuleStatus() === \IntlBreakIterator::WORD_NONE) {
                 $position += UTF8::strlen($term);
                 continue;
@@ -58,10 +65,18 @@ class Tokenizer
                 break;
             }
 
+            $variants = [];
+
+            // Only stem if not part of a phrase
+            if (! $phrase) {
+                $variants = [UTF8::strtolower($this->stem($term, $language))];
+            }
+
             $token = new Token(
                 UTF8::strtolower($term),
                 $position,
-                [UTF8::strtolower($this->stem($term, $language))]
+                $variants,
+                $phrase
             );
 
             $collection->add($token);

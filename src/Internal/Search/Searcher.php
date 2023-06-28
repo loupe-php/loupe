@@ -130,7 +130,7 @@ class Searcher
         ;
     }
 
-    private function addTermDocumentMatchesCTE(): void
+    private function addTermDocumentMatchesCTE(TokenCollection $tokenCollection): void
     {
         // No term matches CTE -> no term document matches CTE
         if (! isset($this->CTEs[self::CTE_TERM_MATCHES])) {
@@ -141,9 +141,45 @@ class Searcher
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
-        $cteSelectQb->addSelect($termsDocumentsAlias . '.ntf * ' . sprintf('(SELECT idf FROM %s WHERE td.term=id)', self::CTE_TERM_MATCHES));
+
+        // This is normalized term frequency (<number of occurrences of term in document>/<total terms in document>)
+        // multiplied with the inversed term document frequency.
+        // Notice the * 1.0 addition to the COUNT() SELECTS in order to force floating point calculations
+        $cteSelectQb->addSelect(
+            sprintf(
+                '
+            1.0 *
+            (SELECT COUNT(*) FROM %s WHERE term=td.term AND document=td.document) /
+            (SELECT COUNT(*) FROM %s WHERE document=td.document) *
+            (SELECT idf FROM %s WHERE td.term=id)',
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                self::CTE_TERM_MATCHES
+            )
+        );
+
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
         $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', self::CTE_TERM_MATCHES));
+
+        // Ensure phrase positions if any
+        $previousPhraseTerm = null;
+        foreach ($tokenCollection->all() as $token) {
+            if ($token->isPartOfPhrase()) {
+                if ($previousPhraseTerm === null) {
+                    $previousPhraseTerm = $token->getTerm();
+                } else {
+                    $cteSelectQb->andWhere(sprintf(
+                        '%s.position = (SELECT position + 1 FROM %s WHERE term=(SELECT id FROM terms WHERE term=%s) AND document=td.document)',
+                        $termsDocumentsAlias,
+                        IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                        $this->queryBuilder->createNamedParameter($previousPhraseTerm),
+                    ));
+                }
+            } else {
+                $previousPhraseTerm = null;
+            }
+        }
+
         $cteSelectQb->addOrderBy($termsDocumentsAlias . '.document');
         $cteSelectQb->addOrderBy($termsDocumentsAlias . '.term');
 
@@ -166,7 +202,7 @@ class Searcher
 
         $ors = [];
 
-        foreach ($tokenCollection->allTokensWithVariants() as $term) {
+        foreach ($tokenCollection->allTermsWithVariants() as $term) {
             $ors[] = $this->createWherePartForTerm($term);
         }
 
@@ -185,7 +221,13 @@ class Searcher
             return $this->searchParameters->getQuery();
         }
 
-        return mb_substr($this->searchParameters->getQuery(), 0, $lastToken->getStartPosition() + $lastToken->getLength());
+        $query = mb_substr($this->searchParameters->getQuery(), 0, $lastToken->getStartPosition() + $lastToken->getLength());
+
+        if ($lastToken->isPartOfPhrase()) {
+            $query .= '"';
+        }
+
+        return $query;
     }
 
     private function createSubQueryForMultiAttribute(Filter $node): string
@@ -489,7 +531,7 @@ class Searcher
     private function searchDocuments(TokenCollection $tokenCollection): void
     {
         $this->addTermMatchesCTE($tokenCollection);
-        $this->addTermDocumentMatchesCTE();
+        $this->addTermDocumentMatchesCTE($tokenCollection);
 
         if (! isset($this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES])) {
             return;

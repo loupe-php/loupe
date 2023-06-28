@@ -6,6 +6,7 @@ Loupe…
 
 * …is completely dependency-free (other than PHP and SQLite, you don't need anything - no containers, no nothing)
 * …is typo-tolerant (based on the State Set Index Algorithm and Levenshtein)
+* …supports phrase search using `"` quotation marks
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * …supports filtering (and ordering) on Geo distance
 * …orders relevance based on a typical TF-IDF Cosine similarity algorithm

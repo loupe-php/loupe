@@ -93,15 +93,15 @@ class Highlighter
     private function matches(Token $textToken, TokenCollection $queryTokens)
     {
         foreach ($queryTokens->all() as $queryToken) {
-            foreach ($queryToken->all() as $term) {
+            foreach ($queryToken->allTerms() as $term) {
                 $levenshteinDistance = $this->configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($term);
 
                 if ($levenshteinDistance === 0) {
-                    if (\in_array($term, $textToken->all(), true)) {
+                    if (\in_array($term, $textToken->allTerms(), true)) {
                         return true;
                     }
                 } else {
-                    foreach ($textToken->all() as $textTerm) {
+                    foreach ($textToken->allTerms() as $textTerm) {
                         if (levenshtein($term, $textTerm) <= $levenshteinDistance) {
                             return true;
                         }

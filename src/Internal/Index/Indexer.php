@@ -149,7 +149,7 @@ class Indexer
         }
     }
 
-    private function indexTerm(string $term, int $documentId, float $normalizedTermFrequency): void
+    private function indexTerm(string $term, int $documentId, int $termPosition): void
     {
         if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
             $state = 0;
@@ -174,9 +174,9 @@ class Indexer
             [
                 'term' => $termId,
                 'document' => $documentId,
-                'ntf' => $normalizedTermFrequency,
+                'position' => $termPosition,
             ],
-            ['term', 'document'],
+            ['term', 'document', 'position'],
             ''
         );
     }
@@ -184,8 +184,6 @@ class Indexer
     private function indexTerms(array $document, int $documentId): void
     {
         $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
-        $termsAndFrequency = [];
-        $totalTermsInDocument = 0;
 
         foreach ($document as $attributeName => $attributeValue) {
             if (['*'] !== $searchableAttributes && ! in_array($attributeName, $searchableAttributes, true)) {
@@ -194,27 +192,14 @@ class Indexer
 
             $attributeValue = LoupeTypes::convertToString($attributeValue);
 
-            foreach ($this->extractTokens($attributeValue)->allTokensWithVariants() as $term) {
-                // Prefix with a nonsense character to ensure PHP also treats numerics like strings in this array.
-                $term = 't' . $term;
-
-                if (! isset($termsAndFrequency[$term])) {
-                    $termsAndFrequency[$term] = 1;
-                } else {
-                    $termsAndFrequency[$term]++;
+            $termPosition = 1;
+            foreach ($this->extractTokens($attributeValue)->all() as $token) {
+                foreach ($token->allTerms() as $term) {
+                    $this->indexTerm($term, $documentId, $termPosition);
                 }
 
-                $totalTermsInDocument++;
+                ++$termPosition;
             }
-        }
-
-        if ($totalTermsInDocument === 0) {
-            return;
-        }
-
-        foreach ($termsAndFrequency as $term => $frequency) {
-            // Remove the prefix again
-            $this->indexTerm(substr($term, 1), $documentId, $frequency / $totalTermsInDocument);
         }
     }
 

@@ -278,6 +278,67 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testPhraseSearch(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        // Test with regular Star Wars search should list Star Wars first because of relevance
+        // sorting, but it should also include other movies with the term "war".
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Star Wars')
+            ->withAttributesToRetrieve(['id', 'title'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
+                ],
+                [
+                    'id' => 25,
+                    'title' => 'Jarhead',
+                ],
+                [
+                    'id' => 28,
+                    'title' => 'Apocalypse Now',
+                ],
+            ],
+            'query' => 'Star Wars',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        // Now let's search for "Star Wars" which should return "Star Wars" only.
+        $searchParameters = SearchParameters::create()
+            ->withQuery('"Star Wars"')
+            ->withAttributesToRetrieve(['id', 'title'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
+                ],
+            ],
+            'query' => '"Star Wars"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testRelevance(): void
     {
         $configuration = Configuration::create()
