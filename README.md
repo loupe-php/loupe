@@ -4,7 +4,7 @@ An SQLite based, PHP-only fulltext search engine.
 
 Loupe…
 
-* …is completely dependency-free (other than PHP and SQLite, you don't need anything - no containers, no nothing)
+* …only requires PHP and SQLite, you don't need anything else - no containers, no nothing
 * …is typo-tolerant (based on the State Set Index Algorithm and Levenshtein)
 * …supports phrase search using `"` quotation marks
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
@@ -13,7 +13,6 @@ Loupe…
 * …auto-detects languages
 * …supports stemming
 * …is very easy to use
-* …is easily fast enough for at least 50k documents (50k is defensive)
 * …is all-in-all just the easiest way to replace your good old SQL `LIKE %...%` queries with a way better search 
   experience but without all the hassle of an additional service to manage. SQLite is everywhere and all it needs is 
   your filesystem.
@@ -115,10 +114,12 @@ Array
 */
 ```
 
-## Configuration
+## Docs
 
-See [Configuration](./docs/configuration.md).
+* [Configuration](./docs/configuration.md).
+* [Searching](./docs/searching.md).
 
-## Searching
+"Why Loupe?" you ask? "Loupe" means "magnifier" in French and I felt like this was the appropriate choice for this 
+library after having given [my PHP crawler library][Escargot] a French name :-)
 
-See [Searching](./docs/searching.md).
+[Escargot]: https://github.com/terminal42/escargot
