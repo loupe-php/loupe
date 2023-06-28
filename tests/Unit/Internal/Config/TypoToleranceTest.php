@@ -13,7 +13,7 @@ class TypoToleranceTest extends TestCase
     {
         $typoTolerance = new TypoTolerance();
 
-        $this->assertSame(4, $typoTolerance->getAlphabetSize());
+        $this->assertSame(20, $typoTolerance->getAlphabetSize());
         $this->assertSame(16, $typoTolerance->getIndexLength());
         $this->assertSame(0, $typoTolerance->getLevenshteinDistanceForTerm('1234'));
         $this->assertSame(1, $typoTolerance->getLevenshteinDistanceForTerm('12345'));

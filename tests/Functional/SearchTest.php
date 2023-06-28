@@ -50,7 +50,7 @@ class SearchTest extends TestCase
         ];
 
         yield 'Highlight with typo' => [
-            'bssassin',
+            'assasin',
             ['title', 'overview'],
             false,
             [
@@ -66,7 +66,7 @@ class SearchTest extends TestCase
                         ],
                     ],
                 ],
-                'query' => 'bssassin',
+                'query' => 'assasin',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,

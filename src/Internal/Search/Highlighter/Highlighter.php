@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Terminal42\Loupe\Internal\Search\Highlighter;
 
 use Terminal42\Loupe\Configuration;
+use Terminal42\Loupe\Internal\Levenshtein;
 use Terminal42\Loupe\Internal\Tokenizer\Token;
 use Terminal42\Loupe\Internal\Tokenizer\TokenCollection;
 use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
@@ -92,6 +93,8 @@ class Highlighter
 
     private function matches(Token $textToken, TokenCollection $queryTokens)
     {
+        $firstCharTypoCountsDouble = $this->configuration->getTypoTolerance()->firstCharTypoCountsDouble();
+
         foreach ($queryTokens->all() as $queryToken) {
             foreach ($queryToken->allTerms() as $term) {
                 $levenshteinDistance = $this->configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($term);
@@ -102,7 +105,7 @@ class Highlighter
                     }
                 } else {
                     foreach ($textToken->allTerms() as $textTerm) {
-                        if (levenshtein($term, $textTerm) <= $levenshteinDistance) {
+                        if (Levenshtein::levenshtein($term, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
                             return true;
                         }
                     }

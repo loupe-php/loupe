@@ -9,7 +9,7 @@ use voku\helper\UTF8;
 
 final class TypoTolerance
 {
-    private int $alphabetSize = 4;
+    private int $alphabetSize = 20;
 
     private bool $firstCharTypoCountsDouble = true;
 

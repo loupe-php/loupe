@@ -6,9 +6,15 @@ namespace Terminal42\Loupe\Internal;
 
 class Levenshtein
 {
-    public static function levenshtein(string $string1, string $string2): int
+    public static function levenshtein(string $string1, string $string2, bool $firstCharTypoCountsDouble): int
     {
-        return \Toflar\StateSetIndex\Levenshtein::distance($string1, $string2);
+        $distance = \Toflar\StateSetIndex\Levenshtein::distance($string1, $string2);
+
+        if ($firstCharTypoCountsDouble && mb_substr($string1, 0, 1) !== mb_substr($string2, 0, 1)) {
+            $distance++;
+        }
+
+        return $distance;
     }
 
     public static function maxLevenshtein(string $string1, string $string2, int $max, bool $firstCharTypoCountsDouble): bool
@@ -18,12 +24,6 @@ class Levenshtein
         // So we don't have to e.g. count to a distance of 10 if $max is 2, we can early return.
         // Not sure if worth it, though as implementing it in PHP would be slower than in C so it might end up having
         // the same performance.
-        $distance = self::levenshtein($string1, $string2);
-
-        if ($firstCharTypoCountsDouble && mb_substr($string1, 0, 1) !== mb_substr($string2, 0, 1)) {
-            $distance++;
-        }
-
-        return $distance <= $max;
+        return self::levenshtein($string1, $string2, $firstCharTypoCountsDouble) <= $max;
     }
 }
