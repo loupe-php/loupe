@@ -577,10 +577,38 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Test tolerates typos also at the beginning of a word' => [
+        yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 4) - no match with defaults' => [
+            TypoTolerance::create(),
+            'Gukcleberry',
+            [
+                'hits' => [],
+                'query' => 'Gukcleberry',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 0,
+                'totalHits' => 0,
+            ],
+        ];
+
+        yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 4) - no match with threshold to 3' => [
             TypoTolerance::create()->withTermThresholds([
                 8 => 3,
             ]),
+            'Gukcleberry',
+            [
+                'hits' => [],
+                'query' => 'Gukcleberry',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 0,
+                'totalHits' => 0,
+            ],
+        ];
+
+        yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 4) - match with threshold to 3 and first counts double disabled' => [
+            TypoTolerance::create()->withTermThresholds([
+                8 => 3,
+            ])->withFirstCharTypoCountsDouble(false),
             'Gukcleberry',
             [
                 'hits' => [[

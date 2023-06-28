@@ -192,13 +192,9 @@ class Engine
         UserDefinedFunctions::register(
             [$this->connection->getNativeConnection(), 'sqliteCreateFunction'],
             [
-                'levenshtein' => [
-                    'callback' => [Levenshtein::class, 'levenshtein'],
-                    'numArgs' => 2,
-                ],
                 'max_levenshtein' => [
                     'callback' => [Levenshtein::class, 'maxLevenshtein'],
-                    'numArgs' => 3,
+                    'numArgs' => 4,
                 ],
                 'geo_distance' => [
                     'callback' => [Geo::class, 'geoDistance'],

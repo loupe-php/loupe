@@ -11,6 +11,8 @@ final class TypoTolerance
 {
     private int $alphabetSize = 4;
 
+    private bool $firstCharTypoCountsDouble = true;
+
     private int $indexLength = 16;
 
     private bool $isDisabled = false;
@@ -32,6 +34,11 @@ final class TypoTolerance
         $clone->termThresholds = [];
 
         return $clone;
+    }
+
+    public function firstCharTypoCountsDouble(): bool
+    {
+        return $this->firstCharTypoCountsDouble;
     }
 
     public function getAlphabetSize(): int
@@ -70,6 +77,14 @@ final class TypoTolerance
     {
         $clone = clone $this;
         $clone->alphabetSize = $alhabetSize;
+
+        return $clone;
+    }
+
+    public function withFirstCharTypoCountsDouble(bool $firstCharTypoCountsDouble): self
+    {
+        $clone = clone $this;
+        $clone->firstCharTypoCountsDouble = $firstCharTypoCountsDouble;
 
         return $clone;
     }

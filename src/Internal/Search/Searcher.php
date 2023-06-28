@@ -341,11 +341,12 @@ class Searcher
             );
             $where[] = 'AND';
             $where[] = sprintf(
-                'max_levenshtein(%s, %s.term, %d)',
+                'max_levenshtein(%s, %s.term, %d, %s)',
                 $termParameter,
                 $this->engine->getIndexInfo()
                     ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $levenshteinDistance
+                $levenshteinDistance,
+                $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
             );
             $where[] = ')';
         }
