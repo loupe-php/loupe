@@ -15,6 +15,8 @@ final class Configuration
 
     private array $filterableAttributes = [];
 
+    private int $maxQueryTokens = 10;
+
     private string $primaryKey = 'id';
 
     private array $searchableAttributes = ['*'];
@@ -41,6 +43,11 @@ final class Configuration
     public function getFilterableAttributes(): array
     {
         return $this->filterableAttributes;
+    }
+
+    public function getMaxQueryTokens(): int
+    {
+        return $this->maxQueryTokens;
     }
 
     public function getPrimaryKey(): string
@@ -82,6 +89,14 @@ final class Configuration
 
         $clone = clone $this;
         $clone->filterableAttributes = $filterableAttributes;
+
+        return $clone;
+    }
+
+    public function withMaxQueryTokens(int $maxQueryTokens): self
+    {
+        $clone = clone $this;
+        $clone->maxQueryTokens = $maxQueryTokens;
 
         return $clone;
     }
