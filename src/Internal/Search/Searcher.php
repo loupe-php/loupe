@@ -262,12 +262,11 @@ class Searcher
 
         $qb->andWhere(
             sprintf(
-                '%s.%s %s %s',
+                '%s.%s %s',
                 $this->engine->getIndexInfo()
                     ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                 $column,
-                $node->operator->value,
-                $this->queryBuilder->createNamedParameter($node->value)
+                $node->operator->buildSql($this->engine->getConnection(), $node->value)
             )
         );
 

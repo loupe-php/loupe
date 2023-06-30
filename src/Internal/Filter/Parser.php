@@ -164,7 +164,21 @@ class Parser
             $operator .= $this->lexer->token->value;
         }
 
+        if ($this->lexer->token->type === Lexer::T_NOT) {
+            if ($this->lexer->lookahead->type !== Lexer::T_IN) {
+                $this->syntaxError('must be followed by IN ()', $this->lexer->lookahead);
+            }
+
+            $this->lexer->moveNext();
+            $operator .= ' ' . $this->lexer->token->value;
+        }
+
+        if ($this->lexer->token->type === Lexer::T_IN) {
+            $this->handleIn($attributeName, $operator);
+            return;
+        }
         $this->assertStringOrFloat($this->lexer->lookahead);
+
         $this->lexer->moveNext();
 
         if ($this->lexer->token->type === Lexer::T_FLOAT) {
@@ -210,7 +224,37 @@ class Parser
         $this->lexer->moveNext();
     }
 
-    private function syntaxError(string $expected = '', Token $token = null)
+    private function handleIn(string $attributeName, string $operator): void
+    {
+        $this->assertOpeningParenthesis($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $this->lexer->moveNext();
+
+        $values = [];
+
+        while (true) {
+            $this->assertStringOrFloat($this->lexer->token);
+            $values[] = $this->lexer->token->value;
+
+            if ($this->lexer->lookahead === null) {
+                $this->assertClosingParenthesis($this->lexer->token);
+            }
+
+            if ($this->lexer->lookahead->type === Lexer::T_CLOSE_PARENTHESIS) {
+                $this->lexer->moveNext();
+                $this->lexer->moveNext();
+                break;
+            }
+
+            $this->assertComma($this->lexer->lookahead);
+            $this->lexer->moveNext();
+            $this->lexer->moveNext();
+        }
+
+        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
+    }
+
+    private function syntaxError(string $expected = '', Token $token = null): void
     {
         if ($token === null) {
             $token = $this->lexer->token;

@@ -9,7 +9,7 @@ class Filter extends Node
     public function __construct(
         public string $attribute,
         public Operator $operator,
-        public float|string $value
+        public float|string|array $value
     ) {
     }
 

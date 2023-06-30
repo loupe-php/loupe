@@ -56,6 +56,8 @@ following operators:
 * `<`
 * `>=`
 * `<=`
+* `IN ()`
+* `NOT IN ()`
 
 Note that you can only filter [on attributes that you have defined to be filerable in the configuration][Config].
 

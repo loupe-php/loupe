@@ -17,7 +17,6 @@ class Lexer extends AbstractLexer
 
     public const T_COMMA = 8;
 
-    // Operators are between 10 and 30
     public const T_EQUALS = 11;
 
     public const T_FLOAT = 5;
@@ -26,15 +25,18 @@ class Lexer extends AbstractLexer
 
     public const T_GREATER_THAN = 12;
 
+    public const T_IN = 14;
+
     public const T_LOWER_THAN = 13;
 
     public const T_NEGATE = 16;
 
     public const T_NONE = 1;
 
+    public const T_NOT = 15;
+
     public const T_OPEN_PARENTHESIS = 7;
 
-    // All keyword tokens should be >= 200
     public const T_OR = 200;
 
     public const T_STRING = 3;
@@ -72,6 +74,12 @@ class Lexer extends AbstractLexer
             case $value === 'OR':
             case $value === '||':
                 return self::T_OR;
+
+            case $value === 'IN':
+                return self::T_IN;
+
+            case $value === 'NOT':
+                return self::T_NOT;
 
             case $value === '_geoRadius':
                 return self::T_GEO_RADIUS;

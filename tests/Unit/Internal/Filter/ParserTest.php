@@ -25,10 +25,10 @@ class ParserTest extends TestCase
         ];
 
         yield 'Basic integer filter' => [
-            'genres = 42',
+            'age = 42',
             [
                 [
-                    'attribute' => 'genres',
+                    'attribute' => 'age',
                     'operator' => '=',
                     'value' => 42.0,
                 ],
@@ -36,10 +36,10 @@ class ParserTest extends TestCase
         ];
 
         yield 'Basic float filter' => [
-            'genres > 42.67',
+            'age > 42.67',
             [
                 [
-                    'attribute' => 'genres',
+                    'attribute' => 'age',
                     'operator' => '>',
                     'value' => 42.67,
                 ],
@@ -47,10 +47,10 @@ class ParserTest extends TestCase
         ];
 
         yield 'Greater than or equals filter' => [
-            'genres >= 42.67',
+            'age >= 42.67',
             [
                 [
-                    'attribute' => 'genres',
+                    'attribute' => 'age',
                     'operator' => '>=',
                     'value' => 42.67,
                 ],
@@ -58,10 +58,10 @@ class ParserTest extends TestCase
         ];
 
         yield 'Smaller than or equals filter' => [
-            'genres <= 42.67',
+            'age <= 42.67',
             [
                 [
-                    'attribute' => 'genres',
+                    'attribute' => 'age',
                     'operator' => '<=',
                     'value' => 42.67,
                 ],
@@ -75,6 +75,36 @@ class ParserTest extends TestCase
                     'lat' => 45.472735,
                     'lng' => 9.184019,
                     'distance' => 2000.0,
+                ],
+            ],
+        ];
+
+        yield 'Basic IN filter' => [
+            "genres IN ('Drama', 'Action', 'Documentary')",
+            [
+                [
+                    'attribute' => 'genres',
+                    'operator' => 'IN',
+                    'value' => [
+                        'Drama',
+                        'Action',
+                        'Documentary',
+                    ],
+                ],
+            ],
+        ];
+
+        yield 'Basic NOT IN filter' => [
+            "genres NOT IN ('Drama', 'Action', 'Documentary')",
+            [
+                [
+                    'attribute' => 'genres',
+                    'operator' => 'NOT IN',
+                    'value' => [
+                        'Drama',
+                        'Action',
+                        'Documentary',
+                    ],
                 ],
             ],
         ];
@@ -162,6 +192,31 @@ class ParserTest extends TestCase
         yield 'Missing comma for _geoRadius' => [
             '_geoRadius(1.00 2.00, 200)',
             "Col 16: Error: Expected ',', got '2.00'",
+        ];
+
+        yield 'Unclosed IN ()' => [
+            "genres IN ('Action', 'Music'",
+            "Col 21: Error: Expected ')",
+        ];
+
+        yield 'Unopened IN ()' => [
+            "genres IN 'Action', 'Music')",
+            "Col 10: Error: Expected '(', got 'Action'",
+        ];
+
+        yield 'Wrong contents in IN ()' => [
+            'genres IN (_geoRadius(1.00, 2.00))',
+            "Col 11: Error: Expected valid string or float value, got '_geoRadius'",
+        ];
+
+        yield 'Missing space between NOT and IN' => [
+            "genres NOTIN ('Action', 'Music')",
+            "Col 7: Error: Expected valid operator, got 'NOTIN'",
+        ];
+
+        yield 'NOT not before IN' => [
+            'genres NOT 42',
+            "Col 11: Error: Expected must be followed by IN (), got '42'",
         ];
     }
 
