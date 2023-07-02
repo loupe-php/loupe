@@ -167,7 +167,7 @@ class Searcher
                     $previousPhraseTerm = $token->getTerm();
                 } else {
                     $cteSelectQb->andWhere(sprintf(
-                        '%s.position = (SELECT position + 1 FROM %s WHERE term=(SELECT id FROM terms WHERE term=%s) AND document=td.document)',
+                        '%s.position = (SELECT position + 1 FROM %s WHERE term=(SELECT id FROM terms WHERE term=%s) AND document=td.document AND attribute=td.attribute)',
                         $termsDocumentsAlias,
                         IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                         $this->queryBuilder->createNamedParameter($previousPhraseTerm),

@@ -149,7 +149,7 @@ class Indexer
         }
     }
 
-    private function indexTerm(string $term, int $documentId, int $termPosition): void
+    private function indexTerm(string $term, int $documentId, string $attributeName, int $termPosition): void
     {
         if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
             $state = 0;
@@ -174,9 +174,10 @@ class Indexer
             [
                 'term' => $termId,
                 'document' => $documentId,
+                'attribute' => $attributeName,
                 'position' => $termPosition,
             ],
-            ['term', 'document', 'position'],
+            ['term', 'document', 'attribute', 'position'],
             ''
         );
     }
@@ -195,7 +196,7 @@ class Indexer
             $termPosition = 1;
             foreach ($this->extractTokens($attributeValue)->all() as $token) {
                 foreach ($token->allTerms() as $term) {
-                    $this->indexTerm($term, $documentId, $termPosition);
+                    $this->indexTerm($term, $documentId, $attributeName, $termPosition);
                 }
 
                 ++$termPosition;

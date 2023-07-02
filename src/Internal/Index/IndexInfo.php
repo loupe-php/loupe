@@ -336,10 +336,13 @@ class IndexInfo
         $table->addColumn('document', Types::INTEGER)
             ->setNotnull(true);
 
+        $table->addColumn('attribute', Types::STRING)
+            ->setNotnull(true);
+
         $table->addColumn('position', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->setPrimaryKey(['term', 'document', 'position']);
+        $table->setPrimaryKey(['term', 'document', 'attribute', 'position']);
     }
 
     private function addTermsToSchema(Schema $schema): void

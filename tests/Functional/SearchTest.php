@@ -408,6 +408,49 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testPhraseSearchOnlyConsidersIdenticalAttributes(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'title' => 'Star Wars',
+                'overview' => 'Galaxies and stuff',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Clone Wars',
+                'overview' => 'Star gazers are everywhere',
+            ],
+        ]);
+
+        // "Wars" appears at second position in document ID 2, so we have to make sure for phrases we only search
+        // within the same attributes
+        $searchParameters = SearchParameters::create()
+            ->withQuery('"Star Wars"')
+            ->withAttributesToRetrieve(['id', 'title'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Star Wars',
+                ],
+            ],
+            'query' => '"Star Wars"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testRelevance(): void
     {
         $configuration = Configuration::create()
