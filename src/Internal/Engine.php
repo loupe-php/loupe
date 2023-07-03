@@ -22,6 +22,8 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
+    public const VERSION = '1.0.0'; // Increase this whenever a re-index of all documents is needed
+
     private const MIN_SQLITE_VERSION = '3.35.0'; // Introduction of LN()
 
     private IndexInfo $indexInfo;
@@ -129,6 +131,15 @@ class Engine
     public function getTokenizer(): Tokenizer
     {
         return $this->tokenizer;
+    }
+
+    public function needsReindex(): bool
+    {
+        if ($this->getIndexInfo()->needsSetup()) {
+            return true;
+        }
+
+        return $this->getIndexInfo()->getEngineVersion() !== self::VERSION;
     }
 
     public function search(SearchParameters $parameters): array

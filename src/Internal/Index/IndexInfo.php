@@ -77,6 +77,12 @@ class IndexInfo
                 'value' => json_encode($documentSchema),
             ]);
 
+        $this->engine->getConnection()
+            ->insert(self::TABLE_NAME_INDEX_INFO, [
+                'key' => 'engineVersion',
+                'value' => Engine::VERSION,
+            ]);
+
         $this->needsSetup = false;
     }
 
@@ -107,6 +113,16 @@ class IndexInfo
         }
 
         return $this->documentSchema;
+    }
+
+    public function getEngineVersion(): string
+    {
+        return $this->engine->getConnection()
+            ->createQueryBuilder()
+            ->select('value')
+            ->from(self::TABLE_NAME_INDEX_INFO)
+            ->where("key = 'engineVersion'")
+            ->fetchOne();
     }
 
     public function getLoupeTypeForAttribute(string $attributeName): string

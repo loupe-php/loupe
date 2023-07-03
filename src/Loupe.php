@@ -47,6 +47,11 @@ final class Loupe
         return $this->engine->getDocument($identifier);
     }
 
+    public function needsReindex(): bool
+    {
+        return $this->engine->needsReindex();
+    }
+
     public function search(SearchParameters $parameters): array
     {
         return $this->engine->search($parameters);
