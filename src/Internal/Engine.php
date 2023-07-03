@@ -139,7 +139,15 @@ class Engine
             return true;
         }
 
-        return $this->getIndexInfo()->getEngineVersion() !== self::VERSION;
+        if ($this->getIndexInfo()->getEngineVersion() !== self::VERSION) {
+            return true;
+        }
+
+        if ($this->getIndexInfo()->getConfigHash() !== $this->getConfiguration()->getIndexHash()) {
+            return true;
+        }
+
+        return false;
     }
 
     public function search(SearchParameters $parameters): array

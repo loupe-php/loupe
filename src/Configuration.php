@@ -45,6 +45,26 @@ final class Configuration
         return $this->filterableAttributes;
     }
 
+    /**
+     * Returns a hash of all the settings that are relevant during the indexing process. If anything changes in the
+     * configuration, a reindex of data is needed.
+     */
+    public function getIndexHash(): string
+    {
+        $hash = [];
+
+        $hash[] = json_encode($this->getPrimaryKey());
+        $hash[] = json_encode($this->getSearchableAttributes());
+        $hash[] = json_encode($this->getFilterableAttributes());
+        $hash[] = json_encode($this->getSortableAttributes());
+
+        $hash[] = $this->getTypoTolerance()->isDisabled() ? 'disabled' : 'enabled';
+        $hash[] = $this->getTypoTolerance()->getAlphabetSize();
+        $hash[] = $this->getTypoTolerance()->getIndexLength();
+
+        return hash('sha256', implode(';', $hash));
+    }
+
     public function getMaxQueryTokens(): int
     {
         return $this->maxQueryTokens;
@@ -87,6 +107,8 @@ final class Configuration
     {
         self::validateAttributeNames($filterableAttributes);
 
+        sort($filterableAttributes);
+
         $clone = clone $this;
         $clone->filterableAttributes = $filterableAttributes;
 
@@ -115,6 +137,8 @@ final class Configuration
             self::validateAttributeNames($searchableAttributes);
         }
 
+        sort($searchableAttributes);
+
         $clone = clone $this;
         $clone->searchableAttributes = $searchableAttributes;
 
@@ -124,6 +148,8 @@ final class Configuration
     public function withSortableAttributes(array $sortableAttributes): self
     {
         self::validateAttributeNames($sortableAttributes);
+
+        sort($sortableAttributes);
 
         $clone = clone $this;
         $clone->sortableAttributes = $sortableAttributes;

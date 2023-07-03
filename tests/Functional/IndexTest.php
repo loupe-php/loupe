@@ -7,6 +7,7 @@ namespace Loupe\Loupe\Tests\Functional;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Filesystem\Filesystem;
 
 class IndexTest extends TestCase
 {
@@ -44,6 +45,35 @@ class IndexTest extends TestCase
             'id' => '42',
             '_geo' => 'incorrect',
         ]);
+    }
+
+    public function testReindex(): void
+    {
+        $fs = new Filesystem();
+        $tmpDb = $fs->tempnam(sys_get_temp_dir(), 'lt');
+
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration, $tmpDb);
+        $loupe->addDocument($this->getSandraDocument());
+
+        $this->assertFalse($loupe->needsReindex());
+
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration, $tmpDb);
+
+        // Just making sure that it was actually persistent
+        $this->assertSame(1, $loupe->countDocuments());
+
+        $this->assertTrue($loupe->needsReindex());
+
+        $fs->remove($tmpDb);
     }
 
     public function testReplacingTheSameDocumentWorks(): void

@@ -83,6 +83,12 @@ class IndexInfo
                 'value' => Engine::VERSION,
             ]);
 
+        $this->engine->getConnection()
+            ->insert(self::TABLE_NAME_INDEX_INFO, [
+                'key' => 'configHash',
+                'value' => $this->engine->getConfiguration()->getIndexHash(),
+            ]);
+
         $this->needsSetup = false;
     }
 
@@ -97,6 +103,16 @@ class IndexInfo
             self::TABLE_NAME_TERMS_DOCUMENTS => 'td',
             default => throw new \LogicException(sprintf('Forgot to define an alias for %s.', $table))
         };
+    }
+
+    public function getConfigHash(): string
+    {
+        return $this->engine->getConnection()
+            ->createQueryBuilder()
+            ->select('value')
+            ->from(self::TABLE_NAME_INDEX_INFO)
+            ->where("key = 'configHash'")
+            ->fetchOne();
     }
 
     public function getDocumentSchema(): array
