@@ -394,8 +394,7 @@ class Searcher
             // Single attributes are on the document itself
             } else {
                 $whereStatement[] = $documentAlias . '.' . $node->attribute;
-                $whereStatement[] = $node->operator->value;
-                $whereStatement[] = $this->queryBuilder->createNamedParameter($node->value);
+                $whereStatement[] = $node->operator->buildSql($this->engine->getConnection(), $node->value);
             }
         }
 

@@ -125,6 +125,89 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function inFilterProvider(): \Generator
+    {
+        yield 'IN on multiple attribute' => [
+            "departments IN ('Backoffice', 'Project Management')",
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield 'NOT IN on multiple attribute' => [
+            "departments NOT IN ('Backoffice', 'Project Management')",
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield 'IN on single attribute' => [
+            "gender IN ('female', 'other')",
+            [
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield 'NOT IN on single attribute' => [
+            "gender NOT IN ('female', 'other')",
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+            ],
+        ];
+    }
+
     public function testComplexFilters(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
@@ -278,72 +361,24 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testInFilter(): void
+    #[DataProvider('inFilterProvider')]
+    public function testInFilter(string $filter, array $expectedHits): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname'])
-            ->withFilter("departments IN ('Backoffice', 'Project Management')")
+            ->withFilter($filter)
             ->withSort(['firstname:asc'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 6,
-                    'firstname' => 'Huckleberry',
-                ],
-                [
-                    'id' => 4,
-                    'firstname' => 'Jonas',
-                ],
-                [
-                    'id' => 5,
-                    'firstname' => 'Marko',
-                ],
-                [
-                    'id' => 2,
-                    'firstname' => 'Uta',
-                ],
-            ],
+            'hits' => $expectedHits,
             'query' => '',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 4,
-        ]);
-
-        $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'firstname'])
-            ->withFilter("departments NOT IN ('Backoffice', 'Project Management')")
-            ->withSort(['firstname:asc'])
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 3,
-                    'firstname' => 'Alexander',
-                ],
-                [
-                    'id' => 4,
-                    'firstname' => 'Jonas',
-                ],
-                [
-                    'id' => 1,
-                    'firstname' => 'Sandra',
-                ],
-                [
-                    'id' => 2,
-                    'firstname' => 'Uta',
-                ],
-            ],
-            'query' => '',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 4,
+            'totalHits' => count($expectedHits),
         ]);
     }
 
