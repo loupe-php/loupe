@@ -55,7 +55,7 @@ class Lexer extends AbstractLexer
         return ['\s+', '(.)'];
     }
 
-    protected function getType(string &$value)
+    protected function getType(&$value)
     {
         switch (true) {
             case is_numeric($value):

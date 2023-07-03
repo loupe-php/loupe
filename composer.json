@@ -24,7 +24,7 @@
         "doctrine/dbal": "^3.5",
         "patrickschur/language-detection": "^5.2",
         "wamania/php-stemmer": "^3.0",
-        "doctrine/lexer": "^3.0",
+        "doctrine/lexer": "^2.0 || ^3.0",
         "voku/portable-utf8": "^6.0",
         "mjaschen/phpgeo": "^4.2",
         "toflar/state-set-index": "@dev"
