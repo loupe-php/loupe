@@ -11,7 +11,7 @@ final class Configuration
 {
     public const GEO_ATTRIBUTE_NAME = '_geo';
 
-    public const MAX_ATTRIBUTE_NAME_LENGTH = 30;
+    public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
     private array $filterableAttributes = [];
 
