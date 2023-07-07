@@ -70,8 +70,12 @@ class Indexer
             ->tokenize($attributeValue);
     }
 
-    private function indexAttributeValue(string $attribute, string|float $value, int $documentId)
+    private function indexAttributeValue(string $attribute, string|float|null $value, int $documentId)
     {
+        if ($value === null) {
+            return;
+        }
+
         $float = is_float($value);
         $valueColumn = $float ? 'numeric_value' : 'string_value';
 
@@ -111,7 +115,18 @@ class Indexer
             $loupeType = $this->engine->getIndexInfo()
                 ->getLoupeTypeForAttribute($attribute);
 
+            if ($loupeType === LoupeTypes::TYPE_NULL) {
+                continue;
+            }
+
             if ($loupeType === LoupeTypes::TYPE_GEO) {
+                if (! isset($document[$attribute]['lat'], $document[$attribute]['lng'])
+                    || $document[$attribute]['lat'] === null
+                    || $document[$attribute]['lng'] === null
+                ) {
+                    continue;
+                }
+
                 $data['_geo_lat'] = $document[$attribute]['lat'];
                 $data['_geo_lng'] = $document[$attribute]['lng'];
                 continue;

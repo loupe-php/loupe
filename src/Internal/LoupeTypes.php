@@ -14,6 +14,8 @@ class LoupeTypes
 
     public const TYPE_GEO = 'geo';
 
+    public const TYPE_NULL = 'null';
+
     public const TYPE_NUMBER = 'number';
 
     public const TYPE_STRING = 'string';
@@ -50,9 +52,14 @@ class LoupeTypes
         return (string) $attributeValue;
     }
 
-    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float
+    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float|null
     {
+        if ($attributeValue === null) {
+            return null;
+        }
+
         return match ($type) {
+            self::TYPE_NULL => null,
             self::TYPE_STRING => self::convertToString($attributeValue),
             self::TYPE_NUMBER => self::convertToFloat($attributeValue),
             self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
@@ -62,6 +69,10 @@ class LoupeTypes
 
     public static function getTypeFromValue(mixed $variable): string
     {
+        if ($variable === null) {
+            return self::TYPE_NULL;
+        }
+
         if (is_float($variable) || is_int($variable)) {
             return self::TYPE_NUMBER;
         }
@@ -101,12 +112,16 @@ class LoupeTypes
 
     public static function isSingleType(string $type): bool
     {
-        // The Geo type is not exactly a single type but it has to be treated as such
+        // The Geo type is not exactly a single type, but it has to be treated as such
         return in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO], true);
     }
 
     public static function typeMatchesType(string $schemaType, string $checkType): bool
     {
+        if ($checkType === self::TYPE_NULL) {
+            return true;
+        }
+
         if ($schemaType === $checkType) {
             return true;
         }

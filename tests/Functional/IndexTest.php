@@ -72,6 +72,28 @@ class IndexTest extends TestCase
         $this->assertSame(2, $loupe->countDocuments());
     }
 
+    public function testNullValueIsIrrelevantForDocumentSchema(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocument($this->getSandraDocument());
+        $loupe->addDocument([
+            'id' => 2,
+            'firstname' => 'Uta',
+            'lastname' => 'Koertig',
+            'gender' => null,
+            'departments' => null,
+            'colors' => ['Red', 'Orange'],
+        ]);
+
+        $this->assertSame(2, $loupe->countDocuments());
+    }
+
     public function testReindex(): void
     {
         $fs = new Filesystem();
