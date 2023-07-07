@@ -44,6 +44,7 @@ class IndexInfo
     public function setup(array $document)
     {
         $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
+        $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
         $sortableAttributes = $this->engine->getConfiguration()->getSortableAttributes();
 
         if (! array_key_exists($primaryKey, $document)) {
@@ -54,6 +55,10 @@ class IndexInfo
 
         foreach ($document as $attributeName => $attributeValue) {
             Configuration::validateAttributeName($attributeName);
+
+            if (! in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
+                continue;
+            }
 
             $loupeType = LoupeTypes::getTypeFromValue($attributeValue);
 
@@ -220,6 +225,10 @@ class IndexInfo
         }
 
         foreach ($document as $attributeName => $attributeValue) {
+            if (! isset($documentSchema[$attributeName])) {
+                continue;
+            }
+
             if (! LoupeTypes::typeMatchesType(
                 $documentSchema[$attributeName],
                 LoupeTypes::getTypeFromValue($attributeValue)

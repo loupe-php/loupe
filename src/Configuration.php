@@ -35,6 +35,16 @@ final class Configuration
         return new self();
     }
 
+    public function getDocumentSchemaRelevantAttributes(): array
+    {
+        return array_unique(array_merge(
+            [$this->getPrimaryKey()],
+            [self::GEO_ATTRIBUTE_NAME],
+            $this->getSearchableAttributes(),
+            $this->getFilterableAndSortableAttributes()
+        ));
+    }
+
     public function getFilterableAndSortableAttributes(): array
     {
         return array_unique(array_merge($this->filterableAttributes, $this->sortableAttributes));

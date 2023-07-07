@@ -17,7 +17,7 @@ class IndexTest extends TestCase
     {
         $this->expectException(InvalidDocumentException::class);
         $this->expectExceptionMessage(
-            'Document ("{"completely":"different-schema"}") does not match schema: {"id":"number","firstname":"string","lastname":"string","gender":"string","departments":"array<string>","colors":"array<string>","age":"number"}'
+            'Document ("{"departments":"not-an-array"}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}'
         );
 
         $configuration = Configuration::create()
@@ -29,7 +29,7 @@ class IndexTest extends TestCase
 
         $loupe->addDocument($this->getSandraDocument());
         $loupe->addDocument([
-            'completely' => 'different-schema',
+            'departments' => 'not-an-array',
         ]);
     }
 
@@ -45,6 +45,31 @@ class IndexTest extends TestCase
             'id' => '42',
             '_geo' => 'incorrect',
         ]);
+    }
+
+    public function testIrrelevantAttributesAreIgnoredBySchemaValidation(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocument($this->getSandraDocument());
+        $loupe->addDocument([
+            'id' => 2,
+            'firstname' => 'Uta',
+            'lastname' => 'Koertig',
+            'gender' => 'female',
+            'departments' => ['Development', 'Backoffice'],
+            'colors' => ['Red', 'Orange'],
+            'age' => 29,
+            'additional' => true,
+            'irrelevant-attributes' => ['foobar'],
+        ]);
+
+        $this->assertSame(2, $loupe->countDocuments());
     }
 
     public function testReindex(): void
