@@ -112,6 +112,11 @@ class Indexer
         ];
 
         foreach ($this->engine->getIndexInfo()->getSingleFilterableAndSortableAttributes() as $attribute) {
+
+            if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {
+                continue;
+            }
+
             $loupeType = $this->engine->getIndexInfo()
                 ->getLoupeTypeForAttribute($attribute);
 

@@ -233,6 +233,51 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testFilteringAndSortingForIdentifier(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['id'])
+            ->withSortableAttributes(['id'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 42,
+                'title' => 'Test 42',
+            ],
+            [
+                'id' => 18,
+                'title' => 'Test 18',
+            ],
+            [
+                'id' => 12,
+                'title' => 'Test 12',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['id:desc'])
+            ->withFilter('id IN (42, 12)')
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [[
+                'id' => 42,
+                'title' => 'Test 42',
+            ], [
+                'id' => 12,
+                'title' => 'Test 12',
+            ]],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
     public function testGeoSearch(): void
     {
         $configuration = Configuration::create()

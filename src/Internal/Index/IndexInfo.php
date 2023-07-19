@@ -274,6 +274,10 @@ class IndexInfo
         $columns = [];
 
         foreach ($this->getSingleFilterableAndSortableAttributes() as $attribute) {
+            if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {
+                continue;
+            }
+
             $loupeType = $this->getLoupeTypeForAttribute($attribute);
 
             if ($loupeType === LoupeTypes::TYPE_GEO) {
