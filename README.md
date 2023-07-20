@@ -90,7 +90,7 @@ $searchParameters = SearchParameters::create()
 
 $results = $loupe->search($searchParameters);
 
-print_r($results);
+print_r($results->toArray());
 
 /*
 Array

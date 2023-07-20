@@ -18,6 +18,7 @@ use Loupe\Loupe\Internal\Search\Sorting\GeoPoint;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
+use Loupe\Loupe\SearchResult;
 use voku\helper\UTF8;
 
 class Searcher
@@ -48,7 +49,7 @@ class Searcher
         $this->id = uniqid('lqi', true);
     }
 
-    public function fetchResult(): array
+    public function fetchResult(): SearchResult
     {
         $start = (int) floor(microtime(true) * 1000);
 
@@ -87,15 +88,15 @@ class Searcher
         $totalPages = (int) ceil($totalHits / $this->searchParameters->getHitsPerPage());
         $end = (int) floor(microtime(true) * 1000);
 
-        return [
-            'hits' => $hits,
-            'query' => $this->createAnalyzedQuery($tokens),
-            'processingTimeMs' => $end - $start,
-            'hitsPerPage' => $this->searchParameters->getHitsPerPage(),
-            'page' => $this->searchParameters->getPage(),
-            'totalPages' => $totalPages,
-            'totalHits' => $totalHits,
-        ];
+        return new SearchResult(
+            $hits,
+            $this->createAnalyzedQuery($tokens),
+            $end - $start,
+            $this->searchParameters->getHitsPerPage(),
+            $this->searchParameters->getPage(),
+            $totalPages,
+            $totalHits
+        );
     }
 
     public function getCTEs(): array

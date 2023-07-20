@@ -52,7 +52,7 @@ final class Loupe
         return $this->engine->needsReindex();
     }
 
-    public function search(SearchParameters $parameters): array
+    public function search(SearchParameters $parameters): SearchResult
     {
         return $this->engine->search($parameters);
     }

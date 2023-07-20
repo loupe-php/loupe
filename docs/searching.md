@@ -1,13 +1,13 @@
 # Searching
 
-Searching Loupe is achieved by using the `SearchParameters` object. That one is passed on to Loupe and you get the 
-result back:
+Searching Loupe is achieved by using the `SearchParameters` object. That one is passed on to Loupe and you get a 
+`SearchResult` back:
 
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create();
 $results = $loupe->search($searchParameters);
 
-print_r($results);
+print_r($results->toArray());
 ```
 
 ## Query

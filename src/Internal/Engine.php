@@ -17,6 +17,7 @@ use Loupe\Loupe\Internal\StateSet\Alphabet;
 use Loupe\Loupe\Internal\StateSet\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
+use Loupe\Loupe\SearchResult;
 use Toflar\StateSetIndex\Config;
 use Toflar\StateSetIndex\StateSetIndex;
 
@@ -150,11 +151,9 @@ class Engine
         return false;
     }
 
-    public function search(SearchParameters $parameters): array
+    public function search(SearchParameters $parameters): SearchResult
     {
-        $searcher = new Searcher($this, $this->filterParser, $parameters);
-
-        return $searcher->fetchResult();
+        return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
     }
 
     /**

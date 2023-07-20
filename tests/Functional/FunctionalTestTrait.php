@@ -35,7 +35,7 @@ trait FunctionalTestTrait
 
     protected function searchAndAssertResults(Loupe $loupe, SearchParameters $searchParameters, array $expectedResults)
     {
-        $results = $loupe->search($searchParameters);
+        $results = $loupe->search($searchParameters)->toArray();
         unset($results['processingTimeMs']);
         $this->assertSame($expectedResults, $results);
     }
