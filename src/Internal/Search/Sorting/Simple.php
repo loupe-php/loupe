@@ -18,9 +18,15 @@ class Simple extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
+        $attribute = $this->attributeName;
+
+        if ($attribute === $engine->getConfiguration()->getPrimaryKey()) {
+            $attribute = 'user_id';
+        }
+
         $searcher->getQueryBuilder()->addOrderBy(
             $engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $this->attributeName,
+                ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute,
             $this->direction->getSQL()
         );
     }

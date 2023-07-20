@@ -394,7 +394,13 @@ class Searcher
 
             // Single attributes are on the document itself
             } else {
-                $whereStatement[] = $documentAlias . '.' . $node->attribute;
+                $attribute = $node->attribute;
+
+                if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {
+                    $attribute = 'user_id';
+                }
+
+                $whereStatement[] = $documentAlias . '.' . $attribute;
                 $whereStatement[] = $node->operator->buildSql($this->engine->getConnection(), $node->value);
             }
         }
