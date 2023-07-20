@@ -6,6 +6,7 @@ namespace Loupe\Loupe;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Psr\Log\LoggerInterface;
 
 final class Configuration
 {
@@ -14,6 +15,8 @@ final class Configuration
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
     private array $filterableAttributes = [];
+
+    private ?LoggerInterface $logger = null;
 
     private int $maxQueryTokens = 10;
 
@@ -75,6 +78,11 @@ final class Configuration
         return hash('sha256', implode(';', $hash));
     }
 
+    public function getLogger(): ?LoggerInterface
+    {
+        return $this->logger;
+    }
+
     public function getMaxQueryTokens(): int
     {
         return $this->maxQueryTokens;
@@ -121,6 +129,14 @@ final class Configuration
 
         $clone = clone $this;
         $clone->filterableAttributes = $filterableAttributes;
+
+        return $clone;
+    }
+
+    public function withLogger(?LoggerInterface $logger): self
+    {
+        $clone = clone $this;
+        $clone->logger = $logger;
 
         return $clone;
     }

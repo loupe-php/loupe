@@ -18,6 +18,7 @@ use Loupe\Loupe\Internal\StateSet\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
+use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Config;
 use Toflar\StateSetIndex\StateSetIndex;
 
@@ -122,6 +123,11 @@ class Engine
     public function getIndexInfo(): IndexInfo
     {
         return $this->indexInfo;
+    }
+
+    public function getLogger(): ?LoggerInterface
+    {
+        return $this->getConfiguration()->getLogger();
     }
 
     public function getStateSetIndex(): StateSetIndex

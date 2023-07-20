@@ -518,9 +518,17 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
+        $query = implode(' ', $queryParts);
+
+        $this->engine->getLogger()?->debug(sprintf(
+            '[Search query]: %s (Parameters: %s, Parameter types: %s)',
+            $query,
+            json_encode($this->queryBuilder->getParameters()),
+            json_encode($this->queryBuilder->getParameterTypes())
+        ));
 
         return $this->engine->getConnection()->executeQuery(
-            implode(' ', $queryParts),
+            $query,
             $this->queryBuilder->getParameters(),
             $this->queryBuilder->getParameterTypes(),
         );

@@ -146,4 +146,20 @@ $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
 ;
 ```
 
+### Debugging
+
+You may pass a PSR-3 logger to Loupe. For the sake of simplicity, Loupe also ships with a very simple 
+`InMemoryLogger` so you don't have to require any special package only to quickly debug internals:
+
+```php
+$logger = new \Loupe\Loupe\Logger\InMemoryLogger();
+
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withLogger($logger)
+;
+
+print_r($logger->getRecords());
+```
+
+
 [Paper]: https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf
