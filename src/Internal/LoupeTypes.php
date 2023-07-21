@@ -118,7 +118,7 @@ class LoupeTypes
 
     public static function typeMatchesType(string $schemaType, string $checkType): bool
     {
-        if ($checkType === self::TYPE_NULL) {
+        if ($checkType === self::TYPE_NULL || $schemaType === self::TYPE_NULL) {
             return true;
         }
 

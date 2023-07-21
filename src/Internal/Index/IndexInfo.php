@@ -75,12 +75,7 @@ class IndexInfo
 
         $this->documentSchema = $documentSchema;
         $this->createSchema();
-
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'documentSchema',
-                'value' => json_encode($documentSchema),
-            ]);
+        $this->updateDocumentSchema($documentSchema);
 
         $this->engine->getConnection()
             ->insert(self::TABLE_NAME_INDEX_INFO, [
@@ -224,21 +219,33 @@ class IndexInfo
             );
         }
 
+        $schemaNarrowed = false;
+
         foreach ($document as $attributeName => $attributeValue) {
             if (! isset($documentSchema[$attributeName])) {
                 continue;
             }
 
-            if (! LoupeTypes::typeMatchesType(
-                $documentSchema[$attributeName],
-                LoupeTypes::getTypeFromValue($attributeValue)
-            )) {
+            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
+
+            if (! LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
                 throw InvalidDocumentException::becauseDoesNotMatchSchema(
                     $documentSchema,
                     $document,
                     $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
                 );
             }
+
+            // Update schema to narrower type (e.g. before it was "array" and now it becomes "array<string>" or before
+            // it was "null" and now it becomes any other type.
+            if ($documentSchema[$attributeName] !== $valueType) {
+                $documentSchema[$attributeName] = $valueType;
+                $schemaNarrowed = true;
+            }
+        }
+
+        if ($schemaNarrowed) {
+            $this->updateDocumentSchema($documentSchema);
         }
     }
 
@@ -439,5 +446,15 @@ class IndexInfo
         $this->addTermsToDocumentsRelationToSchema($schema);
 
         return $schema;
+    }
+
+    private function updateDocumentSchema(array $documentSchema): void
+    {
+        $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
+            'key' => 'documentSchema',
+            'value' => json_encode($documentSchema),
+        ], ['key']);
+
+        $this->documentSchema = $documentSchema;
     }
 }
