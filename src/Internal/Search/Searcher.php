@@ -205,6 +205,16 @@ class Searcher
             $ors[] = $this->createWherePartForTerm($term);
         }
 
+        // Prefix search
+        $lastToken = $tokenCollection->last(); // Cannot be null here due to previous ->empty() check
+        if ($lastToken->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()) {
+            $ors[] = sprintf(
+                '%s.term LIKE %s',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $this->queryBuilder->createNamedParameter($lastToken->getTerm() . '%')
+            );
+        }
+
         $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
         $cteSelectQb->orderBy($termsAlias . '.id');
 

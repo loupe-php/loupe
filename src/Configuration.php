@@ -20,6 +20,8 @@ final class Configuration
 
     private int $maxQueryTokens = 10;
 
+    private int $minTokenLengthForPrefixSearch = 3;
+
     private string $primaryKey = 'id';
 
     private array $searchableAttributes = ['*'];
@@ -88,6 +90,11 @@ final class Configuration
         return $this->maxQueryTokens;
     }
 
+    public function getMinTokenLengthForPrefixSearch(): int
+    {
+        return $this->minTokenLengthForPrefixSearch;
+    }
+
     public function getPrimaryKey(): string
     {
         return $this->primaryKey;
@@ -145,6 +152,14 @@ final class Configuration
     {
         $clone = clone $this;
         $clone->maxQueryTokens = $maxQueryTokens;
+
+        return $clone;
+    }
+
+    public function withMinTokenLengthForPrefixSearch(int $minTokenLengthForPrefixSearch): self
+    {
+        $clone = clone $this;
+        $clone->minTokenLengthForPrefixSearch = $minTokenLengthForPrefixSearch;
 
         return $clone;
     }

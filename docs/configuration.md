@@ -47,7 +47,7 @@ $configuration = \Loupe\Loupe\Configuration::create()
     ->withSortableAttributes(['age', 'lastname'])
 ```
 
-## May query tokens
+## Maximum query tokens
 
 When you search Loupe, the user query is being analyzed, split into tokens and then run against the database of your 
 indexed documents. 
@@ -58,6 +58,30 @@ higher the value, the higher the chance that the process takes too long or uses 
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
     ->withMaxQueryTokens(12)
+```
+
+### Minimum length for prefix search
+
+In Loupe - as in MeiliSearch - we follow the philosophy of prefix search. 
+
+Prefix search means that it's not necessary to type a word in its entirety to find documents containing that 
+word — you can just type the first few letters. So `huck` would also find `huckleberry`.
+
+Prefix search is only performed on the last word in a search query. Prior words must be typed out fully to get 
+accurate results. E.g. `my friend huck` would find documents containing `huckleberry` - `huck is my friend`, however, 
+would not.
+
+Searching by prefix (rather than using complete words) has a significant impact on search time. 
+The shorter the query term, the more possible matches in the dataset.
+
+That's why you can also configure the minimum length of characters that a term must contain before the prefix search 
+kicks in. By default, this is configured to `3`. So searching for `h` would not find `huckleberry` while `huc` would.
+
+You can configure this behavior:
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withMinTokenLengthForPrefixSearch(1)
 ```
 
 ## Typo tolerance

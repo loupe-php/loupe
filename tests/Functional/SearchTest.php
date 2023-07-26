@@ -208,6 +208,54 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function prefixSearchProvider(): \Generator
+    {
+        yield 'Searching for "h" should not return any results by default because the minimum prefix length is 3' => [
+            'h',
+            [],
+        ];
+
+        yield 'Searching for "h" should return Huckleberry if minimum prefix length is 1' => [
+            'h',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                    'lastname' => 'Finn',
+                ],
+            ],
+            1,
+        ];
+
+        yield 'Searching for "huckl" should return Huckleberry' => [
+            'huckl',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                    'lastname' => 'Finn',
+                ],
+            ],
+        ];
+
+        yield 'Searching for "my friend huckl" should return Huckleberry because "huckl" is the last token' => [
+            'my friend huckl',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                    'lastname' => 'Finn',
+                ],
+            ],
+        ];
+
+        yield 'Searching for "huckl is my friend" should not return Huckleberry because "huckl" is not the last token' => [
+            'huckl is my friend',
+            [
+            ],
+        ];
+    }
+
     public function testComplexFilters(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
@@ -531,6 +579,33 @@ class SearchTest extends TestCase
         ]);
     }
 
+    #[DataProvider('prefixSearchProvider')]
+    public function testPrefixSearch(string $query, array $expectedResults, int $minTokenLengthForPrefixSearch = null): void
+    {
+        $configuration = Configuration::create();
+
+        if ($minTokenLengthForPrefixSearch !== null) {
+            $configuration = $configuration->withMinTokenLengthForPrefixSearch($minTokenLengthForPrefixSearch);
+        }
+
+        $loupe = $this->setupLoupeWithDepartmentsFixture($configuration);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery($query)
+            ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedResults,
+            'query' => $query,
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => count($expectedResults) === 0 ? 0 : 1,
+            'totalHits' => count($expectedResults),
+        ]);
+    }
+
     public function testRelevance(): void
     {
         $configuration = Configuration::create()
@@ -817,9 +892,13 @@ class SearchTest extends TestCase
         ];
     }
 
-    private function setupLoupeWithDepartmentsFixture(): Loupe
+    private function setupLoupeWithDepartmentsFixture(Configuration $configuration = null): Loupe
     {
-        $configuration = Configuration::create()
+        if ($configuration === null) {
+            $configuration = Configuration::create();
+        }
+
+        $configuration = $configuration
             ->withFilterableAttributes(['departments', 'gender'])
             ->withSortableAttributes(['firstname'])
             ->withSearchableAttributes(['firstname', 'lastname'])
