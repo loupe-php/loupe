@@ -2,6 +2,7 @@
     "name": "loupe/loupe",
     "description": "A full text search engine with tokenization, stemming, typo tolerance, filters and geo support based on only PHP and SQlite",
     "type": "library",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "Loupe\\Loupe\\": "src/"
