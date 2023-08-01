@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\Token;
-use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\FilterFormatException;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
@@ -192,17 +191,16 @@ class Parser
 
     private function handleGeoRadius(array $allowedAttributeNames): void
     {
-        if (count($allowedAttributeNames) !== 0 && ! in_array(
-            Configuration::GEO_ATTRIBUTE_NAME,
-            $allowedAttributeNames,
-            true
-        )) {
-            throw new FilterFormatException(
-                'Cannot use "_geoRadius()" without having defined "_geo" as filterable attribute.'
-            );
+        $this->assertOpeningParenthesis($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $this->lexer->moveNext();
+
+        $attributeName = $this->lexer->token->value;
+
+        if (count($allowedAttributeNames) !== 0 && ! in_array($attributeName, $allowedAttributeNames, true)) {
+            $this->syntaxError('filterable attribute');
         }
 
-        $this->assertOpeningParenthesis($this->lexer->lookahead);
         $this->lexer->moveNext();
         $this->assertFloat($this->lexer->lookahead);
         $this->lexer->moveNext();
@@ -219,7 +217,7 @@ class Parser
         $distance = (float) $this->lexer->token->value;
         $this->assertClosingParenthesis($this->lexer->lookahead);
 
-        $this->addNode(new GeoDistance($lat, $lng, $distance));
+        $this->addNode(new GeoDistance($attributeName, $lat, $lng, $distance));
 
         $this->lexer->moveNext();
     }

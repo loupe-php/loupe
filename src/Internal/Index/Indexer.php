@@ -124,15 +124,12 @@ class Indexer
             }
 
             if ($loupeType === LoupeTypes::TYPE_GEO) {
-                if (! isset($document[$attribute]['lat'], $document[$attribute]['lng'])
-                    || $document[$attribute]['lat'] === null
-                    || $document[$attribute]['lng'] === null
-                ) {
+                if (! isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
                     continue;
                 }
 
-                $data['_geo_lat'] = $document[$attribute]['lat'];
-                $data['_geo_lng'] = $document[$attribute]['lng'];
+                $data[$attribute . '_geo_lat'] = $document[$attribute]['lat'];
+                $data[$attribute . '_geo_lng'] = $document[$attribute]['lng'];
                 continue;
             }
 

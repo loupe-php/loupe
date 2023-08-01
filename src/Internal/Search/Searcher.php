@@ -73,6 +73,12 @@ class Searcher
         foreach ($this->query()->iterateAssociative() as $result) {
             $document = Util::decodeJson($result['document']);
 
+            foreach ($result as $k => $v) {
+                if (str_starts_with($k, GeoPoint::DISTANCE_ALIAS)) {
+                    $document['_geoDistance(' . str_replace(GeoPoint::DISTANCE_ALIAS . '_', '', $k) . ')'] = (int) round((float) $v);
+                }
+            }
+
             if (array_key_exists(GeoPoint::DISTANCE_ALIAS, $result)) {
                 $document['_geoDistance'] = (int) round($result[GeoPoint::DISTANCE_ALIAS]);
             }
@@ -424,21 +430,21 @@ class Searcher
             $bounds = $node->getBbox();
 
             // Latitude
-            $whereStatement[] = $documentAlias . '._geo_lat';
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
             $whereStatement[] = '>=';
             $whereStatement[] = $bounds->getSouth();
             $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '._geo_lat';
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
             $whereStatement[] = '<=';
             $whereStatement[] = $bounds->getNorth();
 
             // Longitude
             $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '._geo_lng';
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
             $whereStatement[] = '>=';
             $whereStatement[] = $bounds->getWest();
             $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '._geo_lng';
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
             $whereStatement[] = '<=';
             $whereStatement[] = $bounds->getEast();
 
@@ -449,8 +455,8 @@ class Searcher
                 'geo_distance(%f, %f, %s, %s)',
                 $node->lat,
                 $node->lng,
-                $documentAlias . '._geo_lat',
-                $documentAlias . '._geo_lng',
+                $documentAlias . '.' . $node->attributeName . '_geo_lat',
+                $documentAlias . '.' . $node->attributeName . '_geo_lng'
             );
             $whereStatement[] = '<=';
             $whereStatement[] = $node->distance;

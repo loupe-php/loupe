@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Sorting;
 
+use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Searcher;
@@ -14,11 +15,10 @@ class GeoPoint extends AbstractSorter
 
     private const COORDINATES_RGXP = '((\-?|\+?)?\d+(\.\d+)?),\s*((\-?|\+?)?\d+(\.\d+)?)'; // Maybe we can find a better one?
 
-    private const COORDINATES_RGXP_WITH_BOUNDS = '^' . self::COORDINATES_RGXP . '$';
-
-    private const GEOPOINT_RGXP = '^_geoPoint\(' . self::COORDINATES_RGXP . '\)$';
+    private const GEOPOINT_RGXP = '^_geoPoint\((' . Configuration::ATTRIBUTE_NAME_RGXP . '),\s*' . self::COORDINATES_RGXP . '\)$';
 
     public function __construct(
+        private string $attributeName,
         private Direction $direction,
         private float $lat,
         private float $lng
@@ -34,18 +34,23 @@ class GeoPoint extends AbstractSorter
             'geo_distance(%f, %f, %s, %s) AS %s',
             $this->lat,
             $this->lng,
-            $alias . '._geo_lat',
-            $alias . '._geo_lng',
-            self::DISTANCE_ALIAS
+            $alias . '.' . $this->attributeName . '_geo_lat',
+            $alias . '.' . $this->attributeName . '_geo_lng',
+            self::DISTANCE_ALIAS . '_' . $this->attributeName
         ));
 
-        $searcher->getQueryBuilder()->addOrderBy(self::DISTANCE_ALIAS, $this->direction->getSQL());
+        $searcher->getQueryBuilder()->addOrderBy(self::DISTANCE_ALIAS . '_' . $this->attributeName, $this->direction->getSQL());
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self
     {
-        $latlong = self::split($value);
-        return new self($direction, $latlong[0], $latlong[1]);
+        $matches = self::split($value);
+
+        if ($matches === null) {
+            throw new \InvalidArgumentException('Invalid string, call supports() first.');
+        }
+
+        return new self($matches['attribute'], $direction, $matches['lat'], $matches['lng']);
     }
 
     public static function supports(string $value, Engine $engine): bool
@@ -54,7 +59,7 @@ class GeoPoint extends AbstractSorter
     }
 
     /**
-     * Returns null if not valid or an array where the first value is the latitude and the second is the longitude.
+     * @return null|array{lat: float, lng: float, attribute: string}
      */
     private static function split(string $value): ?array
     {
@@ -64,6 +69,10 @@ class GeoPoint extends AbstractSorter
             return null;
         }
 
-        return [(float) $matches[1], (float) $matches[4]];
+        return [
+            'lat' => (float) $matches[2],
+            'lng' => (float) $matches[5],
+            'attribute' => (string) $matches[1],
+        ];
     }
 }

@@ -329,17 +329,17 @@ class SearchTest extends TestCase
     public function testGeoSearch(): void
     {
         $configuration = Configuration::create()
-            ->withFilterableAttributes(['_geo', 'type'])
-            ->withSortableAttributes(['_geo', 'rating'])
+            ->withFilterableAttributes(['location', 'type'])
+            ->withSortableAttributes(['location', 'rating'])
         ;
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'restaurants');
 
         $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'name', '_geo'])
-            ->withFilter('_geoRadius(45.472735, 9.184019, 2000)')
-            ->withSort(['_geoPoint(45.472735, 9.184019):asc'])
+            ->withAttributesToRetrieve(['id', 'name', 'location'])
+            ->withFilter('_geoRadius(location, 45.472735, 9.184019, 2000)')
+            ->withSort(['_geoPoint(location, 45.472735, 9.184019):asc'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
@@ -347,7 +347,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'name' => "Nàpiz' Milano",
-                    '_geo' => [
+                    'location' => [
                         'lat' => 45.4777599,
                         'lng' => 9.1967508,
                     ],
@@ -355,7 +355,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 3,
                     'name' => 'Artico Gelateria Tradizionale',
-                    '_geo' => [
+                    'location' => [
                         'lat' => 45.4632046,
                         'lng' => 9.1719421,
                     ],
@@ -369,8 +369,8 @@ class SearchTest extends TestCase
         ]);
 
         $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'name', '_geo', '_geoDistance'])
-            ->withSort(['_geoPoint(48.8561446,2.2978204):asc'])
+            ->withAttributesToRetrieve(['id', 'name', 'location', '_geoDistance(location)'])
+            ->withSort(['_geoPoint(location, 48.8561446,2.2978204):asc'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
@@ -378,29 +378,29 @@ class SearchTest extends TestCase
                 [
                     'id' => 2,
                     'name' => 'Bouillon Pigalle',
-                    '_geo' => [
+                    'location' => [
                         'lat' => 48.8826517,
                         'lng' => 2.3352748,
                     ],
-                    '_geoDistance' => 4024,
+                    '_geoDistance(location)' => 4024,
                 ],
                 [
                     'id' => 3,
                     'name' => 'Artico Gelateria Tradizionale',
-                    '_geo' => [
+                    'location' => [
                         'lat' => 45.4632046,
                         'lng' => 9.1719421,
                     ],
-                    '_geoDistance' => 641824,
+                    '_geoDistance(location)' => 641824,
                 ],
                 [
                     'id' => 1,
                     'name' => "Nàpiz' Milano",
-                    '_geo' => [
+                    'location' => [
                         'lat' => 45.4777599,
                         'lng' => 9.1967508,
                     ],
-                    '_geoDistance' => 642336,
+                    '_geoDistance(location)' => 642336,
                 ],
             ],
             'query' => '',

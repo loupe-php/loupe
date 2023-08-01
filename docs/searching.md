@@ -166,32 +166,44 @@ $results = [
 
 ## Geo search
 
-Yes, Loupe also supports geo search! Just like MeiliSearch does, Loupe also works with a special `_geo` attribute.
-If your document contains that and you define it as being filterable and/or sortable, Loupe can both, filter and 
+Yes, Loupe also supports geo search! In contrast to MeiliSearch, however, Loupe does not need any special `_geo` 
+attribute, but you can filter and sort by multiple geo attributes. The only requirement is that your attribute 
+represents the following format:
+
+```php
+<?php
+
+$myGeoAttribute = [
+    'lat' => 45.4777599,
+    'lng' => 9.1967508,
+];
+```
+
+If your attribute is of this format, and you define it as being filterable and/or sortable, Loupe can both, filter and 
 sort on it. Let's take an example:
 
 First, we have to index some restaurants. See [the `restaurants.json` from the test fixtures][Restaurant_Fixture].
-Then we need to define the `_geo` attribute as being `filterable` and `sortable`:
+Then we need to define the `_location` attribute as being `filterable` and `sortable`:
 
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
-    ->withFilterableAttributes(['_geo'])
-    ->withSortableAttributes(['_geo'])
+    ->withFilterableAttributes(['location'])
+    ->withSortableAttributes(['location'])
 ;
 ```
 
 We can then filter for all the restaurants within 2km from `45.472735, 9.184019`. For this, we use the `_geoRadius()`
-filter. It takes the latitude and longitude as first and second parameters. The third parameter defines the distance 
-in meters.
+filter. It takes the attribute name, latitude and longitude as  parameters. The fourth parameter 
+defines the distance in meters.
 Then, we also want to sort them by their distance from `45.472735, 9.184019` so that the closest is listed first. 
 For that, we can use the `_geoPoint()` sorter.
-We also want to know the distance, so we select the special `_geoDistance` attribute as well:
+We also want to know the distance, so we select the special `_geoDistance(location)` attribute as well:
 
 ```php
 $searchParameters = SearchParameters::create()
-    ->withAttributesToRetrieve(['id', 'name', '_geo', '_geoDistance'])
-    ->withFilter('_geoRadius(45.472735, 9.184019, 2000)')
-    ->withSort(['_geoPoint(45.472735, 9.184019):asc'])
+    ->withAttributesToRetrieve(['id', 'name', 'location', '_geoDistance(location)'])
+    ->withFilter('_geoRadius(location, 45.472735, 9.184019, 2000)')
+    ->withSort(['_geoPoint(location, 45.472735, 9.184019):asc'])
 ;
 ```
 
@@ -203,20 +215,20 @@ $results = [
         [
             'id' => 1,
             'name' => "Nàpiz' Milano",
-            '_geo' => [
+            'location' => [
                 'lat' => 45.4777599,
                 'lng' => 9.1967508,
             ],
-            '_geoDistance' => 1139,
+            '_geoDistance(location)' => 1139,
         ],
         [
             'id' => 3,
             'name' => 'Artico Gelateria Tradizionale',
-            '_geo' => [
+            'location' => [
                 'lat' => 45.4632046,
                 'lng' => 9.1719421,
             ],
-            '_geoDistance' => 1418,
+            '_geoDistance(location)' => 1418,
         ],
     ],
 ];

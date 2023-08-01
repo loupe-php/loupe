@@ -23,14 +23,4 @@ class InvalidDocumentException extends \InvalidArgumentException implements Loup
             sprintf('Document ("%s") does not match schema: %s', json_encode($document), json_encode($schema))
         );
     }
-
-    public static function becauseGeoAttributeHasWrongValueFormat(string $attributeName)
-    {
-        return new self(
-            sprintf(
-                'The "%s" attribute must have two keys only, which have to be named "lat" and "lng".',
-                $attributeName
-            )
-        );
-    }
 }

@@ -62,10 +62,6 @@ class IndexInfo
 
             $loupeType = LoupeTypes::getTypeFromValue($attributeValue);
 
-            if ($attributeName === Configuration::GEO_ATTRIBUTE_NAME && $loupeType !== LoupeTypes::TYPE_GEO) {
-                throw InvalidDocumentException::becauseGeoAttributeHasWrongValueFormat($attributeName);
-            }
-
             if (in_array($attributeName, $sortableAttributes, true) && ! LoupeTypes::isSingleType($loupeType)) {
                 throw InvalidConfigurationException::becauseAttributeNotSortable($attributeName);
             }
@@ -288,8 +284,8 @@ class IndexInfo
             $loupeType = $this->getLoupeTypeForAttribute($attribute);
 
             if ($loupeType === LoupeTypes::TYPE_GEO) {
-                $columns['_geo_lat'] = Types::FLOAT;
-                $columns['_geo_lng'] = Types::FLOAT;
+                $columns[$attribute . '_geo_lat'] = Types::FLOAT;
+                $columns[$attribute . '_geo_lng'] = Types::FLOAT;
                 continue;
             }
 

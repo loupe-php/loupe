@@ -17,6 +17,11 @@ Loupe…
   experience but without all the hassle of an additional service to manage. SQLite is everywhere and all it needs is 
   your filesystem.
 
+## Introductory blog post
+
+If this is your first encounter with Loupe, you might want to read the [blog post on Medium][Blog_Medium] or [as 
+Markdown file][Blog_Repository] that should give you more information about the reasons and what you can do with it.
+
 ## Acknowledgement
 
 If you are familiar with MeiliSearch, you will notice that the API is very much inspired by it. The
@@ -25,7 +30,7 @@ reasons for this are simple:
 1. First and foremost: I think, they did an amazing job of keeping configuration simple and understandable from a 
    developer's perspective. Basic search tools shouldn't be complicated.
 2. If Loupe shouldn't be enough for your use case anymore (you need advanced features, better performance etc.), 
-   switching to MeiliSearch instead should be as easy as possible.
+   switching to MeiliSearch instead should be a piece of cake.
 
 I even took the liberty to copy some of their test data to feed Loupe for functional tests.
 
@@ -52,11 +57,11 @@ $configuration = Configuration::create()
 ;
 
 $loupeFactory = new LoupeFactory();
+
+$loupe = $loupeFactory->create('path/to/my_loupe.db', $configuration);
+
+// or create in-memory search:
 $loupe = $loupeFactory->createInMemory($configuration);
-
-// Persist your database:
-// $loupe = $loupeFactory->create($dbPath, $configuration);
-
 
 $loupe->addDocuments([
     [
@@ -123,3 +128,5 @@ Array
 library after having given [my PHP crawler library][Escargot] a French name :-)
 
 [Escargot]: https://github.com/terminal42/escargot
+[Blog_Medium]: https://medium.com/@yanick.witschi/loupe-a-search-engine-with-only-php-and-sqlite-1c0d83024a71
+[Blog_Repository]: ./docs/blog_post.md

@@ -12,6 +12,7 @@ use Location\Factory\BoundsFactory;
 class GeoDistance extends Node
 {
     public function __construct(
+        public string $attributeName,
         public float $lat,
         public float $lng,
         public float $distance
@@ -35,6 +36,7 @@ class GeoDistance extends Node
     public function toArray(): array
     {
         return [
+            'attribute' => $this->attributeName,
             'lat' => $this->lat,
             'lng' => $this->lng,
             'distance' => $this->distance,

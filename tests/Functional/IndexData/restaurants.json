@@ -5,7 +5,7 @@
         "address": "Viale Vittorio Veneto, 30, 20124, Milan, Italy",
         "type": "pizza",
         "rating": 9,
-        "_geo": {
+        "location": {
             "lat": 45.4777599,
             "lng": 9.1967508
         }
@@ -16,7 +16,7 @@
         "address": "22 Bd de Clichy, 75018 Paris, France",
         "type": "french",
         "rating": 8,
-        "_geo": {
+        "location": {
             "lat": 48.8826517,
             "lng": 2.3352748
         }
@@ -27,7 +27,7 @@
         "address": "Via Dogana, 1, 20123 Milan, Italy",
         "type": "ice cream",
         "rating": 10,
-        "_geo": {
+        "location": {
             "lat": 45.4632046,
             "lng": 9.1719421
         }

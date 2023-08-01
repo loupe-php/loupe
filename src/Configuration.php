@@ -10,7 +10,7 @@ use Psr\Log\LoggerInterface;
 
 final class Configuration
 {
-    public const GEO_ATTRIBUTE_NAME = '_geo';
+    public const ATTRIBUTE_NAME_RGXP = '[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*';
 
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
@@ -44,7 +44,6 @@ final class Configuration
     {
         return array_unique(array_merge(
             [$this->getPrimaryKey()],
-            [self::GEO_ATTRIBUTE_NAME],
             $this->getSearchableAttributes(),
             $this->getFilterableAndSortableAttributes()
         ));
@@ -117,12 +116,8 @@ final class Configuration
 
     public static function validateAttributeName(string $name): void
     {
-        if ($name === self::GEO_ATTRIBUTE_NAME) {
-            return;
-        }
-
         if (strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
-            || ! preg_match('/^[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $name)
+            || ! preg_match('/^' . self::ATTRIBUTE_NAME_RGXP . '$/', $name)
         ) {
             throw InvalidConfigurationException::becauseInvalidAttributeName($name);
         }

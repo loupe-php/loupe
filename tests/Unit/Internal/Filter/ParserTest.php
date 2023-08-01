@@ -69,9 +69,10 @@ class ParserTest extends TestCase
         ];
 
         yield 'Basic geo filter' => [
-            '_geoRadius(45.472735, 9.184019, 2000)',
+            '_geoRadius(location, 45.472735, 9.184019, 2000)',
             [
                 [
+                    'attribute' => 'location',
                     'lat' => 45.472735,
                     'lng' => 9.184019,
                     'distance' => 2000.0,
@@ -176,22 +177,22 @@ class ParserTest extends TestCase
 
         yield 'Invalid number of parameters for _geoRadius' => [
             '_geoRadius(1.00, 2.00)',
-            'Col 21: Error: Expected ', ", got ')'",
+            "Col 21: Error: Expected ',', got ')'",
         ];
 
         yield 'Missing ( for _geoRadius' => [
-            '_geoRadius&1.00, 2.00, 200)',
+            '_geoRadius&location, 1.00, 2.00, 200)',
             "Col 10: Error: Expected '(', got '&'",
         ];
 
         yield 'Missing ) for _geoRadius' => [
-            '_geoRadius(1.00, 2.00, 200',
-            "Col 23: Error: Expected ')', got end of string.",
+            '_geoRadius(location, 1.00, 2.00, 200',
+            "Col 33: Error: Expected ')', got end of string.",
         ];
 
         yield 'Missing comma for _geoRadius' => [
-            '_geoRadius(1.00 2.00, 200)',
-            "Col 16: Error: Expected ',', got '2.00'",
+            '_geoRadius(location, 1.00 2.00, 200)',
+            "Col 26: Error: Expected ',', got '2.00'",
         ];
 
         yield 'Unclosed IN ()' => [
@@ -223,12 +224,10 @@ class ParserTest extends TestCase
     public function testGeoDistanceNotFilterable(): void
     {
         $this->expectException(FilterFormatException::class);
-        $this->expectExceptionMessage(
-            'Cannot use "_geoRadius()" without having defined "_geo" as filterable attribute.'
-        );
+        $this->expectExceptionMessage("Col 11: Error: Expected filterable attribute, got 'location'");
 
         $parser = new Parser();
-        $parser->getAst('_geoRadius(45.472735, 9.184019, 2000)', ['gender']);
+        $parser->getAst('_geoRadius(location, 45.472735, 9.184019, 2000)', ['gender']);
     }
 
     #[DataProvider('invalidFilterProvider')]
