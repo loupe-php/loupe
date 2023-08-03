@@ -62,13 +62,6 @@ jobs:
                   sqlite3 --version
                   php $GITHUB_WORKSPACE/test.php
 
-            - name: Test 2
-              run: php $GITHUB_WORKSPACE/test.php
-
-            - name: Test 2
-              run: php $GITHUB_WORKSPACE/test.php
-
-
             - name: Install the dependencies
               run: composer install --no-interaction --no-suggest
 
