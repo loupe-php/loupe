@@ -12,9 +12,9 @@ CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA=1" ./configure --prefix=$HOME/opt/sq
 make
 make install
 
-export PATH=$HOME/opt/sqlite/bin:$PATH
-export LD_LIBRARY_PATH=$HOME/opt/sqlite/lib
-export LD_RUN_PATH=$HOME/opt/sqlite/lib
+echo "export PATH=$HOME/opt/sqlite/bin:$PATH" >> ~/.bash_profile
+echo "export LD_LIBRARY_PATH=$HOME/opt/sqlite/lib" >> ~/.bash_profile
+echo "export LD_RUN_PATH=$HOME/opt/sqlite/lib" >> ~/.bash_profile
 
 source ~/.bash_profile
 
