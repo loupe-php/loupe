@@ -24,11 +24,12 @@ jobs:
               run: composer cs
 
     tests:
-        name: PHP ${{ matrix.php }}
+        name: PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }}
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
             matrix:
+                sqlite: ['lowest supported', 'default']
                 php: ['8.1', '8.2']
         steps:
             - name: Setup PHP
@@ -36,6 +37,10 @@ jobs:
               with:
                   php-version: ${{ matrix.php }}
                   coverage: none
+
+            - name: Install lowest SQL
+              if: ${{ matrix.sqlite == 'lowest supported' }}
+              run: ./install_lowest_supported_sqlite.sh
 
             - name: Checkout
               uses: actions/checkout@v2
