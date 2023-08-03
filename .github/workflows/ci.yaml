@@ -41,6 +41,7 @@ jobs:
               with:
                   php-version: ${{ matrix.php }}
                   coverage: none
+                  ini-values: extension_dir=/opt/sqlite/lib
 
             - name: Checkout
               uses: actions/checkout@v3
