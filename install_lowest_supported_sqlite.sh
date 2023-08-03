@@ -20,3 +20,5 @@ source ~/.bash_profile
 
 which sqlite3
 sqlite3 --version
+
+php $GITHUB_WORKSPACE/test.php
