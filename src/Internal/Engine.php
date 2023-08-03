@@ -46,12 +46,12 @@ class Engine
         $version = $this->connection->executeQuery('SELECT sqlite_version()')
             ->fetchOne();
 
-        if (version_compare($version, self::MIN_SQLITE_VERSION, '<')) {
+      /*  if (version_compare($version, self::MIN_SQLITE_VERSION, '<')) {
             throw new \InvalidArgumentException(sprintf(
                 'You need at least version "%s" of SQLite.',
                 self::MIN_SQLITE_VERSION
             ));
-        }
+        }*/
 
         // Use Write-Ahead Logging if possible
         $this->connection->executeQuery('PRAGMA journal_mode=WAL;');
