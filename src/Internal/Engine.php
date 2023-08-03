@@ -26,7 +26,6 @@ class Engine
 {
     public const VERSION = '1.0.0'; // Increase this whenever a re-index of all documents is needed
 
-    // TODO: Pragma functions were added in 3.16.
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
     private IndexInfo $indexInfo;
