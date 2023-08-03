@@ -42,18 +42,10 @@ jobs:
                   php-version: ${{ matrix.php }}
                   coverage: none
 #                  ini-values: extension_dir=/opt/sqlite/lib
+              run: rm /etc/php/${{ matrix.php }}/cli/conf.d/20-sqlite3.ini
 
             - name: Checkout
               uses: actions/checkout@v3
-
-            - name: Test
-              run: php --ini
-
-            - name: Test 2
-              run: php --info | grep sqlite
-
-            - name: Test 3
-              run: cat /etc/php/8.2/cli/conf.d/20-sqlite3.ini
 
             - name: Install lowest supported SQLite version "${{ matrix.sqlite }}"
               if: ${{ matrix.sqlite == '3.7.17' }}
