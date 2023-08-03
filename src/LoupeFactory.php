@@ -38,15 +38,13 @@ class LoupeFactory
     {
         $tokenizer = new Tokenizer();
 
+        $configuration = $configuration->withLogger(new InMemoryLogger());
+
         if ($logger = $configuration->getLogger()) {
             $connection->getConfiguration()->setMiddlewares([
                 new Middleware($logger)
             ]);
         }
-
-        $connection->getConfiguration()->setMiddlewares([
-            new Middleware(new InMemoryLogger())
-        ]);
 
         return new Loupe(
             new Engine(
