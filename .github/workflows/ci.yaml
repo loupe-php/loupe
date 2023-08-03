@@ -24,9 +24,6 @@ jobs:
               run: composer cs
 
     tests:
-        defaults:
-            run:
-                shell: bash -l {0}
         name: PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }}
         runs-on: ubuntu-latest
         strategy:
@@ -46,7 +43,17 @@ jobs:
 
             - name: Install lowest supported SQLite version "${{ matrix.sqlite }}"
               if: ${{ matrix.sqlite == '3.7.17' }}
-              run: ./install_lowest_supported_sqlite.sh
+              run: |
+               ./install_lowest_supported_sqlite.sh
+               php $GITHUB_WORKSPACE/test.php
+
+            - name: Test 2
+              shell: bash {0}
+              run: php $GITHUB_WORKSPACE/test.php
+
+            - name: Test 2
+              run: php $GITHUB_WORKSPACE/test.php
+
 
             - name: Install the dependencies
               run: composer install --no-interaction --no-suggest
