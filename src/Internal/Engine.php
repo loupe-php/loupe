@@ -45,6 +45,9 @@ class Engine
 
         $version = $this->connection->executeQuery('SELECT sqlite_version()')
             ->fetchOne();
+
+        var_dump($version);exit;
+
         if (version_compare($version, self::MIN_SQLITE_VERSION, '<')) {
             throw new \InvalidArgumentException(sprintf(
                 'You need at least version "%s" of SQLite.',
