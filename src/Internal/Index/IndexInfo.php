@@ -423,14 +423,8 @@ class IndexInfo
             ->createSchemaManager();
         $comparator = $schemaManager->createComparator();
 
-        try {
-            $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
-var_dump($schemaDiff);
-var_dump($this->engine->getConnection()->getDatabasePlatform()->getAlterSchemaSQL($schemaDiff));
-            $schemaManager->alterSchema($schemaDiff);
-        } catch (\Throwable $throwable) {
-            var_dump($throwable->getMessage(), $this->engine->getLogger());exit;
-        }
+        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
+        $schemaManager->alterSchema($schemaDiff);
     }
 
     private function getSchema(): Schema

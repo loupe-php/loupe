@@ -42,9 +42,6 @@ jobs:
                   php-version: ${{ matrix.php }}
                   coverage: none
 
-#            - name: Test
-#              run: sudo rm /etc/php/${{ matrix.php }}/cli/conf.d/20-sqlite3.ini
-
             - name: Checkout
               uses: actions/checkout@v3
 
@@ -56,13 +53,12 @@ jobs:
                   wget https://sqlite.org/2017/sqlite-autoconf-3160000.tar.gz
                   tar zxvf sqlite-autoconf-3160000.tar.gz
                   cd sqlite-autoconf-3160000
-                  CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_ENABLE_NORMALIZE=1" ./configure --prefix=$HOME/opt/sqlite
+                  ./configure --prefix=$HOME/opt/sqlite
                   make
                   make install
                   echo "export PATH=$HOME/opt/sqlite/bin:$PATH" >> ~/.bash_profile
                   echo "export LD_LIBRARY_PATH=$HOME/opt/sqlite/lib:$LD_LIBRARY_PATH" >> ~/.bash_profile
                   echo "export LD_RUN_PATH=$HOME/opt/sqlite/lib:$LD_RUN_PATH" >> ~/.bash_profile
-                  echo "export DYLD_LIBRARY_PATH=$HOME/opt/sqlite/lib:$DYLD_LIBRARY_PATH" >> ~/.bash_profile
                   source ~/.bash_profile
 
             - name: Install the dependencies

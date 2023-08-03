@@ -29,4 +29,9 @@ class Util
 
         return $json;
     }
+
+    public static function log(float $num): float
+    {
+        return log($num);
+    }
 }
