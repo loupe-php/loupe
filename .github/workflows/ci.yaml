@@ -63,6 +63,9 @@ jobs:
                   echo "export DYLD_LIBRARY_PATH=$HOME/opt/sqlite/lib:$DYLD_LIBRARY_PATH" >> ~/.bash_profile
                   source ~/.bash_profile
 
+            - name: Test
+              run: ls -la $HOME/opt/sqlite/lib
+
             - name: Install the dependencies
               run: composer install --no-interaction --no-suggest
 
