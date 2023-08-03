@@ -46,6 +46,13 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v3
 
+            - name: Test
+              run: php --ini
+
+
+            - name: Test 2
+              run: php --info | grep sqlite
+
             - name: Install lowest supported SQLite version "${{ matrix.sqlite }}"
               if: ${{ matrix.sqlite == '3.7.17' }}
               run: |
@@ -62,9 +69,6 @@ jobs:
                   echo "export LD_RUN_PATH=$HOME/opt/sqlite/lib:$LD_RUN_PATH" >> ~/.bash_profile
                   echo "export DYLD_LIBRARY_PATH=$HOME/opt/sqlite/lib:$DYLD_LIBRARY_PATH" >> ~/.bash_profile
                   source ~/.bash_profile
-
-            - name: Test
-              run: ls -la $HOME/opt/sqlite/lib
 
             - name: Install the dependencies
               run: composer install --no-interaction --no-suggest
