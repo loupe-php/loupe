@@ -485,17 +485,6 @@ class SearchTest extends TestCase
             ->withTypoTolerance(TypoTolerance::create()->disable())
         ;
 
-        $logger = new class implements LoggerInterface {
-            use LoggerTrait;
-
-            public function log($level, \Stringable|string $message, array $context = []): void
-            {
-                var_dump($message);
-            }
-        };
-
-        $configuration = $configuration->withLogger($logger);
-
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
 

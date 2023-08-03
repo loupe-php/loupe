@@ -12,6 +12,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
+use Loupe\Loupe\Logger\InMemoryLogger;
 
 class LoupeFactory
 {
@@ -42,6 +43,10 @@ class LoupeFactory
                 new Middleware($logger)
             ]);
         }
+
+        $connection->getConfiguration()->setMiddlewares([
+            new Middleware(new InMemoryLogger())
+        ]);
 
         return new Loupe(
             new Engine(

@@ -422,9 +422,14 @@ class IndexInfo
         $schemaManager = $this->engine->getConnection()
             ->createSchemaManager();
         $comparator = $schemaManager->createComparator();
-        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
 
-        $schemaManager->alterSchema($schemaDiff);
+        try {
+            $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
+
+            $schemaManager->alterSchema($schemaDiff);
+        } catch (\Throwable $throwable) {
+            var_dump($throwable->getMessage(), $this->engine->getLogger());exit;
+        }
     }
 
     private function getSchema(): Schema
