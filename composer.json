@@ -21,6 +21,7 @@
     ],
     "require": {
         "php": "^8.1",
+        "ext-pdo_sqlite": "*",
         "ext-intl": "*",
         "doctrine/dbal": "^3.5",
         "patrickschur/language-detection": "^5.2",
@@ -39,9 +40,9 @@
         "phpunit/phpunit": "^10.0"
     },
     "scripts": {
+        "tests": "@php vendor/bin/phpunit",
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
-        "performance-tests": "@php vendor/bin/phpunit --testsuite=performance",
         "cs-fixer": "@php vendor/bin/ecs check --fix"
     }
 }

@@ -26,7 +26,7 @@ class Engine
 {
     public const VERSION = '1.0.0'; // Increase this whenever a re-index of all documents is needed
 
-    private const MIN_SQLITE_VERSION = '3.35.0'; // Introduction of LN()
+    private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
     private IndexInfo $indexInfo;
 
@@ -43,9 +43,10 @@ class Engine
             throw new \InvalidArgumentException('Only SQLite is supported.');
         }
 
-        $version = $this->connection->executeQuery('SELECT sqlite_version()')
+        $sqliteVersion = $this->connection->executeQuery('SELECT sqlite_version()')
             ->fetchOne();
-        if (version_compare($version, self::MIN_SQLITE_VERSION, '<')) {
+
+        if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
             throw new \InvalidArgumentException(sprintf(
                 'You need at least version "%s" of SQLite.',
                 self::MIN_SQLITE_VERSION
@@ -55,7 +56,7 @@ class Engine
         // Use Write-Ahead Logging if possible
         $this->connection->executeQuery('PRAGMA journal_mode=WAL;');
 
-        $this->registerSQLiteFunctions();
+        $this->registerSQLiteFunctions($sqliteVersion);
 
         $this->indexInfo = new IndexInfo($this);
         $this->stateSetIndex = new StateSetIndex(
@@ -211,24 +212,34 @@ class Engine
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }
 
-    private function registerSQLiteFunctions()
+    private function registerSQLiteFunctions(string $sqliteVersion)
     {
+        $functions = [
+            'max_levenshtein' => [
+                'callback' => [Levenshtein::class, 'maxLevenshtein'],
+                'numArgs' => 4,
+            ],
+            'geo_distance' => [
+                'callback' => [Geo::class, 'geoDistance'],
+                'numArgs' => 4,
+            ],
+            'loupe_relevance' => [
+                'callback' => [CosineSimilarity::class, 'fromQuery'],
+                'numArgs' => 3,
+            ],
+        ];
+
+        // Introduction of LN()
+        if (version_compare($sqliteVersion, '3.35.0', '<')) {
+            $functions['ln'] = [
+                'callback' => [Util::class, 'log'],
+                'numArgs' => 1,
+            ];
+        }
+
         UserDefinedFunctions::register(
             [$this->connection->getNativeConnection(), 'sqliteCreateFunction'],
-            [
-                'max_levenshtein' => [
-                    'callback' => [Levenshtein::class, 'maxLevenshtein'],
-                    'numArgs' => 4,
-                ],
-                'geo_distance' => [
-                    'callback' => [Geo::class, 'geoDistance'],
-                    'numArgs' => 4,
-                ],
-                'loupe_relevance' => [
-                    'callback' => [CosineSimilarity::class, 'fromQuery'],
-                    'numArgs' => 3,
-                ],
-            ]
+            $functions
         );
     }
 }

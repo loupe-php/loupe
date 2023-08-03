@@ -422,8 +422,8 @@ class IndexInfo
         $schemaManager = $this->engine->getConnection()
             ->createSchemaManager();
         $comparator = $schemaManager->createComparator();
-        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
 
+        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
         $schemaManager->alterSchema($schemaDiff);
     }
 

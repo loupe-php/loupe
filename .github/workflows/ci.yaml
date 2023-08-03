@@ -1,0 +1,68 @@
+name: CI
+
+on:
+    pull_request: ~
+
+jobs:
+    cs:
+        name: Coding Style
+        runs-on: ubuntu-latest
+        steps:
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.2'
+                  coverage: none
+
+            - name: Checkout
+              uses: actions/checkout@v3
+
+            - name: Install the dependencies
+              run: composer install --no-interaction --no-suggest
+
+            - name: Run the CS fixer
+              run: composer cs
+
+    tests:
+        name: PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }}
+        runs-on: ubuntu-latest
+        # Share the bash between the steps:
+        defaults:
+            run:
+                shell: bash -l {0}
+        strategy:
+            fail-fast: false
+            matrix:
+                sqlite: ['3.16.0', 'default']
+                php: ['8.1', '8.2']
+        steps:
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php }}
+                  coverage: none
+
+            - name: Checkout
+              uses: actions/checkout@v3
+
+            - name: Install lowest supported SQLite version "${{ matrix.sqlite }}"
+              if: ${{ matrix.sqlite == '3.16.0' }}
+              run: |
+                  cd ~
+                  # SQLite 3.16.0
+                  wget https://sqlite.org/2017/sqlite-autoconf-3160000.tar.gz
+                  tar zxvf sqlite-autoconf-3160000.tar.gz
+                  cd sqlite-autoconf-3160000
+                  # CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA=1" ./configure --prefix=$HOME/opt/sqlite
+                  make
+                  make install
+                  echo "export PATH=$HOME/opt/sqlite/bin:$PATH" >> ~/.bash_profile
+                  echo "export LD_LIBRARY_PATH=$HOME/opt/sqlite/lib:$LD_LIBRARY_PATH" >> ~/.bash_profile
+                  echo "export LD_RUN_PATH=$HOME/opt/sqlite/lib:$LD_RUN_PATH" >> ~/.bash_profile
+                  source ~/.bash_profile
+
+            - name: Install the dependencies
+              run: composer install --no-interaction --no-suggest
+
+            - name: Run the unit tests
+              run: composer tests

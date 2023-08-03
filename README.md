@@ -34,6 +34,14 @@ reasons for this are simple:
 
 I even took the liberty to copy some of their test data to feed Loupe for functional tests.
 
+## Installation
+
+1. Make sure you have `pdo_sqlite` available and your installed SQLite version is at least 3.16.0. This is when 
+   PRAGMA functions have been added without which no schema comparisons are possible. It is recommended you run at 
+   least version 3.35.0 which is when mathematical functions found its way into SQLite. Otherwise, Loupe has to 
+   polyfill those which will result in a little performance penalty.
+2. Run `composer require loupe/loupe`.
+
 ## Usage
 
 ```php
