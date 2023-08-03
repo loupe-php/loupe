@@ -29,7 +29,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                sqlite: ['lowest supported', 'default']
+                sqlite: ['3.7.17', 'default']
                 php: ['8.1', '8.2']
         steps:
             - name: Setup PHP
@@ -41,8 +41,8 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v3
 
-            - name: Install lowest SQL
-              if: ${{ matrix.sqlite == 'lowest supported' }}
+            - name: Install lowest supported SQLite version "${{ matrix.sqlite }}"
+              if: ${{ matrix.sqlite == '3.7.17' }}
               run: ./install_lowest_supported_sqlite.sh
 
             - name: Install the dependencies

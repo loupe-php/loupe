@@ -16,7 +16,7 @@ export PATH=$HOME/opt/sqlite/bin:$PATH
 export LD_LIBRARY_PATH=$HOME/opt/sqlite/lib
 export LD_RUN_PATH=$HOME/opt/sqlite/lib
 
-source .bash_profile
+source ~/.bash_profile
 
 which sqlite3
 sqlite3 --version
