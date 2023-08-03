@@ -58,6 +58,7 @@ jobs:
                   echo "export PATH=$HOME/opt/sqlite/bin:$PATH" >> ~/.bash_profile
                   echo "export LD_LIBRARY_PATH=$HOME/opt/sqlite/lib:$LD_LIBRARY_PATH" >> ~/.bash_profile
                   echo "export LD_RUN_PATH=$HOME/opt/sqlite/lib:$LD_RUN_PATH" >> ~/.bash_profile
+                  cat ~/.bash_profile
                   source ~/.bash_profile
                   sqlite3 --version
                   php $GITHUB_WORKSPACE/test.php
