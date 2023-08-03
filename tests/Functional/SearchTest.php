@@ -10,6 +10,8 @@ use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+use Psr\Log\LoggerTrait;
 
 class SearchTest extends TestCase
 {
@@ -482,6 +484,17 @@ class SearchTest extends TestCase
             ->withSearchableAttributes(['title', 'overview'])
             ->withTypoTolerance(TypoTolerance::create()->disable())
         ;
+
+        $logger = new class implements LoggerInterface {
+            use LoggerTrait;
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                var_dump($message);
+            }
+        };
+
+        $configuration = $configuration->withLogger($logger);
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
