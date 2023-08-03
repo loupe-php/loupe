@@ -44,7 +44,7 @@ jobs:
 #                  ini-values: extension_dir=/opt/sqlite/lib
 
             - name: Test
-              run: rm /etc/php/${{ matrix.php }}/cli/conf.d/20-sqlite3.ini
+              run: sudo rm /etc/php/${{ matrix.php }}/cli/conf.d/20-sqlite3.ini
 
             - name: Checkout
               uses: actions/checkout@v3
