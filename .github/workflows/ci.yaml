@@ -33,7 +33,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                sqlite: ['3.7.17', 'default']
+                sqlite: ['3.16.0', 'default']
                 php: ['8.1', '8.2']
         steps:
             - name: Setup PHP
@@ -41,22 +41,21 @@ jobs:
               with:
                   php-version: ${{ matrix.php }}
                   coverage: none
-#                  ini-values: extension_dir=/opt/sqlite/lib
 
-            - name: Test
-              run: sudo rm /etc/php/${{ matrix.php }}/cli/conf.d/20-sqlite3.ini
+#            - name: Test
+#              run: sudo rm /etc/php/${{ matrix.php }}/cli/conf.d/20-sqlite3.ini
 
             - name: Checkout
               uses: actions/checkout@v3
 
             - name: Install lowest supported SQLite version "${{ matrix.sqlite }}"
-              if: ${{ matrix.sqlite == '3.7.17' }}
+              if: ${{ matrix.sqlite == '3.16.0' }}
               run: |
                   cd ~
-                  # SQLite 3.7.17
-                  wget https://sqlite.org/2013/sqlite-autoconf-3071700.tar.gz
-                  tar zxvf sqlite-autoconf-3071700.tar.gz
-                  cd sqlite-autoconf-3071700
+                  # SQLite 3.16.0
+                  wget https://sqlite.org/2017/sqlite-autoconf-3160000.tar.gz
+                  tar zxvf sqlite-autoconf-3160000.tar.gz
+                  cd sqlite-autoconf-3160000
                   CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_ENABLE_NORMALIZE=1" ./configure --prefix=$HOME/opt/sqlite
                   make
                   make install
