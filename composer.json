@@ -39,9 +39,9 @@
         "phpunit/phpunit": "^10.0"
     },
     "scripts": {
+        "tests": "@php vendor/bin/phpunit",
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
-        "performance-tests": "@php vendor/bin/phpunit --testsuite=performance",
         "cs-fixer": "@php vendor/bin/ecs check --fix"
     }
 }
