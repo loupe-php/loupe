@@ -26,6 +26,9 @@ jobs:
     tests:
         name: PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }}
         runs-on: ubuntu-latest
+        defaults:
+            run:
+                shell: bash -l {0}
         strategy:
             fail-fast: false
             matrix:
@@ -60,7 +63,6 @@ jobs:
                   php $GITHUB_WORKSPACE/test.php
 
             - name: Test 2
-              shell: bash -l {0}
               run: php $GITHUB_WORKSPACE/test.php
 
             - name: Test 2
