@@ -5,7 +5,7 @@ wget https://sqlite.org/2013/sqlite-autoconf-3071700.tar.gz
 
 tar zxvf sqlite-autoconf-3071700.tar.gz
 
-cd sqlite-autoconf-307170
+cd sqlite-autoconf-3071700
 
 ./configure --prefix=$HOME/opt/sqlite
 
