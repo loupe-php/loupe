@@ -38,12 +38,12 @@ jobs:
                   php-version: ${{ matrix.php }}
                   coverage: none
 
+            - name: Checkout
+              uses: actions/checkout@v2
+
             - name: Install lowest SQL
               if: ${{ matrix.sqlite == 'lowest supported' }}
               run: ./install_lowest_supported_sqlite.sh
-
-            - name: Checkout
-              uses: actions/checkout@v2
 
             - name: Install the dependencies
               run: composer install --no-interaction --no-suggest
