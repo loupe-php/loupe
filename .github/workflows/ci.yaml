@@ -53,7 +53,7 @@ jobs:
                   wget https://sqlite.org/2017/sqlite-autoconf-3160000.tar.gz
                   tar zxvf sqlite-autoconf-3160000.tar.gz
                   cd sqlite-autoconf-3160000
-                  ./configure --prefix=$HOME/opt/sqlite
+                  # CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA=1" ./configure --prefix=$HOME/opt/sqlite
                   make
                   make install
                   echo "export PATH=$HOME/opt/sqlite/bin:$PATH" >> ~/.bash_profile
