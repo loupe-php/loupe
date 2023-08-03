@@ -6,13 +6,11 @@ namespace Loupe\Loupe;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
-use Doctrine\DBAL\Logging\Middleware;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
-use Loupe\Loupe\Logger\InMemoryLogger;
 
 class LoupeFactory
 {
@@ -37,12 +35,6 @@ class LoupeFactory
     private function createFromConnection(Connection $connection, Configuration $configuration): Loupe
     {
         $tokenizer = new Tokenizer();
-
-        if ($logger = $configuration->getLogger()) {
-            $connection->getConfiguration()->setMiddlewares([
-                new Middleware($logger)
-            ]);
-        }
 
         return new Loupe(
             new Engine(
