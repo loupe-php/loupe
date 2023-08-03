@@ -24,6 +24,9 @@ jobs:
               run: composer cs
 
     tests:
+        defaults:
+            run:
+                shell: bash -l {0}
         name: PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }}
         runs-on: ubuntu-latest
         strategy:
