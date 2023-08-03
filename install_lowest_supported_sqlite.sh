@@ -7,7 +7,7 @@ tar zxvf sqlite-autoconf-3071700.tar.gz
 
 cd sqlite-autoconf-3071700
 
-./configure --prefix=$HOME/opt/sqlite
+CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA=1" ./configure --prefix=$HOME/opt/sqlite
 
 make
 make install
