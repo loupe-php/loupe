@@ -313,6 +313,41 @@ class IndexTest extends TestCase
         $this->assertSame($uta, $document);
     }
 
+    public function testDeleteDocument(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $sandra = $this->getSandraDocument();
+        $uta = [
+            'id' => 2,
+            'firstname' => 'Uta',
+            'lastname' => 'Koertig',
+            'gender' => 'female',
+            'departments' => ['Development', 'Backoffice'],
+            'colors' => ['Red', 'Orange'],
+            'age' => 29,
+        ];
+
+        $loupe->addDocument($sandra);
+        $loupe->addDocument($uta);
+        $sandraDocument = $loupe->getDocument(1);
+        $utaDocument = $loupe->getDocument(2);
+        $this->assertSame($sandra, $sandraDocument);
+        $this->assertSame($uta, $utaDocument);
+
+        $loupe->deleteDocument(1);
+
+        $sandraDocument = $loupe->getDocument(1);
+        $utaDocument = $loupe->getDocument(2);
+        $this->assertNull($sandraDocument);
+        $this->assertSame($uta, $utaDocument);
+    }
+
     /**
      * @param array<array<string, mixed>> $documents
      * @param array<array<string, mixed>> $expectedHits
