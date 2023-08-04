@@ -37,7 +37,8 @@
         "symfony/filesystem": "^6.2",
         "symplify/easy-coding-standard": "11.2.4.72",
         "symfony/finder": "^6.2",
-        "phpunit/phpunit": "^10.0"
+        "phpunit/phpunit": "^10.0",
+        "phpstan/phpstan": "^1.10"
     },
     "scripts": {
         "tests": "@php vendor/bin/phpunit",

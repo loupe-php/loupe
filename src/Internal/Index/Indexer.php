@@ -249,9 +249,9 @@ class Indexer
 
         // Notice the * 1.0 additions to the COUNT() SELECTS in order to force floating point calculations
         $query = <<<'QUERY'
-            UPDATE 
-              %s 
-            SET 
+            UPDATE
+              %s
+            SET
               idf = 1.0 + (LN(
                 (SELECT COUNT(*) FROM %s) * 1.0
                     /
@@ -263,7 +263,6 @@ QUERY;
             $query,
             IndexInfo::TABLE_NAME_TERMS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
