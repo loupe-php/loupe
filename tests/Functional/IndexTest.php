@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
+use Loupe\Loupe\Logger\InMemoryLogger;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -56,6 +57,19 @@ class IndexTest extends TestCase
         ]);
 
         $this->assertSame(2, $loupe->countDocuments());
+    }
+
+    public function testLogging(): void
+    {
+        $logger = new InMemoryLogger();
+        $configuration = Configuration::create()
+            ->withLogger($logger)
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument($this->getSandraDocument());
+
+        $this->assertNotSame(0, \count($logger->getRecords()));
     }
 
     public function testNullValueIsIrrelevantForDocumentSchema(): void
