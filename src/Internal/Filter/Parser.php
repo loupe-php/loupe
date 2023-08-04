@@ -127,7 +127,7 @@ class Parser
         $type = $token->type ?? null;
 
         if ($type === null || $type < 10 || $type > 30) {
-            $this->syntaxError('invalid operator', $token);
+            $this->syntaxError('valid operator', $token);
         }
     }
 
