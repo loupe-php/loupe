@@ -12,6 +12,8 @@ final class SearchParameters
 
     private array $attributesToRetrieve = ['*'];
 
+    private array $attributesToSearchOn = ['*'];
+
     private string $filter = '';
 
     private int $hitsPerPage = 20;
@@ -37,6 +39,11 @@ final class SearchParameters
     public function getAttributesToRetrieve(): array
     {
         return $this->attributesToRetrieve;
+    }
+
+    public function getAttributesToSearchOn(): array
+    {
+        return $this->attributesToSearchOn;
     }
 
     public function getFilter(): string
@@ -81,6 +88,14 @@ final class SearchParameters
     {
         $clone = clone $this;
         $clone->attributesToRetrieve = $attributesToRetrieve;
+
+        return $clone;
+    }
+
+    public function withAttributesToSearchOn(array $attributesToSearchOn): self
+    {
+        $clone = clone $this;
+        $clone->attributesToSearchOn = $attributesToSearchOn;
 
         return $clone;
     }

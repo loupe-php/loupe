@@ -45,6 +45,17 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
+## Attributes to search on
+
+By default, Loupe searches all [configured `searchable attributes`][Config] but you can limit your query to only a 
+subset of those:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToSearchOn(['firstname'])
+;
+```
+
 ## Filter
 
 Loupe provides a powerful way to filter your documents. Know SQL? Then you'll have absolutely no issues filtering 

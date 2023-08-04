@@ -644,29 +644,58 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testSimpleSearch(): void
+    public function testSearchWithAttributesToSearchOn(): void
     {
-        $loupe = $this->setupLoupeWithDepartmentsFixture();
+        $loupe = $this->setupLoupeWithMoviesFixture();
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('uta')
-            ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
-            ->withSort(['firstname:asc'])
+            ->withQuery('four')
+            ->withAttributesToSearchOn(['title'])
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 2,
-                    'firstname' => 'Uta',
-                    'lastname' => 'Koertig',
+                    'id' => 5,
+                    'title' => 'Four Rooms',
                 ],
             ],
-            'query' => 'uta',
+            'query' => 'four',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    public function testSimpleSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('four')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 5,
+                    'title' => 'Four Rooms',
+                ],
+                [
+                    'id' => 6,
+                    'title' => 'Judgment Night',
+                ],
+            ],
+            'query' => 'four',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
         ]);
     }
 
@@ -906,6 +935,24 @@ class SearchTest extends TestCase
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'departments');
+
+        return $loupe;
+    }
+
+    private function setupLoupeWithMoviesFixture(Configuration $configuration = null): Loupe
+    {
+        if ($configuration === null) {
+            $configuration = Configuration::create();
+        }
+
+        $configuration = $configuration
+            ->withFilterableAttributes(['genres'])
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
 
         return $loupe;
     }
