@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\AbstractSQLiteDriver;
 use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
@@ -39,7 +39,7 @@ class Engine
         private Highlighter $highlighter,
         private Parser $filterParser
     ) {
-        if (! $this->connection->getDriver() instanceof AbstractSQLiteDriver) {
+        if (! $this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
             throw new \InvalidArgumentException('Only SQLite is supported.');
         }
 
