@@ -102,7 +102,7 @@ final class TypoTolerance
         krsort($typoThresholds);
 
         foreach ($typoThresholds as $threshold => $distance) {
-            if (! is_int($threshold) || ! is_int($distance)) {
+            if (! \is_int($threshold) || ! \is_int($distance)) {
                 throw new InvalidConfigurationException('Invalid threshold configuration format.');
             }
         }

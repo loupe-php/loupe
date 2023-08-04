@@ -471,7 +471,7 @@ class SearchTest extends TestCase
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => count($expectedHits),
+            'totalHits' => \count($expectedHits),
         ]);
     }
 
@@ -601,8 +601,8 @@ class SearchTest extends TestCase
             'query' => $query,
             'hitsPerPage' => 20,
             'page' => 1,
-            'totalPages' => count($expectedResults) === 0 ? 0 : 1,
-            'totalHits' => count($expectedResults),
+            'totalPages' => \count($expectedResults) === 0 ? 0 : 1,
+            'totalHits' => \count($expectedResults),
         ]);
     }
 

@@ -63,7 +63,7 @@ class TokenCollection
 
     public function count(): int
     {
-        return count($this->tokens);
+        return \count($this->tokens);
     }
 
     public function empty(): bool

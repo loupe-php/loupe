@@ -22,11 +22,11 @@ class LoupeTypes
 
     public static function convertToString(mixed $attributeValue): string
     {
-        if (is_string($attributeValue)) {
+        if (\is_string($attributeValue)) {
             return $attributeValue;
         }
 
-        if (is_array($attributeValue)) {
+        if (\is_array($attributeValue)) {
             if (array_is_list($attributeValue)) {
                 sort($attributeValue);
             } else {
@@ -45,7 +45,7 @@ class LoupeTypes
         }
 
         // Ignore objects
-        if (is_object($attributeValue)) {
+        if (\is_object($attributeValue)) {
             return '';
         }
 
@@ -73,11 +73,11 @@ class LoupeTypes
             return self::TYPE_NULL;
         }
 
-        if (is_float($variable) || is_int($variable)) {
+        if (\is_float($variable) || \is_int($variable)) {
             return self::TYPE_NUMBER;
         }
 
-        if (is_array($variable)) {
+        if (\is_array($variable)) {
             $count = \count($variable);
             $keys = array_keys($variable);
 
@@ -85,7 +85,7 @@ class LoupeTypes
                 return self::TYPE_ARRAY_EMPTY;
             }
 
-            if ($count === 2 && in_array('lat', $keys, true) && in_array('lng', $keys, true)) {
+            if ($count === 2 && \in_array('lat', $keys, true) && \in_array('lng', $keys, true)) {
                 return self::TYPE_GEO;
             }
 
@@ -113,7 +113,7 @@ class LoupeTypes
     public static function isSingleType(string $type): bool
     {
         // The Geo type is not exactly a single type, but it has to be treated as such
-        return in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO], true);
+        return \in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO], true);
     }
 
     public static function typeMatchesType(string $schemaType, string $checkType): bool
@@ -157,15 +157,15 @@ class LoupeTypes
 
     private static function convertToFloat(mixed $attributeValue): float
     {
-        if (is_float($attributeValue)) {
+        if (\is_float($attributeValue)) {
             return $attributeValue;
         }
 
-        if (is_int($attributeValue)) {
+        if (\is_int($attributeValue)) {
             return (float) $attributeValue;
         }
 
-        if (is_string($attributeValue)) {
+        if (\is_string($attributeValue)) {
             return (float) $attributeValue;
         }
 

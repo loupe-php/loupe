@@ -116,7 +116,7 @@ final class Configuration
 
     public static function validateAttributeName(string $name): void
     {
-        if (strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
+        if (\strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
             || ! preg_match('/^' . self::ATTRIBUTE_NAME_RGXP . '$/', $name)
         ) {
             throw InvalidConfigurationException::becauseInvalidAttributeName($name);

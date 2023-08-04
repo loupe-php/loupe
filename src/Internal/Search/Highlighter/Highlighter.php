@@ -52,10 +52,10 @@ class Highlighter
         $spans = $this->extractSpansFromMatches($matches);
 
         foreach (UTF8::str_split($text) as $pos => $char) {
-            if (in_array($pos, $spans['starts'], true)) {
+            if (\in_array($pos, $spans['starts'], true)) {
                 $highlightedText .= $startTag;
             }
-            if (in_array($pos, $spans['ends'], true)) {
+            if (\in_array($pos, $spans['ends'], true)) {
                 $highlightedText .= $endTag;
             }
 

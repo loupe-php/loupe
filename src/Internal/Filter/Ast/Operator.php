@@ -52,7 +52,7 @@ enum Operator: string
 
     private function quote($connection, float|string &$value): void
     {
-        if (is_string($value)) {
+        if (\is_string($value)) {
             $value = $connection->quote($value, ParameterType::STRING);
         }
     }

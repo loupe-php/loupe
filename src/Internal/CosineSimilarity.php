@@ -13,7 +13,7 @@ class CosineSimilarity
         // First we have to turn the query term IDFs into TF-IDF (we only have to do this once per query, so we can cache that)
         if (! isset(self::$queryTfIdfsCache[$queryId])) {
             $queryIdfs = array_map('floatval', explode(',', $queryIdfs));
-            $tf = 1 / count($queryIdfs);
+            $tf = 1 / \count($queryIdfs);
             self::$queryTfIdfsCache[$queryId] = array_map(function (float $idf) use ($tf) {
                 return $tf * $idf;
             }, $queryIdfs);

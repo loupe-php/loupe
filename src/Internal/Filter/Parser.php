@@ -140,7 +140,7 @@ class Parser
     {
         $type = $token->type ?? null;
 
-        if ($type === null || ! in_array($type, $types, true)) {
+        if ($type === null || ! \in_array($type, $types, true)) {
             $this->syntaxError($error, $token);
         }
     }
@@ -149,7 +149,7 @@ class Parser
     {
         $attributeName = $this->lexer->token->value;
 
-        if (count($allowedAttributeNames) !== 0 && ! in_array($attributeName, $allowedAttributeNames, true)) {
+        if (\count($allowedAttributeNames) !== 0 && ! \in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
         }
 
@@ -197,7 +197,7 @@ class Parser
 
         $attributeName = $this->lexer->token->value;
 
-        if (count($allowedAttributeNames) !== 0 && ! in_array($attributeName, $allowedAttributeNames, true)) {
+        if (\count($allowedAttributeNames) !== 0 && ! \in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
         }
 

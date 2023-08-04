@@ -37,13 +37,13 @@ class Sorting
         $sorters = [];
 
         foreach ($sort as $v) {
-            if (! is_string($v)) {
+            if (! \is_string($v)) {
                 throw new SortFormatException('Sort parameters must be an array of strings.');
             }
 
             $chunks = explode(':', $v, 2);
 
-            if (count($chunks) !== 2 || ! in_array($chunks[1], ['asc', 'desc'], true)) {
+            if (\count($chunks) !== 2 || ! \in_array($chunks[1], ['asc', 'desc'], true)) {
                 throw SortFormatException::becauseFormat();
             }
 

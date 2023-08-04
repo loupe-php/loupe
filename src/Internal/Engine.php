@@ -175,7 +175,7 @@ class Engine
         array $uniqueIndexColumns,
         string $insertIdColumn = ''
     ): ?int {
-        if (count($insertData) === 0) {
+        if (\count($insertData) === 0) {
             throw new \InvalidArgumentException('Need to provide data to insert.');
         }
 

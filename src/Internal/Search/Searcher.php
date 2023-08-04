@@ -79,7 +79,7 @@ class Searcher
                 }
             }
 
-            if (array_key_exists(GeoPoint::DISTANCE_ALIAS, $result)) {
+            if (\array_key_exists(GeoPoint::DISTANCE_ALIAS, $result)) {
                 $document['_geoDistance'] = (int) round($result[GeoPoint::DISTANCE_ALIAS]);
             }
 
@@ -275,7 +275,7 @@ class Searcher
             )
         ;
 
-        $column = is_float($node->value) ? 'numeric_value' : 'string_value';
+        $column = \is_float($node->value) ? 'numeric_value' : 'string_value';
 
         $qb->andWhere(
             sprintf(
@@ -403,7 +403,7 @@ class Searcher
 
         if ($node instanceof Filter) {
             // Multi filterable need a sub query
-            if (in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+            if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $whereStatement[] = $documentAlias . '.id IN (';
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
@@ -494,7 +494,7 @@ class Searcher
             $highlightResult = $this->engine->getHighlighter()
                 ->highlight($formatted[$attribute], $tokenCollection);
 
-            if (in_array($attribute, $attributesToHighlight, true)) {
+            if (\in_array($attribute, $attributesToHighlight, true)) {
                 $formatted[$attribute] = $highlightResult->getHighlightedText();
             }
 

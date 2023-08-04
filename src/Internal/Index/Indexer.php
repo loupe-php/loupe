@@ -76,7 +76,7 @@ class Indexer
             return;
         }
 
-        $float = is_float($value);
+        $float = \is_float($value);
         $valueColumn = $float ? 'numeric_value' : 'string_value';
 
         $data = [
@@ -155,7 +155,7 @@ class Indexer
                     ->getLoupeTypeForAttribute($attribute)
             );
 
-            if (is_array($convertedValue)) {
+            if (\is_array($convertedValue)) {
                 foreach ($convertedValue as $value) {
                     $this->indexAttributeValue($attribute, $value, $documentId);
                 }
@@ -203,7 +203,7 @@ class Indexer
         $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
 
         foreach ($document as $attributeName => $attributeValue) {
-            if (['*'] !== $searchableAttributes && ! in_array($attributeName, $searchableAttributes, true)) {
+            if (['*'] !== $searchableAttributes && ! \in_array($attributeName, $searchableAttributes, true)) {
                 continue;
             }
 

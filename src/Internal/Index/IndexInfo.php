@@ -47,7 +47,7 @@ class IndexInfo
         $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
         $sortableAttributes = $this->engine->getConfiguration()->getSortableAttributes();
 
-        if (! array_key_exists($primaryKey, $document)) {
+        if (! \array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
         }
 
@@ -56,13 +56,13 @@ class IndexInfo
         foreach ($document as $attributeName => $attributeValue) {
             Configuration::validateAttributeName($attributeName);
 
-            if (! in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
+            if (! \in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
                 continue;
             }
 
             $loupeType = LoupeTypes::getTypeFromValue($attributeValue);
 
-            if (in_array($attributeName, $sortableAttributes, true) && ! LoupeTypes::isSingleType($loupeType)) {
+            if (\in_array($attributeName, $sortableAttributes, true) && ! LoupeTypes::isSingleType($loupeType)) {
                 throw InvalidConfigurationException::becauseAttributeNotSortable($attributeName);
             }
 
@@ -139,7 +139,7 @@ class IndexInfo
 
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
-        if (! array_key_exists($attributeName, $this->getDocumentSchema())) {
+        if (! \array_key_exists($attributeName, $this->getDocumentSchema())) {
             throw new InvalidConfigurationException(sprintf(
                 'The attribute "%s" does not exist on the document schema.',
                 $attributeName
@@ -207,7 +207,7 @@ class IndexInfo
     {
         $documentSchema = $this->getDocumentSchema();
 
-        if (count(array_diff_key($documentSchema, $document)) !== 0) {
+        if (\count(array_diff_key($documentSchema, $document)) !== 0) {
             throw InvalidDocumentException::becauseDoesNotMatchSchema(
                 $documentSchema,
                 $document,
