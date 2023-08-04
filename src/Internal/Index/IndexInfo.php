@@ -391,6 +391,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['term', 'document', 'attribute', 'position']);
+        $table->addIndex(['document']);
     }
 
     private function addTermsToSchema(Schema $schema): void
