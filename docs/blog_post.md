@@ -89,8 +89,8 @@ work has been done for you.
 I also don't plan to add support for other databases, because SQLite is everywhere and offers the possibility to 
 register your own SQL functions, which Loupe benefits from.
 
-Thanks to SQLite, Loupe could also become interesting for embedded systems such as apps built with [NativePHP]
-[NativePHP] or similar.
+Thanks to SQLite, Loupe could also become interesting for embedded systems such as apps built with [NativePHP][NativePHP]
+or similar.
 
 So let's recap! Loupe…
 
