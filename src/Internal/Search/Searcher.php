@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
 use Loupe\Loupe\Internal\Engine;
@@ -164,6 +165,14 @@ class Searcher
         );
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
+
+        if (['*'] !== $this->searchParameters->getAttributesToSearchOn()) {
+            $cteSelectQb->andWhere(sprintf(
+                $termsDocumentsAlias . '.attribute IN (%s)',
+                $this->queryBuilder->createNamedParameter($this->searchParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
+            ));
+        }
+
         $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', self::CTE_TERM_MATCHES));
 
         // Ensure phrase positions if any
