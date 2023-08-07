@@ -36,6 +36,11 @@ final class TypoTolerance
         return $clone;
     }
 
+    public static function disabled(): self
+    {
+        return (new self())->disable();
+    }
+
     public function firstCharTypoCountsDouble(): bool
     {
         return $this->firstCharTypoCountsDouble;
