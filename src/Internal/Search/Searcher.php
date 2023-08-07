@@ -413,9 +413,14 @@ class Searcher
         if ($node instanceof Filter) {
             // Multi filterable need a sub query
             if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-                $whereStatement[] = $documentAlias . '.id IN (';
+                // @see https://github.com/loupe-php/loupe/pull/19
+                $previousOperator = $node->operator;
+                $operator = $node->operator->getMultiValueOperator();
+                $node->operator = $operator;
+                $whereStatement[] = $documentAlias . '.id ' . ($node->operator !== $previousOperator ? 'NOT IN' : 'IN') . ' (';
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
+                $node->operator = $previousOperator;
 
             // Single attributes are on the document itself
             } else {

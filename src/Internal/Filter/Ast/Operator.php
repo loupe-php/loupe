@@ -50,6 +50,15 @@ enum Operator: string
         };
     }
 
+    public function getMultiValueOperator(): self
+    {
+        return match ($this) {
+            // negatives need to be inverted for the multi value check so they are correctly filtered out
+            self::NotIn => self::In,
+            default => $this,
+        };
+    }
+
     private function quote($connection, float|string &$value): void
     {
         if (\is_string($value)) {
