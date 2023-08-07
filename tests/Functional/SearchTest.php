@@ -15,6 +15,81 @@ class SearchTest extends TestCase
 {
     use FunctionalTestTrait;
 
+    public static function equalFilterProvider(): \Generator
+    {
+        yield '= on multiple attribute' => [
+            "departments = 'Backoffice'",
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield '!= on multiple attribute' => [
+            "departments != 'Backoffice'",
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+            ],
+        ];
+
+        yield '= on single attribute' => [
+            "gender = 'female'",
+            [
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield '!= on single attribute' => [
+            "gender != 'female'",
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+            ],
+        ];
+    }
+
     public static function highlightingProvider(): \Generator
     {
         yield 'Highlight with matches position only' => [
@@ -270,6 +345,27 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    #[DataProvider('equalFilterProvider')]
+    public function testEqualFilter(string $filter, array $expectedHits): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter($filter)
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
         ]);
     }
 
