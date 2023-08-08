@@ -1,6 +1,6 @@
 {
     "name": "loupe/loupe",
-    "description": "A full text search engine with tokenization, stemming, typo tolerance, filters and geo support based on only PHP and SQlite",
+    "description": "A full text search engine with tokenization, stemming, typo tolerance, filters and geo support based on only PHP and SQLite",
     "type": "library",
     "license": "MIT",
     "autoload": {
