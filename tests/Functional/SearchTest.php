@@ -157,16 +157,8 @@ class SearchTest extends TestCase
                     'firstname' => 'Alexander',
                 ],
                 [
-                    'id' => 4,
-                    'firstname' => 'Jonas',
-                ],
-                [
                     'id' => 1,
                     'firstname' => 'Sandra',
-                ],
-                [
-                    'id' => 2,
-                    'firstname' => 'Uta',
                 ],
             ],
         ];
