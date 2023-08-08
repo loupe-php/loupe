@@ -6,6 +6,9 @@ namespace Loupe\Loupe\Internal;
 
 class CosineSimilarity
 {
+    /**
+     * @var array<string, float>
+     */
     private static array $queryTfIdfsCache = [];
 
     public static function fromQuery(string $queryId, string $queryIdfs, string $documentTfIdfs): float
@@ -34,6 +37,9 @@ class CosineSimilarity
      *
      * Where d1 = query document (query terms)
      * Where d2 = resulting document (matching terms)
+     *
+     * @param array<float> $d1
+     * @param array<float> $d2
      */
     public static function similarity(array $d1, array $d2): float
     {

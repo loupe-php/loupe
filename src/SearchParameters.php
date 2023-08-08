@@ -8,10 +8,19 @@ use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 
 final class SearchParameters
 {
+    /**
+     * @var array<string>
+     */
     private array $attributesToHighlight = [];
 
+    /**
+     * @var array<string>
+     */
     private array $attributesToRetrieve = ['*'];
 
+    /**
+     * @var array<string>
+     */
     private array $attributesToSearchOn = ['*'];
 
     private string $filter = '';
@@ -24,6 +33,9 @@ final class SearchParameters
 
     private bool $showMatchesPosition = false;
 
+    /**
+     * @var array<string>
+     */
     private array $sort = [Relevance::RELEVANCE_ALIAS . ':desc'];
 
     public static function create(): self
@@ -31,16 +43,25 @@ final class SearchParameters
         return new self();
     }
 
+    /**
+     * @return array<string>
+     */
     public function getAttributesToHighlight(): array
     {
         return $this->attributesToHighlight;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getAttributesToRetrieve(): array
     {
         return $this->attributesToRetrieve;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getAttributesToSearchOn(): array
     {
         return $this->attributesToSearchOn;
@@ -66,6 +87,9 @@ final class SearchParameters
         return $this->query;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getSort(): array
     {
         return $this->sort;
@@ -76,6 +100,9 @@ final class SearchParameters
         return $this->showMatchesPosition;
     }
 
+    /**
+     * @param array<string> $attributesToHighlight
+     */
     public function withAttributesToHighlight(array $attributesToHighlight): self
     {
         $clone = clone $this;
@@ -84,6 +111,9 @@ final class SearchParameters
         return $clone;
     }
 
+    /**
+     * @param array<string> $attributesToRetrieve
+     */
     public function withAttributesToRetrieve(array $attributesToRetrieve): self
     {
         $clone = clone $this;
@@ -92,6 +122,9 @@ final class SearchParameters
         return $clone;
     }
 
+    /**
+     * @param array<string> $attributesToSearchOn
+     */
     public function withAttributesToSearchOn(array $attributesToSearchOn): self
     {
         $clone = clone $this;
@@ -140,6 +173,9 @@ final class SearchParameters
         return $clone;
     }
 
+    /**
+     * @param array<string> $sort
+     */
     public function withSort(array $sort): self
     {
         $clone = clone $this;

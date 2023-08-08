@@ -18,6 +18,9 @@ class Group extends Node
         return $this;
     }
 
+    /**
+     * @return array<Node>
+     */
     public function getChildren(): array
     {
         return $this->children;

@@ -6,6 +6,9 @@ namespace Loupe\Loupe;
 
 class SearchResult
 {
+    /**
+     * @param array<array<string, mixed>> $hits
+     */
     public function __construct(
         private array $hits,
         private string $query,
@@ -17,6 +20,9 @@ class SearchResult
     ) {
     }
 
+    /**
+     * @return array<array<string, mixed>>
+     */
     public function getHits(): array
     {
         return $this->hits;
@@ -52,6 +58,17 @@ class SearchResult
         return $this->totalPages;
     }
 
+    /**
+     * @return array{
+     *     hits: array<array<string, mixed>>,
+     *     query: string,
+     *     processingTimeMs: int,
+     *     hitsPerPage: int,
+     *     page: int,
+     *     totalPages: int,
+     *     totalHits: int
+     * }
+     */
     public function toArray(): array
     {
         return [

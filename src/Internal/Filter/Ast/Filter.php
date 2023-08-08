@@ -6,6 +6,9 @@ namespace Loupe\Loupe\Internal\Filter\Ast;
 
 class Filter extends Node
 {
+    /**
+     * @param float|string|array<mixed> $value
+     */
     public function __construct(
         public string $attribute,
         public Operator $operator,

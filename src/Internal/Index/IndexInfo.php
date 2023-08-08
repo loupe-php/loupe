@@ -32,6 +32,9 @@ class IndexInfo
 
     public const TABLE_NAME_TERMS_DOCUMENTS = 'terms_documents';
 
+    /**
+     * @var array<string, mixed>|null
+     */
     private ?array $documentSchema = null;
 
     private ?bool $needsSetup = null;
@@ -41,7 +44,10 @@ class IndexInfo
     ) {
     }
 
-    public function setup(array $document)
+    /**
+     * @param array<string, mixed> $document
+     */
+    public function setup(array $document): void
     {
         $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
         $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
@@ -111,6 +117,9 @@ class IndexInfo
             ->fetchOne();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getDocumentSchema(): array
     {
         if ($this->documentSchema === null) {
@@ -149,6 +158,9 @@ class IndexInfo
         return $this->getDocumentSchema()[$attributeName];
     }
 
+    /**
+     * @return array<string>
+     */
     public function getMultiFilterableAttributes(): array
     {
         $result = [];
@@ -164,6 +176,9 @@ class IndexInfo
         return $result;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getSingleFilterableAndSortableAttributes(): array
     {
         $filterableAndSortable = $this->engine->getConfiguration()
@@ -203,6 +218,9 @@ class IndexInfo
         ;
     }
 
+    /**
+     * @param array<string, mixed> $document
+     */
     public function validateDocument(array $document): void
     {
         $documentSchema = $this->getDocumentSchema();
@@ -445,6 +463,9 @@ class IndexInfo
         return $schema;
     }
 
+    /**
+     * @param array<string, mixed> $documentSchema
+     */
     private function updateDocumentSchema(array $documentSchema): void
     {
         $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [

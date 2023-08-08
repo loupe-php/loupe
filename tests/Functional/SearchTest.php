@@ -348,6 +348,9 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<array<string, mixed>> $expectedHits
+     */
     #[DataProvider('equalFilterProvider')]
     public function testEqualFilter(string $filter, array $expectedHits): void
     {
@@ -499,6 +502,10 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<string> $attributesToHighlight
+     * @param array<mixed> $expectedResults
+     */
     #[DataProvider('highlightingProvider')]
     public function testHighlighting(string $query, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults): void
     {
@@ -542,6 +549,9 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<mixed> $expectedHits
+     */
     #[DataProvider('inFilterProvider')]
     public function testInFilter(string $filter, array $expectedHits): void
     {
@@ -667,6 +677,9 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<mixed> $expectedResults
+     */
     #[DataProvider('prefixSearchProvider')]
     public function testPrefixSearch(string $query, array $expectedResults, int $minTokenLengthForPrefixSearch = null): void
     {
@@ -855,6 +868,9 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<mixed> $expectedResults
+     */
     #[DataProvider('typoToleranceProvider')]
     public function testTypoTolerance(TypoTolerance $typoTolerance, string $query, array $expectedResults): void
     {

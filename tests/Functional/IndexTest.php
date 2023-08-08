@@ -153,6 +153,9 @@ class IndexTest extends TestCase
         $this->assertSame($uta, $document);
     }
 
+    /**
+     * @return array<mixed>
+     */
     private function getSandraDocument(): array
     {
         return [

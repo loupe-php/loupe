@@ -65,6 +65,10 @@ class Highlighter
         return new HighlightResult($highlightedText, $matches);
     }
 
+    /**
+     * @param array<array{start:int, length:int}> $matches
+     * @return array{starts: array<int>, ends: array<int>}
+     */
     private function extractSpansFromMatches(array $matches): array
     {
         $spans = [
@@ -91,7 +95,7 @@ class Highlighter
         return $spans;
     }
 
-    private function matches(Token $textToken, TokenCollection $queryTokens)
+    private function matches(Token $textToken, TokenCollection $queryTokens): bool
     {
         $firstCharTypoCountsDouble = $this->configuration->getTypoTolerance()->firstCharTypoCountsDouble();
 

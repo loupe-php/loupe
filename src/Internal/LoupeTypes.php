@@ -52,6 +52,9 @@ class LoupeTypes
         return (string) $attributeValue;
     }
 
+    /**
+     * @return array<string>|array<float>|string|float|null
+     */
     public static function convertValueToType(mixed $attributeValue, string $type): array|string|float|null
     {
         if ($attributeValue === null) {
@@ -134,6 +137,10 @@ class LoupeTypes
         return false;
     }
 
+    /**
+     * @param  array<mixed> $attributeValue
+     * @return array<float>
+     */
     private static function convertToArrayOfFloats(array $attributeValue): array
     {
         $result = [];
@@ -145,6 +152,10 @@ class LoupeTypes
         return $result;
     }
 
+    /**
+     * @param  array<mixed> $attributeValue
+     * @return array<string>
+     */
     private static function convertToArrayOfStrings(array $attributeValue): array
     {
         $result = [];

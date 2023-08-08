@@ -1,0 +1,7 @@
+parameters:
+    level: 6
+    checkGenericClassInNonGenericObjectType: false
+    treatPhpDocTypesAsCertain: false
+    paths:
+        - src
+        - tests
