@@ -64,6 +64,7 @@ class LoupeTypes
             self::TYPE_NUMBER => self::convertToFloat($attributeValue),
             self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
             self::TYPE_ARRAY_NUMBER, self::TYPE_GEO => self::convertToArrayOfFloats($attributeValue),
+            default => throw new \InvalidArgumentException('Invalid type given.')
         };
     }
 

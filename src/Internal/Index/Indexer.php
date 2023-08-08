@@ -264,7 +264,6 @@ QUERY;
             IndexInfo::TABLE_NAME_TERMS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
         $this->engine->getConnection()
