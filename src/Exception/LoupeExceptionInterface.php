@@ -4,6 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Exception;
 
-interface LoupeExceptionInterface
+interface LoupeExceptionInterface extends \Throwable
 {
 }
