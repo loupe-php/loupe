@@ -57,7 +57,7 @@ class Indexer
                     $this->persistStateSet();
 
                     // Update IDF only once
-                    $this->updateInverseDocumentFrequencies();
+                    $this->reviseStorage();
                 });
         } catch (\Throwable $e) {
             if ($e instanceof LoupeExceptionInterface) {
@@ -283,14 +283,34 @@ class Indexer
 
     private function removeOrphans(): void
     {
-        // TODO
-        //      remove `multi_attributes_documents`
-        //      remove `terms_documents`
-        //      which do not appear longer in `documents`
-    }
+        // Cleanup all terms documents which document not longer exists
+        $query = <<<'QUERY'
+            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
+           QUERY;
 
-    private function updateInverseDocumentFrequencies(): void
-    {
+        $query = sprintf(
+            $query,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+        );
+
+        $this->engine->getConnection()
+            ->executeQuery($query);
+
+        // Cleanup all multiple attributes documents which document not longer exists
+        $query = <<<'QUERY'
+            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
+           QUERY;
+
+        $query = sprintf(
+            $query,
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+        );
+
+        $this->engine->getConnection()
+            ->executeQuery($query);
+
         // Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
         $query = <<<'QUERY'
             DELETE FROM %s WHERE id NOT IN (SELECT term FROM %s)
@@ -304,7 +324,10 @@ class Indexer
 
         $this->engine->getConnection()
             ->executeQuery($query);
+    }
 
+    private function updateInverseDocumentFrequencies(): void
+    {
         // Notice the * 1.0 additions to the COUNT() SELECTS in order to force floating point calculations
         $query = <<<'QUERY'
             UPDATE 
