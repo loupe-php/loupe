@@ -23,6 +23,25 @@ jobs:
             - name: Run the CS fixer
               run: composer cs
 
+    phpstan:
+        name: PHPStan
+        runs-on: ubuntu-latest
+        steps:
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: '8.2'
+                  coverage: none
+
+            - name: Checkout
+              uses: actions/checkout@v3
+
+            - name: Install the dependencies
+              run: composer install --no-interaction --no-suggest
+
+            - name: Run PHPStan
+              run: composer phpstan
+
     tests:
         name: PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }}
         runs-on: ubuntu-latest

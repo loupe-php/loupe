@@ -42,8 +42,8 @@ class CosineSimilarity
         $d2Norm = 0;
 
         foreach ($d1 as $i => $xi) {
-            if (isset($v2[$i])) {
-                $prod += $xi * $v2[$i];
+            if (isset($d2[$i])) {
+                $prod += $xi * $d2[$i];
             }
             $d1Norm += $xi * $xi;
         }
