@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Index;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\Internal\Engine;
@@ -65,6 +66,27 @@ class Indexer
 
             throw new IndexException($e->getMessage(), 0, $e);
         }
+
+        return $this;
+    }
+
+    /**
+     * @param array<int|string> $ids
+     */
+    public function deleteDocuments(array $ids): self
+    {
+        $this->engine->getConnection()
+            ->executeStatement(
+                sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                [
+                    'ids' => array_map(function(string $id) {
+                        return LoupeTypes::convertToString($id);
+                    }, $ids),
+                ],
+                [
+                    'ids' => ArrayParameterType::STRING,
+                ]
+            );
 
         return $this;
     }

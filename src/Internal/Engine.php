@@ -34,6 +34,8 @@ class Engine
 
     private StateSetIndex $stateSetIndex;
 
+    private Indexer $indexer;
+
     public function __construct(
         private Connection $connection,
         private Configuration $configuration,
@@ -69,6 +71,7 @@ class Engine
             new Alphabet($this),
             new StateSet($this)
         );
+        $this->indexer = new Indexer($this);
     }
 
     /**
@@ -77,8 +80,7 @@ class Engine
      */
     public function addDocuments(array $documents): self
     {
-        $indexer = new Indexer($this);
-        $indexer->addDocuments($documents);
+        $this->indexer->addDocuments($documents);
 
         return $this;
     }
@@ -86,20 +88,11 @@ class Engine
     /**
      * @param array<int|string> $ids
      */
-    public function deleteDocuments(array $ids): void
+    public function deleteDocuments(array $ids): self
     {
-        $this->getConnection()
-            ->executeStatement(
-                sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
-                [
-                    'ids' => array_map(function(string $id) {
-                        return LoupeTypes::convertToString($id);
-                    }, $ids),
-                ],
-                [
-                    'ids' => ArrayParameterType::STRING,
-                ]
-            );
+        $this->indexer->deleteDocuments($ids);
+
+        return $this;
     }
 
     public function countDocuments(): int
