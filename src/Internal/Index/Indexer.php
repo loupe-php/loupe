@@ -88,6 +88,8 @@ class Indexer
                 ]
             );
 
+        $this->reviseStorage();
+
         return $this;
     }
 
@@ -271,6 +273,20 @@ class Indexer
         /** @var StateSet $stateSet */
         $stateSet = $this->engine->getStateSetIndex()->getStateSet();
         $stateSet->persist();
+    }
+
+    private function reviseStorage(): void
+    {
+        $this->removeOrphans();
+        $this->updateInverseDocumentFrequencies();
+    }
+
+    private function removeOrphans(): void
+    {
+        // TODO
+        //      remove `multi_attributes_documents`
+        //      remove `terms_documents`
+        //      which do not appear longer in `documents`
     }
 
     private function updateInverseDocumentFrequencies(): void
