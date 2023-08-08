@@ -285,6 +285,9 @@ class Searcher
         ;
 
         $column = \is_float($node->value) ? 'numeric_value' : 'string_value';
+        $sql = $node->operator->isNegative() ?
+            $node->operator->opposite()->buildSql($this->engine->getConnection(), $node->value) :
+            $node->operator->buildSql($this->engine->getConnection(), $node->value);
 
         $qb->andWhere(
             sprintf(
@@ -292,7 +295,7 @@ class Searcher
                 $this->engine->getIndexInfo()
                     ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                 $column,
-                $node->operator->buildSql($this->engine->getConnection(), $node->value)
+                $sql
             )
         );
 
@@ -413,7 +416,7 @@ class Searcher
         if ($node instanceof Filter) {
             // Multi filterable need a sub query
             if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-                $whereStatement[] = $documentAlias . '.id IN (';
+                $whereStatement[] = sprintf($documentAlias . '.id %s (', $node->operator->isNegative() ? 'NOT IN' : 'IN');
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
 
