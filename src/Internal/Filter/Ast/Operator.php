@@ -43,6 +43,7 @@ enum Operator: string
     {
         return match ($operator) {
             '=' => self::Equals,
+            '!=' => self::NotEquals,
             '>' => self::GreaterThan,
             '>=' => self::GreaterThanOrEquals,
             '<' => self::LowerThan,

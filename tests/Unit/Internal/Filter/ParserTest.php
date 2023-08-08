@@ -35,6 +35,17 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Basic not equals filter' => [
+            "genres != 'Drama'",
+            [
+                [
+                    'attribute' => 'genres',
+                    'operator' => '!=',
+                    'value' => 'Drama',
+                ],
+            ],
+        ];
+
         yield 'Basic float filter' => [
             'age > 42.67',
             [
