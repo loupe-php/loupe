@@ -8,6 +8,9 @@ use Loupe\Loupe\Exception\InvalidJsonException;
 
 class Util
 {
+    /**
+     * @return array<mixed>
+     */
     public static function decodeJson(string $data): array
     {
         $data = json_decode($data, true);
@@ -19,6 +22,9 @@ class Util
         return $data;
     }
 
+    /**
+     * @param array<mixed> $data
+     */
     public static function encodeJson(array $data, int $flags = 0): string
     {
         $json = json_encode($data, $flags);

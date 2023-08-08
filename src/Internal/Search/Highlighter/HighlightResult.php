@@ -20,6 +20,9 @@ class HighlightResult
         return $this->highlightedText;
     }
 
+    /**
+     * @return array<int, array{start: int, length: int}>
+     */
     public function getMatches(): array
     {
         return $this->matches;

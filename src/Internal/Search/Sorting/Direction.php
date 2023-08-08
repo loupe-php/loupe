@@ -9,7 +9,7 @@ enum Direction: string
     case ASC = 'asc';
     case DESC = 'desc';
 
-    public function getSQL()
+    public function getSQL(): string
     {
         return strtoupper($this->value);
     }

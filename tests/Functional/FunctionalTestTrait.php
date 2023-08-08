@@ -33,7 +33,10 @@ trait FunctionalTestTrait
         $loupe->addDocuments(json_decode(file_get_contents(__DIR__ . '/IndexData/' . $indexFixture . '.json'), true));
     }
 
-    protected function searchAndAssertResults(Loupe $loupe, SearchParameters $searchParameters, array $expectedResults)
+    /**
+     * @param array<mixed> $expectedResults
+     */
+    protected function searchAndAssertResults(Loupe $loupe, SearchParameters $searchParameters, array $expectedResults): void
     {
         $results = $loupe->search($searchParameters)->toArray();
         unset($results['processingTimeMs']);

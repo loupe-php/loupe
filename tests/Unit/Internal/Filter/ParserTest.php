@@ -260,6 +260,9 @@ class ParserTest extends TestCase
         $parser->getAst('genres > 42.67', ['gender']);
     }
 
+    /**
+     * @param array<mixed> $expectedAst
+     */
     #[DataProvider('filterProvider')]
     public function testValidFilter(string $filter, array $expectedAst): void
     {

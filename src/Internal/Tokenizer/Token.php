@@ -8,6 +8,9 @@ use voku\helper\UTF8;
 
 class Token
 {
+    /**
+     * @param array<string> $variants
+     */
     public function __construct(
         private string $term,
         private int $startPosition,
@@ -16,6 +19,9 @@ class Token
     ) {
     }
 
+    /**
+     * @return array<string>
+     */
     public function allTerms(): array
     {
         return array_unique(array_merge([$this->getTerm()], $this->getVariants()));
@@ -36,6 +42,9 @@ class Token
         return $this->term;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getVariants(): array
     {
         return $this->variants;

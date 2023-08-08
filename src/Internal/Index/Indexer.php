@@ -22,6 +22,7 @@ class Indexer
     }
 
     /**
+     * @param array<array<string, mixed>> $documents
      * @throws LoupeExceptionInterface
      */
     public function addDocuments(array $documents): self
@@ -70,7 +71,7 @@ class Indexer
             ->tokenize($attributeValue);
     }
 
-    private function indexAttributeValue(string $attribute, string|float|null $value, int $documentId)
+    private function indexAttributeValue(string $attribute, string|float|null $value, int $documentId): void
     {
         if ($value === null) {
             return;
@@ -102,6 +103,7 @@ class Indexer
     }
 
     /**
+     * @param array<string, mixed> $document
      * @return int The document ID
      */
     private function indexDocument(array $document): int
@@ -144,6 +146,9 @@ class Indexer
         );
     }
 
+    /**
+     * @param array<string, mixed> $document
+     */
     private function indexMultiAttributes(array $document, int $documentId): void
     {
         foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
@@ -198,6 +203,9 @@ class Indexer
         );
     }
 
+    /**
+     * @param array<string, mixed> $document
+     */
     private function indexTerms(array $document, int $documentId): void
     {
         $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();

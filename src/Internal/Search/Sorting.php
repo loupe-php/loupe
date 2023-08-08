@@ -32,6 +32,9 @@ class Sorting
         }
     }
 
+    /**
+     * @param array<string> $sort
+     */
     public static function fromArray(array $sort, Engine $engine): self
     {
         $sorters = [];

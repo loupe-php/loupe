@@ -29,7 +29,7 @@ class Searcher
     public const CTE_TERM_MATCHES = '_cte_term_matches';
 
     /**
-     * @var array<string, array{'cols': array, 'sql': string}>
+     * @var array<string, array{cols: array<string>, sql: string}>
      */
     private array $CTEs = [];
 
@@ -106,6 +106,9 @@ class Searcher
         );
     }
 
+    /**
+     * @return array<string, array{cols: array<string>, sql: string}>
+     */
     public function getCTEs(): array
     {
         return $this->CTEs;
@@ -400,6 +403,9 @@ class Searcher
         $this->queryBuilder->andWhere(implode(' ', $whereStatement));
     }
 
+    /**
+     * @param array<string> $whereStatement
+     */
     private function handleFilterAstNode(Node $node, array &$whereStatement): void
     {
         $documentAlias = $this->engine->getIndexInfo()
@@ -482,7 +488,10 @@ class Searcher
         }
     }
 
-    private function highlight(array &$hit, TokenCollection $tokenCollection)
+    /**
+     * @param array<mixed> $hit
+     */
+    private function highlight(array &$hit, TokenCollection $tokenCollection): void
     {
         if ($this->searchParameters->getAttributesToHighlight() === [] && ! $this->searchParameters->showMatchesPosition()) {
             return;

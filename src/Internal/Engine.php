@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
@@ -69,6 +70,10 @@ class Engine
         );
     }
 
+    /**
+     * @param array<array<string, mixed>> $documents
+     * @throws LoupeExceptionInterface
+     */
     public function addDocuments(array $documents): self
     {
         $indexer = new Indexer($this);
@@ -99,6 +104,9 @@ class Engine
         return $this->connection;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getDocument(int|string $identifier): ?array
     {
         $document = $this->getConnection()
@@ -167,6 +175,8 @@ class Engine
      * Unfortunately, we cannot use proper UPSERTs here (ON DUPLICATE() UPDATE) as somehow RETURNING does not work
      * properly with Doctrine. Maybe we can improve that one day.
      *
+     * @param array<string, mixed> $insertData
+     * @param array<string> $uniqueIndexColumns
      * @return int The ID of the $insertIdColumn (either new when INSERT or existing when UPDATE)
      */
     public function upsert(
@@ -212,7 +222,7 @@ class Engine
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }
 
-    private function registerSQLiteFunctions(string $sqliteVersion)
+    private function registerSQLiteFunctions(string $sqliteVersion): void
     {
         $functions = [
             'max_levenshtein' => [

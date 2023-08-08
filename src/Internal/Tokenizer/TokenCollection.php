@@ -7,10 +7,13 @@ namespace Loupe\Loupe\Internal\Tokenizer;
 class TokenCollection
 {
     /**
-     * @param Token[] $tokens
+     * @var Token[]
      */
     private array $tokens = [];
 
+    /**
+     * @param Token[] $tokens
+     */
     public function __construct(array $tokens = [])
     {
         foreach ($tokens as $token) {

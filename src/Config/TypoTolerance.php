@@ -17,6 +17,9 @@ final class TypoTolerance
 
     private bool $isDisabled = false;
 
+    /**
+     * @var array<int, int>
+     */
     private array $typoThresholds = [
         9 => 2,
         5 => 1,
@@ -102,6 +105,9 @@ final class TypoTolerance
         return $clone;
     }
 
+    /**
+     * @param array<int, int> $typoThresholds
+     */
     public function withTypoThresholds(array $typoThresholds): self
     {
         krsort($typoThresholds);

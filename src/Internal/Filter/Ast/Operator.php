@@ -18,6 +18,9 @@ enum Operator: string
     case NotEquals = '!=';
     case NotIn = 'NOT IN';
 
+    /**
+     * @param float|string|array<mixed> $value
+     */
     public function buildSql(Connection $connection, float|string|array $value): string
     {
         if (\is_array($value)) {
@@ -82,7 +85,7 @@ enum Operator: string
         };
     }
 
-    private function quote($connection, float|string &$value): void
+    private function quote(Connection $connection, float|string &$value): void
     {
         if (\is_string($value)) {
             $value = $connection->quote($value, ParameterType::STRING);

@@ -28,6 +28,9 @@ class Parser
         $this->lexer = $lexer ?? new Lexer();
     }
 
+    /**
+     * @param array<string> $allowedAttributeNames
+     */
     public function getAst(string $string, array $allowedAttributeNames = []): Ast
     {
         $this->lexer->setInput($string);
@@ -136,6 +139,9 @@ class Parser
         $this->assertTokenTypes($token, [Lexer::T_FLOAT, Lexer::T_STRING], 'valid string or float value');
     }
 
+    /**
+     * @param array<int> $types
+     */
     private function assertTokenTypes(?Token $token, array $types, string $error): void
     {
         $type = $token->type ?? null;
@@ -145,6 +151,9 @@ class Parser
         }
     }
 
+    /**
+     * @param array<string> $allowedAttributeNames
+     */
     private function handleAttribute(array $allowedAttributeNames): void
     {
         $attributeName = $this->lexer->token->value;
@@ -189,6 +198,9 @@ class Parser
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $value));
     }
 
+    /**
+     * @param array<string> $allowedAttributeNames
+     */
     private function handleGeoRadius(array $allowedAttributeNames): void
     {
         $this->assertOpeningParenthesis($this->lexer->lookahead);
