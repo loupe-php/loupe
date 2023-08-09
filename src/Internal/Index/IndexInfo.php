@@ -76,7 +76,6 @@ class IndexInfo
         }
 
         $this->documentSchema = $documentSchema;
-        $this->createSchema();
         $this->updateDocumentSchema($documentSchema);
 
         $this->engine->getConnection()
@@ -92,6 +91,54 @@ class IndexInfo
             ]);
 
         $this->needsSetup = false;
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    public function fixAndValidateDocument(array &$document): void
+    {
+        $documentSchema = $this->getDocumentSchema();
+        $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?
+            (string) $document[$this->engine->getConfiguration()->getPrimaryKey()] :
+            null;
+
+        $missingAttributes = array_keys(array_diff_key($documentSchema, $document));
+
+        if ($missingAttributes !== []) {
+            foreach ($missingAttributes as $missingAttribute) {
+                $document[$missingAttribute] = null;
+            }
+        }
+
+        $schemaNarrowed = false;
+
+        foreach ($document as $attributeName => $attributeValue) {
+            if (! isset($documentSchema[$attributeName])) {
+                continue;
+            }
+
+            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
+
+            if (! LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
+                throw InvalidDocumentException::becauseDoesNotMatchSchema(
+                    $documentSchema,
+                    $document,
+                    $primaryKey
+                );
+            }
+
+            // Update schema to narrower type (e.g. before it was "array" and now it becomes "array<string>" or before
+            // it was "null" and now it becomes any other type.
+            if ($valueType !== LoupeTypes::TYPE_NULL && $documentSchema[$attributeName] !== $valueType) {
+                $documentSchema[$attributeName] = $valueType;
+                $schemaNarrowed = true;
+            }
+        }
+
+        if ($schemaNarrowed) {
+            $this->updateDocumentSchema($documentSchema);
+        }
     }
 
     public function getAliasForTable(string $table): string
@@ -218,51 +265,6 @@ class IndexInfo
         ;
     }
 
-    /**
-     * @param array<string, mixed> $document
-     */
-    public function validateDocument(array $document): void
-    {
-        $documentSchema = $this->getDocumentSchema();
-
-        if (\count(array_diff_key($documentSchema, $document)) !== 0) {
-            throw InvalidDocumentException::becauseDoesNotMatchSchema(
-                $documentSchema,
-                $document,
-                $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
-            );
-        }
-
-        $schemaNarrowed = false;
-
-        foreach ($document as $attributeName => $attributeValue) {
-            if (! isset($documentSchema[$attributeName])) {
-                continue;
-            }
-
-            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
-
-            if (! LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
-                throw InvalidDocumentException::becauseDoesNotMatchSchema(
-                    $documentSchema,
-                    $document,
-                    $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
-                );
-            }
-
-            // Update schema to narrower type (e.g. before it was "array" and now it becomes "array<string>" or before
-            // it was "null" and now it becomes any other type.
-            if ($documentSchema[$attributeName] !== $valueType) {
-                $documentSchema[$attributeName] = $valueType;
-                $schemaNarrowed = true;
-            }
-        }
-
-        if ($schemaNarrowed) {
-            $this->updateDocumentSchema($documentSchema);
-        }
-    }
-
     private function addAlphabetToSchema(Schema $schema): void
     {
         $table = $schema->createTable(self::TABLE_NAME_ALPHABET);
@@ -281,7 +283,9 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_DOCUMENTS);
 
         $table->addColumn('id', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+            ->setAutoincrement(true)
+        ;
 
         $table->addColumn('user_id', Types::STRING)
             ->setNotnull(true);
@@ -359,7 +363,9 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_MULTI_ATTRIBUTES);
 
         $table->addColumn('id', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+            ->setAutoincrement(true)
+        ;
 
         $table->addColumn('attribute', Types::STRING)
             ->setNotnull(true);
@@ -417,7 +423,9 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_TERMS);
 
         $table->addColumn('id', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+            ->setAutoincrement(true)
+        ;
 
         $table->addColumn('term', Types::STRING)
             ->setNotnull(true);
@@ -434,16 +442,6 @@ class IndexInfo
 
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['term', 'state', 'length']);
-    }
-
-    private function createSchema(): void
-    {
-        $schemaManager = $this->engine->getConnection()
-            ->createSchemaManager();
-        $comparator = $schemaManager->createComparator();
-
-        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
-        $schemaManager->alterSchema($schemaDiff);
     }
 
     private function getSchema(): Schema
@@ -468,11 +466,23 @@ class IndexInfo
      */
     private function updateDocumentSchema(array $documentSchema): void
     {
+        $this->documentSchema = $documentSchema;
+
+        $this->updateSchema();
+
         $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
             'key' => 'documentSchema',
             'value' => json_encode($documentSchema),
         ], ['key']);
+    }
 
-        $this->documentSchema = $documentSchema;
+    private function updateSchema(): void
+    {
+        $schemaManager = $this->engine->getConnection()
+            ->createSchemaManager();
+        $comparator = $schemaManager->createComparator();
+
+        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
+        $schemaManager->alterSchema($schemaDiff);
     }
 }

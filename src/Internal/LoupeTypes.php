@@ -63,6 +63,7 @@ class LoupeTypes
 
         return match ($type) {
             self::TYPE_NULL => null,
+            self::TYPE_ARRAY_EMPTY => [],
             self::TYPE_STRING => self::convertToString($attributeValue),
             self::TYPE_NUMBER => self::convertToFloat($attributeValue),
             self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
@@ -117,7 +118,7 @@ class LoupeTypes
     public static function isSingleType(string $type): bool
     {
         // The Geo type is not exactly a single type, but it has to be treated as such
-        return \in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO], true);
+        return \in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO, self::TYPE_NULL], true);
     }
 
     public static function typeMatchesType(string $schemaType, string $checkType): bool
@@ -130,8 +131,12 @@ class LoupeTypes
             return true;
         }
 
-        if ($checkType === self::TYPE_ARRAY_EMPTY) {
-            return $schemaType === self::TYPE_ARRAY_NUMBER || $schemaType === self::TYPE_ARRAY_STRING;
+        if ($checkType === self::TYPE_ARRAY_EMPTY && ($schemaType === self::TYPE_ARRAY_NUMBER || $schemaType === self::TYPE_ARRAY_STRING)) {
+            return true;
+        }
+
+        if (($schemaType === self::TYPE_ARRAY_EMPTY || $schemaType === self::TYPE_ARRAY_STRING) && $checkType === self::TYPE_ARRAY_STRING) {
+            return true;
         }
 
         return false;
