@@ -75,7 +75,6 @@ class IndexInfo
             $documentSchema[$attributeName] = $loupeType;
         }
 
-        $this->documentSchema = $documentSchema;
         $this->updateDocumentSchema($documentSchema);
 
         $this->engine->getConnection()
