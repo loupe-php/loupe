@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Internal;
 class CosineSimilarity
 {
     /**
-     * @var array<string, float>
+     * @var array<string, array<float>>
      */
     private static array $queryTfIdfsCache = [];
 

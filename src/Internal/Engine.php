@@ -247,9 +247,7 @@ class Engine
             ];
         }
 
-        UserDefinedFunctions::register(
-            [$this->connection->getNativeConnection(), 'sqliteCreateFunction'],
-            $functions
-        );
+        /** @phpstan-ignore-next-line */
+        UserDefinedFunctions::register([$this->connection->getNativeConnection(), 'sqliteCreateFunction'], $functions);
     }
 }

@@ -27,6 +27,10 @@ class Indexer
      */
     public function addDocuments(array $documents): self
     {
+        if ($documents === []) {
+            return $this;
+        }
+
         $firstDocument = reset($documents);
 
         $indexInfo = $this->engine->getIndexInfo();

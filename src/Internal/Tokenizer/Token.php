@@ -29,7 +29,7 @@ class Token
 
     public function getLength(): int
     {
-        return UTF8::strlen($this->getTerm());
+        return (int) UTF8::strlen($this->getTerm());
     }
 
     public function getStartPosition(): int

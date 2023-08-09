@@ -68,7 +68,7 @@ class Parser
             }
 
             if ($this->lexer->token->isA(Lexer::T_AND, Lexer::T_OR)) {
-                $this->addNode(Concatenator::fromString($this->lexer->token->value));
+                $this->addNode(Concatenator::fromString((string) $this->lexer->token->value));
             }
 
             if ($this->lexer->token->isA(Lexer::T_OPEN_PARENTHESIS)) {
@@ -156,7 +156,7 @@ class Parser
      */
     private function handleAttribute(array $allowedAttributeNames): void
     {
-        $attributeName = $this->lexer->token->value;
+        $attributeName = (string) $this->lexer->token->value;
 
         if (\count($allowedAttributeNames) !== 0 && ! \in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
@@ -164,7 +164,7 @@ class Parser
 
         $this->assertOperator($this->lexer->lookahead);
         $this->lexer->moveNext();
-        $operator = $this->lexer->token->value;
+        $operator = (string) $this->lexer->token->value;
 
         // Greater than or smaller than operators
         if ($this->lexer->lookahead->type === Lexer::T_EQUALS) {
@@ -207,7 +207,7 @@ class Parser
         $this->lexer->moveNext();
         $this->lexer->moveNext();
 
-        $attributeName = $this->lexer->token->value;
+        $attributeName = (string) $this->lexer->token->value;
 
         if (\count($allowedAttributeNames) !== 0 && ! \in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
