@@ -25,10 +25,6 @@ class SearchTest extends TestCase
                     'firstname' => 'Huckleberry',
                 ],
                 [
-                    'id' => 5,
-                    'firstname' => 'Marko',
-                ],
-                [
                     'id' => 2,
                     'firstname' => 'Uta',
                 ],
@@ -45,6 +41,10 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
                 ],
                 [
                     'id' => 1,
@@ -81,10 +81,6 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'firstname' => 'Jonas',
-                ],
-                [
-                    'id' => 5,
-                    'firstname' => 'Marko',
                 ],
             ],
         ];
@@ -214,10 +210,6 @@ class SearchTest extends TestCase
                     'firstname' => 'Jonas',
                 ],
                 [
-                    'id' => 5,
-                    'firstname' => 'Marko',
-                ],
-                [
                     'id' => 2,
                     'firstname' => 'Uta',
                 ],
@@ -230,6 +222,10 @@ class SearchTest extends TestCase
                 [
                     'id' => 3,
                     'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
                 ],
                 [
                     'id' => 1,
@@ -266,10 +262,6 @@ class SearchTest extends TestCase
                 [
                     'id' => 6,
                     'firstname' => 'Huckleberry',
-                ],
-                [
-                    'id' => 5,
-                    'firstname' => 'Marko',
                 ],
             ],
         ];
