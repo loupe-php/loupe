@@ -195,10 +195,7 @@ class IndexInfo
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
         if (! \array_key_exists($attributeName, $this->getDocumentSchema())) {
-            throw new InvalidConfigurationException(sprintf(
-                'The attribute "%s" does not exist on the document schema.',
-                $attributeName
-            ));
+            return LoupeTypes::TYPE_NULL;
         }
 
         return $this->getDocumentSchema()[$attributeName];

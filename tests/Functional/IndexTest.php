@@ -7,6 +7,7 @@ namespace Loupe\Loupe\Tests\Functional;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\Logger\InMemoryLogger;
+use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -168,6 +169,11 @@ class IndexTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocuments($documents);
         $this->assertSame(\count($documents), $loupe->countDocuments());
+
+        $searchParameters = SearchParameters::create()
+            ->withFilter('departments = \'Development\'');
+
+        $this->assertGreaterThanOrEqual(1, $loupe->search($searchParameters)->getHits());
     }
 
     public static function validSchemaChangesProvider(): \Generator
