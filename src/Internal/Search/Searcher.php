@@ -420,9 +420,11 @@ class Searcher
         }
 
         if ($node instanceof Filter) {
-            // Multi filterable need a sub query
-            if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-                $whereStatement[] = sprintf($documentAlias . '.id %s (', $node->operator->isNegative() ? 'NOT IN' : 'IN');
+            $operator = $node->operator;
+
+            // Multi filterable value operator attributes need a sub query
+            if (! $operator->isNoValueOperator() && \in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+                $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
 
@@ -435,7 +437,7 @@ class Searcher
                 }
 
                 $whereStatement[] = $documentAlias . '.' . $attribute;
-                $whereStatement[] = $node->operator->buildSql($this->engine->getConnection(), $node->value);
+                $whereStatement[] = $operator->buildSql($this->engine->getConnection(), $node->value);
             }
         }
 

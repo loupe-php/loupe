@@ -69,6 +69,8 @@ following operators:
 * `<=`
 * `IN ()`
 * `NOT IN ()`
+* `IS NULL` (takes no value)
+* `IS NOT NULL` (takes no value)
 
 Note that you can only filter [on attributes that you have defined to be filerable in the configuration][Config].
 

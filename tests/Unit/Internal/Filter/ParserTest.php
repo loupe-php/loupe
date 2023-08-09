@@ -57,6 +57,28 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'IS NULL filter' => [
+            'age IS NULL',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => 'IS NULL',
+                    'value' => null,
+                ],
+            ],
+        ];
+
+        yield 'IS NOT NULL filter' => [
+            'age IS NOT NULL',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => 'IS NOT NULL',
+                    'value' => null,
+                ],
+            ],
+        ];
+
         yield 'Greater than or equals filter' => [
             'age >= 42.67',
             [
@@ -139,7 +161,7 @@ class ParserTest extends TestCase
         ];
 
         yield 'Combined filters with groups' => [
-            "(genres > 42 AND genres < 50) OR foobar = 'test'",
+            "(genres > 42 AND genres < 50 OR genres IS NULL) OR foobar = 'test'",
             [
                 [
                     [
@@ -152,6 +174,12 @@ class ParserTest extends TestCase
                         'attribute' => 'genres',
                         'operator' => '<',
                         'value' => 50.0,
+                    ],
+                    ['OR'],
+                    [
+                        'attribute' => 'genres',
+                        'operator' => 'IS NULL',
+                        'value' => null,
                     ],
                 ],
                 ['OR'],
@@ -229,6 +257,11 @@ class ParserTest extends TestCase
         yield 'NOT not before IN' => [
             'genres NOT 42',
             "Col 11: Error: Expected must be followed by IN (), got '42'",
+        ];
+
+        yield 'IS with nonsense' => [
+            'genres IS foobar',
+            'Col 10: Error: Expected one of "NULL", "NOT NULL", got \'foobar\'',
         ];
     }
 

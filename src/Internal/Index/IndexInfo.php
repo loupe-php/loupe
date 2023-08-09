@@ -323,6 +323,12 @@ class IndexInfo
             $columns[$attribute] = $dbalType;
         }
 
+        // We store the count for multi attributes to distinguish between null, empty and has data for the IS NULL
+        // and IS EMPTY filters
+        foreach ($this->getMultiFilterableAttributes() as $attribute) {
+            $columns[$attribute] = Types::FLOAT;
+        }
+
         foreach ($columns as $attribute => $dbalType) {
             $table->addColumn($attribute, $dbalType)
                 ->setNotnull(false);

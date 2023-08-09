@@ -102,8 +102,9 @@ genres: array<string>
 release_date: number
 ```
 
-Our `Finding Nemo` document iD 12 now automatically got `release_date = null` assigned which means you will **NOT** 
-find it when filtering e.g. with `release_date >= 0` because it is not a `0`.
+Our `Finding Nemo` document ID 12 now automatically got `release_date = null` assigned which means you will **NOT** 
+find it when filtering e.g. with `release_date >= 0` because `null !== 0`. If you want to include it, you 
+will have to combine filters using `release_date >= 0 AND release_date IS NULL`.
 
 ## Narrowing schema
 

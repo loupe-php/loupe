@@ -39,8 +39,8 @@
         "id": 5,
         "firstname": "Marko",
         "lastname": "Gerste",
-        "gender": "male",
-        "departments": ["Backoffice"],
+        "gender": null,
+        "departments": null,
         "colors": ["Purple"],
         "age": 22
     },

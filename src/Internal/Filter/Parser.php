@@ -166,6 +166,11 @@ class Parser
         $this->lexer->moveNext();
         $operator = (string) $this->lexer->token?->value;
 
+        if ($this->lexer->token?->type === Lexer::T_IS) {
+            $this->handleIs($attributeName);
+            return;
+        }
+
         // Greater than or smaller than operators
         if ($this->lexer->lookahead?->type === Lexer::T_EQUALS) {
             $this->lexer->moveNext();
@@ -185,6 +190,7 @@ class Parser
             $this->handleIn($attributeName, $operator);
             return;
         }
+
         $this->assertStringOrFloat($this->lexer->lookahead);
 
         $this->lexer->moveNext();
@@ -264,6 +270,21 @@ class Parser
         }
 
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
+    }
+
+    private function handleIs(mixed $attributeName): void
+    {
+        if ($this->lexer->lookahead?->type === Lexer::T_NULL) {
+            $this->addNode(new Filter($attributeName, Operator::IsNull));
+            return;
+        }
+
+        if ($this->lexer->lookahead?->type === Lexer::T_NOT && $this->lexer->glimpse()?->type === Lexer::T_NULL) {
+            $this->addNode(new Filter($attributeName, Operator::IsNotNull));
+            return;
+        }
+
+        $this->syntaxError('one of "NULL", "NOT NULL"', $this->lexer->lookahead);
     }
 
     private function syntaxError(string $expected = '', Token $token = null): void
