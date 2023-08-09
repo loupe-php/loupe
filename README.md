@@ -140,6 +140,7 @@ Array
 
 ## Docs
 
+* [Schema](./docs/schema.md).
 * [Configuration](./docs/configuration.md).
 * [Searching](./docs/searching.md).
 

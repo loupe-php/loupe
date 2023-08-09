@@ -43,7 +43,7 @@ class Indexer
             $this->engine->getConnection()
                 ->transactional(function () use ($indexInfo, $documents) {
                     foreach ($documents as $document) {
-                        $indexInfo->validateDocument($document);
+                        $indexInfo->fixAndValidateDocument($document);
 
                         $this->engine->getConnection()
                             ->transactional(function () use ($document) {
