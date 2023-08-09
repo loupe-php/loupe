@@ -47,7 +47,7 @@ class Parser
 
             $this->lexer->moveNext();
 
-            if ($start && ! $this->lexer->token->isA(
+            if ($start && ! $this->lexer->token?->isA(
                 Lexer::T_ATTRIBUTE_NAME,
                 Lexer::T_GEO_RADIUS,
                 Lexer::T_OPEN_PARENTHESIS
@@ -57,32 +57,32 @@ class Parser
 
             $start = false;
 
-            if ($this->lexer->token->type === Lexer::T_GEO_RADIUS) {
+            if ($this->lexer->token?->type === Lexer::T_GEO_RADIUS) {
                 $this->handleGeoRadius($allowedAttributeNames);
                 continue;
             }
 
-            if ($this->lexer->token->type === Lexer::T_ATTRIBUTE_NAME) {
+            if ($this->lexer->token?->type === Lexer::T_ATTRIBUTE_NAME) {
                 $this->handleAttribute($allowedAttributeNames);
                 continue;
             }
 
-            if ($this->lexer->token->isA(Lexer::T_AND, Lexer::T_OR)) {
+            if ($this->lexer->token?->isA(Lexer::T_AND, Lexer::T_OR)) {
                 $this->addNode(Concatenator::fromString((string) $this->lexer->token->value));
             }
 
-            if ($this->lexer->token->isA(Lexer::T_OPEN_PARENTHESIS)) {
+            if ($this->lexer->token?->isA(Lexer::T_OPEN_PARENTHESIS)) {
                 $this->currentGroup = new Group();
             }
 
-            if ($this->lexer->token->isA(Lexer::T_CLOSE_PARENTHESIS)) {
-                if ($this->currentGroup === null) {
+            if ($this->lexer->token?->isA(Lexer::T_CLOSE_PARENTHESIS)) {
+                if ($this->currentGroup instanceof Group) {
+                    $currentGroup = $this->currentGroup;
+                    $this->currentGroup = null;
+                    $this->addNode($currentGroup);
+                } else {
                     $this->syntaxError('an opened group statement');
                 }
-
-                $currentGroup = $this->currentGroup;
-                $this->currentGroup = null;
-                $this->addNode($currentGroup);
             }
         }
 
@@ -156,7 +156,7 @@ class Parser
      */
     private function handleAttribute(array $allowedAttributeNames): void
     {
-        $attributeName = (string) $this->lexer->token->value;
+        $attributeName = (string) $this->lexer->token?->value;
 
         if (\count($allowedAttributeNames) !== 0 && ! \in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
@@ -164,24 +164,24 @@ class Parser
 
         $this->assertOperator($this->lexer->lookahead);
         $this->lexer->moveNext();
-        $operator = (string) $this->lexer->token->value;
+        $operator = (string) $this->lexer->token?->value;
 
         // Greater than or smaller than operators
-        if ($this->lexer->lookahead->type === Lexer::T_EQUALS) {
+        if ($this->lexer->lookahead?->type === Lexer::T_EQUALS) {
             $this->lexer->moveNext();
-            $operator .= $this->lexer->token->value;
+            $operator .= $this->lexer->token?->value;
         }
 
-        if ($this->lexer->token->type === Lexer::T_NOT) {
-            if ($this->lexer->lookahead->type !== Lexer::T_IN) {
+        if ($this->lexer->token?->type === Lexer::T_NOT) {
+            if ($this->lexer->lookahead?->type !== Lexer::T_IN) {
                 $this->syntaxError('must be followed by IN ()', $this->lexer->lookahead);
             }
 
             $this->lexer->moveNext();
-            $operator .= ' ' . $this->lexer->token->value;
+            $operator .= ' ' . $this->lexer->token?->value;
         }
 
-        if ($this->lexer->token->type === Lexer::T_IN) {
+        if ($this->lexer->token?->type === Lexer::T_IN) {
             $this->handleIn($attributeName, $operator);
             return;
         }
@@ -189,10 +189,12 @@ class Parser
 
         $this->lexer->moveNext();
 
-        if ($this->lexer->token->type === Lexer::T_FLOAT) {
+        if ($this->lexer->token?->type === Lexer::T_FLOAT) {
+            /** @var float $value */
             $value = LoupeTypes::convertValueToType($this->lexer->token->value, LoupeTypes::TYPE_NUMBER);
         } else {
-            $value = LoupeTypes::convertValueToType($this->lexer->token->value, LoupeTypes::TYPE_STRING);
+            /** @var string $value */
+            $value = LoupeTypes::convertValueToType($this->lexer->token?->value, LoupeTypes::TYPE_STRING);
         }
 
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $value));
@@ -207,7 +209,7 @@ class Parser
         $this->lexer->moveNext();
         $this->lexer->moveNext();
 
-        $attributeName = (string) $this->lexer->token->value;
+        $attributeName = (string) $this->lexer->token?->value;
 
         if (\count($allowedAttributeNames) !== 0 && ! \in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
@@ -216,17 +218,17 @@ class Parser
         $this->lexer->moveNext();
         $this->assertFloat($this->lexer->lookahead);
         $this->lexer->moveNext();
-        $lat = (float) $this->lexer->token->value;
+        $lat = (float) $this->lexer->token?->value;
         $this->assertComma($this->lexer->lookahead);
         $this->lexer->moveNext();
         $this->assertFloat($this->lexer->lookahead);
         $this->lexer->moveNext();
-        $lng = (float) $this->lexer->token->value;
+        $lng = (float) $this->lexer->token?->value;
         $this->assertComma($this->lexer->lookahead);
         $this->lexer->moveNext();
         $this->assertFloat($this->lexer->lookahead);
         $this->lexer->moveNext();
-        $distance = (float) $this->lexer->token->value;
+        $distance = (float) $this->lexer->token?->value;
         $this->assertClosingParenthesis($this->lexer->lookahead);
 
         $this->addNode(new GeoDistance($attributeName, $lat, $lng, $distance));
@@ -244,13 +246,13 @@ class Parser
 
         while (true) {
             $this->assertStringOrFloat($this->lexer->token);
-            $values[] = $this->lexer->token->value;
+            $values[] = $this->lexer->token?->value;
 
             if ($this->lexer->lookahead === null) {
                 $this->assertClosingParenthesis($this->lexer->token);
             }
 
-            if ($this->lexer->lookahead->type === Lexer::T_CLOSE_PARENTHESIS) {
+            if ($this->lexer->lookahead?->type === Lexer::T_CLOSE_PARENTHESIS) {
                 $this->lexer->moveNext();
                 $this->lexer->moveNext();
                 break;
@@ -274,7 +276,7 @@ class Parser
 
         $message = sprintf('Col %d: Error: ', $tokenPos);
         $message .= $expected !== '' ? sprintf('Expected %s, got ', $expected) : 'Unexpected ';
-        $message .= $this->lexer->lookahead === null ? 'end of string.' : sprintf("'%s'", $token->value);
+        $message .= $this->lexer->lookahead === null ? 'end of string.' : sprintf("'%s'", $token?->value);
 
         throw new FilterFormatException($message);
     }

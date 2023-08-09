@@ -142,7 +142,7 @@ class Indexer
             $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
         }
 
-        return $this->engine->upsert(
+        return (int) $this->engine->upsert(
             IndexInfo::TABLE_NAME_DOCUMENTS,
             $data,
             ['user_id'],
