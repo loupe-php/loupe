@@ -267,7 +267,7 @@ class SearchTest extends TestCase
         ];
     }
 
-    public static function nullFilterProvider()
+    public static function nullFilterProvider(): \Generator
     {
         yield 'IS NULL on multiple attribute' => [
             'departments IS NULL',
