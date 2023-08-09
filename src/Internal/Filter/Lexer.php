@@ -27,6 +27,8 @@ class Lexer extends AbstractLexer
 
     public const T_IN = 14;
 
+    public const T_IS = 17;
+
     public const T_LOWER_THAN = 13;
 
     public const T_NEGATE = 16;
@@ -34,6 +36,8 @@ class Lexer extends AbstractLexer
     public const T_NONE = 1;
 
     public const T_NOT = 15;
+
+    public const T_NULL = 18;
 
     public const T_OPEN_PARENTHESIS = 7;
 
@@ -80,6 +84,12 @@ class Lexer extends AbstractLexer
 
             case $value === 'NOT':
                 return self::T_NOT;
+
+            case $value === 'IS':
+                return self::T_IS;
+
+            case $value === 'NULL':
+                return self::T_NULL;
 
             case $value === '_geoRadius':
                 return self::T_GEO_RADIUS;

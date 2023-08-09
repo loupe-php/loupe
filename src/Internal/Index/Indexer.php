@@ -142,6 +142,10 @@ class Indexer
             $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
         }
 
+        foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
+            $data[$attribute] = $document[$attribute] === null ? null : \count($document[$attribute]);
+        }
+
         return (int) $this->engine->upsert(
             IndexInfo::TABLE_NAME_DOCUMENTS,
             $data,

@@ -267,6 +267,81 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function nullFilterProvider()
+    {
+        yield 'IS NULL on multiple attribute' => [
+            'departments IS NULL',
+            [
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+            ],
+        ];
+
+        yield 'IS NOT NULL on multiple attribute' => [
+            'departments IS NOT NULL',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield 'IS NULL on single attribute' => [
+            'gender IS NULL',
+            [
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+            ],
+        ];
+
+        yield 'IS NOT NULL on single attribute' => [
+            'gender IS NOT NULL',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+    }
+
     public static function prefixSearchProvider(): \Generator
     {
         yield 'Searching for "h" should not return any results by default because the minimum prefix length is 3' => [
@@ -546,6 +621,30 @@ class SearchTest extends TestCase
      */
     #[DataProvider('inFilterProvider')]
     public function testInFilter(string $filter, array $expectedHits): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter($filter)
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $expectedHits
+     */
+    #[DataProvider('nullFilterProvider')]
+    public function testNullFilter(string $filter, array $expectedHits): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
 
