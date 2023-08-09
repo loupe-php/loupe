@@ -223,6 +223,13 @@ class IndexTest extends TestCase
                 ]),
             ],
         ];
+
+        yield 'Omitting filterable attributes in first document allowed' => [
+            [
+                \array_filter(\array_merge(self::getUtaDocument(), ['departments' => null, 'gender' => null])),
+                self::getSandraDocument(),
+            ],
+        ];
     }
 
     /**
