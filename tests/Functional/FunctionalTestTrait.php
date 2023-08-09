@@ -30,7 +30,13 @@ trait FunctionalTestTrait
             return;
         }
 
-        $loupe->addDocuments(json_decode(file_get_contents(__DIR__ . '/IndexData/' . $indexFixture . '.json'), true));
+        $contents = file_get_contents(__DIR__ . '/IndexData/' . $indexFixture . '.json');
+
+        if ($contents === false) {
+            throw new \InvalidArgumentException(sprintf('Fixture "%s" does not exist.', $indexFixture));
+        }
+
+        $loupe->addDocuments(json_decode($contents, true));
     }
 
     /**

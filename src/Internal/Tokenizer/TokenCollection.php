@@ -76,10 +76,11 @@ class TokenCollection
 
     public function last(): ?Token
     {
-        if ($this->empty()) {
-            return null;
+        $last = end($this->tokens);
+        if ($last instanceof Token) {
+            return $last;
         }
 
-        return end($this->tokens);
+        return null;
     }
 }

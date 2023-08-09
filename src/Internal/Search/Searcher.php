@@ -224,8 +224,8 @@ class Searcher
         }
 
         // Prefix search
-        $lastToken = $tokenCollection->last(); // Cannot be null here due to previous ->empty() check
-        if ($lastToken->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()) {
+        $lastToken = $tokenCollection->last();
+        if ($lastToken !== null && $lastToken->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()) {
             $ors[] = sprintf(
                 '%s.term LIKE %s',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),

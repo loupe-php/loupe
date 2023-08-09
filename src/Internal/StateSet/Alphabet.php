@@ -23,14 +23,14 @@ class Alphabet implements AlphabetInterface
     public function map(string $char, int $alphabetSize): int
     {
         if (! $this->initialized) {
-            $this->inMemoryAlphabet = new InMemoryAlphabet(
-                $this->engine->getConnection()
-                    ->createQueryBuilder()
-                    ->select('char, label')
-                    ->from(IndexInfo::TABLE_NAME_ALPHABET)
-                    ->fetchAllKeyValue()
-            );
+            /** @var array<string, int> $alphabet */
+            $alphabet = array_map('intval', $this->engine->getConnection()
+                ->createQueryBuilder()
+                ->select('char, label')
+                ->from(IndexInfo::TABLE_NAME_ALPHABET)
+                ->fetchAllKeyValue());
 
+            $this->inMemoryAlphabet = new InMemoryAlphabet($alphabet);
             $this->initialized = true;
         }
 
