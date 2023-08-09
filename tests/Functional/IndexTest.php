@@ -42,6 +42,9 @@ class IndexTest extends TestCase
         ];
     }
 
+    /**
+     * @param array<array<string, mixed>> $documents
+     */
     #[DataProvider('invalidSchemaChangesProvider')]
     public function testInvalidSchemaChanges(array $documents, string $expectedExceptionMessage): void
     {
@@ -151,6 +154,9 @@ class IndexTest extends TestCase
         $this->assertSame($uta, $document);
     }
 
+    /**
+     * @param array<array<string, mixed>> $documents
+     */
     #[DataProvider('validSchemaChangesProvider')]
     public function testValidSchemaChanges(array $documents): void
     {
