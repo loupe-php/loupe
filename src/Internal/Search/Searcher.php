@@ -389,11 +389,7 @@ class Searcher
             return;
         }
 
-        $ast = $this->filterParser->getAst(
-            $this->searchParameters->getFilter(),
-            $this->engine->getConfiguration()->getFilterableAttributes()
-        );
-
+        $ast = $this->filterParser->getAst($this->searchParameters->getFilter(), $this->engine);
         $whereStatement = [];
 
         foreach ($ast->getNodes() as $node) {
@@ -422,8 +418,8 @@ class Searcher
         if ($node instanceof Filter) {
             $operator = $node->operator;
 
-            // Multi filterable value operator attributes need a sub query
-            if (! $operator->isNoValueOperator() && \in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+            // Multi filterable attributes need a sub query
+            if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';

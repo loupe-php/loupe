@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Unit\Internal\Filter;
 
+use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\FilterFormatException;
+use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
+use Loupe\Loupe\Internal\LoupeTypes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -62,8 +65,8 @@ class ParserTest extends TestCase
             [
                 [
                     'attribute' => 'age',
-                    'operator' => 'IS NULL',
-                    'value' => null,
+                    'operator' => '=',
+                    'value' => LoupeTypes::VALUE_NULL,
                 ],
             ],
         ];
@@ -73,8 +76,30 @@ class ParserTest extends TestCase
             [
                 [
                     'attribute' => 'age',
-                    'operator' => 'IS NOT NULL',
-                    'value' => null,
+                    'operator' => '!=',
+                    'value' => LoupeTypes::VALUE_NULL,
+                ],
+            ],
+        ];
+
+        yield 'IS EMPTY filter' => [
+            'age IS EMPTY',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => '=',
+                    'value' => LoupeTypes::VALUE_EMPTY,
+                ],
+            ],
+        ];
+
+        yield 'IS NOT EMPTY filter' => [
+            'age IS NOT EMPTY',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => '!=',
+                    'value' => LoupeTypes::VALUE_EMPTY,
                 ],
             ],
         ];
@@ -178,8 +203,8 @@ class ParserTest extends TestCase
                     ['OR'],
                     [
                         'attribute' => 'genres',
-                        'operator' => 'IS NULL',
-                        'value' => null,
+                        'operator' => '=',
+                        'value' => LoupeTypes::VALUE_NULL,
                     ],
                 ],
                 ['OR'],
@@ -216,7 +241,7 @@ class ParserTest extends TestCase
 
         yield 'Invalid number of parameters for _geoRadius' => [
             '_geoRadius(1.00, 2.00)',
-            "Col 21: Error: Expected ',', got ')'",
+            "Col 11: Error: Expected filterable attribute, got '1.00'",
         ];
 
         yield 'Missing ( for _geoRadius' => [
@@ -261,7 +286,12 @@ class ParserTest extends TestCase
 
         yield 'IS with nonsense' => [
             'genres IS foobar',
-            'Col 10: Error: Expected one of "NULL", "NOT NULL", got \'foobar\'',
+            'Col 10: Error: Expected "NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is, got \'foobar\'',
+        ];
+
+        yield 'IS NOT with nonsense' => [
+            'genres IS NOT foobar',
+            'Col 10: Error: Expected "NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is, got \'NOT\'',
         ];
     }
 
@@ -271,7 +301,8 @@ class ParserTest extends TestCase
         $this->expectExceptionMessage("Col 11: Error: Expected filterable attribute, got 'location'");
 
         $parser = new Parser();
-        $parser->getAst('_geoRadius(location, 45.472735, 9.184019, 2000)', ['gender']);
+        $engine = $this->mockEngine(['gender']);
+        $parser->getAst('_geoRadius(location, 45.472735, 9.184019, 2000)', $engine);
     }
 
     #[DataProvider('invalidFilterProvider')]
@@ -281,7 +312,8 @@ class ParserTest extends TestCase
         $this->expectExceptionMessage($expectedMessage);
 
         $parser = new Parser();
-        $parser->getAst($filter);
+        $engine = $this->mockEngine(['location', 'gender', 'attribute', 'genres', 'foobar']);
+        $parser->getAst($filter, $engine);
     }
 
     public function testNonFilterableAttribute(): void
@@ -290,7 +322,8 @@ class ParserTest extends TestCase
         $this->expectExceptionMessage("Col 0: Error: Expected filterable attribute, got 'genres'");
 
         $parser = new Parser();
-        $parser->getAst('genres > 42.67', ['gender']);
+        $engine = $this->mockEngine(['gender']);
+        $parser->getAst('genres > 42.67', $engine);
     }
 
     /**
@@ -300,7 +333,22 @@ class ParserTest extends TestCase
     public function testValidFilter(string $filter, array $expectedAst): void
     {
         $parser = new Parser();
+        $engine = $this->mockEngine(['location', 'genres', 'age', 'foobar']);
 
-        $this->assertSame($expectedAst, $parser->getAst($filter)->toArray());
+        $this->assertSame($expectedAst, $parser->getAst($filter, $engine)->toArray());
+    }
+
+    private function mockEngine(array $filterableAttributes): Engine
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes($filterableAttributes)
+        ;
+        $engine = $this->createMock(Engine::class);
+        $engine
+            ->method('getConfiguration')
+            ->willReturn($configuration)
+        ;
+
+        return $engine;
     }
 }

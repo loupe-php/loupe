@@ -17,6 +17,8 @@ class Lexer extends AbstractLexer
 
     public const T_COMMA = 8;
 
+    public const T_EMPTY = 19;
+
     public const T_EQUALS = 11;
 
     public const T_FLOAT = 5;
@@ -84,6 +86,9 @@ class Lexer extends AbstractLexer
 
             case $value === 'NOT':
                 return self::T_NOT;
+
+            case $value === 'EMPTY':
+                return self::T_EMPTY;
 
             case $value === 'IS':
                 return self::T_IS;

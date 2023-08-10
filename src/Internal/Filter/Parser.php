@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Filter;
 
 use Doctrine\Common\Lexer\Token;
 use Loupe\Loupe\Exception\FilterFormatException;
+use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
@@ -28,10 +29,7 @@ class Parser
         $this->lexer = $lexer ?? new Lexer();
     }
 
-    /**
-     * @param array<string> $allowedAttributeNames
-     */
-    public function getAst(string $string, array $allowedAttributeNames = []): Ast
+    public function getAst(string $string, Engine $engine): Ast
     {
         $this->lexer->setInput($string);
         $this->ast = new Ast();
@@ -58,12 +56,12 @@ class Parser
             $start = false;
 
             if ($this->lexer->token?->type === Lexer::T_GEO_RADIUS) {
-                $this->handleGeoRadius($allowedAttributeNames);
+                $this->handleGeoRadius($engine);
                 continue;
             }
 
             if ($this->lexer->token?->type === Lexer::T_ATTRIBUTE_NAME) {
-                $this->handleAttribute($allowedAttributeNames);
+                $this->handleAttribute($engine);
                 continue;
             }
 
@@ -151,23 +149,18 @@ class Parser
         }
     }
 
-    /**
-     * @param array<string> $allowedAttributeNames
-     */
-    private function handleAttribute(array $allowedAttributeNames): void
+    private function handleAttribute(Engine $engine): void
     {
         $attributeName = (string) $this->lexer->token?->value;
 
-        if (\count($allowedAttributeNames) !== 0 && ! \in_array($attributeName, $allowedAttributeNames, true)) {
-            $this->syntaxError('filterable attribute');
-        }
+        $this->validateFilterableAttribute($engine, $attributeName);
 
         $this->assertOperator($this->lexer->lookahead);
         $this->lexer->moveNext();
         $operator = (string) $this->lexer->token?->value;
 
         if ($this->lexer->token?->type === Lexer::T_IS) {
-            $this->handleIs($attributeName);
+            $this->handleIs($attributeName, $engine);
             return;
         }
 
@@ -206,10 +199,7 @@ class Parser
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $value));
     }
 
-    /**
-     * @param array<string> $allowedAttributeNames
-     */
-    private function handleGeoRadius(array $allowedAttributeNames): void
+    private function handleGeoRadius(Engine $engine): void
     {
         $this->assertOpeningParenthesis($this->lexer->lookahead);
         $this->lexer->moveNext();
@@ -217,9 +207,7 @@ class Parser
 
         $attributeName = (string) $this->lexer->token?->value;
 
-        if (\count($allowedAttributeNames) !== 0 && ! \in_array($attributeName, $allowedAttributeNames, true)) {
-            $this->syntaxError('filterable attribute');
-        }
+        $this->validateFilterableAttribute($engine, $attributeName);
 
         $this->lexer->moveNext();
         $this->assertFloat($this->lexer->lookahead);
@@ -272,19 +260,31 @@ class Parser
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
     }
 
-    private function handleIs(mixed $attributeName): void
+    private function handleIs(mixed $attributeName, Engine $engine): void
     {
+        $isMultiFilterable = \in_array($attributeName, $engine->getIndexInfo()->getMultiFilterableAttributes(), true);
+
         if ($this->lexer->lookahead?->type === Lexer::T_NULL) {
-            $this->addNode(new Filter($attributeName, Operator::IsNull));
+            $this->addNode(new Filter($attributeName, Operator::Equals, LoupeTypes::VALUE_NULL));
+            return;
+        }
+
+        if ($this->lexer->lookahead?->type === Lexer::T_EMPTY) {
+            $this->addNode(new Filter($attributeName, Operator::Equals, LoupeTypes::VALUE_EMPTY));
             return;
         }
 
         if ($this->lexer->lookahead?->type === Lexer::T_NOT && $this->lexer->glimpse()?->type === Lexer::T_NULL) {
-            $this->addNode(new Filter($attributeName, Operator::IsNotNull));
+            $this->addNode(new Filter($attributeName, Operator::NotEquals, LoupeTypes::VALUE_NULL));
             return;
         }
 
-        $this->syntaxError('one of "NULL", "NOT NULL"', $this->lexer->lookahead);
+        if ($this->lexer->lookahead?->type === Lexer::T_NOT && $this->lexer->glimpse()?->type === Lexer::T_EMPTY) {
+            $this->addNode(new Filter($attributeName, Operator::NotEquals, LoupeTypes::VALUE_EMPTY));
+            return;
+        }
+
+        $this->syntaxError('"NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is', $this->lexer->lookahead);
     }
 
     private function syntaxError(string $expected = '', Token $token = null): void
@@ -300,5 +300,13 @@ class Parser
         $message .= $this->lexer->lookahead === null ? 'end of string.' : sprintf("'%s'", $token?->value);
 
         throw new FilterFormatException($message);
+    }
+
+    private function validateFilterableAttribute(Engine $engine, string $attributeName): void
+    {
+        $allowedAttributeNames = $engine->getConfiguration()->getFilterableAttributes();
+        if (! \in_array($attributeName, $allowedAttributeNames, true)) {
+            $this->syntaxError('filterable attribute');
+        }
     }
 }

@@ -15,6 +15,81 @@ class SearchTest extends TestCase
 {
     use FunctionalTestTrait;
 
+    public static function emptyFilterProvider(): \Generator
+    {
+        yield 'IS EMPTY on multiple attribute' => [
+            'departments IS EMPTY',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+            ],
+        ];
+
+        yield 'IS NOT EMPTY on multiple attribute' => [
+            'departments IS NOT EMPTY',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield 'IS EMPTY on single attribute' => [
+            'gender IS EMPTY',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+            ],
+        ];
+
+        yield 'IS NOT EMPTY on single attribute' => [
+            'gender IS NOT EMPTY',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+    }
+
     public static function equalFilterProvider(): \Generator
     {
         yield '= on multiple attribute' => [
@@ -81,6 +156,10 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
                 ],
             ],
         ];
@@ -263,6 +342,10 @@ class SearchTest extends TestCase
                     'id' => 6,
                     'firstname' => 'Huckleberry',
                 ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
             ],
         ];
     }
@@ -412,6 +495,30 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $expectedHits
+     */
+    #[DataProvider('emptyFilterProvider')]
+    public function testEmptyFilter(string $filter, array $expectedHits): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter($filter)
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
         ]);
     }
 
