@@ -6,7 +6,9 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\LoupeExceptionInterface;
+use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Logger\InMemoryLogger;
+use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -40,6 +42,84 @@ class IndexTest extends TestCase
             ],
             'Document ID "3" ("{"id":3,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
         ];
+    }
+
+    public static function specialDataTypesAreEscapedProvider(): \Generator
+    {
+        yield 'Check internal null value is escaped on single attribute (gender IS NULL)' => [
+            [
+                array_merge(self::getSandraDocument(), [
+                    'gender' => null,
+                ]),
+                // Simulate an entry which by chance exactly matches our internal value for null
+                array_merge(self::getUtaDocument(), [
+                    'gender' => LoupeTypes::VALUE_NULL,
+                ]),
+            ],
+            'gender IS NULL',
+            // Should only return Sandra as this is the one document that really has a NULL value assigned
+            [[
+                'id' => 1,
+                'firstname' => 'Sandra',
+            ]],
+        ];
+
+        yield 'Check internal null value is escaped on single attribute (gender = <internal value>)' => [
+            [
+                array_merge(self::getSandraDocument(), [
+                    'gender' => null,
+                ]),
+                // Simulate an entry which by chance exactly matches our internal value for null
+                array_merge(self::getUtaDocument(), [
+                    'gender' => LoupeTypes::VALUE_NULL,
+                ]),
+            ],
+            sprintf("gender = '%s'", LoupeTypes::VALUE_NULL),
+            // Should only return Uta as this is the one document that really has the <internal value> assigned
+            [[
+                'id' => 2,
+                'firstname' => 'Uta',
+            ]],
+        ];
+
+        yield 'Check internal empty value is escaped on single attribute (gender IS EMPTY)' => [
+            [
+                array_merge(self::getSandraDocument(), [
+                    'gender' => '',
+                ]),
+                // Simulate an entry which by chance exactly matches our internal value for empty
+                array_merge(self::getUtaDocument(), [
+                    'gender' => LoupeTypes::VALUE_EMPTY,
+                ]),
+            ],
+            'gender IS EMPTY',
+            // Should only return Sandra as this is the one document that really has an empty value assigned
+            [[
+                'id' => 1,
+                'firstname' => 'Sandra',
+            ]],
+        ];
+
+        yield 'Check internal empty value is escaped on single attribute (gender = <internal value>)' => [
+            [
+                array_merge(self::getSandraDocument(), [
+                    'gender' => '',
+                ]),
+                // Simulate an entry which by chance exactly matches our internal value for null
+                array_merge(self::getUtaDocument(), [
+                    'gender' => LoupeTypes::VALUE_EMPTY,
+                ]),
+            ],
+            sprintf("gender = '%s'", LoupeTypes::VALUE_EMPTY),
+            // Should only return Uta as this is the one document that really has the <internal value> assigned
+            [[
+                'id' => 2,
+                'firstname' => 'Uta',
+            ]],
+        ];
+
+        // No need to check  multi attribute cases because you cannot have a multi attribute with the internal
+        // values for null or empty string.
     }
 
     /**
@@ -152,6 +232,37 @@ class IndexTest extends TestCase
         $loupe->addDocument($uta);
         $document = $loupe->getDocument(1);
         $this->assertSame($uta, $document);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $documents
+     * @param array<array<string, mixed>> $expectedHits
+     */
+    #[DataProvider('specialDataTypesAreEscapedProvider')]
+    public function testSpecialDataTypesAreEscaped(array $documents, string $filter, array $expectedHits): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments($documents);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter($filter)
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
+        ]);
     }
 
     /**

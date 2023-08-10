@@ -12,8 +12,6 @@ enum Operator: string
     case GreaterThan = '>';
     case GreaterThanOrEquals = '>=';
     case In = 'IN';
-    case IsNotNull = 'IS NOT NULL';
-    case IsNull = 'IS NULL';
     case LowerThan = '<';
     case LowerThanOrEquals = '<=';
     case NotEquals = '!=';
@@ -22,7 +20,7 @@ enum Operator: string
     /**
      * @param float|string|array<mixed> $value
      */
-    public function buildSql(Connection $connection, float|string|array|null $value): string
+    public function buildSql(Connection $connection, float|string|array $value): string
     {
         if (\is_array($value)) {
             foreach ($value as &$v) {
@@ -33,8 +31,6 @@ enum Operator: string
         }
 
         return match ($this) {
-            self::IsNull,
-            self::IsNotNull => $this->value,
             self::Equals,
             self::NotEquals,
             self::GreaterThan,
@@ -56,8 +52,6 @@ enum Operator: string
             '<=' => self::LowerThanOrEquals,
             'IN' => self::In,
             'NOT IN' => self::NotIn,
-            'IS NULL' => self::IsNull,
-            'IS NOT NULL' => self::IsNotNull,
             default => throw new \InvalidArgumentException('Invalid operator given.')
         };
     }
@@ -70,17 +64,10 @@ enum Operator: string
             self::GreaterThanOrEquals,
             self::LowerThan,
             self::LowerThanOrEquals,
-            self::IsNull,
             self::In => false,
             self::NotIn,
-            self::IsNotNull,
             self::NotEquals => true,
         };
-    }
-
-    public function isNoValueOperator(): bool
-    {
-        return $this === self::IsNull || $this === self::IsNotNull;
     }
 
     public function opposite(): self
@@ -94,8 +81,6 @@ enum Operator: string
             self::LowerThanOrEquals => self::GreaterThan,
             self::In => self::NotIn,
             self::NotIn => self::In,
-            self::IsNull => self::IsNotNull,
-            self::IsNotNull => self::IsNull,
         };
     }
 

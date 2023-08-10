@@ -7,12 +7,12 @@ namespace Loupe\Loupe\Internal\Filter\Ast;
 class Filter extends Node
 {
     /**
-     * @param float|string|array<mixed>|null $value
+     * @param float|string|array<mixed> $value
      */
     public function __construct(
         public string $attribute,
         public Operator $operator,
-        public float|string|array|null $value = null
+        public float|string|array $value
     ) {
     }
 

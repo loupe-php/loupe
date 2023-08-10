@@ -125,10 +125,6 @@ class Indexer
             $loupeType = $this->engine->getIndexInfo()
                 ->getLoupeTypeForAttribute($attribute);
 
-            if ($loupeType === LoupeTypes::TYPE_NULL) {
-                continue;
-            }
-
             if ($loupeType === LoupeTypes::TYPE_GEO) {
                 if (! isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
                     continue;
@@ -142,8 +138,16 @@ class Indexer
             $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
         }
 
+        // Markers for IS EMPTY and IS NULL filters on multi attributes
         foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
-            $data[$attribute] = $document[$attribute] === null ? null : \count($document[$attribute]);
+            $loupeType = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute);
+            $value = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
+
+            if (\is_array($value)) {
+                $data[$attribute] = \count($value);
+            } else {
+                $data[$attribute] = $value;
+            }
         }
 
         return (int) $this->engine->upsert(
