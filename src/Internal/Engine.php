@@ -25,7 +25,7 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '1.0.0'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.2.0'; // Increase this whenever a re-index of all documents is needed
 
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
