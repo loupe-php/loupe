@@ -32,7 +32,16 @@ class LoupeTypes
     public static function convertToString(mixed $attributeValue): string
     {
         if (\is_string($attributeValue)) {
-            return $attributeValue === '' ? self::VALUE_EMPTY : $attributeValue;
+            if ($attributeValue === '') {
+                return self::VALUE_EMPTY;
+            }
+
+            // Escape our internal values
+            if (\in_array($attributeValue, [self::VALUE_EMPTY, self::VALUE_NULL], true)) {
+                return '\\' . $attributeValue;
+            }
+
+            return $attributeValue;
         }
 
         if (\is_array($attributeValue)) {

@@ -338,6 +338,9 @@ class ParserTest extends TestCase
         $this->assertSame($expectedAst, $parser->getAst($filter, $engine)->toArray());
     }
 
+    /**
+     * @param array<string> $filterableAttributes
+     */
     private function mockEngine(array $filterableAttributes): Engine
     {
         $configuration = Configuration::create()

@@ -125,10 +125,6 @@ class Indexer
             $loupeType = $this->engine->getIndexInfo()
                 ->getLoupeTypeForAttribute($attribute);
 
-            if ($loupeType === LoupeTypes::TYPE_NULL) {
-                continue;
-            }
-
             if ($loupeType === LoupeTypes::TYPE_GEO) {
                 if (! isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
                     continue;
