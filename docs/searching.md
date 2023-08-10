@@ -115,6 +115,7 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withHitsPerPage(50);
 ```
 
+Note: You cannot go any higher than `1000` documents per page. The higher the value you choose, the slower Loupe gets.
 
 ## Term highlighting
 

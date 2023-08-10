@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
+use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 
 final class SearchParameters
 {
+    public const MAX_HITS_PER_PAGE = 1000;
+
     /**
      * @var array<string>
      */
@@ -143,6 +146,10 @@ final class SearchParameters
 
     public function withHitsPerPage(int $hitsPerPage): self
     {
+        if ($hitsPerPage > self::MAX_HITS_PER_PAGE) {
+            throw InvalidSearchParametersException::maxHitsPerPage();
+        }
+
         $clone = clone $this;
         $clone->hitsPerPage = $hitsPerPage;
 
