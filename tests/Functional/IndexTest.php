@@ -198,6 +198,32 @@ class IndexTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 1,
         ]);
+
+        $loupe->addDocuments([
+            ['id' => 3], // adding more empty document should change nothing
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname', 'lastname', 'departments'])
+            ->withFilter('departments = \'Development\'') // as uta has now the department it should be returned
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                    'lastname' => 'Koertig',
+                    'departments' => ['Development', 'Backoffice'],
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
     }
 
     /**
