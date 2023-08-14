@@ -192,6 +192,22 @@ class IndexInfo
             ->fetchOne();
     }
 
+    /**
+     * @return array<string>
+     */
+    public function getFilterableAndSortableAttributes(): array
+    {
+        return array_unique(array_merge($this->getFilterableAttributes(), $this->getSortableAttributes()));
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getFilterableAttributes(): array
+    {
+        return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getFilterableAttributes()), $this->getDocumentSchema()));
+    }
+
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
         if (! \array_key_exists($attributeName, $this->getDocumentSchema())) {
@@ -211,7 +227,7 @@ class IndexInfo
     {
         $result = [];
 
-        foreach ($this->engine->getConfiguration()->getFilterableAttributes() as $attributeName) {
+        foreach ($this->getFilterableAttributes() as $attributeName) {
             if (LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
                 continue;
             }
@@ -227,8 +243,7 @@ class IndexInfo
      */
     public function getSingleFilterableAndSortableAttributes(): array
     {
-        $filterableAndSortable = $this->engine->getConfiguration()
-            ->getFilterableAndSortableAttributes();
+        $filterableAndSortable = $this->getFilterableAndSortableAttributes();
         $result = [];
 
         foreach ($filterableAndSortable as $attributeName) {
@@ -240,6 +255,14 @@ class IndexInfo
         }
 
         return $result;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getSortableAttributes(): array
+    {
+        return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getSortableAttributes()), $this->getDocumentSchema()));
     }
 
     public static function isValidAttributeName(string $name): bool

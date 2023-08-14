@@ -57,16 +57,9 @@ final class Configuration
         return array_unique(array_merge(
             [$this->getPrimaryKey()],
             $this->getSearchableAttributes(),
-            $this->getFilterableAndSortableAttributes()
+            $this->getFilterableAttributes(),
+            $this->getSortableAttributes()
         ));
-    }
-
-    /**
-     * @return array<string>
-     */
-    public function getFilterableAndSortableAttributes(): array
-    {
-        return array_unique(array_merge($this->filterableAttributes, $this->sortableAttributes));
     }
 
     /**

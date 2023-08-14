@@ -122,6 +122,43 @@ class IndexTest extends TestCase
         // values for null or empty string.
     }
 
+    public function testCanFilterAndSearchOnNonExistingSchema(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $partialUtaDocument = array_filter(array_merge(self::getUtaDocument(), [
+            'departments' => null,
+            'firstname' => null,
+        ]));
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([$partialUtaDocument]);
+        $this->assertSame(1, $loupe->countDocuments());
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname', 'lastname', 'departments'])
+            ->withFilter('departments = \'Development\'')
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'lastname' => 'Koertig',
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $documents
      */

@@ -396,6 +396,11 @@ class Searcher
             $this->handleFilterAstNode($node, $whereStatement);
         }
 
+        // Filters could be skipped if an attribute is not part of the schema yet, so we need to check again here
+        if ($whereStatement === []) {
+            return;
+        }
+
         $this->queryBuilder->andWhere(implode(' ', $whereStatement));
     }
 
@@ -408,15 +413,25 @@ class Searcher
             ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
 
         if ($node instanceof Group) {
-            $whereStatement[] = '(';
+            $groupWhere = [];
             foreach ($node->getChildren() as $child) {
-                $this->handleFilterAstNode($child, $whereStatement);
+                $this->handleFilterAstNode($child, $groupWhere);
             }
-            $whereStatement[] = ')';
+
+            if ($groupWhere !== []) {
+                $whereStatement[] = '(';
+                $whereStatement[] = implode(' ', $groupWhere);
+                $whereStatement[] = ')';
+            }
         }
 
         if ($node instanceof Filter) {
             $operator = $node->operator;
+
+            // Do not apply filter if not part of the schema yet.
+            if (! \in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                return;
+            }
 
             // Multi filterable attributes need a sub query
             if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
@@ -438,6 +453,11 @@ class Searcher
         }
 
         if ($node instanceof GeoDistance) {
+            // Do not apply filter if not part of the schema yet.
+            if (! \in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                return;
+            }
+
             // Start a group
             $whereStatement[] = '(';
 
