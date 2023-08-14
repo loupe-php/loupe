@@ -428,11 +428,8 @@ class Searcher
         if ($node instanceof Filter) {
             $operator = $node->operator;
 
-            // Do not apply filter if not part of the schema yet.
             if (! \in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $whereStatement[] =  $operator->isNegative() ? '1 = 1' : '1 = 0';
-
-                return;
+                $whereStatement[] =  $operator->isNegative() ? '1 = 1' : '1 = 0'; // none existing filter fields need be handled as no match if positive as match if negative
             } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
@@ -452,54 +449,51 @@ class Searcher
         }
 
         if ($node instanceof GeoDistance) {
-            // Do not apply filter if not part of the schema yet.
             if (! \in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $whereStatement[] =  '1 = 0';
+                $whereStatement[] =  '1 = 0'; // none existing filter fields need be handled as no match if positive as match if negative
+            } else {
+                // Start a group
+                $whereStatement[] = '(';
 
-                return;
+                // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
+                // the actual distance is compared. This can use indexes.
+                $bounds = $node->getBbox();
+
+                // Latitude
+                $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
+                $whereStatement[] = '>=';
+                $whereStatement[] = $bounds->getSouth();
+                $whereStatement[] = 'AND';
+                $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
+                $whereStatement[] = '<=';
+                $whereStatement[] = $bounds->getNorth();
+
+                // Longitude
+                $whereStatement[] = 'AND';
+                $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+                $whereStatement[] = '>=';
+                $whereStatement[] = $bounds->getWest();
+                $whereStatement[] = 'AND';
+                $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+                $whereStatement[] = '<=';
+                $whereStatement[] = $bounds->getEast();
+
+                // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
+                // but not within the radius (which is a circle).
+                $whereStatement[] = 'AND';
+                $whereStatement[] = sprintf(
+                    'geo_distance(%f, %f, %s, %s)',
+                    $node->lat,
+                    $node->lng,
+                    $documentAlias . '.' . $node->attributeName . '_geo_lat',
+                    $documentAlias . '.' . $node->attributeName . '_geo_lng'
+                );
+                $whereStatement[] = '<=';
+                $whereStatement[] = $node->distance;
+
+                // End group
+                $whereStatement[] = ')';
             }
-
-            // Start a group
-            $whereStatement[] = '(';
-
-            // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
-            // the actual distance is compared. This can use indexes.
-            $bounds = $node->getBbox();
-
-            // Latitude
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-            $whereStatement[] = '>=';
-            $whereStatement[] = $bounds->getSouth();
-            $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-            $whereStatement[] = '<=';
-            $whereStatement[] = $bounds->getNorth();
-
-            // Longitude
-            $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-            $whereStatement[] = '>=';
-            $whereStatement[] = $bounds->getWest();
-            $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-            $whereStatement[] = '<=';
-            $whereStatement[] = $bounds->getEast();
-
-            // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
-            // but not within the radius (which is a circle).
-            $whereStatement[] = 'AND';
-            $whereStatement[] = sprintf(
-                'geo_distance(%f, %f, %s, %s)',
-                $node->lat,
-                $node->lng,
-                $documentAlias . '.' . $node->attributeName . '_geo_lat',
-                $documentAlias . '.' . $node->attributeName . '_geo_lng'
-            );
-            $whereStatement[] = '<=';
-            $whereStatement[] = $node->distance;
-
-            // End group
-            $whereStatement[] = ')';
         }
 
         if ($node instanceof Concatenator) {
