@@ -140,7 +140,22 @@ class IndexTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname', 'lastname', 'departments'])
-            ->withFilter('departments = \'Development\'')
+            ->withFilter('departments = \'Development\'') // Not existing field on positive filter should return nothing as the given documents are not in the deparments
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname', 'lastname', 'departments'])
+            ->withFilter('departments != \'Development\'') // Not existing field on negative filter should still return as the given documents are not in the deparments
             ->withSort(['firstname:asc'])
         ;
 
@@ -149,6 +164,32 @@ class IndexTest extends TestCase
                 [
                     'id' => 2,
                     'lastname' => 'Koertig',
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $loupe->addDocuments([
+            self::getUtaDocument(), // adding fields should allow to filter by it now and get the result
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname', 'lastname', 'departments'])
+            ->withFilter('departments = \'Development\'') // as uta has now the department it should be returned
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                    'lastname' => 'Koertig',
+                    'departments' => ['Development', 'Backoffice'],
                 ],
             ],
             'query' => '',
