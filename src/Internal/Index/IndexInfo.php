@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Index;
 
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Types\Types;
 use Loupe\Loupe\Configuration;
@@ -57,7 +58,7 @@ class IndexInfo
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
         }
 
-        $documentSchema = [];
+        $documentSchema = $this->getDocumentSchema(); // merge with existing document schema
 
         foreach ($document as $attributeName => $attributeValue) {
             Configuration::validateAttributeName($attributeName);
@@ -72,22 +73,32 @@ class IndexInfo
                 throw InvalidConfigurationException::becauseAttributeNotSortable($attributeName);
             }
 
+            if (isset($documentSchema[$attributeName]) && $loupeType === LoupeTypes::TYPE_NULL) {
+                // change type not to TYPE_NULL
+
+                continue;
+            }
+
+            if (isset($documentSchema[$attributeName]) && $documentSchema[$attributeName] !== LoupeTypes::TYPE_NULL && $documentSchema[$attributeName] !== $loupeType) {
+                // changing type is only allowed from null to specific type not specific type to another one
+
+                throw InvalidDocumentException::becauseDoesNotMatchSchema($document, $documentSchema);
+            }
+
             $documentSchema[$attributeName] = $loupeType;
         }
 
         $this->updateDocumentSchema($documentSchema);
 
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'engineVersion',
-                'value' => Engine::VERSION,
-            ]);
+        $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
+            'key' => 'engineVersion',
+            'value' => Engine::VERSION,
+        ], ['key']);
 
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'configHash',
-                'value' => $this->engine->getConfiguration()->getIndexHash(),
-            ]);
+        $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
+            'key' => 'configHash',
+            'value' => $this->engine->getConfiguration()->getIndexHash(),
+        ], ['key']);
 
         $this->needsSetup = false;
     }
@@ -169,14 +180,18 @@ class IndexInfo
     public function getDocumentSchema(): array
     {
         if ($this->documentSchema === null) {
-            $schema = $this->engine->getConnection()
-                ->createQueryBuilder()
-                ->select('value')
-                ->from(self::TABLE_NAME_INDEX_INFO)
-                ->where("key = 'documentSchema'")
-                ->fetchOne();
+            try {
+                $schema = $this->engine->getConnection()
+                    ->createQueryBuilder()
+                    ->select('value')
+                    ->from(self::TABLE_NAME_INDEX_INFO)
+                    ->where("key = 'documentSchema'")
+                    ->fetchOne();
 
-            $this->documentSchema = Util::decodeJson($schema);
+                $this->documentSchema = Util::decodeJson($schema);
+            } catch (TableNotFoundException $e) {
+                $this->documentSchema = [];
+            }
         }
 
         return $this->documentSchema;

@@ -31,12 +31,15 @@ class Indexer
             return $this;
         }
 
-        $firstDocument = reset($documents);
+        $schemaDocument = [];
+        foreach ($documents as $document) {
+            $schemaDocument = [...$document, ...$schemaDocument];
+        }
 
         $indexInfo = $this->engine->getIndexInfo();
 
-        if ($indexInfo->needsSetup()) {
-            $indexInfo->setup($firstDocument);
+        if ($indexInfo->needsSetup() || true) { // TODO do setup only when schema changed
+            $indexInfo->setup($schemaDocument);
         }
 
         try {
