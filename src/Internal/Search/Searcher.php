@@ -430,11 +430,10 @@ class Searcher
 
             // Do not apply filter if not part of the schema yet.
             if (! \in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                return;
-            }
+                $whereStatement[] =  $operator->isNegative() ? '1 = 1' : '1 = 0';
 
-            // Multi filterable attributes need a sub query
-            if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+                return;
+            } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
@@ -455,6 +454,8 @@ class Searcher
         if ($node instanceof GeoDistance) {
             // Do not apply filter if not part of the schema yet.
             if (! \in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                $whereStatement[] =  '1 = 0';
+
                 return;
             }
 
