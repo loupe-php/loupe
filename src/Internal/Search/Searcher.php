@@ -448,9 +448,9 @@ class Searcher
         }
 
         if ($node instanceof GeoDistance) {
-            // Not existing attributes need be handled as no match if positive and as match if negative
+            // Not existing attributes need be handled as no match
             if (! \in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
+                $whereStatement[] = '1 = 0';
                 return;
             }
 
