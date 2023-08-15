@@ -396,11 +396,6 @@ class Searcher
             $this->handleFilterAstNode($node, $whereStatement);
         }
 
-        // Filters could be skipped if an attribute is not part of the schema yet, so we need to check again here
-        if ($whereStatement === []) {
-            return;
-        }
-
         $this->queryBuilder->andWhere(implode(' ', $whereStatement));
     }
 
@@ -428,13 +423,13 @@ class Searcher
         if ($node instanceof Filter) {
             $operator = $node->operator;
 
-            // Do not apply filter if not part of the schema yet.
+            // Not existing attributes need be handled as no match if positive and as match if negative
             if (! \in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                return;
+                $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
             }
 
             // Multi filterable attributes need a sub query
-            if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+            elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
@@ -453,8 +448,9 @@ class Searcher
         }
 
         if ($node instanceof GeoDistance) {
-            // Do not apply filter if not part of the schema yet.
+            // Not existing attributes need be handled as no match if positive and as match if negative
             if (! \in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
                 return;
             }
 

@@ -98,6 +98,7 @@ class IndexInfo
     public function fixAndValidateDocument(array &$document): void
     {
         $documentSchema = $this->getDocumentSchema();
+        $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
         $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?
             (string) $document[$this->engine->getConfiguration()->getPrimaryKey()] :
             null;
@@ -110,14 +111,21 @@ class IndexInfo
             }
         }
 
-        $schemaNarrowed = false;
+        $needsSchemaUpdate = false;
 
         foreach ($document as $attributeName => $attributeValue) {
+            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
+
+            // If the attribute does not exist on the attribute yet, we need to add it to the schema in case it is
+            // configured as being schema relevant. Otherwise, we just ignore and skip.
             if (! isset($documentSchema[$attributeName])) {
+                if (\in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
+                    $documentSchema[$attributeName] = $valueType;
+                    $needsSchemaUpdate = true;
+                }
+
                 continue;
             }
-
-            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
 
             if (! LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
                 throw InvalidDocumentException::becauseDoesNotMatchSchema(
@@ -131,11 +139,11 @@ class IndexInfo
             // it was "null" and now it becomes any other type.
             if ($valueType !== LoupeTypes::TYPE_NULL && $documentSchema[$attributeName] !== $valueType) {
                 $documentSchema[$attributeName] = $valueType;
-                $schemaNarrowed = true;
+                $needsSchemaUpdate = true;
             }
         }
 
-        if ($schemaNarrowed) {
+        if ($needsSchemaUpdate) {
             $this->updateDocumentSchema($documentSchema);
         }
     }

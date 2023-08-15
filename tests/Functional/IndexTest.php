@@ -122,7 +122,7 @@ class IndexTest extends TestCase
         // values for null or empty string.
     }
 
-    public function testCanFilterAndSearchOnNonExistingSchema(): void
+    public function testCanFilterAndSortOnNonExistingSchema(): void
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
@@ -140,22 +140,64 @@ class IndexTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname', 'lastname', 'departments'])
-            ->withFilter('departments = \'Development\'')
             ->withSort(['firstname:asc'])
         ;
 
+        // Not existing field on positive filter should return nothing as partial Uta does not have "Development" in "departments"
+        $searchParameters = $searchParameters->withFilter('departments = \'Development\'');
+
         $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 2,
-                    'lastname' => 'Koertig',
-                ],
-            ],
+            'hits' => [],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+
+        // Not existing field on negative filter should return partial Uta as this matches
+        $searchParameters = $searchParameters->withFilter('departments != \'Development\'');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [[
+                'id' => 2,
+                'lastname' => 'Koertig',
+            ]],
             'query' => '',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+
+        // Adding the entire document should allow to filter by it now
+        $loupe->addDocument(self::getUtaDocument());
+
+        $searchParameters = $searchParameters->withFilter('departments = \'Development\'');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [[
+                'id' => 2,
+                'firstname' => 'Uta',
+                'lastname' => 'Koertig',
+                'departments' => ['Development', 'Backoffice'],
+            ]],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $searchParameters = $searchParameters->withFilter('departments != \'Development\'');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
         ]);
     }
 
