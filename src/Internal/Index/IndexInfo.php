@@ -53,7 +53,7 @@ class IndexInfo
         $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
         $sortableAttributes = $this->engine->getConfiguration()->getSortableAttributes();
 
-        if (! \array_key_exists($primaryKey, $document)) {
+        if (!\array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
         }
 
@@ -62,13 +62,13 @@ class IndexInfo
         foreach ($document as $attributeName => $attributeValue) {
             Configuration::validateAttributeName($attributeName);
 
-            if (! \in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
+            if (!\in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
                 continue;
             }
 
             $loupeType = LoupeTypes::getTypeFromValue($attributeValue);
 
-            if (\in_array($attributeName, $sortableAttributes, true) && ! LoupeTypes::isSingleType($loupeType)) {
+            if (\in_array($attributeName, $sortableAttributes, true) && !LoupeTypes::isSingleType($loupeType)) {
                 throw InvalidConfigurationException::becauseAttributeNotSortable($attributeName);
             }
 
@@ -118,7 +118,7 @@ class IndexInfo
 
             // If the attribute does not exist on the attribute yet, we need to add it to the schema in case it is
             // configured as being schema relevant. Otherwise, we just ignore and skip.
-            if (! isset($documentSchema[$attributeName])) {
+            if (!isset($documentSchema[$attributeName])) {
                 if (\in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
                     $documentSchema[$attributeName] = $valueType;
                     $needsSchemaUpdate = true;
@@ -127,7 +127,7 @@ class IndexInfo
                 continue;
             }
 
-            if (! LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
+            if (!LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
                 throw InvalidDocumentException::becauseDoesNotMatchSchema(
                     $documentSchema,
                     $document,
@@ -218,7 +218,7 @@ class IndexInfo
 
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
-        if (! \array_key_exists($attributeName, $this->getDocumentSchema())) {
+        if (!\array_key_exists($attributeName, $this->getDocumentSchema())) {
             throw new InvalidConfigurationException(sprintf(
                 'The attribute "%s" does not exist on the document schema.',
                 $attributeName
@@ -255,7 +255,7 @@ class IndexInfo
         $result = [];
 
         foreach ($filterableAndSortable as $attributeName) {
-            if (! LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
+            if (!LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
                 continue;
             }
 
@@ -289,7 +289,7 @@ class IndexInfo
             return $this->needsSetup;
         }
 
-        return $this->needsSetup = ! $this->engine->getConnection()
+        return $this->needsSetup = !$this->engine->getConnection()
             ->createSchemaManager()
             ->tablesExist([self::TABLE_NAME_INDEX_INFO])
         ;

@@ -40,7 +40,7 @@ class Engine
         private Highlighter $highlighter,
         private Parser $filterParser
     ) {
-        if (! $this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
+        if (!$this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
             throw new \InvalidArgumentException('Only SQLite is supported.');
         }
 

@@ -21,7 +21,7 @@ class Simple extends AbstractSorter
         $attribute = $this->attributeName;
 
         // We ignore if it's configured sortable (see supports()) but is not yet part of our document schema
-        if (! \in_array($attribute, $engine->getIndexInfo()->getSortableAttributes(), true)) {
+        if (!\in_array($attribute, $engine->getIndexInfo()->getSortableAttributes(), true)) {
             return;
         }
 

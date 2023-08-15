@@ -39,13 +39,13 @@ class Parser
         $start = true;
 
         while (true) {
-            if (! $this->lexer->lookahead) {
+            if (!$this->lexer->lookahead) {
                 break;
             }
 
             $this->lexer->moveNext();
 
-            if ($start && ! $this->lexer->token?->isA(
+            if ($start && !$this->lexer->token?->isA(
                 Lexer::T_ATTRIBUTE_NAME,
                 Lexer::T_GEO_RADIUS,
                 Lexer::T_OPEN_PARENTHESIS
@@ -127,7 +127,7 @@ class Parser
     {
         $type = $token->type ?? null;
 
-        if (! \is_int($type) || $type < 10 || $type > 30) {
+        if (!\is_int($type) || $type < 10 || $type > 30) {
             $this->syntaxError('valid operator', $token);
         }
     }
@@ -144,7 +144,7 @@ class Parser
     {
         $type = $token->type ?? null;
 
-        if ($type === null || ! \in_array($type, $types, true)) {
+        if ($type === null || !\in_array($type, $types, true)) {
             $this->syntaxError($error, $token);
         }
     }
@@ -305,7 +305,7 @@ class Parser
     private function validateFilterableAttribute(Engine $engine, string $attributeName): void
     {
         $allowedAttributeNames = $engine->getConfiguration()->getFilterableAttributes();
-        if (! \in_array($attributeName, $allowedAttributeNames, true)) {
+        if (!\in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
         }
     }

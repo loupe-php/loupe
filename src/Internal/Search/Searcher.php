@@ -142,7 +142,7 @@ class Searcher
     private function addTermDocumentMatchesCTE(TokenCollection $tokenCollection): void
     {
         // No term matches CTE -> no term document matches CTE
-        if (! isset($this->CTEs[self::CTE_TERM_MATCHES])) {
+        if (!isset($this->CTEs[self::CTE_TERM_MATCHES])) {
             return;
         }
 
@@ -418,7 +418,7 @@ class Searcher
             $operator = $node->operator;
 
             // Not existing attributes need be handled as no match if positive and as match if negative
-            if (! \in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+            if (!\in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
             }
 
@@ -446,7 +446,7 @@ class Searcher
 
         if ($node instanceof GeoDistance) {
             // Not existing attributes need be handled as no match
-            if (! \in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+            if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 $whereStatement[] = '1 = 0';
                 return;
             }
@@ -504,7 +504,7 @@ class Searcher
      */
     private function highlight(array &$hit, TokenCollection $tokenCollection): void
     {
-        if ($this->searchParameters->getAttributesToHighlight() === [] && ! $this->searchParameters->showMatchesPosition()) {
+        if ($this->searchParameters->getAttributesToHighlight() === [] && !$this->searchParameters->showMatchesPosition()) {
             return;
         }
 
@@ -519,7 +519,7 @@ class Searcher
 
         foreach ($this->engine->getConfiguration()->getSearchableAttributes() as $attribute) {
             // Do not include any attribute not required by the result (limited by attributesToRetrieve)
-            if (! isset($formatted[$attribute])) {
+            if (!isset($formatted[$attribute])) {
                 continue;
             }
 
@@ -585,7 +585,7 @@ class Searcher
         $this->addTermMatchesCTE($tokenCollection);
         $this->addTermDocumentMatchesCTE($tokenCollection);
 
-        if (! isset($this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES])) {
+        if (!isset($this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES])) {
             return;
         }
 

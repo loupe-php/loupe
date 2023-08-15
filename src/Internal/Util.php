@@ -15,7 +15,7 @@ class Util
     {
         $data = json_decode($data, true);
 
-        if (! \is_array($data)) {
+        if (!\is_array($data)) {
             throw new InvalidJsonException(json_last_error_msg());
         }
 

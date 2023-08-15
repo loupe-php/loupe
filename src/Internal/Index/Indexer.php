@@ -126,7 +126,7 @@ class Indexer
                 ->getLoupeTypeForAttribute($attribute);
 
             if ($loupeType === LoupeTypes::TYPE_GEO) {
-                if (! isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
+                if (!isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
                     continue;
                 }
 
@@ -223,7 +223,7 @@ class Indexer
         $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
 
         foreach ($document as $attributeName => $attributeValue) {
-            if (['*'] !== $searchableAttributes && ! \in_array($attributeName, $searchableAttributes, true)) {
+            if (['*'] !== $searchableAttributes && !\in_array($attributeName, $searchableAttributes, true)) {
                 continue;
             }
 
