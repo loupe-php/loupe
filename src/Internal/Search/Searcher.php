@@ -287,20 +287,14 @@ class Searcher
             )
         ;
 
-        $column = \is_float($node->value) ? 'numeric_value' : 'string_value';
-        $sql = $node->operator->isNegative() ?
-            $node->operator->opposite()->buildSql($this->engine->getConnection(), $node->value) :
-            $node->operator->buildSql($this->engine->getConnection(), $node->value);
+        $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
+            (\is_float($node->value) ? 'numeric_value' : 'string_value');
 
-        $qb->andWhere(
-            sprintf(
-                '%s.%s %s',
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                $column,
-                $sql
-            )
-        );
+        $sql = $node->operator->isNegative() ?
+            $node->operator->opposite()->buildSql($this->engine->getConnection(), $column, $node->value) :
+            $node->operator->buildSql($this->engine->getConnection(), $column, $node->value);
+
+        $qb->andWhere($sql);
 
         return $qb->getSQL();
     }
@@ -442,8 +436,11 @@ class Searcher
                     $attribute = 'user_id';
                 }
 
-                $whereStatement[] = $documentAlias . '.' . $attribute;
-                $whereStatement[] = $operator->buildSql($this->engine->getConnection(), $node->value);
+                $whereStatement[] = $operator->buildSql(
+                    $this->engine->getConnection(),
+                    $documentAlias . '.' . $attribute,
+                    $node->value
+                );
             }
         }
 
