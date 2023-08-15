@@ -98,6 +98,7 @@ class IndexInfo
     public function fixAndValidateDocument(array &$document): void
     {
         $documentSchema = $this->getDocumentSchema();
+        $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
         $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?
             (string) $document[$this->engine->getConfiguration()->getPrimaryKey()] :
             null;
@@ -110,14 +111,21 @@ class IndexInfo
             }
         }
 
-        $schemaNarrowed = false;
+        $needsSchemaUpdate = false;
 
         foreach ($document as $attributeName => $attributeValue) {
+            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
+
+            // If the attribute does not exist on the attribute yet, we need to add it to the schema in case it is
+            // configured as being schema relevant. Otherwise, we just ignore and skip.
             if (! isset($documentSchema[$attributeName])) {
+                if (\in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
+                    $documentSchema[$attributeName] = $valueType;
+                    $needsSchemaUpdate = true;
+                }
+
                 continue;
             }
-
-            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
 
             if (! LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
                 throw InvalidDocumentException::becauseDoesNotMatchSchema(
@@ -131,11 +139,11 @@ class IndexInfo
             // it was "null" and now it becomes any other type.
             if ($valueType !== LoupeTypes::TYPE_NULL && $documentSchema[$attributeName] !== $valueType) {
                 $documentSchema[$attributeName] = $valueType;
-                $schemaNarrowed = true;
+                $needsSchemaUpdate = true;
             }
         }
 
-        if ($schemaNarrowed) {
+        if ($needsSchemaUpdate) {
             $this->updateDocumentSchema($documentSchema);
         }
     }
@@ -192,6 +200,22 @@ class IndexInfo
             ->fetchOne();
     }
 
+    /**
+     * @return array<string>
+     */
+    public function getFilterableAndSortableAttributes(): array
+    {
+        return array_unique(array_merge($this->getFilterableAttributes(), $this->getSortableAttributes()));
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getFilterableAttributes(): array
+    {
+        return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getFilterableAttributes()), $this->getDocumentSchema()));
+    }
+
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
         if (! \array_key_exists($attributeName, $this->getDocumentSchema())) {
@@ -211,7 +235,7 @@ class IndexInfo
     {
         $result = [];
 
-        foreach ($this->engine->getConfiguration()->getFilterableAttributes() as $attributeName) {
+        foreach ($this->getFilterableAttributes() as $attributeName) {
             if (LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
                 continue;
             }
@@ -227,8 +251,7 @@ class IndexInfo
      */
     public function getSingleFilterableAndSortableAttributes(): array
     {
-        $filterableAndSortable = $this->engine->getConfiguration()
-            ->getFilterableAndSortableAttributes();
+        $filterableAndSortable = $this->getFilterableAndSortableAttributes();
         $result = [];
 
         foreach ($filterableAndSortable as $attributeName) {
@@ -240,6 +263,14 @@ class IndexInfo
         }
 
         return $result;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getSortableAttributes(): array
+    {
+        return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getSortableAttributes()), $this->getDocumentSchema()));
     }
 
     public static function isValidAttributeName(string $name): bool

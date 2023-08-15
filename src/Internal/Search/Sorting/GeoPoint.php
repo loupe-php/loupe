@@ -30,6 +30,11 @@ class GeoPoint extends AbstractSorter
         $alias = $engine->getIndexInfo()
             ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
 
+        // We ignore if it's configured sortable (see supports()) but is not yet part of our document schema
+        if (! \in_array($this->attributeName, $engine->getIndexInfo()->getSortableAttributes(), true)) {
+            return;
+        }
+
         $searcher->getQueryBuilder()->addSelect(sprintf(
             'geo_distance(%f, %f, %s, %s) AS %s',
             $this->lat,

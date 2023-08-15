@@ -408,18 +408,28 @@ class Searcher
             ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
 
         if ($node instanceof Group) {
-            $whereStatement[] = '(';
+            $groupWhere = [];
             foreach ($node->getChildren() as $child) {
-                $this->handleFilterAstNode($child, $whereStatement);
+                $this->handleFilterAstNode($child, $groupWhere);
             }
-            $whereStatement[] = ')';
+
+            if ($groupWhere !== []) {
+                $whereStatement[] = '(';
+                $whereStatement[] = implode(' ', $groupWhere);
+                $whereStatement[] = ')';
+            }
         }
 
         if ($node instanceof Filter) {
             $operator = $node->operator;
 
+            // Not existing attributes need be handled as no match if positive and as match if negative
+            if (! \in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
+            }
+
             // Multi filterable attributes need a sub query
-            if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+            elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
@@ -438,6 +448,12 @@ class Searcher
         }
 
         if ($node instanceof GeoDistance) {
+            // Not existing attributes need be handled as no match
+            if (! \in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                $whereStatement[] = '1 = 0';
+                return;
+            }
+
             // Start a group
             $whereStatement[] = '(';
 
