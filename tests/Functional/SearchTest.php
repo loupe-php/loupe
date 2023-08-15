@@ -350,6 +350,73 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function lowerAndGreaterThanFilters(): \Generator
+    {
+        yield [
+            'rating > 3.5',
+            [
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+            ],
+        ];
+
+        yield [
+            'rating >= 3.5',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+            ],
+        ];
+
+        yield [
+            'rating < 3.5',
+            [
+                [
+                    'id' => 5,
+                    'name' => 'Back to the future',
+                    'rating' => 0,
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                    'rating' => 2.5,
+                ],
+            ],
+        ];
+
+        yield [
+            'rating <= 3.5',
+            [
+                [
+                    'id' => 5,
+                    'name' => 'Back to the future',
+                    'rating' => 0,
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                    'rating' => 2.5,
+                ],
+            ],
+        ];
+    }
+
     public static function nullFilterProvider(): \Generator
     {
         yield 'IS NULL on multiple attribute' => [
@@ -735,6 +802,66 @@ class SearchTest extends TestCase
             ->withAttributesToRetrieve(['id', 'firstname'])
             ->withFilter($filter)
             ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $expectedHits
+     */
+    #[DataProvider('lowerAndGreaterThanFilters')]
+    public function testLowerAndGreaterThanFilters(string $filter, array $expectedHits): void
+    {
+        $configuration = Configuration::create();
+
+        $configuration = $configuration
+            ->withFilterableAttributes(['rating'])
+            ->withSortableAttributes(['name'])
+            ->withSearchableAttributes(['name'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Star Wars',
+                'rating' => 2.5,
+            ],
+            [
+                'id' => 2,
+                'name' => 'Indiana Jones',
+                'rating' => 3.5,
+            ],
+            [
+                'id' => 3,
+                'name' => 'Jurassic Park',
+                'rating' => 4,
+            ],
+            [
+                'id' => 4,
+                'name' => 'Interstellar',
+                'rating' => null,
+            ],
+            [
+                'id' => 5,
+                'name' => 'Back to the future',
+                'rating' => 0,
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'name', 'rating'])
+            ->withFilter($filter)
+            ->withSort(['name:asc'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
