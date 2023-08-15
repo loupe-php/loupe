@@ -540,6 +540,71 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function sortWithNullAndNonExistingValueProvider(): \Generator
+    {
+        yield 'ASC' => [
+            ['rating:asc', 'name:asc'],
+            [
+                [
+                    'id' => 5,
+                    'name' => 'Back to the future',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 4,
+                    'name' => 'Interstellar',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+            ],
+        ];
+
+        yield 'DESC' => [
+            ['rating:desc', 'name:asc'],
+            [
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 5,
+                    'name' => 'Back to the future',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 4,
+                    'name' => 'Interstellar',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                    'rating' => null,
+                ],
+            ],
+        ];
+    }
+
     public function testComplexFilters(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
@@ -1125,115 +1190,6 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testSortAscWithNullAndNotExtingValue(): void
-    {
-        $configuration = Configuration::create();
-
-        $configuration = $configuration
-            ->withFilterableAttributes(['rating'])
-            ->withSortableAttributes(['name', 'rating'])
-            ->withSearchableAttributes(['name'])
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-
-        $loupe->addDocuments([
-            [
-                'id' => 1,
-                'name' => 'Star Wars',
-            ],
-            [
-                'id' => 2,
-                'name' => 'Indiana Jones',
-                'rating' => 3.5,
-            ],
-            [
-                'id' => 3,
-                'name' => 'Jurassic Park',
-                'rating' => 4,
-            ],
-            [
-                'id' => 4,
-                'name' => 'Interstellar',
-                'rating' => null,
-            ],
-            [
-                'id' => 5,
-                'name' => 'Back to the future',
-            ],
-        ]);
-
-        $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'name', 'rating'])
-            ->withSort(['rating:asc'])
-        ;
-
-        $result = $loupe->search($searchParameters);
-        $this->assertGreaterThan(1, \count($result->getHits()));
-
-        $beforeRating = \PHP_INT_MIN;
-        foreach ($result->getHits() as $result) {
-            $rating = $result['rating'] ?? 0;
-            $this->assertGreaterThanOrEqual($beforeRating, $rating);
-
-            $beforeRating = $rating;
-        }
-    }
-
-    public function testSortDescWithNullAndNotExtingValue(): void
-    {
-        $configuration = Configuration::create();
-
-        $configuration = $configuration
-            ->withFilterableAttributes(['rating'])
-            ->withSortableAttributes(['name', 'rating'])
-            ->withSearchableAttributes(['name'])
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-
-        $loupe->addDocuments([
-            [
-                'id' => 1,
-                'name' => 'Star Wars',
-            ],
-            [
-                'id' => 2,
-                'name' => 'Indiana Jones',
-                'rating' => 3.5,
-            ],
-            [
-                'id' => 3,
-                'name' => 'Jurassic Park',
-                'rating' => 4,
-            ],
-            [
-                'id' => 4,
-                'name' => 'Interstellar',
-                'rating' => null,
-            ],
-            [
-                'id' => 5,
-                'name' => 'Back to the future',
-            ],
-        ]);
-
-        $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'name', 'rating'])
-            ->withSort(['rating:desc'])
-        ;
-
-        $result = $loupe->search($searchParameters);
-        $this->assertGreaterThan(1, \count($result->getHits()));
-
-        $beforeRating = \PHP_INT_MAX;
-        foreach ($result->getHits() as $result) {
-            $rating = $result['rating'] ?? 0;
-            $this->assertLessThanOrEqual($beforeRating, $rating);
-            $beforeRating = $rating;
-        }
-    }
-
     public function testSorting(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
@@ -1299,6 +1255,62 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 6,
+        ]);
+    }
+
+    /**
+     * @param array<string> $sort
+     * @param array<array<string,mixed>> $expectedHits
+     */
+    #[DataProvider('sortWithNullAndNonExistingValueProvider')]
+    public function testSortWithNullAndNonExistingValue(array $sort, array $expectedHits): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['rating'])
+            ->withSortableAttributes(['name', 'rating'])
+            ->withSearchableAttributes(['name'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Star Wars',
+            ],
+            [
+                'id' => 2,
+                'name' => 'Indiana Jones',
+                'rating' => 3.5,
+            ],
+            [
+                'id' => 3,
+                'name' => 'Jurassic Park',
+                'rating' => 4,
+            ],
+            [
+                'id' => 4,
+                'name' => 'Interstellar',
+                'rating' => null,
+            ],
+            [
+                'id' => 5,
+                'name' => 'Back to the future',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'name', 'rating'])
+            ->withSort($sort)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
         ]);
     }
 
