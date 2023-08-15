@@ -44,6 +44,9 @@ class Relevance extends AbstractSorter
         );
 
         $searcher->getQueryBuilder()->addSelect($select);
+
+        // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
+        // value
         $searcher->getQueryBuilder()->addOrderBy(self::RELEVANCE_ALIAS, $this->direction->getSQL());
     }
 

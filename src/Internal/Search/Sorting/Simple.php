@@ -29,11 +29,9 @@ class Simple extends AbstractSorter
             $attribute = 'user_id';
         }
 
-        $searcher->getQueryBuilder()->addOrderBy(
-            $engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute,
-            $this->direction->getSQL()
-        );
+        $attribute = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute;
+
+        $this->addOrderBy($searcher, $engine, $attribute, $this->direction);
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self

@@ -13,4 +13,12 @@ enum Direction: string
     {
         return strtoupper($this->value);
     }
+
+    public function opposite(): self
+    {
+        return match ($this) {
+            self::ASC => self::DESC,
+            self::DESC => self::ASC
+        };
+    }
 }

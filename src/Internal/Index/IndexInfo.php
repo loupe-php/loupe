@@ -363,7 +363,9 @@ class IndexInfo
 
         foreach ($columns as $attribute => $dbalType) {
             $table->addColumn($attribute, $dbalType)
-                ->setNotnull(false);
+                ->setNotnull(true)
+                ->setDefault(LoupeTypes::VALUE_NULL)
+            ;
 
             $table->addIndex([$attribute]);
         }

@@ -44,6 +44,8 @@ class GeoPoint extends AbstractSorter
             self::DISTANCE_ALIAS . '_' . $this->attributeName
         ));
 
+        // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
+        // value
         $searcher->getQueryBuilder()->addOrderBy(self::DISTANCE_ALIAS . '_' . $this->attributeName, $this->direction->getSQL());
     }
 
