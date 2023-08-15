@@ -558,7 +558,6 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'name' => 'Star Wars',
-                    'rating' => null,
                 ],
                 [
                     'id' => 2,
@@ -599,7 +598,6 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'name' => 'Star Wars',
-                    'rating' => null,
                 ],
             ],
         ];
