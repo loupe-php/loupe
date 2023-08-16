@@ -164,7 +164,7 @@ class LoupeTypes
      * @param  array<mixed> $attributeValue
      * @return array<float>
      */
-    private static function convertToArrayOfFloats(array $attributeValue): array
+    public static function convertToArrayOfFloats(array $attributeValue): array
     {
         $result = [];
 
@@ -179,7 +179,7 @@ class LoupeTypes
      * @param  array<mixed> $attributeValue
      * @return array<string>
      */
-    private static function convertToArrayOfStrings(array $attributeValue): array
+    public static function convertToArrayOfStrings(array $attributeValue): array
     {
         $result = [];
 
@@ -190,7 +190,7 @@ class LoupeTypes
         return $result;
     }
 
-    private static function convertToFloat(mixed $attributeValue): float
+    public static function convertToFloat(mixed $attributeValue): float
     {
         if (\is_float($attributeValue)) {
             return $attributeValue;

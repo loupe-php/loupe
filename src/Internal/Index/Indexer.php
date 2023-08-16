@@ -79,9 +79,7 @@ class Indexer
             ->executeStatement(
                 sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
                 [
-                    'ids' => array_map(function(string $id) {
-                        return LoupeTypes::convertToString($id);
-                    }, $ids),
+                    'ids' => LoupeTypes::convertToArrayOfStrings($ids),
                 ],
                 [
                     'ids' => ArrayParameterType::STRING,
