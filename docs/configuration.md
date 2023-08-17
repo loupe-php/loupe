@@ -110,8 +110,7 @@ In the following examples, we're thus only going to look at the `TypoTolerance` 
 By default, typo tolerance is enabled, but you can disable typo tolerance entirely. It's as easy as this:
 
 ```php
-$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
-    ->disable()
+$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::disabled()
 ;
 ```
 

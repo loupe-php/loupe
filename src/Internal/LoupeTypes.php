@@ -20,9 +20,74 @@ class LoupeTypes
 
     public const TYPE_STRING = 'string';
 
+    // Marker for IS EMPTY filters. Unfortunately, SQLite is loosely typed (strict tables only came
+    // in later versions which are not supported by Doctrine DBAL anyway) and so we cannot work with real "0" (counting
+    // entries of []) or real ''.
+    public const VALUE_EMPTY = ':l:e';
+
+    // Marker for IS NULL filters. Unfortunately, SQLite is loosely typed (strict tables only came
+    // in later versions which are not supported by Doctrine DBAL anyway) and so we cannot work with real "null".
+    public const VALUE_NULL = ':l:n';
+
+    /**
+     * @param  array<mixed> $attributeValue
+     * @return array<float>
+     */
+    public static function convertToArrayOfFloats(array $attributeValue): array
+    {
+        $result = [];
+
+        foreach ($attributeValue as $k => $v) {
+            $result[$k] = self::convertToFloat($v);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<mixed> $attributeValue
+     * @return array<string>
+     */
+    public static function convertToArrayOfStrings(array $attributeValue): array
+    {
+        $result = [];
+
+        foreach ($attributeValue as $k => $v) {
+            $result[$k] = self::convertToString($v);
+        }
+
+        return $result;
+    }
+
+    public static function convertToFloat(mixed $attributeValue): float
+    {
+        if (\is_float($attributeValue)) {
+            return $attributeValue;
+        }
+
+        if (\is_int($attributeValue)) {
+            return (float) $attributeValue;
+        }
+
+        if (\is_string($attributeValue)) {
+            return (float) $attributeValue;
+        }
+
+        return 0;
+    }
+
     public static function convertToString(mixed $attributeValue): string
     {
         if (\is_string($attributeValue)) {
+            if ($attributeValue === '') {
+                return self::VALUE_EMPTY;
+            }
+
+            // Escape our internal values
+            if (\in_array($attributeValue, [self::VALUE_EMPTY, self::VALUE_NULL], true)) {
+                return '\\' . $attributeValue;
+            }
+
             return $attributeValue;
         }
 
@@ -52,18 +117,23 @@ class LoupeTypes
         return (string) $attributeValue;
     }
 
-    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float|null
+    /**
+     * @return array<string>|array<float>|string|float
+     */
+    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float
     {
         if ($attributeValue === null) {
-            return null;
+            return self::VALUE_NULL;
         }
 
         return match ($type) {
-            self::TYPE_NULL => null,
+            self::TYPE_NULL => self::VALUE_NULL,
+            self::TYPE_ARRAY_EMPTY => self::VALUE_EMPTY,
             self::TYPE_STRING => self::convertToString($attributeValue),
             self::TYPE_NUMBER => self::convertToFloat($attributeValue),
             self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
             self::TYPE_ARRAY_NUMBER, self::TYPE_GEO => self::convertToArrayOfFloats($attributeValue),
+            default => throw new \InvalidArgumentException('Invalid type given.')
         };
     }
 
@@ -113,7 +183,7 @@ class LoupeTypes
     public static function isSingleType(string $type): bool
     {
         // The Geo type is not exactly a single type, but it has to be treated as such
-        return \in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO], true);
+        return \in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO, self::TYPE_NULL], true);
     }
 
     public static function typeMatchesType(string $schemaType, string $checkType): bool
@@ -126,49 +196,14 @@ class LoupeTypes
             return true;
         }
 
-        if ($checkType === self::TYPE_ARRAY_EMPTY) {
-            return $schemaType === self::TYPE_ARRAY_NUMBER || $schemaType === self::TYPE_ARRAY_STRING;
+        if ($checkType === self::TYPE_ARRAY_EMPTY && ($schemaType === self::TYPE_ARRAY_NUMBER || $schemaType === self::TYPE_ARRAY_STRING)) {
+            return true;
+        }
+
+        if (($schemaType === self::TYPE_ARRAY_EMPTY || $schemaType === self::TYPE_ARRAY_STRING) && $checkType === self::TYPE_ARRAY_STRING) {
+            return true;
         }
 
         return false;
-    }
-
-    private static function convertToArrayOfFloats(array $attributeValue): array
-    {
-        $result = [];
-
-        foreach ($attributeValue as $k => $v) {
-            $result[$k] = self::convertToFloat($v);
-        }
-
-        return $result;
-    }
-
-    private static function convertToArrayOfStrings(array $attributeValue): array
-    {
-        $result = [];
-
-        foreach ($attributeValue as $k => $v) {
-            $result[$k] = self::convertToString($v);
-        }
-
-        return $result;
-    }
-
-    private static function convertToFloat(mixed $attributeValue): float
-    {
-        if (\is_float($attributeValue)) {
-            return $attributeValue;
-        }
-
-        if (\is_int($attributeValue)) {
-            return (float) $attributeValue;
-        }
-
-        if (\is_string($attributeValue)) {
-            return (float) $attributeValue;
-        }
-
-        return 0;
     }
 }

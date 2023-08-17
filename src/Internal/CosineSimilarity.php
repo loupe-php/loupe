@@ -6,12 +6,15 @@ namespace Loupe\Loupe\Internal;
 
 class CosineSimilarity
 {
+    /**
+     * @var array<string, array<float>>
+     */
     private static array $queryTfIdfsCache = [];
 
     public static function fromQuery(string $queryId, string $queryIdfs, string $documentTfIdfs): float
     {
         // First we have to turn the query term IDFs into TF-IDF (we only have to do this once per query, so we can cache that)
-        if (! isset(self::$queryTfIdfsCache[$queryId])) {
+        if (!isset(self::$queryTfIdfsCache[$queryId])) {
             $queryIdfs = array_map('floatval', explode(',', $queryIdfs));
             $tf = 1 / \count($queryIdfs);
             self::$queryTfIdfsCache[$queryId] = array_map(function (float $idf) use ($tf) {
@@ -34,6 +37,9 @@ class CosineSimilarity
      *
      * Where d1 = query document (query terms)
      * Where d2 = resulting document (matching terms)
+     *
+     * @param array<float> $d1
+     * @param array<float> $d2
      */
     public static function similarity(array $d1, array $d2): float
     {
@@ -42,8 +48,8 @@ class CosineSimilarity
         $d2Norm = 0;
 
         foreach ($d1 as $i => $xi) {
-            if (isset($v2[$i])) {
-                $prod += $xi * $v2[$i];
+            if (isset($d2[$i])) {
+                $prod += $xi * $d2[$i];
             }
             $d1Norm += $xi * $xi;
         }

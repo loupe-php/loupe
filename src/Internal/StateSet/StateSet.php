@@ -35,6 +35,10 @@ class StateSet implements StateSetInterface
         return $this;
     }
 
+    /**
+     * @param array<int> $matchingStates
+     * @return array<int, array<string>>
+     */
     public function getAcceptedStrings(array $matchingStates = []): array
     {
         // noop, we do not use the find methods on the stateset
@@ -49,6 +53,9 @@ class StateSet implements StateSetInterface
         return $this->inMemoryStateSet->getCharForState($state);
     }
 
+    /**
+     * @return array<int>
+     */
     public function getChildrenOfState(int $state): array
     {
         $this->initialize();

@@ -4,13 +4,27 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
+use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 
 final class SearchParameters
 {
+    public const MAX_HITS_PER_PAGE = 1000;
+
+    /**
+     * @var array<string>
+     */
     private array $attributesToHighlight = [];
 
+    /**
+     * @var array<string>
+     */
     private array $attributesToRetrieve = ['*'];
+
+    /**
+     * @var array<string>
+     */
+    private array $attributesToSearchOn = ['*'];
 
     private string $filter = '';
 
@@ -22,6 +36,11 @@ final class SearchParameters
 
     private bool $showMatchesPosition = false;
 
+    private bool $showRankingScore = false;
+
+    /**
+     * @var array<string>
+     */
     private array $sort = [Relevance::RELEVANCE_ALIAS . ':desc'];
 
     public static function create(): self
@@ -29,14 +48,28 @@ final class SearchParameters
         return new self();
     }
 
+    /**
+     * @return array<string>
+     */
     public function getAttributesToHighlight(): array
     {
         return $this->attributesToHighlight;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getAttributesToRetrieve(): array
     {
         return $this->attributesToRetrieve;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getAttributesToSearchOn(): array
+    {
+        return $this->attributesToSearchOn;
     }
 
     public function getFilter(): string
@@ -59,6 +92,9 @@ final class SearchParameters
         return $this->query;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getSort(): array
     {
         return $this->sort;
@@ -69,6 +105,14 @@ final class SearchParameters
         return $this->showMatchesPosition;
     }
 
+    public function showRankingScore(): bool
+    {
+        return $this->showRankingScore;
+    }
+
+    /**
+     * @param array<string> $attributesToHighlight
+     */
     public function withAttributesToHighlight(array $attributesToHighlight): self
     {
         $clone = clone $this;
@@ -77,10 +121,24 @@ final class SearchParameters
         return $clone;
     }
 
+    /**
+     * @param array<string> $attributesToRetrieve
+     */
     public function withAttributesToRetrieve(array $attributesToRetrieve): self
     {
         $clone = clone $this;
         $clone->attributesToRetrieve = $attributesToRetrieve;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $attributesToSearchOn
+     */
+    public function withAttributesToSearchOn(array $attributesToSearchOn): self
+    {
+        $clone = clone $this;
+        $clone->attributesToSearchOn = $attributesToSearchOn;
 
         return $clone;
     }
@@ -95,6 +153,10 @@ final class SearchParameters
 
     public function withHitsPerPage(int $hitsPerPage): self
     {
+        if ($hitsPerPage > self::MAX_HITS_PER_PAGE) {
+            throw InvalidSearchParametersException::maxHitsPerPage();
+        }
+
         $clone = clone $this;
         $clone->hitsPerPage = $hitsPerPage;
 
@@ -125,6 +187,17 @@ final class SearchParameters
         return $clone;
     }
 
+    public function withShowRankingScore(bool $showRankingScore): self
+    {
+        $clone = clone $this;
+        $clone->showRankingScore = $showRankingScore;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $sort
+     */
     public function withSort(array $sort): self
     {
         $clone = clone $this;

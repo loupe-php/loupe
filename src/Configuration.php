@@ -14,6 +14,9 @@ final class Configuration
 
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
+    /**
+     * @var array<string>
+     */
     private array $filterableAttributes = [];
 
     private ?LoggerInterface $logger = null;
@@ -24,8 +27,14 @@ final class Configuration
 
     private string $primaryKey = 'id';
 
+    /**
+     * @var array<string>
+     */
     private array $searchableAttributes = ['*'];
 
+    /**
+     * @var array<string>
+     */
     private array $sortableAttributes = [];
 
     private TypoTolerance $typoTolerance;
@@ -40,20 +49,22 @@ final class Configuration
         return new self();
     }
 
+    /**
+     * @return array<string>
+     */
     public function getDocumentSchemaRelevantAttributes(): array
     {
         return array_unique(array_merge(
             [$this->getPrimaryKey()],
             $this->getSearchableAttributes(),
-            $this->getFilterableAndSortableAttributes()
+            $this->getFilterableAttributes(),
+            $this->getSortableAttributes()
         ));
     }
 
-    public function getFilterableAndSortableAttributes(): array
-    {
-        return array_unique(array_merge($this->filterableAttributes, $this->sortableAttributes));
-    }
-
+    /**
+     * @return array<string>
+     */
     public function getFilterableAttributes(): array
     {
         return $this->filterableAttributes;
@@ -99,11 +110,17 @@ final class Configuration
         return $this->primaryKey;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getSearchableAttributes(): array
     {
         return $this->searchableAttributes;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getSortableAttributes(): array
     {
         return $this->sortableAttributes;
@@ -117,12 +134,15 @@ final class Configuration
     public static function validateAttributeName(string $name): void
     {
         if (\strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
-            || ! preg_match('/^' . self::ATTRIBUTE_NAME_RGXP . '$/', $name)
+            || !preg_match('/^' . self::ATTRIBUTE_NAME_RGXP . '$/', $name)
         ) {
             throw InvalidConfigurationException::becauseInvalidAttributeName($name);
         }
     }
 
+    /**
+     * @param array<string> $filterableAttributes
+     */
     public function withFilterableAttributes(array $filterableAttributes): self
     {
         self::validateAttributeNames($filterableAttributes);
@@ -167,6 +187,9 @@ final class Configuration
         return $clone;
     }
 
+    /**
+     * @param array<string> $searchableAttributes
+     */
     public function withSearchableAttributes(array $searchableAttributes): self
     {
         if (['*'] !== $searchableAttributes) {
@@ -181,6 +204,9 @@ final class Configuration
         return $clone;
     }
 
+    /**
+     * @param array<string> $sortableAttributes
+     */
     public function withSortableAttributes(array $sortableAttributes): self
     {
         self::validateAttributeNames($sortableAttributes);
@@ -201,6 +227,9 @@ final class Configuration
         return $clone;
     }
 
+    /**
+     * @param array<string> $names
+     */
     private static function validateAttributeNames(array $names): void
     {
         foreach ($names as $name) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
 use Loupe\Loupe\Internal\Engine;
@@ -15,6 +16,7 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Sorting\GeoPoint;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
@@ -28,7 +30,7 @@ class Searcher
     public const CTE_TERM_MATCHES = '_cte_term_matches';
 
     /**
-     * @var array<string, array{'cols': array, 'sql': string}>
+     * @var array<string, array{cols: array<string>, sql: string}>
      */
     private array $CTEs = [];
 
@@ -85,6 +87,10 @@ class Searcher
 
             $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
 
+            if ($this->searchParameters->showRankingScore() && \array_key_exists(Relevance::RELEVANCE_ALIAS, $result)) {
+                $hit['_rankingScore'] = round($result[Relevance::RELEVANCE_ALIAS], 5);
+            }
+
             $this->highlight($hit, $tokens);
 
             $hits[] = $hit;
@@ -105,6 +111,9 @@ class Searcher
         );
     }
 
+    /**
+     * @return array<string, array{cols: array<string>, sql: string}>
+     */
     public function getCTEs(): array
     {
         return $this->CTEs;
@@ -138,7 +147,7 @@ class Searcher
     private function addTermDocumentMatchesCTE(TokenCollection $tokenCollection): void
     {
         // No term matches CTE -> no term document matches CTE
-        if (! isset($this->CTEs[self::CTE_TERM_MATCHES])) {
+        if (!isset($this->CTEs[self::CTE_TERM_MATCHES])) {
             return;
         }
 
@@ -164,6 +173,14 @@ class Searcher
         );
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
+
+        if (['*'] !== $this->searchParameters->getAttributesToSearchOn()) {
+            $cteSelectQb->andWhere(sprintf(
+                $termsDocumentsAlias . '.attribute IN (%s)',
+                $this->queryBuilder->createNamedParameter($this->searchParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
+            ));
+        }
+
         $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', self::CTE_TERM_MATCHES));
 
         // Ensure phrase positions if any
@@ -212,8 +229,12 @@ class Searcher
         }
 
         // Prefix search
-        $lastToken = $tokenCollection->last(); // Cannot be null here due to previous ->empty() check
-        if ($lastToken->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()) {
+        $lastToken = $tokenCollection->last();
+
+        if ($lastToken !== null &&
+            !$lastToken->isPartOfPhrase() &&
+            $lastToken->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()
+        ) {
             $ors[] = sprintf(
                 '%s.term LIKE %s',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
@@ -275,17 +296,14 @@ class Searcher
             )
         ;
 
-        $column = \is_float($node->value) ? 'numeric_value' : 'string_value';
+        $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
+            (\is_float($node->value) ? 'numeric_value' : 'string_value');
 
-        $qb->andWhere(
-            sprintf(
-                '%s.%s %s',
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                $column,
-                $node->operator->buildSql($this->engine->getConnection(), $node->value)
-            )
-        );
+        $sql = $node->operator->isNegative() ?
+            $node->operator->opposite()->buildSql($this->engine->getConnection(), $column, $node->value) :
+            $node->operator->buildSql($this->engine->getConnection(), $column, $node->value);
+
+        $qb->andWhere($sql);
 
         return $qb->getSQL();
     }
@@ -374,11 +392,7 @@ class Searcher
             return;
         }
 
-        $ast = $this->filterParser->getAst(
-            $this->searchParameters->getFilter(),
-            $this->engine->getConfiguration()->getFilterableAttributes()
-        );
-
+        $ast = $this->filterParser->getAst($this->searchParameters->getFilter(), $this->engine);
         $whereStatement = [];
 
         foreach ($ast->getNodes() as $node) {
@@ -388,23 +402,38 @@ class Searcher
         $this->queryBuilder->andWhere(implode(' ', $whereStatement));
     }
 
+    /**
+     * @param array<string> $whereStatement
+     */
     private function handleFilterAstNode(Node $node, array &$whereStatement): void
     {
         $documentAlias = $this->engine->getIndexInfo()
             ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
 
         if ($node instanceof Group) {
-            $whereStatement[] = '(';
+            $groupWhere = [];
             foreach ($node->getChildren() as $child) {
-                $this->handleFilterAstNode($child, $whereStatement);
+                $this->handleFilterAstNode($child, $groupWhere);
             }
-            $whereStatement[] = ')';
+
+            if ($groupWhere !== []) {
+                $whereStatement[] = '(';
+                $whereStatement[] = implode(' ', $groupWhere);
+                $whereStatement[] = ')';
+            }
         }
 
         if ($node instanceof Filter) {
-            // Multi filterable need a sub query
-            if (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-                $whereStatement[] = $documentAlias . '.id IN (';
+            $operator = $node->operator;
+
+            // Not existing attributes need be handled as no match if positive and as match if negative
+            if (!\in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
+            }
+
+            // Multi filterable attributes need a sub query
+            elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+                $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
                 $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                 $whereStatement[] = ')';
 
@@ -416,12 +445,21 @@ class Searcher
                     $attribute = 'user_id';
                 }
 
-                $whereStatement[] = $documentAlias . '.' . $attribute;
-                $whereStatement[] = $node->operator->buildSql($this->engine->getConnection(), $node->value);
+                $whereStatement[] = $operator->buildSql(
+                    $this->engine->getConnection(),
+                    $documentAlias . '.' . $attribute,
+                    $node->value
+                );
             }
         }
 
         if ($node instanceof GeoDistance) {
+            // Not existing attributes need be handled as no match
+            if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                $whereStatement[] = '1 = 0';
+                return;
+            }
+
             // Start a group
             $whereStatement[] = '(';
 
@@ -470,9 +508,12 @@ class Searcher
         }
     }
 
-    private function highlight(array &$hit, TokenCollection $tokenCollection)
+    /**
+     * @param array<mixed> $hit
+     */
+    private function highlight(array &$hit, TokenCollection $tokenCollection): void
     {
-        if ($this->searchParameters->getAttributesToHighlight() === [] && ! $this->searchParameters->showMatchesPosition()) {
+        if ($this->searchParameters->getAttributesToHighlight() === [] && !$this->searchParameters->showMatchesPosition()) {
             return;
         }
 
@@ -487,7 +528,7 @@ class Searcher
 
         foreach ($this->engine->getConfiguration()->getSearchableAttributes() as $attribute) {
             // Do not include any attribute not required by the result (limited by attributesToRetrieve)
-            if (! isset($formatted[$attribute])) {
+            if (!isset($formatted[$attribute])) {
                 continue;
             }
 
@@ -540,17 +581,9 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-        $query = implode(' ', $queryParts);
-
-        $this->engine->getLogger()?->debug(sprintf(
-            '[Search query]: %s (Parameters: %s, Parameter types: %s)',
-            $query,
-            json_encode($this->queryBuilder->getParameters()),
-            json_encode($this->queryBuilder->getParameterTypes())
-        ));
 
         return $this->engine->getConnection()->executeQuery(
-            $query,
+            implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
             $this->queryBuilder->getParameterTypes(),
         );
@@ -561,7 +594,7 @@ class Searcher
         $this->addTermMatchesCTE($tokenCollection);
         $this->addTermDocumentMatchesCTE($tokenCollection);
 
-        if (! isset($this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES])) {
+        if (!isset($this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES])) {
             return;
         }
 

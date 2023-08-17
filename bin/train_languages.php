@@ -1,8 +1,8 @@
 <?php
 
 use LanguageDetection\Trainer;
+use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Symfony\Component\Filesystem\Filesystem;
-use Terminal42\Loupe\Internal\Tokenizer\Tokenizer;
 
 require_once 'vendor/autoload.php';
 

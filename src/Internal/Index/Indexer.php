@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Index;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\Internal\Engine;
@@ -22,10 +23,15 @@ class Indexer
     }
 
     /**
+     * @param array<array<string, mixed>> $documents
      * @throws LoupeExceptionInterface
      */
     public function addDocuments(array $documents): self
     {
+        if ($documents === []) {
+            return $this;
+        }
+
         $firstDocument = reset($documents);
 
         $indexInfo = $this->engine->getIndexInfo();
@@ -38,7 +44,7 @@ class Indexer
             $this->engine->getConnection()
                 ->transactional(function () use ($indexInfo, $documents) {
                     foreach ($documents as $document) {
-                        $indexInfo->validateDocument($document);
+                        $indexInfo->fixAndValidateDocument($document);
 
                         $this->engine->getConnection()
                             ->transactional(function () use ($document) {
@@ -50,8 +56,8 @@ class Indexer
 
                     $this->persistStateSet();
 
-                    // Update IDF only once
-                    $this->updateInverseDocumentFrequencies();
+                    // Update storage (IDF etc.) only once
+                    $this->reviseStorage();
                 });
         } catch (\Throwable $e) {
             if ($e instanceof LoupeExceptionInterface) {
@@ -64,13 +70,34 @@ class Indexer
         return $this;
     }
 
+    /**
+     * @param array<int|string> $ids
+     */
+    public function deleteDocuments(array $ids): self
+    {
+        $this->engine->getConnection()
+            ->executeStatement(
+                sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                [
+                    'ids' => LoupeTypes::convertToArrayOfStrings($ids),
+                ],
+                [
+                    'ids' => ArrayParameterType::STRING,
+                ]
+            );
+
+        $this->reviseStorage();
+
+        return $this;
+    }
+
     private function extractTokens(string $attributeValue): TokenCollection
     {
         return $this->engine->getTokenizer()
             ->tokenize($attributeValue);
     }
 
-    private function indexAttributeValue(string $attribute, string|float|null $value, int $documentId)
+    private function indexAttributeValue(string $attribute, string|float|null $value, int $documentId): void
     {
         if ($value === null) {
             return;
@@ -102,6 +129,7 @@ class Indexer
     }
 
     /**
+     * @param array<string, mixed> $document
      * @return int The document ID
      */
     private function indexDocument(array $document): int
@@ -119,12 +147,8 @@ class Indexer
             $loupeType = $this->engine->getIndexInfo()
                 ->getLoupeTypeForAttribute($attribute);
 
-            if ($loupeType === LoupeTypes::TYPE_NULL) {
-                continue;
-            }
-
             if ($loupeType === LoupeTypes::TYPE_GEO) {
-                if (! isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
+                if (!isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
                     continue;
                 }
 
@@ -136,7 +160,19 @@ class Indexer
             $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
         }
 
-        return $this->engine->upsert(
+        // Markers for IS EMPTY and IS NULL filters on multi attributes
+        foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
+            $loupeType = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute);
+            $value = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
+
+            if (\is_array($value)) {
+                $data[$attribute] = \count($value);
+            } else {
+                $data[$attribute] = $value;
+            }
+        }
+
+        return (int) $this->engine->upsert(
             IndexInfo::TABLE_NAME_DOCUMENTS,
             $data,
             ['user_id'],
@@ -144,6 +180,9 @@ class Indexer
         );
     }
 
+    /**
+     * @param array<string, mixed> $document
+     */
     private function indexMultiAttributes(array $document, int $documentId): void
     {
         foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
@@ -198,12 +237,15 @@ class Indexer
         );
     }
 
+    /**
+     * @param array<string, mixed> $document
+     */
     private function indexTerms(array $document, int $documentId): void
     {
         $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
 
         foreach ($document as $attributeName => $attributeValue) {
-            if (['*'] !== $searchableAttributes && ! \in_array($attributeName, $searchableAttributes, true)) {
+            if (['*'] !== $searchableAttributes && !\in_array($attributeName, $searchableAttributes, true)) {
                 continue;
             }
 
@@ -231,9 +273,35 @@ class Indexer
         $stateSet->persist();
     }
 
-    private function updateInverseDocumentFrequencies(): void
+    private function removeOrphans(): void
     {
-        // Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
+        // Cleanup all terms of documents which no longer exist
+        $query = <<<'QUERY'
+            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
+           QUERY;
+
+        $query = sprintf(
+            $query,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // Cleanup all multi attributes of documents which no longer exist
+        $query = <<<'QUERY'
+            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
+           QUERY;
+
+        $query = sprintf(
+            $query,
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // Cleanup all terms that are not in terms_documents anymore
         $query = <<<'QUERY'
             DELETE FROM %s WHERE id NOT IN (SELECT term FROM %s)
            QUERY;
@@ -244,9 +312,17 @@ class Indexer
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
-        $this->engine->getConnection()
-            ->executeQuery($query);
+        $this->engine->getConnection()->executeStatement($query);
+    }
 
+    private function reviseStorage(): void
+    {
+        $this->removeOrphans();
+        $this->updateInverseDocumentFrequencies();
+    }
+
+    private function updateInverseDocumentFrequencies(): void
+    {
         // Notice the * 1.0 additions to the COUNT() SELECTS in order to force floating point calculations
         $query = <<<'QUERY'
             UPDATE 
@@ -264,10 +340,8 @@ QUERY;
             IndexInfo::TABLE_NAME_TERMS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
-        $this->engine->getConnection()
-            ->executeQuery($query);
+        $this->engine->getConnection()->executeStatement($query);
     }
 }

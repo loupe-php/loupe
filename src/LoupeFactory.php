@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
+use Doctrine\DBAL\Configuration as DbalConfiguration;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Logging\Middleware;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
@@ -16,20 +18,20 @@ class LoupeFactory
 {
     public function create(string $dbPath, Configuration $configuration): Loupe
     {
-        if (! file_exists($dbPath)) {
+        if (!file_exists($dbPath)) {
             throw InvalidConfigurationException::becauseInvalidDbPath($dbPath);
         }
 
         return $this->createFromConnection(DriverManager::getConnection([
             'url' => 'pdo-sqlite://notused:inthis@case/' . realpath($dbPath),
-        ]), $configuration);
+        ], $this->getDbalConfiguration($configuration)), $configuration);
     }
 
     public function createInMemory(Configuration $configuration): Loupe
     {
         return $this->createFromConnection(DriverManager::getConnection([
             'url' => 'pdo-sqlite://:memory:',
-        ]), $configuration);
+        ], $this->getDbalConfiguration($configuration)), $configuration);
     }
 
     private function createFromConnection(Connection $connection, Configuration $configuration): Loupe
@@ -45,5 +47,18 @@ class LoupeFactory
                 new Parser()
             )
         );
+    }
+
+    private function getDbalConfiguration(Configuration $configuration): DbalConfiguration
+    {
+        $config = new DbalConfiguration();
+
+        if ($configuration->getLogger() !== null) {
+            $config->setMiddlewares([
+                new Middleware($configuration->getLogger()),
+            ]);
+        }
+
+        return $config;
     }
 }

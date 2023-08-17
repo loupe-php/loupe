@@ -20,15 +20,18 @@ class Simple extends AbstractSorter
     {
         $attribute = $this->attributeName;
 
+        // We ignore if it's configured sortable (see supports()) but is not yet part of our document schema
+        if (!\in_array($attribute, $engine->getIndexInfo()->getSortableAttributes(), true)) {
+            return;
+        }
+
         if ($attribute === $engine->getConfiguration()->getPrimaryKey()) {
             $attribute = 'user_id';
         }
 
-        $searcher->getQueryBuilder()->addOrderBy(
-            $engine->getIndexInfo()
-                ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute,
-            $this->direction->getSQL()
-        );
+        $attribute = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute;
+
+        $this->addOrderBy($searcher, $engine, $attribute, $this->direction);
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self
@@ -38,6 +41,7 @@ class Simple extends AbstractSorter
 
     public static function supports(string $value, Engine $engine): bool
     {
+        // We support if it's configured sortable
         return \in_array($value, $engine->getConfiguration()->getSortableAttributes(), true);
     }
 }

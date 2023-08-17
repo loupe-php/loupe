@@ -19,7 +19,7 @@ class Relevance extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        if ($searcher->getTokens()->empty() || ! isset($searcher->getCTEs()[Searcher::CTE_TERM_DOCUMENT_MATCHES])) {
+        if ($searcher->getTokens()->empty() || !isset($searcher->getCTEs()[Searcher::CTE_TERM_DOCUMENT_MATCHES])) {
             return;
         }
 
@@ -44,6 +44,9 @@ class Relevance extends AbstractSorter
         );
 
         $searcher->getQueryBuilder()->addSelect($select);
+
+        // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
+        // value
         $searcher->getQueryBuilder()->addOrderBy(self::RELEVANCE_ALIAS, $this->direction->getSQL());
     }
 

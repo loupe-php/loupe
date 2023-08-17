@@ -11,8 +11,14 @@ class InMemoryLogger implements LoggerInterface
 {
     use LoggerTrait;
 
+    /**
+     * @var array<array{level:string, message: string|\Stringable, context: array<mixed>}>
+     */
     private array $records = [];
 
+    /**
+     * @return array<array{level:string, message: string|\Stringable, context: array<mixed>}>
+     */
     public function getRecords(): array
     {
         return $this->records;

@@ -4,6 +4,8 @@
          backupGlobals="false"
          bootstrap="vendor/autoload.php"
          colors="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         failOnWarning="true"
 >
     <php>
         <ini name="display_errors" value="1" />

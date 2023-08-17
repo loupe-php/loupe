@@ -17,6 +17,8 @@ class Lexer extends AbstractLexer
 
     public const T_COMMA = 8;
 
+    public const T_EMPTY = 19;
+
     public const T_EQUALS = 11;
 
     public const T_FLOAT = 5;
@@ -27,6 +29,8 @@ class Lexer extends AbstractLexer
 
     public const T_IN = 14;
 
+    public const T_IS = 17;
+
     public const T_LOWER_THAN = 13;
 
     public const T_NEGATE = 16;
@@ -34,6 +38,8 @@ class Lexer extends AbstractLexer
     public const T_NONE = 1;
 
     public const T_NOT = 15;
+
+    public const T_NULL = 18;
 
     public const T_OPEN_PARENTHESIS = 7;
 
@@ -55,7 +61,7 @@ class Lexer extends AbstractLexer
         return ['\s+', '(.)'];
     }
 
-    protected function getType(&$value)
+    protected function getType(mixed &$value): int
     {
         switch (true) {
             case is_numeric($value):
@@ -80,6 +86,15 @@ class Lexer extends AbstractLexer
 
             case $value === 'NOT':
                 return self::T_NOT;
+
+            case $value === 'EMPTY':
+                return self::T_EMPTY;
+
+            case $value === 'IS':
+                return self::T_IS;
+
+            case $value === 'NULL':
+                return self::T_NULL;
 
             case $value === '_geoRadius':
                 return self::T_GEO_RADIUS;

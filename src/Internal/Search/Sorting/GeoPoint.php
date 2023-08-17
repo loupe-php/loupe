@@ -30,6 +30,11 @@ class GeoPoint extends AbstractSorter
         $alias = $engine->getIndexInfo()
             ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
 
+        // We ignore if it's configured sortable (see supports()) but is not yet part of our document schema
+        if (!\in_array($this->attributeName, $engine->getIndexInfo()->getSortableAttributes(), true)) {
+            return;
+        }
+
         $searcher->getQueryBuilder()->addSelect(sprintf(
             'geo_distance(%f, %f, %s, %s) AS %s',
             $this->lat,
@@ -39,6 +44,8 @@ class GeoPoint extends AbstractSorter
             self::DISTANCE_ALIAS . '_' . $this->attributeName
         ));
 
+        // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
+        // value
         $searcher->getQueryBuilder()->addOrderBy(self::DISTANCE_ALIAS . '_' . $this->attributeName, $this->direction->getSQL());
     }
 
@@ -65,7 +72,7 @@ class GeoPoint extends AbstractSorter
     {
         $supports = preg_match('@' . self::GEOPOINT_RGXP . '@', $value, $matches);
 
-        if (! $supports) {
+        if (!$supports) {
             return null;
         }
 

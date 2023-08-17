@@ -21,8 +21,8 @@
         "id": 3,
         "firstname": "Alexander",
         "lastname": "Abendroth",
-        "gender": "male",
-        "departments": ["Development"],
+        "gender": "",
+        "departments": [],
         "colors": ["Blue"],
         "age": 32
     },
@@ -39,8 +39,8 @@
         "id": 5,
         "firstname": "Marko",
         "lastname": "Gerste",
-        "gender": "male",
-        "departments": ["Backoffice"],
+        "gender": null,
+        "departments": null,
         "colors": ["Purple"],
         "age": 22
     },

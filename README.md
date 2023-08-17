@@ -22,6 +22,17 @@ Loupe…
 If this is your first encounter with Loupe, you might want to read the [blog post on Medium][Blog_Medium] or [as 
 Markdown file][Blog_Repository] that should give you more information about the reasons and what you can do with it.
 
+## Performance
+
+Performance depends on many factors but here are some ballpark numbers based on indexing the [~32k movies fixture by 
+MeiliSearch][MeiliSearch_Movies]:
+
+* Indexing is slow, it will take about 15min (~ 35 documents per second)
+* The slowest possible search query (typo tolerance enabled, ordered by relevance) finishes in < 400ms
+
+Note that anything above 50k documents is probably not a use case for Loupe. You may report your own performance 
+measurements and more details in the [respective discussion][Performance_Topic].
+
 ## Acknowledgement
 
 If you are familiar with MeiliSearch, you will notice that the API is very much inspired by it. The
@@ -129,6 +140,7 @@ Array
 
 ## Docs
 
+* [Schema](./docs/schema.md).
 * [Configuration](./docs/configuration.md).
 * [Searching](./docs/searching.md).
 
@@ -138,3 +150,5 @@ library after having given [my PHP crawler library][Escargot] a French name :-)
 [Escargot]: https://github.com/terminal42/escargot
 [Blog_Medium]: https://medium.com/@yanick.witschi/loupe-a-search-engine-with-only-php-and-sqlite-1c0d83024a71
 [Blog_Repository]: ./docs/blog_post.md
+[MeiliSearch_Movies]: https://www.meilisearch.com/movies.json
+[Performance_Topic]: https://github.com/loupe-php/loupe/discussions/17

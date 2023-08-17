@@ -52,7 +52,7 @@ class Tokenizer
         foreach ($iterator->getPartsIterator() as $term) {
             if ($term === '"') {
                 $position++;
-                $phrase = ! $phrase;
+                $phrase = !$phrase;
                 continue;
             }
 
@@ -68,7 +68,7 @@ class Tokenizer
             $variants = [];
 
             // Only stem if not part of a phrase
-            if (! $phrase) {
+            if (!$phrase) {
                 $variants = [UTF8::strtolower($this->stem($term, $language))];
             }
 

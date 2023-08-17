@@ -17,6 +17,9 @@ final class TypoTolerance
 
     private bool $isDisabled = false;
 
+    /**
+     * @var array<int, int>
+     */
     private array $typoThresholds = [
         9 => 2,
         5 => 1,
@@ -34,6 +37,11 @@ final class TypoTolerance
         $clone->typoThresholds = [];
 
         return $clone;
+    }
+
+    public static function disabled(): self
+    {
+        return (new self())->disable();
     }
 
     public function firstCharTypoCountsDouble(): bool
@@ -97,12 +105,15 @@ final class TypoTolerance
         return $clone;
     }
 
+    /**
+     * @param array<int, int> $typoThresholds
+     */
     public function withTypoThresholds(array $typoThresholds): self
     {
         krsort($typoThresholds);
 
         foreach ($typoThresholds as $threshold => $distance) {
-            if (! \is_int($threshold) || ! \is_int($distance)) {
+            if (!\is_int($threshold) || !\is_int($distance)) {
                 throw new InvalidConfigurationException('Invalid threshold configuration format.');
             }
         }

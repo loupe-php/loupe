@@ -45,6 +45,17 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
+## Attributes to search on
+
+By default, Loupe searches all [configured `searchable attributes`][Config] but you can limit your query to only a 
+subset of those:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToSearchOn(['firstname'])
+;
+```
+
 ## Filter
 
 Loupe provides a powerful way to filter your documents. Know SQL? Then you'll have absolutely no issues filtering 
@@ -58,6 +69,10 @@ following operators:
 * `<=`
 * `IN ()`
 * `NOT IN ()`
+* `IS NULL` (takes no value)
+* `IS NOT NULL` (takes no value)
+* `IS EMPTY` (takes no value, empty values are `''` and `[]`)
+* `IS NOT EMPTY` (takes no value, empty values are `''` and `[]`)
 
 Note that you can only filter [on attributes that you have defined to be filerable in the configuration][Config].
 
@@ -83,6 +98,17 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
+In case you are interested in the ranking score of the relevance sorting, you can ask Loupe to add the score to the 
+search result hits using
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withShowRankingScore(true)
+;
+```
+
+In this case, every hit will have an additional `_rankingScore` attribute with a value between `-1.0` and `1.0`.
+
 ## Pagination
 
 When searching Loupe, it will always return the current `page`, `totalPages` as well as `totalHits` in its search 
@@ -100,6 +126,7 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withHitsPerPage(50);
 ```
 
+Note: You cannot go any higher than `1000` documents per page. The higher the value you choose, the slower Loupe gets.
 
 ## Term highlighting
 

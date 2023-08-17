@@ -15,6 +15,156 @@ class SearchTest extends TestCase
 {
     use FunctionalTestTrait;
 
+    public static function emptyFilterProvider(): \Generator
+    {
+        yield 'IS EMPTY on multiple attribute' => [
+            'departments IS EMPTY',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+            ],
+        ];
+
+        yield 'IS NOT EMPTY on multiple attribute' => [
+            'departments IS NOT EMPTY',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield 'IS EMPTY on single attribute' => [
+            'gender IS EMPTY',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+            ],
+        ];
+
+        yield 'IS NOT EMPTY on single attribute' => [
+            'gender IS NOT EMPTY',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+    }
+
+    public static function equalFilterProvider(): \Generator
+    {
+        yield '= on multiple attribute' => [
+            "departments = 'Backoffice'",
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield '!= on multiple attribute' => [
+            "departments != 'Backoffice'",
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+            ],
+        ];
+
+        yield '= on single attribute' => [
+            "gender = 'female'",
+            [
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield '!= on single attribute' => [
+            "gender != 'female'",
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+            ],
+        ];
+    }
+
     public static function highlightingProvider(): \Generator
     {
         yield 'Highlight with matches position only' => [
@@ -139,10 +289,6 @@ class SearchTest extends TestCase
                     'firstname' => 'Jonas',
                 ],
                 [
-                    'id' => 5,
-                    'firstname' => 'Marko',
-                ],
-                [
                     'id' => 2,
                     'firstname' => 'Uta',
                 ],
@@ -157,16 +303,12 @@ class SearchTest extends TestCase
                     'firstname' => 'Alexander',
                 ],
                 [
-                    'id' => 4,
-                    'firstname' => 'Jonas',
+                    'id' => 5,
+                    'firstname' => 'Marko',
                 ],
                 [
                     'id' => 1,
                     'firstname' => 'Sandra',
-                ],
-                [
-                    'id' => 2,
-                    'firstname' => 'Uta',
                 ],
             ],
         ];
@@ -203,6 +345,148 @@ class SearchTest extends TestCase
                 [
                     'id' => 5,
                     'firstname' => 'Marko',
+                ],
+            ],
+        ];
+    }
+
+    public static function lowerAndGreaterThanFilters(): \Generator
+    {
+        yield [
+            'rating > 3.5',
+            [
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+            ],
+        ];
+
+        yield [
+            'rating >= 3.5',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+            ],
+        ];
+
+        yield [
+            'rating < 3.5',
+            [
+                [
+                    'id' => 5,
+                    'name' => 'Back to the future',
+                    'rating' => 0,
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                    'rating' => 2.5,
+                ],
+            ],
+        ];
+
+        yield [
+            'rating <= 3.5',
+            [
+                [
+                    'id' => 5,
+                    'name' => 'Back to the future',
+                    'rating' => 0,
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                    'rating' => 2.5,
+                ],
+            ],
+        ];
+    }
+
+    public static function nullFilterProvider(): \Generator
+    {
+        yield 'IS NULL on multiple attribute' => [
+            'departments IS NULL',
+            [
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+            ],
+        ];
+
+        yield 'IS NOT NULL on multiple attribute' => [
+            'departments IS NOT NULL',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
+        yield 'IS NULL on single attribute' => [
+            'gender IS NULL',
+            [
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+            ],
+        ];
+
+        yield 'IS NOT NULL on single attribute' => [
+            'gender IS NOT NULL',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
                 ],
             ],
         ];
@@ -256,6 +540,69 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function sortWithNullAndNonExistingValueProvider(): \Generator
+    {
+        yield 'ASC' => [
+            ['rating:asc', 'name:asc'],
+            [
+                [
+                    'id' => 5,
+                    'name' => 'Back to the future',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 4,
+                    'name' => 'Interstellar',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+            ],
+        ];
+
+        yield 'DESC' => [
+            ['rating:desc', 'name:asc'],
+            [
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 5,
+                    'name' => 'Back to the future',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 4,
+                    'name' => 'Interstellar',
+                    'rating' => null,
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                ],
+            ],
+        ];
+    }
+
     public function testComplexFilters(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
@@ -278,6 +625,54 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $expectedHits
+     */
+    #[DataProvider('emptyFilterProvider')]
+    public function testEmptyFilter(string $filter, array $expectedHits): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter($filter)
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $expectedHits
+     */
+    #[DataProvider('equalFilterProvider')]
+    public function testEqualFilter(string $filter, array $expectedHits): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter($filter)
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
         ]);
     }
 
@@ -411,6 +806,10 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<string> $attributesToHighlight
+     * @param array<mixed> $expectedResults
+     */
     #[DataProvider('highlightingProvider')]
     public function testHighlighting(string $query, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults): void
     {
@@ -454,8 +853,95 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<mixed> $expectedHits
+     */
     #[DataProvider('inFilterProvider')]
     public function testInFilter(string $filter, array $expectedHits): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter($filter)
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $expectedHits
+     */
+    #[DataProvider('lowerAndGreaterThanFilters')]
+    public function testLowerAndGreaterThanFilters(string $filter, array $expectedHits): void
+    {
+        $configuration = Configuration::create();
+
+        $configuration = $configuration
+            ->withFilterableAttributes(['rating'])
+            ->withSortableAttributes(['name'])
+            ->withSearchableAttributes(['name'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Star Wars',
+                'rating' => 2.5,
+            ],
+            [
+                'id' => 2,
+                'name' => 'Indiana Jones',
+                'rating' => 3.5,
+            ],
+            [
+                'id' => 3,
+                'name' => 'Jurassic Park',
+                'rating' => 4,
+            ],
+            [
+                'id' => 4,
+                'name' => 'Interstellar',
+                'rating' => null,
+            ],
+            [
+                'id' => 5,
+                'name' => 'Back to the future',
+                'rating' => 0,
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'name', 'rating'])
+            ->withFilter($filter)
+            ->withSort(['name:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    /**
+     * @param array<array<string, mixed>> $expectedHits
+     */
+    #[DataProvider('nullFilterProvider')]
+    public function testNullFilter(string $filter, array $expectedHits): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
 
@@ -579,6 +1065,9 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<mixed> $expectedResults
+     */
     #[DataProvider('prefixSearchProvider')]
     public function testPrefixSearch(string $query, array $expectedResults, int $minTokenLengthForPrefixSearch = null): void
     {
@@ -606,7 +1095,54 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testRelevance(): void
+    public function testPrefixSearchIsNotAppliedToPhraseSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('star')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        // This should find Ariel because "star" matches "starting" in prefix search
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'title' => 'Ariel',
+                ],
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
+                ],
+            ],
+            'query' => 'star',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+
+        // This should not match Ariel because ""star"" (phrase search) does not match "starting"
+        $searchParameters = $searchParameters->withQuery('"star"');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
+                ],
+            ],
+            'query' => '"star"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
+    public function testRelevanceAndRankingScore(): void
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
@@ -614,11 +1150,25 @@ class SearchTest extends TestCase
         ;
 
         $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'relevance');
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'The game of life is a game of everlasting learning',
+            ],
+            [
+                'id' => 2,
+                'content' => 'The unexamined life is not worth living',
+            ],
+            [
+                'id' => 3,
+                'content' => 'Never stop learning',
+            ],
+        ]);
 
         $searchParameters = SearchParameters::create()
             ->withQuery('life learning')
             ->withAttributesToRetrieve(['id', 'content'])
+            ->withShowRankingScore(true)
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
@@ -626,14 +1176,17 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
+                    '_rankingScore' => 1.0,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living',
+                    '_rankingScore' => 0.48624,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
+                    '_rankingScore' => 0.48624,
                 ],
             ],
             'query' => 'life learning',
@@ -644,29 +1197,58 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testSimpleSearch(): void
+    public function testSearchWithAttributesToSearchOn(): void
     {
-        $loupe = $this->setupLoupeWithDepartmentsFixture();
+        $loupe = $this->setupLoupeWithMoviesFixture();
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('uta')
-            ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
-            ->withSort(['firstname:asc'])
+            ->withQuery('four')
+            ->withAttributesToSearchOn(['title'])
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 2,
-                    'firstname' => 'Uta',
-                    'lastname' => 'Koertig',
+                    'id' => 5,
+                    'title' => 'Four Rooms',
                 ],
             ],
-            'query' => 'uta',
+            'query' => 'four',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    public function testSimpleSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('four')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 5,
+                    'title' => 'Four Rooms',
+                ],
+                [
+                    'id' => 6,
+                    'title' => 'Judgment Night',
+                ],
+            ],
+            'query' => 'four',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
         ]);
     }
 
@@ -738,6 +1320,65 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<string> $sort
+     * @param array<array<string,mixed>> $expectedHits
+     */
+    #[DataProvider('sortWithNullAndNonExistingValueProvider')]
+    public function testSortWithNullAndNonExistingValue(array $sort, array $expectedHits): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['rating'])
+            ->withSortableAttributes(['name', 'rating'])
+            ->withSearchableAttributes(['name'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Star Wars',
+            ],
+            [
+                'id' => 2,
+                'name' => 'Indiana Jones',
+                'rating' => 3.5,
+            ],
+            [
+                'id' => 3,
+                'name' => 'Jurassic Park',
+                'rating' => 4,
+            ],
+            [
+                'id' => 4,
+                'name' => 'Interstellar',
+                'rating' => null,
+            ],
+            [
+                'id' => 5,
+                'name' => 'Back to the future',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'name', 'rating'])
+            ->withSort($sort)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    /**
+     * @param array<mixed> $expectedResults
+     */
     #[DataProvider('typoToleranceProvider')]
     public function testTypoTolerance(TypoTolerance $typoTolerance, string $query, array $expectedResults): void
     {
@@ -906,6 +1547,24 @@ class SearchTest extends TestCase
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'departments');
+
+        return $loupe;
+    }
+
+    private function setupLoupeWithMoviesFixture(Configuration $configuration = null): Loupe
+    {
+        if ($configuration === null) {
+            $configuration = Configuration::create();
+        }
+
+        $configuration = $configuration
+            ->withFilterableAttributes(['genres'])
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
 
         return $loupe;
     }

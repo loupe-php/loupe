@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\AbstractSQLiteDriver;
 use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
@@ -24,9 +25,11 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '1.0.0'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.2.0'; // Increase this whenever a re-index of all documents is needed
 
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
+
+    private Indexer $indexer;
 
     private IndexInfo $indexInfo;
 
@@ -39,7 +42,7 @@ class Engine
         private Highlighter $highlighter,
         private Parser $filterParser
     ) {
-        if (! $this->connection->getDriver() instanceof AbstractSQLiteDriver) {
+        if (!$this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
             throw new \InvalidArgumentException('Only SQLite is supported.');
         }
 
@@ -67,12 +70,16 @@ class Engine
             new Alphabet($this),
             new StateSet($this)
         );
+        $this->indexer = new Indexer($this);
     }
 
+    /**
+     * @param array<array<string, mixed>> $documents
+     * @throws LoupeExceptionInterface
+     */
     public function addDocuments(array $documents): self
     {
-        $indexer = new Indexer($this);
-        $indexer->addDocuments($documents);
+        $this->indexer->addDocuments($documents);
 
         return $this;
     }
@@ -89,6 +96,16 @@ class Engine
             ->fetchOne();
     }
 
+    /**
+     * @param array<int|string> $ids
+     */
+    public function deleteDocuments(array $ids): self
+    {
+        $this->indexer->deleteDocuments($ids);
+
+        return $this;
+    }
+
     public function getConfiguration(): Configuration
     {
         return $this->configuration;
@@ -99,6 +116,9 @@ class Engine
         return $this->connection;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getDocument(int|string $identifier): ?array
     {
         $document = $this->getConnection()
@@ -167,6 +187,8 @@ class Engine
      * Unfortunately, we cannot use proper UPSERTs here (ON DUPLICATE() UPDATE) as somehow RETURNING does not work
      * properly with Doctrine. Maybe we can improve that one day.
      *
+     * @param array<string, mixed> $insertData
+     * @param array<string> $uniqueIndexColumns
      * @return int The ID of the $insertIdColumn (either new when INSERT or existing when UPDATE)
      */
     public function upsert(
@@ -212,7 +234,7 @@ class Engine
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }
 
-    private function registerSQLiteFunctions(string $sqliteVersion)
+    private function registerSQLiteFunctions(string $sqliteVersion): void
     {
         $functions = [
             'max_levenshtein' => [
@@ -237,9 +259,7 @@ class Engine
             ];
         }
 
-        UserDefinedFunctions::register(
-            [$this->connection->getNativeConnection(), 'sqliteCreateFunction'],
-            $functions
-        );
+        /** @phpstan-ignore-next-line */
+        UserDefinedFunctions::register([$this->connection->getNativeConnection(), 'sqliteCreateFunction'], $functions);
     }
 }

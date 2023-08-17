@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Unit\Internal\Filter;
 
+use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\FilterFormatException;
+use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
+use Loupe\Loupe\Internal\LoupeTypes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -35,6 +38,17 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Basic not equals filter' => [
+            "genres != 'Drama'",
+            [
+                [
+                    'attribute' => 'genres',
+                    'operator' => '!=',
+                    'value' => 'Drama',
+                ],
+            ],
+        ];
+
         yield 'Basic float filter' => [
             'age > 42.67',
             [
@@ -42,6 +56,50 @@ class ParserTest extends TestCase
                     'attribute' => 'age',
                     'operator' => '>',
                     'value' => 42.67,
+                ],
+            ],
+        ];
+
+        yield 'IS NULL filter' => [
+            'age IS NULL',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => '=',
+                    'value' => LoupeTypes::VALUE_NULL,
+                ],
+            ],
+        ];
+
+        yield 'IS NOT NULL filter' => [
+            'age IS NOT NULL',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => '!=',
+                    'value' => LoupeTypes::VALUE_NULL,
+                ],
+            ],
+        ];
+
+        yield 'IS EMPTY filter' => [
+            'age IS EMPTY',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => '=',
+                    'value' => LoupeTypes::VALUE_EMPTY,
+                ],
+            ],
+        ];
+
+        yield 'IS NOT EMPTY filter' => [
+            'age IS NOT EMPTY',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => '!=',
+                    'value' => LoupeTypes::VALUE_EMPTY,
                 ],
             ],
         ];
@@ -128,7 +186,7 @@ class ParserTest extends TestCase
         ];
 
         yield 'Combined filters with groups' => [
-            "(genres > 42 AND genres < 50) OR foobar = 'test'",
+            "(genres > 42 AND genres < 50 OR genres IS NULL) OR foobar = 'test'",
             [
                 [
                     [
@@ -141,6 +199,12 @@ class ParserTest extends TestCase
                         'attribute' => 'genres',
                         'operator' => '<',
                         'value' => 50.0,
+                    ],
+                    ['OR'],
+                    [
+                        'attribute' => 'genres',
+                        'operator' => '=',
+                        'value' => LoupeTypes::VALUE_NULL,
                     ],
                 ],
                 ['OR'],
@@ -177,7 +241,7 @@ class ParserTest extends TestCase
 
         yield 'Invalid number of parameters for _geoRadius' => [
             '_geoRadius(1.00, 2.00)',
-            "Col 21: Error: Expected ',', got ')'",
+            "Col 11: Error: Expected filterable attribute, got '1.00'",
         ];
 
         yield 'Missing ( for _geoRadius' => [
@@ -219,6 +283,16 @@ class ParserTest extends TestCase
             'genres NOT 42',
             "Col 11: Error: Expected must be followed by IN (), got '42'",
         ];
+
+        yield 'IS with nonsense' => [
+            'genres IS foobar',
+            'Col 10: Error: Expected "NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is, got \'foobar\'',
+        ];
+
+        yield 'IS NOT with nonsense' => [
+            'genres IS NOT foobar',
+            'Col 10: Error: Expected "NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is, got \'NOT\'',
+        ];
     }
 
     public function testGeoDistanceNotFilterable(): void
@@ -227,7 +301,8 @@ class ParserTest extends TestCase
         $this->expectExceptionMessage("Col 11: Error: Expected filterable attribute, got 'location'");
 
         $parser = new Parser();
-        $parser->getAst('_geoRadius(location, 45.472735, 9.184019, 2000)', ['gender']);
+        $engine = $this->mockEngine(['gender']);
+        $parser->getAst('_geoRadius(location, 45.472735, 9.184019, 2000)', $engine);
     }
 
     #[DataProvider('invalidFilterProvider')]
@@ -237,7 +312,8 @@ class ParserTest extends TestCase
         $this->expectExceptionMessage($expectedMessage);
 
         $parser = new Parser();
-        $parser->getAst($filter);
+        $engine = $this->mockEngine(['location', 'gender', 'attribute', 'genres', 'foobar']);
+        $parser->getAst($filter, $engine);
     }
 
     public function testNonFilterableAttribute(): void
@@ -246,14 +322,36 @@ class ParserTest extends TestCase
         $this->expectExceptionMessage("Col 0: Error: Expected filterable attribute, got 'genres'");
 
         $parser = new Parser();
-        $parser->getAst('genres > 42.67', ['gender']);
+        $engine = $this->mockEngine(['gender']);
+        $parser->getAst('genres > 42.67', $engine);
     }
 
+    /**
+     * @param array<mixed> $expectedAst
+     */
     #[DataProvider('filterProvider')]
     public function testValidFilter(string $filter, array $expectedAst): void
     {
         $parser = new Parser();
+        $engine = $this->mockEngine(['location', 'genres', 'age', 'foobar']);
 
-        $this->assertSame($expectedAst, $parser->getAst($filter)->toArray());
+        $this->assertSame($expectedAst, $parser->getAst($filter, $engine)->toArray());
+    }
+
+    /**
+     * @param array<string> $filterableAttributes
+     */
+    private function mockEngine(array $filterableAttributes): Engine
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes($filterableAttributes)
+        ;
+        $engine = $this->createMock(Engine::class);
+        $engine
+            ->method('getConfiguration')
+            ->willReturn($configuration)
+        ;
+
+        return $engine;
     }
 }

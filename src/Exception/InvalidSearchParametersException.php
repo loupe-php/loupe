@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Exception;
 
+use Loupe\Loupe\SearchParameters;
+
 class InvalidSearchParametersException extends \InvalidArgumentException implements LoupeExceptionInterface
 {
-    public static function cannotHighlightBecauseNotSearchable(string $attributeName): self
+    public static function maxHitsPerPage(): self
     {
-        return new self(sprintf('Cannot highlight "%s" because it is not searchable.', $attributeName));
+        return new self(sprintf('Cannot request more than %d documents per request, use pagination.', SearchParameters::MAX_HITS_PER_PAGE));
     }
 }

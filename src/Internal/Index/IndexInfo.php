@@ -32,6 +32,9 @@ class IndexInfo
 
     public const TABLE_NAME_TERMS_DOCUMENTS = 'terms_documents';
 
+    /**
+     * @var array<string, mixed>|null
+     */
     private ?array $documentSchema = null;
 
     private ?bool $needsSetup = null;
@@ -41,13 +44,16 @@ class IndexInfo
     ) {
     }
 
-    public function setup(array $document)
+    /**
+     * @param array<string, mixed> $document
+     */
+    public function setup(array $document): void
     {
         $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
         $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
         $sortableAttributes = $this->engine->getConfiguration()->getSortableAttributes();
 
-        if (! \array_key_exists($primaryKey, $document)) {
+        if (!\array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
         }
 
@@ -56,21 +62,19 @@ class IndexInfo
         foreach ($document as $attributeName => $attributeValue) {
             Configuration::validateAttributeName($attributeName);
 
-            if (! \in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
+            if (!\in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
                 continue;
             }
 
             $loupeType = LoupeTypes::getTypeFromValue($attributeValue);
 
-            if (\in_array($attributeName, $sortableAttributes, true) && ! LoupeTypes::isSingleType($loupeType)) {
+            if (\in_array($attributeName, $sortableAttributes, true) && !LoupeTypes::isSingleType($loupeType)) {
                 throw InvalidConfigurationException::becauseAttributeNotSortable($attributeName);
             }
 
             $documentSchema[$attributeName] = $loupeType;
         }
 
-        $this->documentSchema = $documentSchema;
-        $this->createSchema();
         $this->updateDocumentSchema($documentSchema);
 
         $this->engine->getConnection()
@@ -86,6 +90,62 @@ class IndexInfo
             ]);
 
         $this->needsSetup = false;
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    public function fixAndValidateDocument(array &$document): void
+    {
+        $documentSchema = $this->getDocumentSchema();
+        $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
+        $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?
+            (string) $document[$this->engine->getConfiguration()->getPrimaryKey()] :
+            null;
+
+        $missingAttributes = array_keys(array_diff_key($documentSchema, $document));
+
+        if ($missingAttributes !== []) {
+            foreach ($missingAttributes as $missingAttribute) {
+                $document[$missingAttribute] = null;
+            }
+        }
+
+        $needsSchemaUpdate = false;
+
+        foreach ($document as $attributeName => $attributeValue) {
+            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
+
+            // If the attribute does not exist on the attribute yet, we need to add it to the schema in case it is
+            // configured as being schema relevant. Otherwise, we just ignore and skip.
+            if (!isset($documentSchema[$attributeName])) {
+                if (\in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
+                    $documentSchema[$attributeName] = $valueType;
+                    $needsSchemaUpdate = true;
+                }
+
+                continue;
+            }
+
+            if (!LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
+                throw InvalidDocumentException::becauseDoesNotMatchSchema(
+                    $documentSchema,
+                    $document,
+                    $primaryKey
+                );
+            }
+
+            // Update schema to narrower type (e.g. before it was "array" and now it becomes "array<string>" or before
+            // it was "null" and now it becomes any other type.
+            if ($valueType !== LoupeTypes::TYPE_NULL && $documentSchema[$attributeName] !== $valueType) {
+                $documentSchema[$attributeName] = $valueType;
+                $needsSchemaUpdate = true;
+            }
+        }
+
+        if ($needsSchemaUpdate) {
+            $this->updateDocumentSchema($documentSchema);
+        }
     }
 
     public function getAliasForTable(string $table): string
@@ -111,6 +171,9 @@ class IndexInfo
             ->fetchOne();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getDocumentSchema(): array
     {
         if ($this->documentSchema === null) {
@@ -137,9 +200,25 @@ class IndexInfo
             ->fetchOne();
     }
 
+    /**
+     * @return array<string>
+     */
+    public function getFilterableAndSortableAttributes(): array
+    {
+        return array_unique(array_merge($this->getFilterableAttributes(), $this->getSortableAttributes()));
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getFilterableAttributes(): array
+    {
+        return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getFilterableAttributes()), $this->getDocumentSchema()));
+    }
+
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
-        if (! \array_key_exists($attributeName, $this->getDocumentSchema())) {
+        if (!\array_key_exists($attributeName, $this->getDocumentSchema())) {
             throw new InvalidConfigurationException(sprintf(
                 'The attribute "%s" does not exist on the document schema.',
                 $attributeName
@@ -149,11 +228,14 @@ class IndexInfo
         return $this->getDocumentSchema()[$attributeName];
     }
 
+    /**
+     * @return array<string>
+     */
     public function getMultiFilterableAttributes(): array
     {
         $result = [];
 
-        foreach ($this->engine->getConfiguration()->getFilterableAttributes() as $attributeName) {
+        foreach ($this->getFilterableAttributes() as $attributeName) {
             if (LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
                 continue;
             }
@@ -164,14 +246,16 @@ class IndexInfo
         return $result;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getSingleFilterableAndSortableAttributes(): array
     {
-        $filterableAndSortable = $this->engine->getConfiguration()
-            ->getFilterableAndSortableAttributes();
+        $filterableAndSortable = $this->getFilterableAndSortableAttributes();
         $result = [];
 
         foreach ($filterableAndSortable as $attributeName) {
-            if (! LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
+            if (!LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
                 continue;
             }
 
@@ -179,6 +263,14 @@ class IndexInfo
         }
 
         return $result;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getSortableAttributes(): array
+    {
+        return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getSortableAttributes()), $this->getDocumentSchema()));
     }
 
     public static function isValidAttributeName(string $name): bool
@@ -197,52 +289,10 @@ class IndexInfo
             return $this->needsSetup;
         }
 
-        return $this->needsSetup = ! $this->engine->getConnection()
+        return $this->needsSetup = !$this->engine->getConnection()
             ->createSchemaManager()
             ->tablesExist([self::TABLE_NAME_INDEX_INFO])
         ;
-    }
-
-    public function validateDocument(array $document): void
-    {
-        $documentSchema = $this->getDocumentSchema();
-
-        if (\count(array_diff_key($documentSchema, $document)) !== 0) {
-            throw InvalidDocumentException::becauseDoesNotMatchSchema(
-                $documentSchema,
-                $document,
-                $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
-            );
-        }
-
-        $schemaNarrowed = false;
-
-        foreach ($document as $attributeName => $attributeValue) {
-            if (! isset($documentSchema[$attributeName])) {
-                continue;
-            }
-
-            $valueType = LoupeTypes::getTypeFromValue($attributeValue);
-
-            if (! LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
-                throw InvalidDocumentException::becauseDoesNotMatchSchema(
-                    $documentSchema,
-                    $document,
-                    $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null
-                );
-            }
-
-            // Update schema to narrower type (e.g. before it was "array" and now it becomes "array<string>" or before
-            // it was "null" and now it becomes any other type.
-            if ($documentSchema[$attributeName] !== $valueType) {
-                $documentSchema[$attributeName] = $valueType;
-                $schemaNarrowed = true;
-            }
-        }
-
-        if ($schemaNarrowed) {
-            $this->updateDocumentSchema($documentSchema);
-        }
     }
 
     private function addAlphabetToSchema(Schema $schema): void
@@ -263,7 +313,9 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_DOCUMENTS);
 
         $table->addColumn('id', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+            ->setAutoincrement(true)
+        ;
 
         $table->addColumn('user_id', Types::STRING)
             ->setNotnull(true);
@@ -290,6 +342,7 @@ class IndexInfo
             }
 
             $dbalType = match ($loupeType) {
+                LoupeTypes::TYPE_NULL => Types::STRING, // Null is represented as our internal string as well
                 LoupeTypes::TYPE_STRING => Types::STRING,
                 LoupeTypes::TYPE_NUMBER => Types::FLOAT,
                 default => null
@@ -302,9 +355,17 @@ class IndexInfo
             $columns[$attribute] = $dbalType;
         }
 
+        // We store the count for multi attributes to distinguish between null, empty and has data for the IS NULL
+        // and IS EMPTY filters
+        foreach ($this->getMultiFilterableAttributes() as $attribute) {
+            $columns[$attribute] = Types::FLOAT;
+        }
+
         foreach ($columns as $attribute => $dbalType) {
             $table->addColumn($attribute, $dbalType)
-                ->setNotnull(false);
+                ->setNotnull(true)
+                ->setDefault(LoupeTypes::VALUE_NULL)
+            ;
 
             $table->addIndex([$attribute]);
         }
@@ -341,7 +402,9 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_MULTI_ATTRIBUTES);
 
         $table->addColumn('id', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+            ->setAutoincrement(true)
+        ;
 
         $table->addColumn('attribute', Types::STRING)
             ->setNotnull(true);
@@ -391,6 +454,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['term', 'document', 'attribute', 'position']);
+        $table->addIndex(['document']);
     }
 
     private function addTermsToSchema(Schema $schema): void
@@ -398,7 +462,9 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_TERMS);
 
         $table->addColumn('id', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+            ->setAutoincrement(true)
+        ;
 
         $table->addColumn('term', Types::STRING)
             ->setNotnull(true);
@@ -415,16 +481,6 @@ class IndexInfo
 
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['term', 'state', 'length']);
-    }
-
-    private function createSchema(): void
-    {
-        $schemaManager = $this->engine->getConnection()
-            ->createSchemaManager();
-        $comparator = $schemaManager->createComparator();
-
-        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
-        $schemaManager->alterSchema($schemaDiff);
     }
 
     private function getSchema(): Schema
@@ -444,13 +500,28 @@ class IndexInfo
         return $schema;
     }
 
+    /**
+     * @param array<string, mixed> $documentSchema
+     */
     private function updateDocumentSchema(array $documentSchema): void
     {
+        $this->documentSchema = $documentSchema;
+
+        $this->updateSchema();
+
         $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
             'key' => 'documentSchema',
             'value' => json_encode($documentSchema),
         ], ['key']);
+    }
 
-        $this->documentSchema = $documentSchema;
+    private function updateSchema(): void
+    {
+        $schemaManager = $this->engine->getConnection()
+            ->createSchemaManager();
+        $comparator = $schemaManager->createComparator();
+
+        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
+        $schemaManager->alterSchema($schemaDiff);
     }
 }

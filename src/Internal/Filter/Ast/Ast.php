@@ -6,6 +6,9 @@ namespace Loupe\Loupe\Internal\Filter\Ast;
 
 class Ast
 {
+    /**
+     * @var array<Node>
+     */
     private array $nodes = [];
 
     public function addNode(Node $node): self
@@ -23,6 +26,9 @@ class Ast
         return $this->nodes;
     }
 
+    /**
+     * @return array<array<mixed>>
+     */
     public function toArray(): array
     {
         $result = [];

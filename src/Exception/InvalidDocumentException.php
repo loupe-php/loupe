@@ -6,7 +6,11 @@ namespace Loupe\Loupe\Exception;
 
 class InvalidDocumentException extends \InvalidArgumentException implements LoupeExceptionInterface
 {
-    public static function becauseDoesNotMatchSchema(array $schema, array $document, mixed $primaryKey = null): self
+    /**
+     * @param array<string, mixed> $schema
+     * @param array<string, mixed> $document
+     */
+    public static function becauseDoesNotMatchSchema(array $schema, array $document, ?string $primaryKey = null): self
     {
         if ($primaryKey !== null) {
             return new self(

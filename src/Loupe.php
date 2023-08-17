@@ -15,6 +15,8 @@ final class Loupe
     }
 
     /**
+     * @param array<string, mixed> $document
+     *
      * @throws IndexException
      */
     public function addDocument(array $document): self
@@ -23,6 +25,8 @@ final class Loupe
     }
 
     /**
+     * @param array<int, array<string, mixed>> $documents
+     *
      * @throws IndexException
      */
     public function addDocuments(array $documents): self
@@ -37,11 +41,30 @@ final class Loupe
         return $this->engine->countDocuments();
     }
 
+    /**
+     * @throws IndexException
+     */
+    public function deleteDocument(int|string $id): void
+    {
+        $this->deleteDocuments([$id]);
+    }
+
+    /**
+     * @param array<int|string> $ids
+     */
+    public function deleteDocuments(array $ids): void
+    {
+        $this->engine->deleteDocuments($ids);
+    }
+
     public function getConfiguration(): Configuration
     {
         return $this->engine->getConfiguration();
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getDocument(int|string $identifier): ?array
     {
         return $this->engine->getDocument($identifier);
