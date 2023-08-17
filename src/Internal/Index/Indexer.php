@@ -56,7 +56,7 @@ class Indexer
 
                     $this->persistStateSet();
 
-                    // Update IDF only once
+                    // Update storage (IDF etc.) only once
                     $this->reviseStorage();
                 });
         } catch (\Throwable $e) {
