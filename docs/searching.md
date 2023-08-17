@@ -98,6 +98,17 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
+In case you are interested in the ranking score of the relevance sorting, you can ask Loupe to add the score to the 
+search result hits using
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withShowRankingScore(true)
+;
+```
+
+In this case, every hit will have an additional `_rankingScore` attribute with a value between `0.0` and `1.0`.
+
 ## Pagination
 
 When searching Loupe, it will always return the current `page`, `totalPages` as well as `totalHits` in its search 

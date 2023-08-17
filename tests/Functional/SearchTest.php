@@ -1095,7 +1095,7 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testRelevance(): void
+    public function testRelevanceAndRankingScore(): void
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
@@ -1103,11 +1103,25 @@ class SearchTest extends TestCase
         ;
 
         $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'relevance');
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'The game of life is a game of everlasting learning',
+            ],
+            [
+                'id' => 2,
+                'content' => 'The unexamined life is not worth living',
+            ],
+            [
+                'id' => 3,
+                'content' => 'Never stop learning',
+            ],
+        ]);
 
         $searchParameters = SearchParameters::create()
             ->withQuery('life learning')
             ->withAttributesToRetrieve(['id', 'content'])
+            ->withShowRankingScore(true)
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
@@ -1115,14 +1129,17 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
+                    '_rankingScore' => 1.0,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living',
+                    '_rankingScore' => 0.48624,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
+                    '_rankingScore' => 0.48624,
                 ],
             ],
             'query' => 'life learning',
