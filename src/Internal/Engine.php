@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal;
 
-use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
@@ -30,11 +29,11 @@ class Engine
 
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
+    private Indexer $indexer;
+
     private IndexInfo $indexInfo;
 
     private StateSetIndex $stateSetIndex;
-
-    private Indexer $indexer;
 
     public function __construct(
         private Connection $connection,
@@ -85,16 +84,6 @@ class Engine
         return $this;
     }
 
-    /**
-     * @param array<int|string> $ids
-     */
-    public function deleteDocuments(array $ids): self
-    {
-        $this->indexer->deleteDocuments($ids);
-
-        return $this;
-    }
-
     public function countDocuments(): int
     {
         if ($this->getIndexInfo()->needsSetup()) {
@@ -105,6 +94,16 @@ class Engine
             ->select('COUNT(*)')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS)
             ->fetchOne();
+    }
+
+    /**
+     * @param array<int|string> $ids
+     */
+    public function deleteDocuments(array $ids): self
+    {
+        $this->indexer->deleteDocuments($ids);
+
+        return $this;
     }
 
     public function getConfiguration(): Configuration

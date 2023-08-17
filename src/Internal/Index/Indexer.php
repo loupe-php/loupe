@@ -273,12 +273,6 @@ class Indexer
         $stateSet->persist();
     }
 
-    private function reviseStorage(): void
-    {
-        $this->removeOrphans();
-        $this->updateInverseDocumentFrequencies();
-    }
-
     private function removeOrphans(): void
     {
         // Cleanup all terms documents which document not longer exists
@@ -322,6 +316,12 @@ class Indexer
 
         $this->engine->getConnection()
             ->executeQuery($query);
+    }
+
+    private function reviseStorage(): void
+    {
+        $this->removeOrphans();
+        $this->updateInverseDocumentFrequencies();
     }
 
     private function updateInverseDocumentFrequencies(): void

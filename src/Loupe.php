@@ -36,6 +36,11 @@ final class Loupe
         return $this;
     }
 
+    public function countDocuments(): int
+    {
+        return $this->engine->countDocuments();
+    }
+
     /**
      * @throws IndexException
      */
@@ -50,11 +55,6 @@ final class Loupe
     public function deleteDocuments(array $ids): void
     {
         $this->engine->deleteDocuments($ids);
-    }
-
-    public function countDocuments(): int
-    {
-        return $this->engine->countDocuments();
     }
 
     public function getConfiguration(): Configuration
