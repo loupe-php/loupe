@@ -36,6 +36,8 @@ final class SearchParameters
 
     private bool $showMatchesPosition = false;
 
+    private bool $showRankingScore = false;
+
     /**
      * @var array<string>
      */
@@ -101,6 +103,11 @@ final class SearchParameters
     public function showMatchesPosition(): bool
     {
         return $this->showMatchesPosition;
+    }
+
+    public function showRankingScore(): bool
+    {
+        return $this->showRankingScore;
     }
 
     /**
@@ -176,6 +183,14 @@ final class SearchParameters
     {
         $clone = clone $this;
         $clone->showMatchesPosition = $showMatchesPosition;
+
+        return $clone;
+    }
+
+    public function withShowRankingScore(bool $showRankingScore): self
+    {
+        $clone = clone $this;
+        $clone->showRankingScore = $showRankingScore;
 
         return $clone;
     }
