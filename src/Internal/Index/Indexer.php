@@ -275,7 +275,7 @@ class Indexer
 
     private function removeOrphans(): void
     {
-        // Cleanup all terms documents which document not longer exists
+        // Cleanup all terms of documents which no longer exist
         $query = <<<'QUERY'
             DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
            QUERY;
@@ -286,10 +286,9 @@ class Indexer
             IndexInfo::TABLE_NAME_DOCUMENTS,
         );
 
-        $this->engine->getConnection()
-            ->executeQuery($query);
+        $this->engine->getConnection()->executeStatement($query);
 
-        // Cleanup all multiple attributes documents which document not longer exists
+        // Cleanup all multi attributes of documents which no longer exist
         $query = <<<'QUERY'
             DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
            QUERY;
@@ -300,10 +299,9 @@ class Indexer
             IndexInfo::TABLE_NAME_DOCUMENTS,
         );
 
-        $this->engine->getConnection()
-            ->executeQuery($query);
+        $this->engine->getConnection()->executeStatement($query);
 
-        // Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
+        // Cleanup all terms that are not in terms_documents anymore
         $query = <<<'QUERY'
             DELETE FROM %s WHERE id NOT IN (SELECT term FROM %s)
            QUERY;
@@ -314,8 +312,7 @@ class Indexer
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
-        $this->engine->getConnection()
-            ->executeQuery($query);
+        $this->engine->getConnection()->executeStatement($query);
     }
 
     private function reviseStorage(): void
@@ -345,7 +342,6 @@ QUERY;
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
-        $this->engine->getConnection()
-            ->executeQuery($query);
+        $this->engine->getConnection()->executeStatement($query);
     }
 }
