@@ -41,6 +41,22 @@ final class Loupe
         return $this->engine->countDocuments();
     }
 
+    /**
+     * @throws IndexException
+     */
+    public function deleteDocument(int|string $id): void
+    {
+        $this->deleteDocuments([$id]);
+    }
+
+    /**
+     * @param array<int|string> $ids
+     */
+    public function deleteDocuments(array $ids): void
+    {
+        $this->engine->deleteDocuments($ids);
+    }
+
     public function getConfiguration(): Configuration
     {
         return $this->engine->getConfiguration();

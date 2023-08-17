@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Index;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\Internal\Engine;
@@ -55,8 +56,8 @@ class Indexer
 
                     $this->persistStateSet();
 
-                    // Update IDF only once
-                    $this->updateInverseDocumentFrequencies();
+                    // Update storage (IDF etc.) only once
+                    $this->reviseStorage();
                 });
         } catch (\Throwable $e) {
             if ($e instanceof LoupeExceptionInterface) {
@@ -65,6 +66,27 @@ class Indexer
 
             throw new IndexException($e->getMessage(), 0, $e);
         }
+
+        return $this;
+    }
+
+    /**
+     * @param array<int|string> $ids
+     */
+    public function deleteDocuments(array $ids): self
+    {
+        $this->engine->getConnection()
+            ->executeStatement(
+                sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                [
+                    'ids' => LoupeTypes::convertToArrayOfStrings($ids),
+                ],
+                [
+                    'ids' => ArrayParameterType::STRING,
+                ]
+            );
+
+        $this->reviseStorage();
 
         return $this;
     }
@@ -251,9 +273,35 @@ class Indexer
         $stateSet->persist();
     }
 
-    private function updateInverseDocumentFrequencies(): void
+    private function removeOrphans(): void
     {
-        // Cleanup all terms that are not in terms_documents anymore (to prevent division by 0)
+        // Cleanup all terms of documents which no longer exist
+        $query = <<<'QUERY'
+            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
+           QUERY;
+
+        $query = sprintf(
+            $query,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // Cleanup all multi attributes of documents which no longer exist
+        $query = <<<'QUERY'
+            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
+           QUERY;
+
+        $query = sprintf(
+            $query,
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // Cleanup all terms that are not in terms_documents anymore
         $query = <<<'QUERY'
             DELETE FROM %s WHERE id NOT IN (SELECT term FROM %s)
            QUERY;
@@ -264,9 +312,17 @@ class Indexer
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
-        $this->engine->getConnection()
-            ->executeQuery($query);
+        $this->engine->getConnection()->executeStatement($query);
+    }
 
+    private function reviseStorage(): void
+    {
+        $this->removeOrphans();
+        $this->updateInverseDocumentFrequencies();
+    }
+
+    private function updateInverseDocumentFrequencies(): void
+    {
         // Notice the * 1.0 additions to the COUNT() SELECTS in order to force floating point calculations
         $query = <<<'QUERY'
             UPDATE 
@@ -286,7 +342,6 @@ QUERY;
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
-        $this->engine->getConnection()
-            ->executeQuery($query);
+        $this->engine->getConnection()->executeStatement($query);
     }
 }

@@ -201,6 +201,72 @@ class IndexTest extends TestCase
         ]);
     }
 
+    public function testDeleteDocument(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withSortableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $this->assertSame('Star Wars', $loupe->getDocument(11)['title'] ?? '');
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withQuery('the') // Search for a word which is likely to appear everywhere to affect the IDF
+            ->withHitsPerPage(2)
+            ->withShowRankingScore(true)
+            ->withSort(['_relevance:desc', 'title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                    '_rankingScore' => 0.83688,
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
+                    '_rankingScore' => 0.74853,
+                ],
+            ],
+            'query' => 'the',
+            'hitsPerPage' => 2,
+            'page' => 1,
+            'totalPages' => 8,
+            'totalHits' => 16,
+        ]);
+
+        // Delete document and assert it's gone
+        $loupe->deleteDocument(11);
+        $this->assertNull($loupe->getDocument(11));
+
+        // Search again to ensure the ranking score has changed and one hit less
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                    '_rankingScore' => 0.84228,
+                ],
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                    '_rankingScore' => 0.76244,
+                ],
+            ],
+            'query' => 'the',
+            'hitsPerPage' => 2,
+            'page' => 1,
+            'totalPages' => 8,
+            'totalHits' => 15,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $documents
      */

@@ -29,6 +29,53 @@ class LoupeTypes
     // in later versions which are not supported by Doctrine DBAL anyway) and so we cannot work with real "null".
     public const VALUE_NULL = ':l:n';
 
+    /**
+     * @param  array<mixed> $attributeValue
+     * @return array<float>
+     */
+    public static function convertToArrayOfFloats(array $attributeValue): array
+    {
+        $result = [];
+
+        foreach ($attributeValue as $k => $v) {
+            $result[$k] = self::convertToFloat($v);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<mixed> $attributeValue
+     * @return array<string>
+     */
+    public static function convertToArrayOfStrings(array $attributeValue): array
+    {
+        $result = [];
+
+        foreach ($attributeValue as $k => $v) {
+            $result[$k] = self::convertToString($v);
+        }
+
+        return $result;
+    }
+
+    public static function convertToFloat(mixed $attributeValue): float
+    {
+        if (\is_float($attributeValue)) {
+            return $attributeValue;
+        }
+
+        if (\is_int($attributeValue)) {
+            return (float) $attributeValue;
+        }
+
+        if (\is_string($attributeValue)) {
+            return (float) $attributeValue;
+        }
+
+        return 0;
+    }
+
     public static function convertToString(mixed $attributeValue): string
     {
         if (\is_string($attributeValue)) {
@@ -158,52 +205,5 @@ class LoupeTypes
         }
 
         return false;
-    }
-
-    /**
-     * @param  array<mixed> $attributeValue
-     * @return array<float>
-     */
-    private static function convertToArrayOfFloats(array $attributeValue): array
-    {
-        $result = [];
-
-        foreach ($attributeValue as $k => $v) {
-            $result[$k] = self::convertToFloat($v);
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param  array<mixed> $attributeValue
-     * @return array<string>
-     */
-    private static function convertToArrayOfStrings(array $attributeValue): array
-    {
-        $result = [];
-
-        foreach ($attributeValue as $k => $v) {
-            $result[$k] = self::convertToString($v);
-        }
-
-        return $result;
-    }
-
-    private static function convertToFloat(mixed $attributeValue): float
-    {
-        if (\is_float($attributeValue)) {
-            return $attributeValue;
-        }
-
-        if (\is_int($attributeValue)) {
-            return (float) $attributeValue;
-        }
-
-        if (\is_string($attributeValue)) {
-            return (float) $attributeValue;
-        }
-
-        return 0;
     }
 }

@@ -29,6 +29,8 @@ class Engine
 
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
+    private Indexer $indexer;
+
     private IndexInfo $indexInfo;
 
     private StateSetIndex $stateSetIndex;
@@ -68,6 +70,7 @@ class Engine
             new Alphabet($this),
             new StateSet($this)
         );
+        $this->indexer = new Indexer($this);
     }
 
     /**
@@ -76,8 +79,7 @@ class Engine
      */
     public function addDocuments(array $documents): self
     {
-        $indexer = new Indexer($this);
-        $indexer->addDocuments($documents);
+        $this->indexer->addDocuments($documents);
 
         return $this;
     }
@@ -92,6 +94,16 @@ class Engine
             ->select('COUNT(*)')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS)
             ->fetchOne();
+    }
+
+    /**
+     * @param array<int|string> $ids
+     */
+    public function deleteDocuments(array $ids): self
+    {
+        $this->indexer->deleteDocuments($ids);
+
+        return $this;
     }
 
     public function getConfiguration(): Configuration
