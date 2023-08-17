@@ -1095,6 +1095,53 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testPrefixSearchIsNotAppliedToPhraseSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('star')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        // This should find Ariel because "star" matches "starting" in prefix search
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'title' => 'Ariel',
+                ],
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
+                ],
+            ],
+            'query' => 'star',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+
+        // This should not match Ariel because ""star"" (phrase search) does not match "starting"
+        $searchParameters = $searchParameters->withQuery('"star"');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
+                ],
+            ],
+            'query' => '"star"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testRelevanceAndRankingScore(): void
     {
         $configuration = Configuration::create()
