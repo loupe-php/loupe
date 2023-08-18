@@ -27,7 +27,7 @@ Markdown file][Blog_Repository] that should give you more information about the 
 Performance depends on many factors but here are some ballpark numbers based on indexing the [~32k movies fixture by 
 MeiliSearch][MeiliSearch_Movies]:
 
-* Indexing is slow, it will take about 7min (~ 75 documents per second)
+* Indexing will take less than 4min (~140 documents per second)
 * The slowest possible search query (typo tolerance enabled, ordered by relevance) finishes in < 400ms
 
 Note that anything above 50k documents is probably not a use case for Loupe. You may report your own performance 
