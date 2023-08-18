@@ -17,6 +17,11 @@ class Tokenizer
     private Language $language;
 
     /**
+     * @var array<string,string>
+     */
+    private array $stemmerCache = [];
+
+    /**
      * @var array<string,?Stemmer>
      */
     private array $stemmers = [];
@@ -69,7 +74,10 @@ class Tokenizer
 
             // Only stem if not part of a phrase
             if (!$phrase) {
-                $variants = [UTF8::strtolower($this->stem($term, $language))];
+                $stem = $this->stem($term, $language);
+                if ($stem !== null) {
+                    $variants = [$stem];
+                }
             }
 
             $token = new Token(
@@ -101,14 +109,18 @@ class Tokenizer
         return $this->stemmers[$language] = $stemmer;
     }
 
-    private function stem(string $term, string $language): string
+    private function stem(string $term, string $language): ?string
     {
+        if (isset($this->stemmerCache[$language][$term])) {
+            return $this->stemmerCache[$language][$term];
+        }
+
         $stemmer = $this->getStemmerForLanguage($language);
 
         if ($stemmer === null) {
-            return $term;
+            return null;
         }
 
-        return $stemmer->stem($term);
+        return $this->stemmerCache[$language][$term] = UTF8::strtolower($stemmer->stem($term));
     }
 }
