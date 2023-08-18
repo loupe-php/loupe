@@ -201,6 +201,8 @@ class Engine
             throw new \InvalidArgumentException('Need to provide data to insert.');
         }
 
+        // Do not use the query builder in this method as it is heavily used and the query builder will slow down
+        // performance considerably here.
         $query = 'SELECT ' .
             implode(', ', array_filter(array_merge([$insertIdColumn], $uniqueIndexColumns))) .
             ' FROM ' .
