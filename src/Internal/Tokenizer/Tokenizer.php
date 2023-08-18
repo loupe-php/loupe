@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Tokenizer;
 
 use LanguageDetection\Language;
+use Nitotm\Eld\LanguageDetector;
 use voku\helper\UTF8;
 use Wamania\Snowball\NotFoundException;
 use Wamania\Snowball\Stemmer\Stemmer;
@@ -14,7 +15,7 @@ class Tokenizer
 {
     public const MAX_NGRAMS = 9000;
 
-    private Language $language;
+    private LanguageDetector $languageDetector;
 
     /**
      * @var array<string,array<string,string>>
@@ -28,26 +29,70 @@ class Tokenizer
 
     public function __construct()
     {
-        $this->language = new Language([], self::getNgramsDir());
-        $this->language->setMaxNgrams(9000);
-    }
-
-    public static function getNgramsDir(): string
-    {
-        return __DIR__ . '/../../../Resources/language-ngrams';
+        $this->languageDetector = new LanguageDetector();
+        $this->languageDetector->cleanText(true); // Improve language detection
     }
 
     public function tokenize(string $string, ?int $maxTokens = null): TokenCollection
     {
-        $language = $this->language->detect($string)
-            ->limit(0, 3);
+        $language = null;
+        $languageResult = $this->languageDetector->detect($string);
 
-        return $this->doTokenize($string, (string) $language, $maxTokens);
+        // For one simple string we have to check if the language result is reliable. There's not enough data for
+        // something like "Star Wars". It might be detected as nonsense, and we get weird stemming results.
+        if ($languageResult->isReliable()) {
+            $language = $languageResult->language;
+        }
+
+        return $this->doTokenize($string, $language, $maxTokens);
     }
 
-    private function doTokenize(string $string, string $language, ?int $maxTokens = null): TokenCollection
+    /**
+     * @param array<string, string> $document
+     * @return array<string, TokenCollection>
+     */
+    public function tokenizeDocument(array $document): array
     {
-        $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language);
+        $bestScoresPerLanguage = [];
+        $languagePerAttribute = [];
+        foreach ($document as $attribute => $value) {
+            $languageResult = $this->languageDetector->detect($value);
+
+            // Store the best score per language
+            foreach ((array) $languageResult->scores as $lang => $score) {
+                if (isset($bestScoresPerLanguage[$lang])) {
+                    $bestScoresPerLanguage[$lang] = max($bestScoresPerLanguage[$lang], $score);
+                } else {
+                    $bestScoresPerLanguage[$lang] = $score;
+                }
+            }
+
+            // If the language detection was reliable, we use this language for that attribute
+            if ($languageResult->isReliable()) {
+                $languagePerAttribute[$attribute] = $languageResult->language;
+            }
+        }
+
+        // The overall highest score is the best language for the entire document (if any)
+        $bestLanguage = null;
+        if ($bestScoresPerLanguage !== []) {
+            /** @var string $bestLanguage */
+            $bestLanguage = array_keys($bestScoresPerLanguage, max($bestScoresPerLanguage), true)[0];
+        }
+
+        $result = [];
+
+        foreach ($document as $attribute => $value) {
+            // Tokenize using the language that was either detected or the best for the entire document
+            $result[$attribute] = $this->doTokenize($value, $languagePerAttribute[$attribute] ?? $bestLanguage);
+        }
+
+        return $result;
+    }
+
+    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
+    {
+        $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
         $iterator->setText($string);
 
         $collection = new TokenCollection();
@@ -72,8 +117,8 @@ class Tokenizer
 
             $variants = [];
 
-            // Only stem if not part of a phrase
-            if (!$phrase) {
+            // Stem if we detected a language - but only if not part of a phrase
+            if ($language !== null && !$phrase) {
                 $stem = $this->stem($term, $language);
                 if ($stem !== null) {
                     $variants = [$stem];

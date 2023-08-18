@@ -975,7 +975,7 @@ class SearchTest extends TestCase
         // Test with regular Star Wars search should list Star Wars first because of relevance
         // sorting, but it should also include other movies with the term "war".
         $searchParameters = SearchParameters::create()
-            ->withQuery('Star Wars')
+            ->withQuery('I like Star Wars')
             ->withAttributesToRetrieve(['id', 'title'])
         ;
 
@@ -994,7 +994,7 @@ class SearchTest extends TestCase
                     'title' => 'Apocalypse Now',
                 ],
             ],
-            'query' => 'Star Wars',
+            'query' => 'I like Star Wars',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
@@ -1002,10 +1002,7 @@ class SearchTest extends TestCase
         ]);
 
         // Now let's search for "Star Wars" which should return "Star Wars" only.
-        $searchParameters = SearchParameters::create()
-            ->withQuery('"Star Wars"')
-            ->withAttributesToRetrieve(['id', 'title'])
-        ;
+        $searchParameters = $searchParameters->withQuery('I like "Star Wars"');
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -1014,7 +1011,7 @@ class SearchTest extends TestCase
                     'title' => 'Star Wars',
                 ],
             ],
-            'query' => '"Star Wars"',
+            'query' => 'I like "Star Wars"',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
@@ -1179,14 +1176,14 @@ class SearchTest extends TestCase
                     '_rankingScore' => 1.0,
                 ],
                 [
-                    'id' => 2,
-                    'content' => 'The unexamined life is not worth living',
-                    '_rankingScore' => 0.48624,
-                ],
-                [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.48624,
+                    '_rankingScore' => 0.8165,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The unexamined life is not worth living',
+                    '_rankingScore' => 0.57735,
                 ],
             ],
             'query' => 'life learning',

@@ -11,7 +11,6 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\StateSet\Alphabet;
 use Loupe\Loupe\Internal\StateSet\StateSet;
-use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
 use voku\helper\UTF8;
 
@@ -89,12 +88,6 @@ class Indexer
         $this->reviseStorage();
 
         return $this;
-    }
-
-    private function extractTokens(string $attributeValue): TokenCollection
-    {
-        return $this->engine->getTokenizer()
-            ->tokenize($attributeValue);
     }
 
     private function indexAttributeValue(string $attribute, string|float|null $value, int $documentId): void
@@ -242,6 +235,7 @@ class Indexer
      */
     private function indexTerms(array $document, int $documentId): void
     {
+        $cleanedDocument = [];
         $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
 
         foreach ($document as $attributeName => $attributeValue) {
@@ -249,10 +243,14 @@ class Indexer
                 continue;
             }
 
-            $attributeValue = LoupeTypes::convertToString($attributeValue);
+            $cleanedDocument[$attributeName] = LoupeTypes::convertToString($attributeValue);
+        }
 
+        $tokensPerAttribute = $this->engine->getTokenizer()->tokenizeDocument($cleanedDocument);
+
+        foreach ($tokensPerAttribute as $attributeName => $tokenCollection) {
             $termPosition = 1;
-            foreach ($this->extractTokens($attributeValue)->all() as $token) {
+            foreach ($tokenCollection->all() as $token) {
                 foreach ($token->allTerms() as $term) {
                     $this->indexTerm($term, $documentId, $attributeName, $termPosition);
                 }
