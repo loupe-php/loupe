@@ -17,7 +17,7 @@ class Tokenizer
     private Language $language;
 
     /**
-     * @var array<string,string>
+     * @var array<string,array<string,string>>
      */
     private array $stemmerCache = [];
 
