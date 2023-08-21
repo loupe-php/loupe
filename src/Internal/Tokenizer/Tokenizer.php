@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Tokenizer;
 
-use LanguageDetection\Language;
 use Nitotm\Eld\LanguageDetector;
 use voku\helper\UTF8;
 use Wamania\Snowball\NotFoundException;
@@ -13,10 +12,6 @@ use Wamania\Snowball\StemmerFactory;
 
 class Tokenizer
 {
-    public const MAX_NGRAMS = 9000;
-
-    private LanguageDetector $languageDetector;
-
     /**
      * @var array<string,array<string,string>>
      */
@@ -27,10 +22,9 @@ class Tokenizer
      */
     private array $stemmers = [];
 
-    public function __construct()
-    {
-        $this->languageDetector = new LanguageDetector();
-        $this->languageDetector->cleanText(true); // Improve language detection
+    public function __construct(
+        private LanguageDetector $languageDetector
+    ) {
     }
 
     public function tokenize(string $string, ?int $maxTokens = null): TokenCollection

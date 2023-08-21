@@ -143,6 +143,7 @@ Array
 * [Schema](./docs/schema.md).
 * [Configuration](./docs/configuration.md).
 * [Searching](./docs/searching.md).
+* [Tokenizer](./docs/tokenizer.md).
 
 "Why Loupe?" you ask? "Loupe" means "magnifier" in French and I felt like this was the appropriate choice for this 
 library after having given [my PHP crawler library][Escargot] a French name :-)
