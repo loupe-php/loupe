@@ -64,7 +64,7 @@ $configuration = \Loupe\Loupe\Configuration::create()
 ```
 
 
-### Minimum length for prefix search
+## Minimum length for prefix search
 
 In Loupe - as in MeiliSearch - we follow the philosophy of prefix search. 
 
@@ -174,7 +174,7 @@ $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
 ;
 ```
 
-### Debugging
+## Debugging
 
 You may pass a PSR-3 logger to Loupe. For the sake of simplicity, Loupe also ships with a very simple 
 `InMemoryLogger` so you don't have to require any special package only to quickly debug internals:
