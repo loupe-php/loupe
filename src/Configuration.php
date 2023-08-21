@@ -19,6 +19,11 @@ final class Configuration
      */
     private array $filterableAttributes = [];
 
+    /**
+     * @var array<string>
+     */
+    private array $languages = [];
+
     private ?LoggerInterface $logger = null;
 
     private int $maxQueryTokens = 10;
@@ -90,6 +95,14 @@ final class Configuration
         return hash('sha256', implode(';', $hash));
     }
 
+    /**
+     * @return array<string>
+     */
+    public function getLanguages(): array
+    {
+        return $this->languages;
+    }
+
     public function getLogger(): ?LoggerInterface
     {
         return $this->logger;
@@ -151,6 +164,17 @@ final class Configuration
 
         $clone = clone $this;
         $clone->filterableAttributes = $filterableAttributes;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $languages
+     */
+    public function withLanguages(array $languages): self
+    {
+        $clone = clone $this;
+        $clone->languages = $languages;
 
         return $clone;
     }

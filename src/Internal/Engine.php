@@ -25,7 +25,7 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '0.2.0'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.3.0'; // Increase this whenever a re-index of all documents is needed
 
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
@@ -201,16 +201,25 @@ class Engine
             throw new \InvalidArgumentException('Need to provide data to insert.');
         }
 
-        $qb = $this->getConnection()->createQueryBuilder()
-            ->select(array_filter(array_merge([$insertIdColumn], $uniqueIndexColumns)))
-            ->from($table);
+        // Do not use the query builder in this method as it is heavily used and the query builder will slow down
+        // performance considerably here.
+        $query = 'SELECT ' .
+            implode(', ', array_filter(array_merge([$insertIdColumn], $uniqueIndexColumns))) .
+            ' FROM ' .
+            $table;
 
+        $where = [];
+        $parameters = [];
         foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
-            $qb->andWhere($uniqueIndexColumn . '=' . $qb->createPositionalParameter($insertData[$uniqueIndexColumn]));
+            $where[] = $uniqueIndexColumn . '=?';
+            $parameters[] = $insertData[$uniqueIndexColumn];
         }
 
-        $existing = $qb->executeQuery()
-            ->fetchAssociative();
+        if ($where !== []) {
+            $query .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        $existing = $this->getConnection()->executeQuery($query, $parameters)->fetchAssociative();
 
         if ($existing === false) {
             $this->getConnection()->insert($table, $insertData);
@@ -218,18 +227,30 @@ class Engine
             return (int) $this->getConnection()->lastInsertId();
         }
 
-        $qb = $this->getConnection()->createQueryBuilder()
-            ->update($table);
+        $query = 'UPDATE ' . $table;
 
+        $set = [];
+        $parameters = [];
         foreach ($insertData as $columnName => $value) {
-            $qb->set($columnName, $qb->createPositionalParameter($value));
+            $set[] = $columnName . '=?';
+            $parameters[] = $value;
         }
 
+        if ($set !== []) {
+            $query .= ' SET ' . implode(',', $set);
+        }
+
+        $where = [];
         foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
-            $qb->andWhere($uniqueIndexColumn . '=' . $qb->createPositionalParameter($insertData[$uniqueIndexColumn]));
+            $where[] = $uniqueIndexColumn . '=?';
+            $parameters[] = $insertData[$uniqueIndexColumn];
         }
 
-        $qb->executeQuery();
+        if ($where !== []) {
+            $query .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        $this->getConnection()->executeStatement($query, $parameters);
 
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }

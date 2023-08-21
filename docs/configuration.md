@@ -15,6 +15,7 @@ key. But you can adjust that to your needs:
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
     ->withPrimaryKey('uuid')
+;
 ```
 
 ## Searchable attributes
@@ -25,6 +26,7 @@ So be sure to configure, which attributes you want to search through later on:
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
     ->withSearchableAttributes(['firstname', 'lastname'])
+;
 ```
 
 ## Filterable attributes
@@ -36,6 +38,7 @@ does everything for you:
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
     ->withFilterableAttributes(['departments', 'age'])
+;
 ```
 
 ## Sortable attributes
@@ -45,20 +48,21 @@ Loupe can order your results by any scalar attribute of your document:
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
     ->withSortableAttributes(['age', 'lastname'])
+;
 ```
 
-## Maximum query tokens
+## Tokenization
 
-When you search Loupe, the user query is being analyzed, split into tokens and then run against the database of your 
-indexed documents. 
-In order to make sure that this process doesn't take too long, there is a limit as to how many tokens will be 
-considered when searching. By default, this value is configured to `10` but you may adjust this to your needs. The 
-higher the value, the higher the chance that the process takes too long or uses up too many resources.
+In order to optimize tokenization for your use case, read [the "Tokenizer" section of the docs](tokenizer.md). These 
+are the options:
 
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
     ->withMaxQueryTokens(12)
+    ->withLanguages(['en', 'fr', 'de'])
+;
 ```
+
 
 ### Minimum length for prefix search
 
@@ -82,6 +86,7 @@ You can configure this behavior:
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
     ->withMinTokenLengthForPrefixSearch(1)
+;
 ```
 
 ## Typo tolerance
@@ -101,6 +106,7 @@ $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create();
 
 $configuration = \Loupe\Loupe\Configuration::create()
     ->withTypoTolerance($typoTolerance)
+;
 ```
 
 In the following examples, we're thus only going to look at the `TypoTolerance` method calls.
@@ -110,8 +116,7 @@ In the following examples, we're thus only going to look at the `TypoTolerance` 
 By default, typo tolerance is enabled, but you can disable typo tolerance entirely. It's as easy as this:
 
 ```php
-$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::disabled()
-;
+$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::disabled();
 ```
 
 ### Alphabet size and index length
