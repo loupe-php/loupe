@@ -273,7 +273,7 @@ class Engine
         ];
 
         // Introduction of LN()
-        if (version_compare($sqliteVersion, '3.35.0', '<')) {
+        if (version_compare($sqliteVersion, '3.35.0', '<') || !$this->sqlLiteFunctionExists('ln')) {
             $functions['ln'] = [
                 'callback' => [Util::class, 'log'],
                 'numArgs' => 1,
@@ -282,5 +282,13 @@ class Engine
 
         /** @phpstan-ignore-next-line */
         UserDefinedFunctions::register([$this->connection->getNativeConnection(), 'sqliteCreateFunction'], $functions);
+    }
+
+    private function sqlLiteFunctionExists(string $function): bool
+    {
+        return (bool) $this->connection->executeQuery(
+            'SELECT EXISTS(SELECT 1 FROM pragma_function_list WHERE name=?)',
+            [$function]
+        )->fetchOne();
     }
 }
