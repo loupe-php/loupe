@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
-class SearchResult
+final class SearchResult
 {
     /**
      * @param array<array<string, mixed>> $hits

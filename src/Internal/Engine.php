@@ -8,7 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Exception\LoupeExceptionInterface;
+use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
@@ -75,13 +75,10 @@ class Engine
 
     /**
      * @param array<array<string, mixed>> $documents
-     * @throws LoupeExceptionInterface
      */
-    public function addDocuments(array $documents): self
+    public function addDocuments(array $documents): IndexResult
     {
-        $this->indexer->addDocuments($documents);
-
-        return $this;
+        return $this->indexer->addDocuments($documents);
     }
 
     public function countDocuments(): int

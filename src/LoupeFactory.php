@@ -15,7 +15,7 @@ use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Nitotm\Eld\LanguageDetector;
 
-class LoupeFactory
+final class LoupeFactory
 {
     public function create(string $dbPath, Configuration $configuration): Loupe
     {
