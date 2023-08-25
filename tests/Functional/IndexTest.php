@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Exception\LoupeExceptionInterface;
+use Loupe\Loupe\Exception\InvalidDocumentException;
+use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\SearchParameters;
@@ -26,7 +27,17 @@ class IndexTest extends TestCase
                     'departments' => [1, 3, 8],
                 ]),
             ],
-            'Document ID "2" ("{"id":2,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
+            function (IndexResult $indexResult) {
+                self::assertSame(1, $indexResult->successfulDocumentsCount());
+                self::assertSame(1, $indexResult->erroredDocumentsCount());
+                self::assertCount(1, $indexResult->allDocumentExceptions());
+                self::assertNull($indexResult->generalException());
+                self::assertInstanceOf(InvalidDocumentException::class, $indexResult->exceptionForDocument(2));
+                self::assertSame(
+                    'Document ID "2" ("{"id":2,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
+                    $indexResult->exceptionForDocument(2)->getMessage()
+                );
+            },
         ];
 
         yield 'Wrong array values when narrowed down' => [
@@ -40,7 +51,18 @@ class IndexTest extends TestCase
                     'departments' => [1, 3, 8],
                 ]),
             ],
-            'Document ID "3" ("{"id":3,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
+
+            function (IndexResult $indexResult) {
+                self::assertSame(2, $indexResult->successfulDocumentsCount());
+                self::assertSame(1, $indexResult->erroredDocumentsCount());
+                self::assertCount(1, $indexResult->allDocumentExceptions());
+                self::assertNull($indexResult->generalException());
+                self::assertInstanceOf(InvalidDocumentException::class, $indexResult->exceptionForDocument(3));
+                self::assertSame(
+                    'Document ID "3" ("{"id":3,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
+                    $indexResult->exceptionForDocument(3)->getMessage()
+                );
+            },
         ];
     }
 
@@ -269,20 +291,20 @@ class IndexTest extends TestCase
 
     /**
      * @param array<array<string, mixed>> $documents
+     * @param \Closure(IndexResult):void $assert
      */
     #[DataProvider('invalidSchemaChangesProvider')]
-    public function testInvalidSchemaChanges(array $documents, string $expectedExceptionMessage): void
+    public function testInvalidSchemaChanges(array $documents, \Closure $assert): void
     {
-        $this->expectException(LoupeExceptionInterface::class);
-        $this->expectExceptionMessage($expectedExceptionMessage);
-
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
             ->withSortableAttributes(['firstname'])
         ;
 
         $loupe = $this->createLoupe($configuration);
-        $loupe->addDocuments($documents);
+        $indexResult = $loupe->addDocuments($documents);
+
+        $assert($indexResult);
     }
 
     public function testLogging(): void

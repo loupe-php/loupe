@@ -39,8 +39,8 @@ This works, because `Star Wars` is a `string`, `overview` as well and the `genre
 
 ## Non-matching types
 
-If, however, you now want to index a second document that does not fulfill this schema, you will get an
-`InvalidDocumentException`:
+If, however, you now want to index a second document that does not fulfill this schema, you will get an 
+`IndexResult` containing an `InvalidDocumentException`:
 
 ```php
 $loupe->addDocument([
