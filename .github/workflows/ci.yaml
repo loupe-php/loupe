@@ -83,7 +83,6 @@ jobs:
 
             - name: Install the dependencies
               run: composer update --no-interaction --no-suggest ${{ matrix.composer }}
-              if: ${{ matrix.sqlite == '3.16.0' }}
 
             - name: Run the unit tests
               run: composer tests
