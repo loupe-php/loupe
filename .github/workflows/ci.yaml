@@ -18,7 +18,7 @@ jobs:
               uses: actions/checkout@v3
 
             - name: Install the dependencies
-              run: composer install --no-interaction --no-suggest
+              run: composer update --no-interaction --no-suggest
 
             - name: Run the CS fixer
               run: composer cs
@@ -37,13 +37,13 @@ jobs:
               uses: actions/checkout@v3
 
             - name: Install the dependencies
-              run: composer install --no-interaction --no-suggest
+              run: composer update --no-interaction --no-suggest
 
             - name: Run PHPStan
               run: composer phpstan
 
     tests:
-        name: PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }}
+        name: 'PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }} (Composer Flags: ${{ matrix.composer }})'
         runs-on: ubuntu-latest
         # Share the bash between the steps:
         defaults:
@@ -54,6 +54,7 @@ jobs:
             matrix:
                 sqlite: ['3.16.0', 'default']
                 php: ['8.1', '8.2']
+                composer: ['--prefer-stable', '--prefer-lowest']
         steps:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
@@ -81,7 +82,8 @@ jobs:
                   source ~/.bash_profile
 
             - name: Install the dependencies
-              run: composer install --no-interaction --no-suggest
+              run: composer update --no-interaction --no-suggest ${{ matrix.composer }}
+              if: ${{ matrix.sqlite == '3.16.0' }}
 
             - name: Run the unit tests
               run: composer tests
