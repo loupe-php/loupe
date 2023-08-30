@@ -42,12 +42,13 @@ class Engine
         private Highlighter $highlighter,
         private Parser $filterParser
     ) {
-        if (!$this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
-            throw new \InvalidArgumentException('Only SQLite is supported.');
+        $nativeConnection = $this->connection->getNativeConnection();
+
+        if (!$this->connection->getDatabasePlatform() instanceof SqlitePlatform || !$nativeConnection instanceof \PDO) {
+            throw new \InvalidArgumentException('Only SQLite via pdo_sqlite is supported.');
         }
 
-        $sqliteVersion = $this->connection->executeQuery('SELECT sqlite_version()')
-            ->fetchOne();
+        $sqliteVersion = $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION);
 
         if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
             throw new \InvalidArgumentException(sprintf(
