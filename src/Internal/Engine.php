@@ -44,7 +44,7 @@ class Engine
     ) {
         $nativeConnection = $this->connection->getNativeConnection();
 
-        if (!$this->connection->getDatabasePlatform() instanceof SqlitePlatform && !$this->connection->getNativeConnection() instanceof \PDO) {
+        if (!$this->connection->getDatabasePlatform() instanceof SqlitePlatform || !$nativeConnection instanceof \PDO) {
             throw new \InvalidArgumentException('Only SQLite via pdo_sqlite is supported.');
         }
 
