@@ -191,6 +191,16 @@ $results = [
 ];
 ```
 
+## Caching
+
+Loupe does not ship with built-in caching, so you are free to choose the caching mechanism of your choice. However,
+you can identify a search parameter combination using the `getHash()` method:
+
+```php
+$hash = \Loupe\Loupe\SearchParameters::create()
+    ->getHash();
+```
+
 ## Geo search
 
 Yes, Loupe also supports geo search! In contrast to MeiliSearch, however, Loupe does not need any special `_geo` 
