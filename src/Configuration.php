@@ -173,6 +173,8 @@ final class Configuration
      */
     public function withLanguages(array $languages): self
     {
+        sort($languages);
+
         $clone = clone $this;
         $clone->languages = $languages;
 
