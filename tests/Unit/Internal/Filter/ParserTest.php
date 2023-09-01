@@ -215,6 +215,44 @@ class ParserTest extends TestCase
                 ],
             ],
         ];
+
+        yield 'Pointless nested groups' => [
+            "(((genres > 42 AND genres < 50 OR (genres IS NULL)) OR foobar = 'test'))",
+            [
+                [
+
+                    [
+                        [
+                            [
+                                'attribute' => 'genres',
+                                'operator' => '>',
+                                'value' => 42.0,
+                            ],
+                            ['AND'],
+                            [
+                                'attribute' => 'genres',
+                                'operator' => '<',
+                                'value' => 50.0,
+                            ],
+                            ['OR'],
+                            [
+                                [
+                                    'attribute' => 'genres',
+                                    'operator' => '=',
+                                    'value' => LoupeTypes::VALUE_NULL,
+                                ],
+                            ],
+                        ],
+                        ['OR'],
+                        [
+                            'attribute' => 'foobar',
+                            'operator' => '=',
+                            'value' => 'test',
+                        ],
+                    ],
+                ],
+            ],
+        ];
     }
 
     public static function invalidFilterProvider(): \Generator
