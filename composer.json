@@ -21,7 +21,6 @@
     ],
     "require": {
         "php": "^8.1",
-        "ext-pdo_sqlite": "*",
         "ext-intl": "*",
         "doctrine/dbal": "^3.6",
         "wamania/php-stemmer": "^3.0",
