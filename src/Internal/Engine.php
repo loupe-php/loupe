@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
-use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
@@ -27,8 +25,6 @@ class Engine
 {
     public const VERSION = '0.3.0'; // Increase this whenever a re-index of all documents is needed
 
-    private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
-
     private Indexer $indexer;
 
     private IndexInfo $indexInfo;
@@ -42,26 +38,6 @@ class Engine
         private Highlighter $highlighter,
         private Parser $filterParser
     ) {
-        $nativeConnection = $this->connection->getNativeConnection();
-
-        if (!$this->connection->getDatabasePlatform() instanceof SqlitePlatform || !$nativeConnection instanceof \PDO) {
-            throw new \InvalidArgumentException('Only SQLite via pdo_sqlite is supported.');
-        }
-
-        $sqliteVersion = $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION);
-
-        if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
-            throw new \InvalidArgumentException(sprintf(
-                'You need at least version "%s" of SQLite.',
-                self::MIN_SQLITE_VERSION
-            ));
-        }
-
-        // Use Write-Ahead Logging if possible
-        $this->connection->executeQuery('PRAGMA journal_mode=WAL;');
-
-        $this->registerSQLiteFunctions($sqliteVersion);
-
         $this->indexInfo = new IndexInfo($this);
         $this->stateSetIndex = new StateSetIndex(
             new Config(
@@ -251,42 +227,5 @@ class Engine
         $this->getConnection()->executeStatement($query, $parameters);
 
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
-    }
-
-    private function registerSQLiteFunctions(string $sqliteVersion): void
-    {
-        $functions = [
-            'max_levenshtein' => [
-                'callback' => [Levenshtein::class, 'maxLevenshtein'],
-                'numArgs' => 4,
-            ],
-            'geo_distance' => [
-                'callback' => [Geo::class, 'geoDistance'],
-                'numArgs' => 4,
-            ],
-            'loupe_relevance' => [
-                'callback' => [CosineSimilarity::class, 'fromQuery'],
-                'numArgs' => 3,
-            ],
-        ];
-
-        // Introduction of LN()
-        if (version_compare($sqliteVersion, '3.35.0', '<') || !$this->sqlLiteFunctionExists('ln')) {
-            $functions['ln'] = [
-                'callback' => [Util::class, 'log'],
-                'numArgs' => 1,
-            ];
-        }
-
-        /** @phpstan-ignore-next-line */
-        UserDefinedFunctions::register([$this->connection->getNativeConnection(), 'sqliteCreateFunction'], $functions);
-    }
-
-    private function sqlLiteFunctionExists(string $function): bool
-    {
-        return (bool) $this->connection->executeQuery(
-            'SELECT EXISTS(SELECT 1 FROM pragma_function_list WHERE name=?)',
-            [$function]
-        )->fetchOne();
     }
 }
