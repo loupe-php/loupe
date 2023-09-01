@@ -26,6 +26,11 @@ class Group extends Node
         return $this->children;
     }
 
+    public function isEmpty(): bool
+    {
+        return $this->getChildren() === [];
+    }
+
     public function toArray(): array
     {
         $return = [];

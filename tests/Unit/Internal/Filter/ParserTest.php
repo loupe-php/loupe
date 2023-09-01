@@ -153,6 +153,31 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'IN filter at the end of a group' => [
+            "(genres IN ('Drama', 'Action') OR genres IN ('Documentary'))",
+            [
+                [
+                    [
+                        'attribute' => 'genres',
+                        'operator' => 'IN',
+                        'value' => [
+                            'Drama',
+                            'Action',
+                        ],
+                    ],
+                    ['OR'],
+                    [
+                        'attribute' => 'genres',
+                        'operator' => 'IN',
+                        'value' => [
+                            'Documentary',
+                        ],
+                    ],
+                ],
+
+            ],
+        ];
+
         yield 'Basic NOT IN filter' => [
             "genres NOT IN ('Drama', 'Action', 'Documentary')",
             [
@@ -212,6 +237,44 @@ class ParserTest extends TestCase
                     'attribute' => 'foobar',
                     'operator' => '=',
                     'value' => 'test',
+                ],
+            ],
+        ];
+
+        yield 'Pointless nested groups' => [
+            "(((genres > 42 AND genres < 50 OR (genres IS NULL)) OR foobar = 'test'))",
+            [
+                [
+
+                    [
+                        [
+                            [
+                                'attribute' => 'genres',
+                                'operator' => '>',
+                                'value' => 42.0,
+                            ],
+                            ['AND'],
+                            [
+                                'attribute' => 'genres',
+                                'operator' => '<',
+                                'value' => 50.0,
+                            ],
+                            ['OR'],
+                            [
+                                [
+                                    'attribute' => 'genres',
+                                    'operator' => '=',
+                                    'value' => LoupeTypes::VALUE_NULL,
+                                ],
+                            ],
+                        ],
+                        ['OR'],
+                        [
+                            'attribute' => 'foobar',
+                            'operator' => '=',
+                            'value' => 'test',
+                        ],
+                    ],
                 ],
             ],
         ];

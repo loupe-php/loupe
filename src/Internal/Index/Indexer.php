@@ -7,6 +7,7 @@ namespace Loupe\Loupe\Internal\Index;
 use Doctrine\DBAL\ArrayParameterType;
 use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\Exception\LoupeExceptionInterface;
+use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\StateSet\Alphabet;
@@ -23,12 +24,12 @@ class Indexer
 
     /**
      * @param array<array<string, mixed>> $documents
-     * @throws LoupeExceptionInterface
+     * @throws IndexException In case something really went wrong - this shouldn't happen and should be reported as a bug
      */
-    public function addDocuments(array $documents): self
+    public function addDocuments(array $documents): IndexResult
     {
         if ($documents === []) {
-            return $this;
+            return new IndexResult(0);
         }
 
         $firstDocument = reset($documents);
@@ -39,18 +40,35 @@ class Indexer
             $indexInfo->setup($firstDocument);
         }
 
+        $documentExceptions = [];
+        $successfulCount = 0;
+
         try {
             $this->engine->getConnection()
-                ->transactional(function () use ($indexInfo, $documents) {
+                ->transactional(function () use ($indexInfo, $documents, &$successfulCount, &$documentExceptions) {
                     foreach ($documents as $document) {
-                        $indexInfo->fixAndValidateDocument($document);
+                        try {
+                            $indexInfo->fixAndValidateDocument($document);
 
-                        $this->engine->getConnection()
-                            ->transactional(function () use ($document) {
-                                $documentId = $this->indexDocument($document);
-                                $this->indexMultiAttributes($document, $documentId);
-                                $this->indexTerms($document, $documentId);
-                            });
+                            $this->engine->getConnection()
+                                ->transactional(function () use ($document) {
+                                    $documentId = $this->indexDocument($document);
+                                    $this->indexMultiAttributes($document, $documentId);
+                                    $this->indexTerms($document, $documentId);
+                                });
+
+                            $successfulCount++;
+                        } catch (LoupeExceptionInterface $exception) {
+                            $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null;
+
+                            // We cannot report this exception on the document because the key is missing - we have to
+                            // abort early here.
+                            if ($primaryKey === null) {
+                                return new IndexResult($successfulCount, $documentExceptions, $exception);
+                            }
+
+                            $documentExceptions[$primaryKey] = $exception;
+                        }
                     }
 
                     $this->persistStateSet();
@@ -60,13 +78,13 @@ class Indexer
                 });
         } catch (\Throwable $e) {
             if ($e instanceof LoupeExceptionInterface) {
-                throw $e;
+                return new IndexResult($successfulCount, $documentExceptions, $e);
             }
 
             throw new IndexException($e->getMessage(), 0, $e);
         }
 
-        return $this;
+        return new IndexResult($successfulCount, $documentExceptions);
     }
 
     /**

@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
-use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Exception\LoupeExceptionInterface;
+use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
@@ -27,8 +25,6 @@ class Engine
 {
     public const VERSION = '0.3.0'; // Increase this whenever a re-index of all documents is needed
 
-    private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
-
     private Indexer $indexer;
 
     private IndexInfo $indexInfo;
@@ -42,25 +38,6 @@ class Engine
         private Highlighter $highlighter,
         private Parser $filterParser
     ) {
-        if (!$this->connection->getDatabasePlatform() instanceof SqlitePlatform) {
-            throw new \InvalidArgumentException('Only SQLite is supported.');
-        }
-
-        $sqliteVersion = $this->connection->executeQuery('SELECT sqlite_version()')
-            ->fetchOne();
-
-        if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
-            throw new \InvalidArgumentException(sprintf(
-                'You need at least version "%s" of SQLite.',
-                self::MIN_SQLITE_VERSION
-            ));
-        }
-
-        // Use Write-Ahead Logging if possible
-        $this->connection->executeQuery('PRAGMA journal_mode=WAL;');
-
-        $this->registerSQLiteFunctions($sqliteVersion);
-
         $this->indexInfo = new IndexInfo($this);
         $this->stateSetIndex = new StateSetIndex(
             new Config(
@@ -75,13 +52,10 @@ class Engine
 
     /**
      * @param array<array<string, mixed>> $documents
-     * @throws LoupeExceptionInterface
      */
-    public function addDocuments(array $documents): self
+    public function addDocuments(array $documents): IndexResult
     {
-        $this->indexer->addDocuments($documents);
-
-        return $this;
+        return $this->indexer->addDocuments($documents);
     }
 
     public function countDocuments(): int
@@ -253,42 +227,5 @@ class Engine
         $this->getConnection()->executeStatement($query, $parameters);
 
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
-    }
-
-    private function registerSQLiteFunctions(string $sqliteVersion): void
-    {
-        $functions = [
-            'max_levenshtein' => [
-                'callback' => [Levenshtein::class, 'maxLevenshtein'],
-                'numArgs' => 4,
-            ],
-            'geo_distance' => [
-                'callback' => [Geo::class, 'geoDistance'],
-                'numArgs' => 4,
-            ],
-            'loupe_relevance' => [
-                'callback' => [CosineSimilarity::class, 'fromQuery'],
-                'numArgs' => 3,
-            ],
-        ];
-
-        // Introduction of LN()
-        if (version_compare($sqliteVersion, '3.35.0', '<') || !$this->sqlLiteFunctionExists('ln')) {
-            $functions['ln'] = [
-                'callback' => [Util::class, 'log'],
-                'numArgs' => 1,
-            ];
-        }
-
-        /** @phpstan-ignore-next-line */
-        UserDefinedFunctions::register([$this->connection->getNativeConnection(), 'sqliteCreateFunction'], $functions);
-    }
-
-    private function sqlLiteFunctionExists(string $function): bool
-    {
-        return (bool) $this->connection->executeQuery(
-            'SELECT EXISTS(SELECT 1 FROM pragma_function_list WHERE name=?)',
-            [$function]
-        )->fetchOne();
     }
 }

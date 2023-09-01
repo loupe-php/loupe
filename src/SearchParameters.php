@@ -77,6 +77,26 @@ final class SearchParameters
         return $this->filter;
     }
 
+    /**
+     * Returns a hash of all the search settings. Use this if you want to cache results per request.
+     */
+    public function getHash(): string
+    {
+        $hash = [];
+
+        $hash[] = json_encode($this->getAttributesToHighlight());
+        $hash[] = json_encode($this->getAttributesToRetrieve());
+        $hash[] = json_encode($this->getAttributesToSearchOn());
+        $hash[] = json_encode($this->getFilter());
+        $hash[] = json_encode($this->getHitsPerPage());
+        $hash[] = json_encode($this->getPage());
+        $hash[] = json_encode($this->getQuery());
+        $hash[] = json_encode($this->showMatchesPosition());
+        $hash[] = json_encode($this->showRankingScore());
+
+        return hash('sha256', implode(';', $hash));
+    }
+
     public function getHitsPerPage(): int
     {
         return $this->hitsPerPage;
@@ -115,6 +135,8 @@ final class SearchParameters
      */
     public function withAttributesToHighlight(array $attributesToHighlight): self
     {
+        sort($attributesToHighlight);
+
         $clone = clone $this;
         $clone->attributesToHighlight = $attributesToHighlight;
 
@@ -126,6 +148,8 @@ final class SearchParameters
      */
     public function withAttributesToRetrieve(array $attributesToRetrieve): self
     {
+        sort($attributesToRetrieve);
+
         $clone = clone $this;
         $clone->attributesToRetrieve = $attributesToRetrieve;
 
@@ -137,6 +161,8 @@ final class SearchParameters
      */
     public function withAttributesToSearchOn(array $attributesToSearchOn): self
     {
+        sort($attributesToSearchOn);
+
         $clone = clone $this;
         $clone->attributesToSearchOn = $attributesToSearchOn;
 

@@ -16,24 +16,18 @@ final class Loupe
 
     /**
      * @param array<string, mixed> $document
-     *
-     * @throws IndexException
      */
-    public function addDocument(array $document): self
+    public function addDocument(array $document): IndexResult
     {
         return $this->addDocuments([$document]);
     }
 
     /**
      * @param array<int, array<string, mixed>> $documents
-     *
-     * @throws IndexException
      */
-    public function addDocuments(array $documents): self
+    public function addDocuments(array $documents): IndexResult
     {
-        $this->engine->addDocuments($documents);
-
-        return $this;
+        return $this->engine->addDocuments($documents);
     }
 
     public function countDocuments(): int

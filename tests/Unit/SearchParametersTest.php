@@ -10,6 +10,16 @@ use PHPUnit\Framework\TestCase;
 
 class SearchParametersTest extends TestCase
 {
+    public function testHash(): void
+    {
+        $searchParameters = SearchParameters::create();
+
+        $this->assertNotSame(
+            $searchParameters->getHash(),
+            $searchParameters->withPage(2)->getHash()
+        );
+    }
+
     public function testMaxHitsPerPage(): void
     {
         $this->expectException(InvalidSearchParametersException::class);
