@@ -256,7 +256,6 @@ class Parser
 
             if ($this->lexer->lookahead?->type === Lexer::T_CLOSE_PARENTHESIS) {
                 $this->lexer->moveNext();
-                $this->lexer->moveNext();
                 break;
             }
 
@@ -270,8 +269,6 @@ class Parser
 
     private function handleIs(mixed $attributeName, Engine $engine): void
     {
-        $isMultiFilterable = \in_array($attributeName, $engine->getIndexInfo()->getMultiFilterableAttributes(), true);
-
         if ($this->lexer->lookahead?->type === Lexer::T_NULL) {
             $this->addNode(new Filter($attributeName, Operator::Equals, LoupeTypes::VALUE_NULL));
             return;

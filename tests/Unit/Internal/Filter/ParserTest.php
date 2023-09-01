@@ -153,6 +153,31 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'IN filter at the end of a group' => [
+            "(genres IN ('Drama', 'Action') OR genres IN ('Documentary'))",
+            [
+                [
+                    [
+                        'attribute' => 'genres',
+                        'operator' => 'IN',
+                        'value' => [
+                            'Drama',
+                            'Action',
+                        ],
+                    ],
+                    ['OR'],
+                    [
+                        'attribute' => 'genres',
+                        'operator' => 'IN',
+                        'value' => [
+                            'Documentary',
+                        ],
+                    ],
+                ],
+
+            ],
+        ];
+
         yield 'Basic NOT IN filter' => [
             "genres NOT IN ('Drama', 'Action', 'Documentary')",
             [
