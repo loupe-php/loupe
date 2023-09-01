@@ -20,13 +20,14 @@ class Parser
 {
     private Ast $ast;
 
-    private ?Group $currentGroup = null;
+    private \SplStack $groups;
 
     private Lexer $lexer;
 
     public function __construct(?Lexer $lexer = null)
     {
         $this->lexer = $lexer ?? new Lexer();
+        $this->groups = new \SplStack();
     }
 
     public function getAst(string $string, Engine $engine): Ast
@@ -70,21 +71,21 @@ class Parser
             }
 
             if ($this->lexer->token?->isA(Lexer::T_OPEN_PARENTHESIS)) {
-                $this->currentGroup = new Group();
+                $this->groups->push(new Group());
             }
 
             if ($this->lexer->token?->isA(Lexer::T_CLOSE_PARENTHESIS)) {
-                if ($this->currentGroup instanceof Group) {
-                    $currentGroup = $this->currentGroup;
-                    $this->currentGroup = null;
-                    $this->addNode($currentGroup);
+                $activeGroup = $this->groups->isEmpty() ? null : $this->groups->pop();
+
+                if ($activeGroup instanceof Group) {
+                    $this->addNode($activeGroup);
                 } else {
                     $this->syntaxError('an opened group statement');
                 }
             }
         }
 
-        if ($this->currentGroup !== null) {
+        if (!$this->groups->isEmpty()) {
             $this->syntaxError('a closing parenthesis');
         }
 
@@ -93,8 +94,15 @@ class Parser
 
     private function addNode(Node $node): self
     {
-        if ($this->currentGroup !== null) {
-            $this->currentGroup->addChild($node);
+        // Ignore empty groups
+        if ($node instanceof Group && $node->isEmpty()) {
+            return $this;
+        }
+
+        $activeGroup = $this->groups->isEmpty() ? null : $this->groups->top();
+
+        if ($activeGroup instanceof Group) {
+            $activeGroup->addChild($node);
             return $this;
         }
 
