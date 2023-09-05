@@ -107,7 +107,7 @@ $loupe->addDocuments([
 
 $searchParameters = SearchParameters::create()
     ->withQuery('Gucleberry')
-    ->withAttributesToRetrieve(['id', 'firstname'])
+    ->withAttributesToRetrieve(['uuid', 'firstname'])
     ->withFilter("(departments = 'Backoffice' OR departments = 'Project Management') AND age > 17")
     ->withSort(['lastname:asc'])
 ;
@@ -123,6 +123,7 @@ Array
         (
             [0] => Array
                 (
+                    [uuid] => 6
                     [firstname] => Huckleberry
                 )
 
