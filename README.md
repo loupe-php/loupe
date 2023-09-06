@@ -1,6 +1,9 @@
-# Loupe
+<div align="center">
+  <img src="./logo/logo.svg" width="355px" alt="Loupe"><br/>
+  <small><b>An SQLite based, PHP-only fulltext search engine.</b></small>
+</div>
 
-An SQLite based, PHP-only fulltext search engine.
+<br/>
 
 Loupe…
 
