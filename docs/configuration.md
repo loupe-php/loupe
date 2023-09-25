@@ -136,7 +136,7 @@ space required for the index.
 Generally speaking, I would recommend you don't change the values at all and see, if you're happy with the 
 performance. If you are not, you might want to try adjusting those values in either direction and compare the results.
 
-The alphabet size is configured to `20` by default. The index size to `16`.
+The alphabet size is configured to `20` by default. The index size to `8`.
 
 ```php
 $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()

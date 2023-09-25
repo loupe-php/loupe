@@ -13,7 +13,7 @@ final class TypoTolerance
 
     private bool $firstCharTypoCountsDouble = true;
 
-    private int $indexLength = 16;
+    private int $indexLength = 8;
 
     private bool $isDisabled = false;
 
