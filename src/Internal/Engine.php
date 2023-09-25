@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
@@ -193,10 +194,10 @@ class Engine
             $query .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $existing = $this->getConnection()->executeQuery($query, $parameters)->fetchAssociative();
+        $existing = $this->getConnection()->executeQuery($query, $parameters, $this->extractDbalTypes($parameters))->fetchAssociative();
 
         if ($existing === false) {
-            $this->getConnection()->insert($table, $insertData);
+            $this->getConnection()->insert($table, $insertData, $this->extractDbalTypes($insertData));
 
             return (int) $this->getConnection()->lastInsertId();
         }
@@ -224,8 +225,23 @@ class Engine
             $query .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $this->getConnection()->executeStatement($query, $parameters);
+        $this->getConnection()->executeStatement($query, $parameters, $this->extractDbalTypes($parameters));
 
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
+    }
+
+    private function extractDbalTypes(array $data): array
+    {
+        $types = [];
+
+        foreach ($data as $k => $v) {
+            $types[$k] = match (\gettype($v)) {
+                'boolean' => ParameterType::BOOLEAN,
+                'integer' => ParameterType::INTEGER,
+                default => ParameterType::STRING
+            };
+        }
+
+        return $types;
     }
 }
