@@ -117,6 +117,35 @@ class Highlighter
             }
         }
 
+        $lastToken = $queryTokens->last();
+
+        if ($lastToken === null) {
+            return false;
+        }
+
+        $levenshteinDistance = $this->configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($lastToken->getTerm());
+
+        // Prefix search (only if minimum token length is fulfilled)
+        if (mb_strlen($textToken->getTerm()) <= $this->configuration->getMinTokenLengthForPrefixSearch()) {
+            return false;
+        }
+
+        $chars = mb_str_split($textToken->getTerm(), 1, 'UTF-8');
+        $prefix = implode('', \array_slice($chars, 0, $this->configuration->getMinTokenLengthForPrefixSearch()));
+        $rest = \array_slice($chars, $this->configuration->getMinTokenLengthForPrefixSearch());
+
+        if (Levenshtein::levenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+            return true;
+        }
+
+        while ($rest !== []) {
+            $prefix .= array_shift($rest);
+
+            if (Levenshtein::levenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                return true;
+            }
+        }
+
         return false;
     }
 }

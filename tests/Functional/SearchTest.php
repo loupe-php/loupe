@@ -224,6 +224,31 @@ class SearchTest extends TestCase
             ],
         ];
 
+        yield 'Highlight with prefix typo' => [
+            'assat',
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        '_formatted' => [
+                            'id' => 24,
+                            'title' => 'Kill Bill: Vol. 1',
+                            'overview' => 'An <em>assassin</em> is shot by her ruthless employer, Bill, and other members of their <em>assassination</em> circle – but she lives to plot her vengeance.',
+                        ],
+                    ],
+                ],
+                'query' => 'assat',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        ];
+
         yield 'Highlight without typo' => [
             'assassin',
             ['title', 'overview'],
