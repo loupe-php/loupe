@@ -225,7 +225,7 @@ class Searcher
         $ors = [];
 
         foreach ($tokenCollection->allTermsWithVariants() as $term) {
-            $ors[] = $this->createWherePartForTerm($term);
+            $ors[] = $this->createWherePartForTerm($term, false);
         }
 
         // Prefix search
@@ -235,11 +235,7 @@ class Searcher
             !$lastToken->isPartOfPhrase() &&
             $lastToken->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()
         ) {
-            $ors[] = sprintf(
-                '%s.term LIKE %s',
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $this->queryBuilder->createNamedParameter($lastToken->getTerm() . '%')
-            );
+            $ors[] = $this->createWherePartForTerm($lastToken->getTerm(), true);
         }
 
         $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
@@ -264,6 +260,52 @@ class Searcher
         }
 
         return $query;
+    }
+
+    private function createStatesMatchWhere(array $states, string $table, string $term, int $levenshteinDistance, string $termColumnName): string
+    {
+        $where = [];
+        /**
+         * WHERE
+         *     state IN (:states)
+         *     AND
+         *     LENGTH(term) >= <term> - <lev-distance>
+         *     AND
+         *     LENGTH(term) <= <term> + <lev-distance>
+         *     AND
+         *     max_levenshtein(<term>, $termColumnName, <distance>)
+         */
+        $where[] = sprintf(
+            '%s.state IN (%s)',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable($table),
+            implode(',', $states)
+        );
+        $where[] = 'AND';
+        $where[] = sprintf(
+            '%s.length >= %d',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable($table),
+            UTF8::strlen($term) - 1
+        );
+        $where[] = 'AND';
+        $where[] = sprintf(
+            '%s.length <= %d',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable($table),
+            UTF8::strlen($term) + 1
+        );
+        $where[] = 'AND';
+        $where[] = sprintf(
+            'max_levenshtein(%s, %s.%s, %d, %s)',
+            $this->queryBuilder->createNamedParameter($term),
+            $this->engine->getIndexInfo()->getAliasForTable($table),
+            $termColumnName,
+            $levenshteinDistance,
+            $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
+        );
+
+        return implode(' ', $where);
     }
 
     private function createSubQueryForMultiAttribute(Filter $node): string
@@ -308,78 +350,102 @@ class Searcher
         return $qb->getSQL();
     }
 
-    private function createWherePartForTerm(string $term): string
+    private function createWherePartForTerm(string $term, bool $prefix): string
     {
+        $where = [];
         $termParameter = $this->queryBuilder->createNamedParameter($term);
         $levenshteinDistance = $this->engine->getConfiguration()
             ->getTypoTolerance()
             ->getLevenshteinDistanceForTerm($term);
 
-        $where = [];
-
-        if ($levenshteinDistance === 0) {
-            /*
-             * WHERE
-             *     term = '<term>'
-             */
-            $where[] = sprintf(
-                '%s.term = %s',
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $termParameter
-            );
-        } else {
-            /*
-             * WHERE
-             *     term = '<term>'
-             *     OR
-             *     (
-             *         state IN (:states)
-             *         AND
-             *         LENGTH(term) >= <term> - <lev-distance>
-             *         AND
-             *         LENGTH(term) <= <term> + <lev-distance>
-             *         AND
-             *         max_levenshtein(<term>, term, <distance>)
-             *       )
-             */
-            $where[] = sprintf(
-                '%s.term = %s',
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $termParameter
-            );
-            $where[] = 'OR';
+        /*
+         * Without prefix:
+         *
+         *     term = '<term>'
+         *
+         * With prefix:
+         *
+         *     (term = '<term>' OR term LIKE '<term>%')
+         */
+        if ($prefix) {
             $where[] = '(';
+        }
+
+        $where[] = sprintf(
+            '%s.term = %s',
+            $this->engine->getIndexInfo()
+                ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+            $termParameter
+        );
+
+        if ($prefix) {
+            $where[] = 'OR';
             $where[] = sprintf(
-                '%s.state IN (%s)',
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                implode(',', $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance))
+                '%s.term LIKE %s',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $this->queryBuilder->createNamedParameter($term . '%')
             );
-            $where[] = 'AND';
+            $where[] = ')';
+        }
+
+        // Typo tolerance not enabled enabled
+        if ($levenshteinDistance === 0) {
+            return implode(' ', $where);
+        }
+
+        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance);
+
+        // No result possible, we add AND 1=0 to ensure no results
+        if ($states === []) {
+            $where[] = 'AND 1=0';
+
+            return implode(' ', $where);
+        }
+
+        $where[] = 'OR';
+
+        /*
+         * Without prefix:
+         *
+         *     <states-match-terms-table-query>
+         *
+         * With prefix:
+         *
+         *     (<states-match-terms-table-query> OR <states-match-prefixes-table-query>)
+         */
+        if ($prefix) {
+            $where[] = '(';
+        }
+
+        $where[] = $this->createStatesMatchWhere(
+            $states,
+            IndexInfo::TABLE_NAME_TERMS,
+            $term,
+            $levenshteinDistance,
+            'term'
+        );
+
+        if ($prefix) {
+            $where[] = 'OR';
             $where[] = sprintf(
-                '%s.length >= %d',
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                UTF8::strlen($term) - 1
+                '%s.id IN (SELECT %s.term FROM %s %s WHERE %s.prefix IN (SELECT %s.id FROM %s %s WHERE %s))',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_PREFIXES_TERMS),
+                IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_PREFIXES_TERMS),
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_PREFIXES_TERMS),
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_PREFIXES),
+                IndexInfo::TABLE_NAME_PREFIXES,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_PREFIXES),
+                $this->createStatesMatchWhere(
+                    $states,
+                    IndexInfo::TABLE_NAME_PREFIXES,
+                    $term,
+                    $levenshteinDistance,
+                    'prefix'
+                )
             );
-            $where[] = 'AND';
-            $where[] = sprintf(
-                '%s.length <= %d',
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                UTF8::strlen($term) + 1
-            );
-            $where[] = 'AND';
-            $where[] = sprintf(
-                'max_levenshtein(%s, %s.term, %d, %s)',
-                $termParameter,
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $levenshteinDistance,
-                $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
-            );
+
             $where[] = ')';
         }
 

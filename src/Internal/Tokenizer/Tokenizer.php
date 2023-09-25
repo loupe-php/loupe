@@ -109,18 +109,19 @@ class Tokenizer
                 break;
             }
 
+            $term = UTF8::strtolower($term);
             $variants = [];
 
             // Stem if we detected a language - but only if not part of a phrase
             if ($language !== null && !$phrase) {
                 $stem = $this->stem($term, $language);
-                if ($stem !== null) {
+                if ($stem !== null && $term !== $stem) {
                     $variants = [$stem];
                 }
             }
 
             $token = new Token(
-                UTF8::strtolower($term),
+                $term,
                 $position,
                 $variants,
                 $phrase

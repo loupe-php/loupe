@@ -511,8 +511,19 @@ class SearchTest extends TestCase
             1,
         ];
 
-        yield 'Searching for "huckl" should return Huckleberry' => [
+        yield 'Searching for "huckl" should return Huckleberry (no typo)' => [
             'huckl',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                    'lastname' => 'Finn',
+                ],
+            ],
+        ];
+
+        yield 'Searching for "hucka" should return Huckleberry (with typo)' => [
+            'hucka',
             [
                 [
                     'id' => 6,
