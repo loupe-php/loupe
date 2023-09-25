@@ -469,7 +469,7 @@ class IndexInfo
         $table->addColumn('term', Types::STRING)
             ->setNotnull(true);
 
-        $table->addColumn('state', Types::STRING)
+        $table->addColumn('state', Types::INTEGER)
             ->setNotnull(true);
 
         $table->addColumn('length', Types::INTEGER)
@@ -481,6 +481,7 @@ class IndexInfo
 
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['term', 'state', 'length']);
+        $table->addIndex(['state']);
     }
 
     private function getSchema(): Schema
