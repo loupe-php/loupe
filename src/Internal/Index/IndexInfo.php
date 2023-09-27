@@ -16,8 +16,6 @@ use Loupe\Loupe\Internal\Util;
 
 class IndexInfo
 {
-    public const TABLE_NAME_ALPHABET = 'alphabet';
-
     public const TABLE_NAME_DOCUMENTS = 'documents';
 
     public const TABLE_NAME_INDEX_INFO = 'info';
@@ -301,19 +299,6 @@ class IndexInfo
         ;
     }
 
-    private function addAlphabetToSchema(Schema $schema): void
-    {
-        $table = $schema->createTable(self::TABLE_NAME_ALPHABET);
-
-        $table->addColumn('char', Types::STRING)
-            ->setNotnull(true);
-
-        $table->addColumn('label', Types::INTEGER)
-            ->setNotnull(true);
-
-        $table->addUniqueIndex(['char', 'label']);
-    }
-
     private function addDocumentsToSchema(Schema $schema): void
     {
         $table = $schema->createTable(self::TABLE_NAME_DOCUMENTS);
@@ -469,14 +454,7 @@ class IndexInfo
         $table->addColumn('state', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->addColumn('parent', Types::INTEGER)
-            ->setNotnull(true);
-
-        $table->addColumn('mapped_char', Types::INTEGER)
-            ->setNotnull(true);
-
-        $table->addUniqueIndex(['state', 'parent', 'mapped_char']);
-        $table->addIndex(['mapped_char']);
+        $table->setPrimaryKey(['state']);
     }
 
     private function addTermsToDocumentsRelationToSchema(Schema $schema): void
@@ -535,7 +513,6 @@ class IndexInfo
         $this->addMultiAttributesToSchema($schema);
         $this->addTermsToSchema($schema);
         $this->addPrefixesToSchema($schema);
-        $this->addAlphabetToSchema($schema);
         $this->addStateSetToSchema($schema);
 
         $this->addMultiAttributesToDocumentsRelationToSchema($schema);

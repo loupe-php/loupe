@@ -13,13 +13,14 @@ use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
 use Loupe\Loupe\Internal\Search\Searcher;
-use Loupe\Loupe\Internal\StateSet\Alphabet;
-use Loupe\Loupe\Internal\StateSet\StateSet;
+use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
 use Psr\Log\LoggerInterface;
+use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
+use Toflar\StateSetIndex\DataStore\NullDataStore;
 use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
@@ -45,8 +46,9 @@ class Engine
                 $this->configuration->getTypoTolerance()->getIndexLength(),
                 $this->configuration->getTypoTolerance()->getAlphabetSize(),
             ),
-            new Alphabet($this),
-            new StateSet($this)
+            new Utf8Alphabet(),
+            new StateSet($this),
+            new NullDataStore()
         );
         $this->indexer = new Indexer($this);
     }

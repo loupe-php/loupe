@@ -10,8 +10,8 @@ use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\StateSet\Alphabet;
-use Loupe\Loupe\Internal\StateSet\StateSet;
+use Loupe\Loupe\Internal\StateSetIndex\Alphabet;
+use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Util;
 use voku\helper\UTF8;
 
@@ -364,10 +364,6 @@ class Indexer
 
     private function persistStateSet(): void
     {
-        /** @var Alphabet $alphabet */
-        $alphabet = $this->engine->getStateSetIndex()->getAlphabet();
-        $alphabet->persist();
-
         /** @var StateSet $stateSet */
         $stateSet = $this->engine->getStateSetIndex()->getStateSet();
         $stateSet->persist();

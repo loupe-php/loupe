@@ -9,11 +9,11 @@ use voku\helper\UTF8;
 
 final class TypoTolerance
 {
-    private int $alphabetSize = 20;
+    private int $alphabetSize = 4;
 
     private bool $firstCharTypoCountsDouble = true;
 
-    private int $indexLength = 8;
+    private int $indexLength = 16;
 
     private bool $isDisabled = false;
 

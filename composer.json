@@ -27,7 +27,7 @@
         "doctrine/lexer": "^2.0 || ^3.0",
         "voku/portable-utf8": "^6.0",
         "mjaschen/phpgeo": "^4.2",
-        "toflar/state-set-index": "^1.0",
+        "toflar/state-set-index": "dev-develop",
         "psr/log": "^3.0",
         "nitotm/efficient-language-detector": "^2.0"
     },
