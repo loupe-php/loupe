@@ -432,6 +432,7 @@ class IndexInfo
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['prefix', 'length']);
         $table->addIndex(['state']);
+        $table->addIndex(['length']);
     }
 
     private function addPrefixesToTermsRelationToSchema(Schema $schema): void
@@ -502,6 +503,7 @@ class IndexInfo
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['term', 'state', 'length']);
         $table->addIndex(['state']);
+        $table->addIndex(['length']);
     }
 
     private function getSchema(): Schema

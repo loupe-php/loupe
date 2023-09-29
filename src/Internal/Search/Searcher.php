@@ -235,7 +235,17 @@ class Searcher
             !$lastToken->isPartOfPhrase() &&
             $lastToken->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()
         ) {
-            $ors[] = $this->createWherePartForTerm($lastToken->getTerm(), true);
+            // With typo tolerance on prefix search requires searching the prefix tables as well
+            if ($this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
+                $ors[] = $this->createWherePartForTerm($lastToken->getTerm(), true);
+            } else {
+                // Otherwise, prefix search is just a simple LIKE <token>% for better performance
+                $ors[] = sprintf(
+                    '%s.term LIKE %s',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                    $this->queryBuilder->createNamedParameter($lastToken->getTerm() . '%')
+                );
+            }
         }
 
         $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');

@@ -91,6 +91,7 @@ final class Configuration
         $hash[] = $this->getTypoTolerance()->isDisabled() ? 'disabled' : 'enabled';
         $hash[] = $this->getTypoTolerance()->getAlphabetSize();
         $hash[] = $this->getTypoTolerance()->getIndexLength();
+        $hash[] = $this->getTypoTolerance()->isEnabledForPrefixSearch();
 
         return hash('sha256', implode(';', $hash));
     }

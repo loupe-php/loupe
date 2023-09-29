@@ -10,7 +10,6 @@ use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\StateSetIndex\Alphabet;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Util;
 use voku\helper\UTF8;
@@ -267,6 +266,11 @@ class Indexer
 
     private function indexPrefixes(string $term, int $termId): void
     {
+        // Prefix typo search disabled = we don't need to index them
+        if (!$this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
+            return;
+        }
+
         $chars = mb_str_split($term, 1, 'UTF-8');
         // We don't need to index anything after our max index length because for prefix search, we do not have
         // to index the entire word as there's no such thing as exact match or phrase search.
