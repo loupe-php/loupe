@@ -8,7 +8,7 @@ use Loupe\Loupe\LoupeFactory;
 require_once 'vendor/autoload.php';
 
 $movies = __DIR__ . '/../var/movies.json';
-$db = __DIR__ . '/../var/test2.db';
+$db = __DIR__ . '/../var/test.db';
 
 if (!file_exists($movies)) {
     echo 'movies.json does not exist. Run "wget https://www.meilisearch.com/movies.json -O var/movies.json" first.';

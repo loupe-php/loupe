@@ -8,10 +8,10 @@ use Loupe\Loupe\SearchParameters;
 
 require_once 'vendor/autoload.php';
 
-$db = __DIR__ . '/../var/test2.db';
+$db = __DIR__ . '/../var/test.db';
 
 if (!file_exists($db)) {
-    echo 'var/test.db does not exist. Run "php bin/index_performance_test.php" first.';
+    echo $db . ' does not exist. Run "php bin/index_performance_test.php" first.';
     exit(1);
 }
 
@@ -19,7 +19,7 @@ if (!file_exists($db)) {
 $configuration = Configuration::create();
 
 $loupeFactory = new LoupeFactory();
-$loupe = $loupeFactory->create(__DIR__ . '/../var/test.db', $configuration);
+$loupe = $loupeFactory->create($db, $configuration);
 
 $startTime = microtime(true);
 
