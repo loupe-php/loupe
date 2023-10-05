@@ -38,7 +38,8 @@ class Engine
         private Configuration $configuration,
         private Tokenizer $tokenizer,
         private Highlighter $highlighter,
-        private Parser $filterParser
+        private Parser $filterParser,
+        private ?string $dataDir = null
     ) {
         $this->indexInfo = new IndexInfo($this);
         $this->stateSetIndex = new StateSetIndex(
@@ -91,6 +92,11 @@ class Engine
     public function getConnection(): Connection
     {
         return $this->connection;
+    }
+
+    public function getDataDir(): ?string
+    {
+        return $this->dataDir;
     }
 
     /**
@@ -232,6 +238,10 @@ class Engine
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }
 
+    /**
+     * @param array<string|int, mixed> $data
+     * @return  array<string|int, int>
+     */
     private function extractDbalTypes(array $data): array
     {
         $types = [];

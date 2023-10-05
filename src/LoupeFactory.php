@@ -25,13 +25,15 @@ final class LoupeFactory
 {
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
-    public function create(string $dbPath, Configuration $configuration): Loupe
+    public function create(string $dataDir, Configuration $configuration): Loupe
     {
-        if (!file_exists($dbPath)) {
-            throw InvalidConfigurationException::becauseInvalidDbPath($dbPath);
+        if (!is_dir($dataDir)) {
+            if (!mkdir($dataDir, 0777, true)) {
+                throw InvalidConfigurationException::becauseCouldNotCreateDataDir($dataDir);
+            }
         }
 
-        return $this->createFromConnection($this->createConnection($configuration, $dbPath), $configuration);
+        return $this->createFromConnection($this->createConnection($configuration, $dataDir), $configuration, $dataDir);
     }
 
     public function createInMemory(Configuration $configuration): Loupe
@@ -50,10 +52,10 @@ final class LoupeFactory
         return true;
     }
 
-    private function createConnection(Configuration $configuration, ?string $dbPath = null): Connection
+    private function createConnection(Configuration $configuration, ?string $folder = null): Connection
     {
         $connection = null;
-        $dsnPart = $dbPath === null ? ':memory:' : ('notused:inthis@case/' . realpath($dbPath));
+        $dsnPart = $folder === null ? ':memory:' : ('notused:inthis@case/' . realpath($folder) . '/loupe.db');
 
         // Try sqlite3 first, it seems way faster than the pdo-sqlite driver
         try {
@@ -94,7 +96,7 @@ final class LoupeFactory
         return $connection;
     }
 
-    private function createFromConnection(Connection $connection, Configuration $configuration): Loupe
+    private function createFromConnection(Connection $connection, Configuration $configuration, ?string $dataDir = null): Loupe
     {
         $tokenizer = $this->createTokenizer($configuration);
 
@@ -104,7 +106,8 @@ final class LoupeFactory
                 $configuration,
                 $tokenizer,
                 new Highlighter($configuration, $tokenizer),
-                new Parser()
+                new Parser(),
+                $dataDir
             )
         );
     }

@@ -239,7 +239,7 @@ class Indexer
                 $state = $this->engine->getStateSetIndex()->index([$prefix])[$prefix];
             }
 
-            $this->prefixCache[$prefix] = $this->engine->upsert(
+            $this->prefixCache[$prefix] = (int) $this->engine->upsert(
                 IndexInfo::TABLE_NAME_PREFIXES,
                 [
                     'prefix' => $prefix,
@@ -302,7 +302,7 @@ class Indexer
             $state = $this->engine->getStateSetIndex()->index([$term])[$term];
         }
 
-        $termId = $this->engine->upsert(
+        $termId = (int) $this->engine->upsert(
             IndexInfo::TABLE_NAME_TERMS,
             [
                 'term' => $term,

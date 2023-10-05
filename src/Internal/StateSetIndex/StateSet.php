@@ -47,6 +47,37 @@ class StateSet implements StateSetInterface
                 'state' => $state,
             ], ['state']);
         }
+
+        $all = $this->inMemoryStateSet->all();
+        $all = array_combine($this->inMemoryStateSet->all(), array_fill(0, \count($all), true));
+        $this->dumpStateSetCache($all);
+    }
+
+    /**
+     * @param array<int, bool> $stateSet
+^     */
+    private function dumpStateSetCache(array $stateSet): void
+    {
+        $cacheFile = $this->getStateSetCacheFile();
+
+        if ($cacheFile === null) {
+            return;
+        }
+
+        $cache = '<?php return ';
+        $cache .= var_export($stateSet, true);
+        $cache .= ';';
+
+        file_put_contents($cacheFile, $cache);
+    }
+
+    private function getStateSetCacheFile(): ?string
+    {
+        if ($this->engine->getDataDir() === null) {
+            return null;
+        }
+
+        return $this->engine->getDataDir() . '/state_set.php';
     }
 
     private function initialize(): void
@@ -55,17 +86,41 @@ class StateSet implements StateSetInterface
             return;
         }
 
-        $this->inMemoryStateSet = new InMemoryStateSet();
+        $cacheFile = $this->getStateSetCacheFile();
 
-        foreach ($this->engine->getConnection()->createQueryBuilder()
+        if ($cacheFile === null) {
+            $data = $this->loadFromStorage();
+        } else {
+            if (!file_exists($cacheFile)) {
+                $data = $this->loadFromStorage();
+                $this->dumpStateSetCache($data);
+            } else {
+                $data = require_once $cacheFile;
+            }
+        }
+
+        $this->inMemoryStateSet = new InMemoryStateSet($data);
+
+        $this->initialized = true;
+    }
+
+    /**
+     * @return array<int, bool>
+     */
+    private function loadFromStorage(): array
+    {
+        $storage = [];
+
+        foreach ($this->engine->getConnection()
+            ->createQueryBuilder()
             ->select('state')
             ->from(IndexInfo::TABLE_NAME_STATE_SET)
             ->executeQuery()
             ->iterateAssociative() as $row
         ) {
-            $this->inMemoryStateSet->add((int) $row['state']);
+            $storage[(int) $row['state']] = true;
         }
 
-        $this->initialized = true;
+        return $storage;
     }
 }

@@ -224,31 +224,6 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Highlight with prefix typo' => [
-            'assat',
-            ['title', 'overview'],
-            false,
-            [
-                'hits' => [
-                    [
-                        'id' => 24,
-                        'title' => 'Kill Bill: Vol. 1',
-                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
-                        '_formatted' => [
-                            'id' => 24,
-                            'title' => 'Kill Bill: Vol. 1',
-                            'overview' => 'An <em>assassin</em> is shot by her ruthless employer, Bill, and other members of their <em>assassination</em> circle – but she lives to plot her vengeance.',
-                        ],
-                    ],
-                ],
-                'query' => 'assat',
-                'hitsPerPage' => 20,
-                'page' => 1,
-                'totalPages' => 1,
-                'totalHits' => 1,
-            ],
-        ];
-
         yield 'Highlight without typo' => [
             'assassin',
             ['title', 'overview'],
@@ -547,15 +522,9 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Searching for "hucka" should return Huckleberry (with typo)' => [
+        yield 'Searching for "hucka" should not return Huckleberry (with typo) because prefix typo search is disabled' => [
             'hucka',
-            [
-                [
-                    'id' => 6,
-                    'firstname' => 'Huckleberry',
-                    'lastname' => 'Finn',
-                ],
-            ],
+            [],
         ];
 
         yield 'Searching for "my friend huckl" should return Huckleberry because "huckl" is the last token' => [
@@ -1125,6 +1094,38 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => \count($expectedResults) === 0 ? 0 : 1,
             'totalHits' => \count($expectedResults),
+        ]);
+    }
+
+    public function testPrefixSearchAndHighlightingWithTypoSearchEnabled(): void
+    {
+        $typoTolerance = TypoTolerance::create()->withEnabledForPrefixSearch(true);
+        $configuration = Configuration::create()->withTypoTolerance($typoTolerance);
+        $loupe = $this->setupLoupeWithMoviesFixture($configuration);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('assat')
+            ->withAttributesToRetrieve(['id', 'title', 'overview'])
+            ->withSort(['title:asc'])
+            ->withAttributesToHighlight(['overview'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [[
+                'id' => 24,
+                'title' => 'Kill Bill: Vol. 1',
+                'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                '_formatted' => [
+                    'id' => 24,
+                    'title' => 'Kill Bill: Vol. 1',
+                    'overview' => 'An <em>assassin</em> is shot by her ruthless employer, Bill, and other members of their <em>assassination</em> circle – but she lives to plot her vengeance.',
+                ],
+            ]],
+            'query' => 'assat',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
         ]);
     }
 

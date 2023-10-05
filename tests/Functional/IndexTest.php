@@ -345,14 +345,15 @@ class IndexTest extends TestCase
     public function testReindex(): void
     {
         $fs = new Filesystem();
-        $tmpDb = $fs->tempnam(sys_get_temp_dir(), 'lt');
+        $tmpDataDir = sys_get_temp_dir() . '/' . uniqid('lt');
+        $fs->mkdir($tmpDataDir);
 
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
             ->withSortableAttributes(['firstname'])
         ;
 
-        $loupe = $this->createLoupe($configuration, $tmpDb);
+        $loupe = $this->createLoupe($configuration, $tmpDataDir);
         $loupe->addDocument(self::getSandraDocument());
 
         $this->assertFalse($loupe->needsReindex());
@@ -361,14 +362,14 @@ class IndexTest extends TestCase
             ->withSearchableAttributes(['firstname'])
         ;
 
-        $loupe = $this->createLoupe($configuration, $tmpDb);
+        $loupe = $this->createLoupe($configuration, $tmpDataDir);
 
         // Just making sure that it was actually persistent
         $this->assertSame(1, $loupe->countDocuments());
 
         $this->assertTrue($loupe->needsReindex());
 
-        $fs->remove($tmpDb);
+        $fs->remove($tmpDataDir);
     }
 
     public function testReplacingTheSameDocumentWorks(): void

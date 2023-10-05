@@ -272,6 +272,9 @@ class Searcher
         return $query;
     }
 
+    /**
+     * @param array<int> $states
+     */
     private function createStatesMatchWhere(array $states, string $table, string $term, int $levenshteinDistance, string $termColumnName): string
     {
         $where = [];
