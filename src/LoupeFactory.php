@@ -13,13 +13,9 @@ use Doctrine\DBAL\Logging\Middleware;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\CosineSimilarity;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
-use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
-use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\Internal\Util;
-use Nitotm\Eld\LanguageDetector;
 
 final class LoupeFactory
 {
@@ -98,30 +94,13 @@ final class LoupeFactory
 
     private function createFromConnection(Connection $connection, Configuration $configuration, ?string $dataDir = null): Loupe
     {
-        $tokenizer = $this->createTokenizer($configuration);
-
         return new Loupe(
             new Engine(
                 $connection,
                 $configuration,
-                $tokenizer,
-                new Highlighter($configuration, $tokenizer),
-                new Parser(),
                 $dataDir
             )
         );
-    }
-
-    private function createTokenizer(Configuration $configuration): Tokenizer
-    {
-        $languageDetector = new LanguageDetector();
-        $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
-
-        if ($configuration->getLanguages() !== []) {
-            $languageDetector->langSubset($configuration->getLanguages()); // Save subset
-        }
-
-        return new Tokenizer($languageDetector);
     }
 
     private function getDbalConfiguration(Configuration $configuration): DbalConfiguration

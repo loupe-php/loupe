@@ -17,6 +17,7 @@ use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
+use Nitotm\Eld\LanguageDetector;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
@@ -27,18 +28,21 @@ class Engine
 {
     public const VERSION = '0.3.0'; // Increase this whenever a re-index of all documents is needed
 
+    private Parser $filterParser;
+
+    private Highlighter $highlighter;
+
     private Indexer $indexer;
 
     private IndexInfo $indexInfo;
 
     private StateSetIndex $stateSetIndex;
 
+    private ?Tokenizer $tokenizer = null;
+
     public function __construct(
         private Connection $connection,
         private Configuration $configuration,
-        private Tokenizer $tokenizer,
-        private Highlighter $highlighter,
-        private Parser $filterParser,
         private ?string $dataDir = null
     ) {
         $this->indexInfo = new IndexInfo($this);
@@ -52,6 +56,8 @@ class Engine
             new NullDataStore()
         );
         $this->indexer = new Indexer($this);
+        $this->highlighter = new Highlighter($this);
+        $this->filterParser = new Parser();
     }
 
     /**
@@ -141,7 +147,18 @@ class Engine
 
     public function getTokenizer(): Tokenizer
     {
-        return $this->tokenizer;
+        if ($this->tokenizer instanceof Tokenizer) {
+            return $this->tokenizer;
+        }
+
+        $languageDetector = new LanguageDetector();
+        $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
+
+        if ($this->getConfiguration()->getLanguages() !== []) {
+            $languageDetector->langSubset($this->getConfiguration()->getLanguages()); // Save subset
+        }
+
+        return $this->tokenizer = new Tokenizer($languageDetector);
     }
 
     public function needsReindex(): bool
