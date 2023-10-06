@@ -47,4 +47,16 @@ class DocumentHandlingTest extends TestCase
 
         $this->assertNull($loupe->getDocument('foobar'));
     }
+
+    public function testGetDocumentWhenNotSetUpYet(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname']);
+
+        $loupe = $this->createLoupe($configuration);
+
+        $document = $loupe->getDocument('not_existing_identifier');
+        $this->assertNull($document);
+    }
 }
