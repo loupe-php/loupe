@@ -92,6 +92,10 @@ class Indexer
      */
     public function deleteDocuments(array $ids): self
     {
+        if(!$this->engine->tableExists(IndexInfo::TABLE_NAME_DOCUMENTS)){
+            return $this;
+        }
+
         $this->engine->getConnection()
             ->executeStatement(
                 sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),

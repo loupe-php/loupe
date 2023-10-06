@@ -90,11 +90,21 @@ class Engine
         return $this->connection;
     }
 
+    public function tableExists(string $tableName): bool
+    {
+        $schemaManager = $this->getConnection()->createSchemaManager();
+        return $schemaManager->tablesExist($tableName);
+    }
+
     /**
      * @return array<string, mixed>|null
      */
     public function getDocument(int|string $identifier): ?array
     {
+        if(!$this->tableExists(IndexInfo::TABLE_NAME_DOCUMENTS)){
+            return null;
+        }
+
         $document = $this->getConnection()
             ->fetchOne(
                 sprintf('SELECT document FROM %s WHERE user_id = :id', IndexInfo::TABLE_NAME_DOCUMENTS),
