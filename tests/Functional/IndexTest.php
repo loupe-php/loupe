@@ -289,7 +289,7 @@ class IndexTest extends TestCase
         ]);
     }
 
-    public function testDeleteDocument_WithoutIndexedDocuments(): void
+    public function testDeleteDocumentWhenNotSetUpYet(): void
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title', 'overview'])
@@ -299,10 +299,9 @@ class IndexTest extends TestCase
         $loupe = $this->createLoupe($configuration);
 
         // Delete document and assert it's gone
-        $loupe->deleteDocument("not_existing_identifier");
-        $this->assertNull($loupe->getDocument("not_existing_identifier"));
+        $loupe->deleteDocument('not_existing_identifier');
+        $this->assertNull($loupe->getDocument('not_existing_identifier'));
     }
-
 
     /**
      * @param array<array<string, mixed>> $documents

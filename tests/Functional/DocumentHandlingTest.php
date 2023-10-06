@@ -48,7 +48,7 @@ class DocumentHandlingTest extends TestCase
         $this->assertNull($loupe->getDocument('foobar'));
     }
 
-    public function testGetDocument_WithoutIndexedDocuments(): void
+    public function testGetDocumentWhenNotSetUpYet(): void
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
@@ -56,7 +56,7 @@ class DocumentHandlingTest extends TestCase
 
         $loupe = $this->createLoupe($configuration);
 
-        $document = $loupe->getDocument("not_existing_identifier");
+        $document = $loupe->getDocument('not_existing_identifier');
         $this->assertNull($document);
     }
 }

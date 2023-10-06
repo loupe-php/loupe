@@ -92,7 +92,7 @@ class Indexer
      */
     public function deleteDocuments(array $ids): self
     {
-        if(!$this->engine->tableExists(IndexInfo::TABLE_NAME_DOCUMENTS)){
+        if ($this->engine->getIndexInfo()->needsSetup()) {
             return $this;
         }
 
