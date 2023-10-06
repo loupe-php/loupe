@@ -298,7 +298,6 @@ class IndexTest extends TestCase
 
         $loupe = $this->createLoupe($configuration);
 
-        // Delete document and assert it's gone
         $loupe->deleteDocument('not_existing_identifier');
         $this->assertNull($loupe->getDocument('not_existing_identifier'));
     }
