@@ -23,17 +23,20 @@ Loupe…
 ## Introductory blog post
 
 If this is your first encounter with Loupe, you might want to read the [blog post on Medium][Blog_Medium] or [as 
-Markdown file][Blog_Repository] that should give you more information about the reasons and what you can do with it.
+Markdown file][Blog_Repository] that should give you more information about the reasons and what you can do with it. 
+Note that some implementation details (e.g. libraries used) referenced in this blog post are not up-to-date anymore.
 
 ## Performance
 
 Performance depends on many factors but here are some ballpark numbers based on indexing the [~32k movies fixture by 
-MeiliSearch][MeiliSearch_Movies]:
+MeiliSearch][MeiliSearch_Movies] and the test files in `bin` of this repository:
 
-* Indexing will take less than 5min (~110 documents per second)
-* The slowest possible search query (typo tolerance enabled, ordered by relevance) finishes in < 400ms
+* Indexing (`php bin/index_performance_test.php`) will take less than 5min (~110 documents per second)
+* Querying (`php bin/search_performance_test.php`) for `Amakin Dkywalker` with typo tolerance enabled and ordered by 
+  relevance finishes in about `80 ms`
 
-Note that anything above 50k documents is probably not a use case for Loupe. You may report your own performance 
+Note that anything above 50k documents is probably not a use case for Loupe. Please, also read the
+[Performance](./docs/performance.md) chapter in the docs. You may report your own performance 
 measurements and more details in the [respective discussion][Performance_Topic].
 
 ## Acknowledgement
@@ -149,6 +152,7 @@ Array
 * [Indexing](./docs/indexing.md)
 * [Searching](./docs/searching.md)
 * [Tokenizer](./docs/tokenizer.md)
+* [Performance](./docs/performance.md)
 
 "Why Loupe?" you ask? "Loupe" means "magnifier" in French and I felt like this was the appropriate choice for this 
 library after having given [my PHP crawler library][Escargot] a French name :-)
