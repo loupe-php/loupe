@@ -18,6 +18,7 @@ if (!file_exists($movies)) {
 // fast search results, do not index irrelevant stuff.
 $configuration = Configuration::create()
     ->withSearchableAttributes(['title', 'overview'])
+    ->withLanguages(['en'])
 ;
 
 $loupeFactory = new LoupeFactory();

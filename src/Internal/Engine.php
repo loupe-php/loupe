@@ -151,12 +151,38 @@ class Engine
             return $this->tokenizer;
         }
 
-        $languageDetector = new LanguageDetector();
-        $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
+        $languages = $this->getConfiguration()->getLanguages();
 
-        if ($this->getConfiguration()->getLanguages() !== []) {
-            $languageDetector->langSubset($this->getConfiguration()->getLanguages()); // Save subset
+        if ($languages !== []) {
+            // Load from data dir - this seems unnecessarily complicated, but we want to avoid calling new LanguageDetector()
+            // without arguments at all costs as this library currently loads the default ngram file even if only a subset
+            // is used later on. So we want to optimize this for memory if we can.
+            if ($this->getDataDir() !== null) {
+                sort($languages);
+                $ngramsFile = $this->getDataDir() . '/ngrams_' . sha1(implode(' ', $languages)) . '.php';
+                if (!file_exists($ngramsFile)) {
+                    // Prepare for the next time
+                    $languageDetector = new LanguageDetector();
+                    $file = $languageDetector->langSubset($languages)->file;
+
+                    if ($file !== null) {
+                        file_put_contents($ngramsFile, '<?php return ' . var_export($file, true) . ';');
+                    }
+                } else {
+                    // Best case!
+                    $file = include_once $ngramsFile;
+                    $languageDetector = new LanguageDetector($file);
+                }
+            } else {
+                // No data dir, we cannot save anything, so we work with a dynamic subset
+                $languageDetector = new LanguageDetector();
+                $languageDetector->dynamicLangSubset($languages);
+            }
+        } else {
+            $languageDetector = new LanguageDetector();
         }
+
+        $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
 
         return $this->tokenizer = new Tokenizer($languageDetector);
     }
