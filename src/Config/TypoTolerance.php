@@ -9,13 +9,15 @@ use voku\helper\UTF8;
 
 final class TypoTolerance
 {
-    private int $alphabetSize = 20;
+    private int $alphabetSize = 4;
 
     private bool $firstCharTypoCountsDouble = true;
 
-    private int $indexLength = 16;
+    private int $indexLength = 14;
 
     private bool $isDisabled = false;
+
+    private bool $isEnabledForPrefixSearch = false;
 
     /**
      * @var array<int, int>
@@ -35,6 +37,7 @@ final class TypoTolerance
         $clone = clone $this;
         $clone->isDisabled = true;
         $clone->typoThresholds = [];
+        $clone->isEnabledForPrefixSearch = false;
 
         return $clone;
     }
@@ -81,10 +84,23 @@ final class TypoTolerance
         return $this->isDisabled;
     }
 
+    public function isEnabledForPrefixSearch(): bool
+    {
+        return $this->isEnabledForPrefixSearch;
+    }
+
     public function withAlphabetSize(int $alhabetSize): self
     {
         $clone = clone $this;
         $clone->alphabetSize = $alhabetSize;
+
+        return $clone;
+    }
+
+    public function withEnabledForPrefixSearch(bool $enable): self
+    {
+        $clone = clone $this;
+        $clone->isEnabledForPrefixSearch = $enable;
 
         return $clone;
     }

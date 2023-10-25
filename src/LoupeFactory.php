@@ -13,25 +13,23 @@ use Doctrine\DBAL\Logging\Middleware;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\CosineSimilarity;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
-use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
-use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\Internal\Util;
-use Nitotm\Eld\LanguageDetector;
 
 final class LoupeFactory
 {
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
-    public function create(string $dbPath, Configuration $configuration): Loupe
+    public function create(string $dataDir, Configuration $configuration): Loupe
     {
-        if (!file_exists($dbPath)) {
-            throw InvalidConfigurationException::becauseInvalidDbPath($dbPath);
+        if (!is_dir($dataDir)) {
+            if (!mkdir($dataDir, 0777, true)) {
+                throw InvalidConfigurationException::becauseCouldNotCreateDataDir($dataDir);
+            }
         }
 
-        return $this->createFromConnection($this->createConnection($configuration, $dbPath), $configuration);
+        return $this->createFromConnection($this->createConnection($configuration, $dataDir), $configuration, $dataDir);
     }
 
     public function createInMemory(Configuration $configuration): Loupe
@@ -50,10 +48,10 @@ final class LoupeFactory
         return true;
     }
 
-    private function createConnection(Configuration $configuration, ?string $dbPath = null): Connection
+    private function createConnection(Configuration $configuration, ?string $folder = null): Connection
     {
         $connection = null;
-        $dsnPart = $dbPath === null ? ':memory:' : ('notused:inthis@case/' . realpath($dbPath));
+        $dsnPart = $folder === null ? ':memory:' : ('notused:inthis@case/' . realpath($folder) . '/loupe.db');
 
         // Try sqlite3 first, it seems way faster than the pdo-sqlite driver
         try {
@@ -94,31 +92,15 @@ final class LoupeFactory
         return $connection;
     }
 
-    private function createFromConnection(Connection $connection, Configuration $configuration): Loupe
+    private function createFromConnection(Connection $connection, Configuration $configuration, ?string $dataDir = null): Loupe
     {
-        $tokenizer = $this->createTokenizer($configuration);
-
         return new Loupe(
             new Engine(
                 $connection,
                 $configuration,
-                $tokenizer,
-                new Highlighter($configuration, $tokenizer),
-                new Parser()
+                $dataDir
             )
         );
-    }
-
-    private function createTokenizer(Configuration $configuration): Tokenizer
-    {
-        $languageDetector = new LanguageDetector();
-        $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
-
-        if ($configuration->getLanguages() !== []) {
-            $languageDetector->langSubset($configuration->getLanguages()); // Save subset
-        }
-
-        return new Tokenizer($languageDetector);
     }
 
     private function getDbalConfiguration(Configuration $configuration): DbalConfiguration
@@ -137,11 +119,11 @@ final class LoupeFactory
     private function registerSQLiteFunctions(Connection $connection, string $sqliteVersion): void
     {
         $functions = [
-            'max_levenshtein' => [
+            'loupe_max_levenshtein' => [
                 'callback' => [Levenshtein::class, 'maxLevenshtein'],
                 'numArgs' => 4,
             ],
-            'geo_distance' => [
+            'loupe_geo_distance' => [
                 'callback' => [Geo::class, 'geoDistance'],
                 'numArgs' => 4,
             ],

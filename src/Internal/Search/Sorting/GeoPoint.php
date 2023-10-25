@@ -36,7 +36,7 @@ class GeoPoint extends AbstractSorter
         }
 
         $searcher->getQueryBuilder()->addSelect(sprintf(
-            'geo_distance(%f, %f, %s, %s) AS %s',
+            'loupe_geo_distance(%f, %f, %s, %s) AS %s',
             $this->lat,
             $this->lng,
             $alias . '.' . $this->attributeName . '_geo_lat',

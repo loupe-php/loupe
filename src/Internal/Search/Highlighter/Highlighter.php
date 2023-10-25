@@ -4,18 +4,16 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Highlighter;
 
-use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
-use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use voku\helper\UTF8;
 
 class Highlighter
 {
     public function __construct(
-        private Configuration $configuration,
-        private Tokenizer $tokenizer
+        private Engine $engine
     ) {
     }
 
@@ -27,7 +25,7 @@ class Highlighter
 
         $matches = [];
 
-        foreach ($this->tokenizer->tokenize($text)->all() as $textToken) {
+        foreach ($this->engine->getTokenizer()->tokenize($text)->all() as $textToken) {
             if ($this->matches($textToken, $queryTokens)) {
                 $matches[] = [
                     'start' => $textToken->getStartPosition(),
@@ -97,11 +95,12 @@ class Highlighter
 
     private function matches(Token $textToken, TokenCollection $queryTokens): bool
     {
-        $firstCharTypoCountsDouble = $this->configuration->getTypoTolerance()->firstCharTypoCountsDouble();
+        $configuration = $this->engine->getConfiguration();
+        $firstCharTypoCountsDouble = $configuration->getTypoTolerance()->firstCharTypoCountsDouble();
 
         foreach ($queryTokens->all() as $queryToken) {
             foreach ($queryToken->allTerms() as $term) {
-                $levenshteinDistance = $this->configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($term);
+                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($term);
 
                 if ($levenshteinDistance === 0) {
                     if (\in_array($term, $textToken->allTerms(), true)) {
@@ -114,6 +113,35 @@ class Highlighter
                         }
                     }
                 }
+            }
+        }
+
+        $lastToken = $queryTokens->last();
+
+        if ($lastToken === null) {
+            return false;
+        }
+
+        $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($lastToken->getTerm());
+
+        // Prefix search (only if minimum token length is fulfilled)
+        if (mb_strlen($textToken->getTerm()) <= $configuration->getMinTokenLengthForPrefixSearch()) {
+            return false;
+        }
+
+        $chars = mb_str_split($textToken->getTerm(), 1, 'UTF-8');
+        $prefix = implode('', \array_slice($chars, 0, $configuration->getMinTokenLengthForPrefixSearch()));
+        $rest = \array_slice($chars, $configuration->getMinTokenLengthForPrefixSearch());
+
+        if (Levenshtein::levenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+            return true;
+        }
+
+        while ($rest !== []) {
+            $prefix .= array_shift($rest);
+
+            if (Levenshtein::levenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                return true;
             }
         }
 

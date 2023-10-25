@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
@@ -12,18 +13,24 @@ use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
 use Loupe\Loupe\Internal\Search\Searcher;
-use Loupe\Loupe\Internal\StateSet\Alphabet;
-use Loupe\Loupe\Internal\StateSet\StateSet;
+use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
+use Nitotm\Eld\LanguageDetector;
 use Psr\Log\LoggerInterface;
+use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
+use Toflar\StateSetIndex\DataStore\NullDataStore;
 use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
     public const VERSION = '0.3.0'; // Increase this whenever a re-index of all documents is needed
+
+    private Parser $filterParser;
+
+    private Highlighter $highlighter;
 
     private Indexer $indexer;
 
@@ -31,12 +38,12 @@ class Engine
 
     private StateSetIndex $stateSetIndex;
 
+    private ?Tokenizer $tokenizer = null;
+
     public function __construct(
         private Connection $connection,
         private Configuration $configuration,
-        private Tokenizer $tokenizer,
-        private Highlighter $highlighter,
-        private Parser $filterParser
+        private ?string $dataDir = null
     ) {
         $this->indexInfo = new IndexInfo($this);
         $this->stateSetIndex = new StateSetIndex(
@@ -44,10 +51,13 @@ class Engine
                 $this->configuration->getTypoTolerance()->getIndexLength(),
                 $this->configuration->getTypoTolerance()->getAlphabetSize(),
             ),
-            new Alphabet($this),
-            new StateSet($this)
+            new Utf8Alphabet(),
+            new StateSet($this),
+            new NullDataStore()
         );
         $this->indexer = new Indexer($this);
+        $this->highlighter = new Highlighter($this);
+        $this->filterParser = new Parser();
     }
 
     /**
@@ -88,6 +98,11 @@ class Engine
     public function getConnection(): Connection
     {
         return $this->connection;
+    }
+
+    public function getDataDir(): ?string
+    {
+        return $this->dataDir;
     }
 
     /**
@@ -136,7 +151,44 @@ class Engine
 
     public function getTokenizer(): Tokenizer
     {
-        return $this->tokenizer;
+        if ($this->tokenizer instanceof Tokenizer) {
+            return $this->tokenizer;
+        }
+
+        $languages = $this->getConfiguration()->getLanguages();
+
+        if ($languages !== []) {
+            // Load from data dir - this seems unnecessarily complicated, but we want to avoid calling new LanguageDetector()
+            // without arguments at all costs as this library currently loads the default ngram file even if only a subset
+            // is used later on. So we want to optimize this for memory if we can.
+            if ($this->getDataDir() !== null) {
+                sort($languages);
+                $ngramsFile = $this->getDataDir() . '/ngrams_' . sha1(implode(' ', $languages)) . '.php';
+                if (!file_exists($ngramsFile)) {
+                    // Prepare for the next time
+                    $languageDetector = new LanguageDetector();
+                    $file = $languageDetector->langSubset($languages)->file;
+
+                    if ($file !== null) {
+                        file_put_contents($ngramsFile, '<?php return ' . var_export($file, true) . ';');
+                    }
+                } else {
+                    // Best case!
+                    $file = include_once $ngramsFile;
+                    $languageDetector = new LanguageDetector($file);
+                }
+            } else {
+                // No data dir, we cannot save anything, so we work with a dynamic subset
+                $languageDetector = new LanguageDetector();
+                $languageDetector->dynamicLangSubset($languages);
+            }
+        } else {
+            $languageDetector = new LanguageDetector();
+        }
+
+        $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
+
+        return $this->tokenizer = new Tokenizer($languageDetector);
     }
 
     public function needsReindex(): bool
@@ -197,10 +249,10 @@ class Engine
             $query .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $existing = $this->getConnection()->executeQuery($query, $parameters)->fetchAssociative();
+        $existing = $this->getConnection()->executeQuery($query, $parameters, $this->extractDbalTypes($parameters))->fetchAssociative();
 
         if ($existing === false) {
-            $this->getConnection()->insert($table, $insertData);
+            $this->getConnection()->insert($table, $insertData, $this->extractDbalTypes($insertData));
 
             return (int) $this->getConnection()->lastInsertId();
         }
@@ -228,8 +280,27 @@ class Engine
             $query .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $this->getConnection()->executeStatement($query, $parameters);
+        $this->getConnection()->executeStatement($query, $parameters, $this->extractDbalTypes($parameters));
 
         return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
+    }
+
+    /**
+     * @param array<string|int, mixed> $data
+     * @return  array<string|int, int>
+     */
+    private function extractDbalTypes(array $data): array
+    {
+        $types = [];
+
+        foreach ($data as $k => $v) {
+            $types[$k] = match (\gettype($v)) {
+                'boolean' => ParameterType::BOOLEAN,
+                'integer' => ParameterType::INTEGER,
+                default => ParameterType::STRING
+            };
+        }
+
+        return $types;
     }
 }

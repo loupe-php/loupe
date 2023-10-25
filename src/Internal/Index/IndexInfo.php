@@ -16,8 +16,6 @@ use Loupe\Loupe\Internal\Util;
 
 class IndexInfo
 {
-    public const TABLE_NAME_ALPHABET = 'alphabet';
-
     public const TABLE_NAME_DOCUMENTS = 'documents';
 
     public const TABLE_NAME_INDEX_INFO = 'info';
@@ -25,6 +23,10 @@ class IndexInfo
     public const TABLE_NAME_MULTI_ATTRIBUTES = 'multi_attributes';
 
     public const TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS = 'multi_attributes_documents';
+
+    public const TABLE_NAME_PREFIXES = 'prefixes';
+
+    public const TABLE_NAME_PREFIXES_TERMS = 'prefixes_terms';
 
     public const TABLE_NAME_STATE_SET = 'state_set';
 
@@ -157,6 +159,8 @@ class IndexInfo
             self::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS => 'mad',
             self::TABLE_NAME_TERMS => 't',
             self::TABLE_NAME_TERMS_DOCUMENTS => 'td',
+            self::TABLE_NAME_PREFIXES => 'p',
+            self::TABLE_NAME_PREFIXES_TERMS => 'tp',
             default => throw new \LogicException(sprintf('Forgot to define an alias for %s.', $table))
         };
     }
@@ -295,19 +299,6 @@ class IndexInfo
         ;
     }
 
-    private function addAlphabetToSchema(Schema $schema): void
-    {
-        $table = $schema->createTable(self::TABLE_NAME_ALPHABET);
-
-        $table->addColumn('char', Types::STRING)
-            ->setNotnull(true);
-
-        $table->addColumn('label', Types::INTEGER)
-            ->setNotnull(true);
-
-        $table->addUniqueIndex(['char', 'label']);
-    }
-
     private function addDocumentsToSchema(Schema $schema): void
     {
         $table = $schema->createTable(self::TABLE_NAME_DOCUMENTS);
@@ -420,6 +411,43 @@ class IndexInfo
         $table->addUniqueIndex(['attribute', 'numeric_value']);
     }
 
+    private function addPrefixesToSchema(Schema $schema): void
+    {
+        $table = $schema->createTable(self::TABLE_NAME_PREFIXES);
+
+        $table->addColumn('id', Types::INTEGER)
+            ->setNotnull(true)
+            ->setAutoincrement(true)
+        ;
+
+        $table->addColumn('prefix', Types::STRING)
+            ->setNotnull(true);
+
+        $table->addColumn('length', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->addColumn('state', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->setPrimaryKey(['id']);
+        $table->addUniqueIndex(['prefix', 'length']);
+        $table->addIndex(['state']);
+        $table->addIndex(['length']);
+    }
+
+    private function addPrefixesToTermsRelationToSchema(Schema $schema): void
+    {
+        $table = $schema->createTable(self::TABLE_NAME_PREFIXES_TERMS);
+
+        $table->addColumn('prefix', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->addColumn('term', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->setPrimaryKey(['prefix', 'term']);
+    }
+
     private function addStateSetToSchema(Schema $schema): void
     {
         $table = $schema->createTable(self::TABLE_NAME_STATE_SET);
@@ -427,14 +455,7 @@ class IndexInfo
         $table->addColumn('state', Types::INTEGER)
             ->setNotnull(true);
 
-        $table->addColumn('parent', Types::INTEGER)
-            ->setNotnull(true);
-
-        $table->addColumn('mapped_char', Types::INTEGER)
-            ->setNotnull(true);
-
-        $table->addUniqueIndex(['state', 'parent', 'mapped_char']);
-        $table->addIndex(['mapped_char']);
+        $table->setPrimaryKey(['state']);
     }
 
     private function addTermsToDocumentsRelationToSchema(Schema $schema): void
@@ -469,7 +490,7 @@ class IndexInfo
         $table->addColumn('term', Types::STRING)
             ->setNotnull(true);
 
-        $table->addColumn('state', Types::STRING)
+        $table->addColumn('state', Types::INTEGER)
             ->setNotnull(true);
 
         $table->addColumn('length', Types::INTEGER)
@@ -481,6 +502,8 @@ class IndexInfo
 
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['term', 'state', 'length']);
+        $table->addIndex(['state']);
+        $table->addIndex(['length']);
     }
 
     private function getSchema(): Schema
@@ -491,11 +514,12 @@ class IndexInfo
         $this->addDocumentsToSchema($schema);
         $this->addMultiAttributesToSchema($schema);
         $this->addTermsToSchema($schema);
-        $this->addAlphabetToSchema($schema);
+        $this->addPrefixesToSchema($schema);
         $this->addStateSetToSchema($schema);
 
         $this->addMultiAttributesToDocumentsRelationToSchema($schema);
         $this->addTermsToDocumentsRelationToSchema($schema);
+        $this->addPrefixesToTermsRelationToSchema($schema);
 
         return $schema;
     }

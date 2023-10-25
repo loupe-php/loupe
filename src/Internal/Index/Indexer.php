@@ -10,13 +10,22 @@ use Loupe\Loupe\Exception\LoupeExceptionInterface;
 use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\StateSet\Alphabet;
-use Loupe\Loupe\Internal\StateSet\StateSet;
+use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Util;
 use voku\helper\UTF8;
 
 class Indexer
 {
+    /**
+     * @var array<string, int>
+     */
+    private array $prefixCache = [];
+
+    /**
+     * @var array<string,bool>
+     */
+    private array $prefixTermCache = [];
+
     public function __construct(
         private Engine $engine
     ) {
@@ -219,7 +228,77 @@ class Indexer
         }
     }
 
-    private function indexTerm(string $term, int $documentId, string $attributeName, int $termPosition): void
+    private function indexPrefix(string $prefix, int $termId): void
+    {
+        $cacheKey = $prefix . ';' . $termId;
+
+        if (isset($this->prefixTermCache[$cacheKey])) {
+            return;
+        }
+
+        if (!isset($this->prefixCache[$prefix])) {
+            if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+                $state = 0;
+            } else {
+                $state = $this->engine->getStateSetIndex()->index([$prefix])[$prefix];
+            }
+
+            $this->prefixCache[$prefix] = (int) $this->engine->upsert(
+                IndexInfo::TABLE_NAME_PREFIXES,
+                [
+                    'prefix' => $prefix,
+                    'length' => UTF8::strlen($prefix),
+                    'state' => $state,
+                ],
+                ['prefix', 'length'],
+                'id'
+            );
+        }
+
+        $this->engine->upsert(
+            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+            [
+                'prefix' => $this->prefixCache[$prefix],
+                'term' => $termId,
+            ],
+            ['prefix', 'term'],
+            ''
+        );
+
+        $this->prefixTermCache[$cacheKey] = true;
+    }
+
+    private function indexPrefixes(string $term, int $termId): void
+    {
+        // Prefix typo search disabled = we don't need to index them
+        if (!$this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
+            return;
+        }
+
+        $chars = mb_str_split($term, 1, 'UTF-8');
+        // We don't need to index anything after our max index length because for prefix search, we do not have
+        // to index the entire word as there's no such thing as exact match or phrase search.
+        $chars = \array_slice($chars, 0, $this->engine->getConfiguration()->getTypoTolerance()->getIndexLength());
+
+        $prefix = [];
+        for ($i = 0; $i < \count($chars); $i++) {
+            $prefix[] = $chars[$i];
+
+            // First n characters can be skipped as they are not relevant for prefix search
+            if ($i < $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch() - 1) {
+                continue;
+            }
+
+            // The entire word does not need to be indexed again either
+            if (\count($prefix) === \count($chars)) {
+                continue;
+            }
+
+            $this->indexPrefix(implode('', $prefix), $termId);
+        }
+    }
+
+    private function indexTerm(string $term, int $documentId, string $attributeName, int $termPosition): int
     {
         if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
             $state = 0;
@@ -227,7 +306,7 @@ class Indexer
             $state = $this->engine->getStateSetIndex()->index([$term])[$term];
         }
 
-        $termId = $this->engine->upsert(
+        $termId = (int) $this->engine->upsert(
             IndexInfo::TABLE_NAME_TERMS,
             [
                 'term' => $term,
@@ -250,6 +329,8 @@ class Indexer
             ['term', 'document', 'attribute', 'position'],
             ''
         );
+
+        return $termId;
     }
 
     /**
@@ -273,8 +354,15 @@ class Indexer
         foreach ($tokensPerAttribute as $attributeName => $tokenCollection) {
             $termPosition = 1;
             foreach ($tokenCollection->all() as $token) {
-                foreach ($token->allTerms() as $term) {
-                    $this->indexTerm($term, $documentId, $attributeName, $termPosition);
+                // Index the main term
+                $termId = $this->indexTerm($token->getTerm(), $documentId, $attributeName, $termPosition);
+
+                // Index prefixes for the main term (not for variants though)
+                $this->indexPrefixes($token->getTerm(), $termId);
+
+                // Index variants
+                foreach ($token->getVariants() as $termVariant) {
+                    $this->indexTerm($termVariant, $documentId, $attributeName, $termPosition);
                 }
 
                 ++$termPosition;
@@ -284,10 +372,6 @@ class Indexer
 
     private function persistStateSet(): void
     {
-        /** @var Alphabet $alphabet */
-        $alphabet = $this->engine->getStateSetIndex()->getAlphabet();
-        $alphabet->persist();
-
         /** @var StateSet $stateSet */
         $stateSet = $this->engine->getStateSetIndex()->getStateSet();
         $stateSet->persist();

@@ -13,11 +13,12 @@ class TypoToleranceTest extends TestCase
     {
         $typoTolerance = new TypoTolerance();
 
-        $this->assertSame(20, $typoTolerance->getAlphabetSize());
-        $this->assertSame(16, $typoTolerance->getIndexLength());
+        $this->assertSame(4, $typoTolerance->getAlphabetSize());
+        $this->assertSame(14, $typoTolerance->getIndexLength());
         $this->assertSame(0, $typoTolerance->getLevenshteinDistanceForTerm('1234'));
         $this->assertSame(1, $typoTolerance->getLevenshteinDistanceForTerm('12345'));
         $this->assertSame(2, $typoTolerance->getLevenshteinDistanceForTerm('123456789'));
+        $this->assertFalse($typoTolerance->isEnabledForPrefixSearch());
     }
 
     public function testWithDisabledTypoTolerance(): void
@@ -40,6 +41,7 @@ class TypoToleranceTest extends TestCase
             8 => 2,
             3 => 1,
         ]);
+        $typoTolerance = $typoTolerance->withEnabledForPrefixSearch(true);
 
         $this->assertSame(10, $typoTolerance->getAlphabetSize());
         $this->assertSame(8, $typoTolerance->getIndexLength());
@@ -47,6 +49,7 @@ class TypoToleranceTest extends TestCase
         $this->assertSame(1, $typoTolerance->getLevenshteinDistanceForTerm('123'));
         $this->assertSame(2, $typoTolerance->getLevenshteinDistanceForTerm('12345678'));
         $this->assertSame(2, $typoTolerance->getLevenshteinDistanceForTerm('123456789'));
+        $this->assertTrue($typoTolerance->isEnabledForPrefixSearch());
     }
 
     public function testWrongThresholdOrderIsFixedAutomatically(): void

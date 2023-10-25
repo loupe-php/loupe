@@ -11,14 +11,14 @@ use Loupe\Loupe\SearchParameters;
 
 trait FunctionalTestTrait
 {
-    protected function createLoupe(Configuration $configuration, string $dbPath = ''): Loupe
+    protected function createLoupe(Configuration $configuration, string $dataDir = ''): Loupe
     {
         $factory = new LoupeFactory();
 
-        if ($dbPath === '') {
+        if ($dataDir === '') {
             $loupe = $factory->createInMemory($configuration);
         } else {
-            $loupe = $factory->create($dbPath, $configuration);
+            $loupe = $factory->create($dataDir, $configuration);
         }
 
         return $loupe;

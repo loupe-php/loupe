@@ -127,20 +127,18 @@ Those are the two major configuration values that affect basically everything in
 - The indexing performance
 - The search performance
 
-It's pretty hard to explain the State Set Index algorithm in a few short words. Best is to read the academic paper
+It's pretty hard to explain the State Set Index algorithm in a few short words but I tried my very best to explain 
+some of it in the [Performance](performance.md) section. Best is to read the academic paper
 linked. However, one thing to note: You **cannot** get wrong search results no matter what values you configure. Those  
 values are basically about the number of potential false-positives that then have to be filtered by 
 running the Levenshtein algorithm on all results. The higher the values, the less false-positives. But also the more 
 space required for the index.
 
-Generally speaking, I would recommend you don't change the values at all and see, if you're happy with the 
-performance. If you are not, you might want to try adjusting those values in either direction and compare the results.
-
-The alphabet size is configured to `20` by default. The index size to `16`.
+The alphabet size is configured to `4` by default. The index length to `14`.
 
 ```php
 $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
-    ->withAlphabetSize(4)
+    ->withAlphabetSize(5)
     ->withIndexLength(18)
 ;
 ```
@@ -171,6 +169,18 @@ typo at the first character of a word as two typos by default. You can disable t
 ```php
 $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
     ->withFirstCharTypoCountsDouble(false)
+;
+```
+
+### Prefix search with typos
+
+By default, Loupe will not allow typos on prefixes. So if you e.g. search for `Huckle`, it will find `Huckleberry` 
+but if you search for `Hukcle`, it won't. This is for performance reasons. However, you can enable typo tolerance on 
+prefix search. Just be aware that you probably shouldn't do this in case you have tens of thousands of documents:
+
+```php
+$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
+    ->withEnabledForPrefixSearch(true)
 ;
 ```
 

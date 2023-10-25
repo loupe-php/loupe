@@ -1,29 +1,11 @@
 <?php
 
-namespace App;
-
-use Loupe\Loupe\Configuration;
-use Loupe\Loupe\LoupeFactory;
-
-require_once 'vendor/autoload.php';
-
-$movies = __DIR__ . '/../var/movies.json';
-
-if (!file_exists($movies)) {
-    echo 'movies.json does not exist. Run "wget https://www.meilisearch.com/movies.json -O var/movies.json" first.';
-    exit(1);
-}
-
-// Index everything (do not define the searchable fields which would speed up the process)
-$configuration = Configuration::create();
-
-$loupeFactory = new LoupeFactory();
-$loupe = $loupeFactory->createInMemory($configuration);
+$config = require_once __DIR__ . '/config.php';
 
 $startTime = microtime(true);
 
-$loupe->addDocuments(json_decode(file_get_contents($movies), true));
+$config['loupe']->addDocuments(json_decode(file_get_contents($config['movies']), true));
 
-echo 'Finished! Time: ' . round(microtime(true) - $startTime, 2).'s';
+echo sprintf('Finished: %.2F MiB - %.2F s', memory_get_peak_usage(true) / 1024 / 1024, microtime(true) - $startTime);
 
 
