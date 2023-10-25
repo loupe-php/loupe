@@ -286,7 +286,7 @@ class Searcher
          *     AND
          *     LENGTH(term) <= <term> + <lev-distance>
          *     AND
-         *     max_levenshtein(<term>, $termColumnName, <distance>)
+         *     loupe_max_levenshtein(<term>, $termColumnName, <distance>)
          */
         $where[] = sprintf(
             '%s.state IN (%s)',
@@ -310,7 +310,7 @@ class Searcher
         );
         $where[] = 'AND';
         $where[] = sprintf(
-            'max_levenshtein(%s, %s.%s, %d, %s)',
+            'loupe_max_levenshtein(%s, %s.%s, %d, %s)',
             $this->queryBuilder->createNamedParameter($term),
             $this->engine->getIndexInfo()->getAliasForTable($table),
             $termColumnName,
@@ -569,7 +569,7 @@ class Searcher
             // but not within the radius (which is a circle).
             $whereStatement[] = 'AND';
             $whereStatement[] = sprintf(
-                'geo_distance(%f, %f, %s, %s)',
+                'loupe_geo_distance(%f, %f, %s, %s)',
                 $node->lat,
                 $node->lng,
                 $documentAlias . '.' . $node->attributeName . '_geo_lat',

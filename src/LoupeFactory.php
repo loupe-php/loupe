@@ -119,11 +119,11 @@ final class LoupeFactory
     private function registerSQLiteFunctions(Connection $connection, string $sqliteVersion): void
     {
         $functions = [
-            'max_levenshtein' => [
+            'loupe_max_levenshtein' => [
                 'callback' => [Levenshtein::class, 'maxLevenshtein'],
                 'numArgs' => 4,
             ],
-            'geo_distance' => [
+            'loupe_geo_distance' => [
                 'callback' => [Geo::class, 'geoDistance'],
                 'numArgs' => 4,
             ],
