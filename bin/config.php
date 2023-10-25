@@ -7,7 +7,7 @@ use Loupe\Loupe\LoupeFactory;
 require_once __DIR__ . '/../vendor/autoload.php';
 
 $movies = __DIR__ . '/../var/movies.json';
-$db = __DIR__ . '/../var/movies-test';
+$dataDir = __DIR__ . '/../var/movies-test';
 
 if (!file_exists($movies)) {
     echo 'movies.json does not exist. Run "wget https://www.meilisearch.com/movies.json -O var/movies.json" first.';
@@ -25,5 +25,5 @@ $loupeFactory = new LoupeFactory();
 
 return [
     'movies' => $movies,
-    'loupe' => $loupeFactory->create($db, $configuration),
+    'loupe' => $loupeFactory->create($dataDir, $configuration),
 ];

@@ -83,7 +83,7 @@ $configuration = Configuration::create()
 
 $loupeFactory = new LoupeFactory();
 
-$loupe = $loupeFactory->create('path/to/my_loupe.db', $configuration);
+$loupe = $loupeFactory->create('path/to/my_loupe_data_dir', $configuration);
 
 // or create in-memory search:
 $loupe = $loupeFactory->createInMemory($configuration);

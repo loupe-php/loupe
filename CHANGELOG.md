@@ -2,6 +2,20 @@
 
 Contains only a redacted list of new features. For bugfixes and more details, checkout the git commit history.
 
+## 0.5.0
+
+* PERFORMANCE! Loupe 0.5 now searches the 32k movies.json database for `Amakin Dkywalker` with typo tolerance 
+  enabled and ordered by relevance in about `80 ms` 🚀
+* Faster State Set Index implementation (work happened in https://github.com/Toflar/state-set-index)
+* State Set is now added as PHP file on top for OPCache improvements when using persistance - this means that there 
+  is an API change for `LoupeFactory::create()` which now requires a directory instead of a database-only path!
+* Prefix search now with typo tolerance! This is not enabled by default because of performance reasons but you can 
+  do so using `TypoTolerance::create()->withEnabledForPrefixSearch(true)`.
+* Faster language detection when limiting the languages using `Configuration::create()->withLanguages(['en', 'de'])`
+* Entire new documentation section about performance!
+* Additional micro optimizations
+* We know have a `CHANGELOG.md` so devs can see the major changes in every version very quickly
+
 ## 0.4.0
 
 * Both `addDocuments()` and `addDocument()` now return an `IndexResult`. This means that when there's an issue in a  
