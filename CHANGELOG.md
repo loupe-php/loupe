@@ -14,7 +14,7 @@ Contains only a redacted list of new features. For bugfixes and more details, ch
 * Faster language detection when limiting the languages using `Configuration::create()->withLanguages(['en', 'de'])`
 * Entire new documentation section about performance!
 * Additional micro optimizations
-* We know have a `CHANGELOG.md` so devs can see the major changes in every version very quickly
+* We now have a `CHANGELOG.md` so devs can see the major changes in every version very quickly
 
 ## 0.4.0
 
