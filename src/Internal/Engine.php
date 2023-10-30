@@ -162,20 +162,14 @@ class Engine
             // without arguments at all costs as this library currently loads the default ngram file even if only a subset
             // is used later on. So we want to optimize this for memory if we can.
             if ($this->getDataDir() !== null) {
-                sort($languages);
-                $ngramsFile = $this->getDataDir() . '/ngrams_' . sha1(implode(' ', $languages)) . '.php';
-                if (!file_exists($ngramsFile)) {
-                    // Prepare for the next time
-                    $languageDetector = new LanguageDetector();
-                    $file = $languageDetector->langSubset($languages)->file;
+                $ngramsFile = $this->loadNGramsFile($languages);
 
-                    if ($file !== null) {
-                        file_put_contents($ngramsFile, '<?php return ' . var_export($file, true) . ';');
-                    }
+                if ($ngramsFile === null) {
+                    $languageDetector = new LanguageDetector($ngramsFile);
                 } else {
-                    // Best case!
-                    $file = include_once $ngramsFile;
-                    $languageDetector = new LanguageDetector($file);
+                    // Something with generating the ngrams file did not work, use a dynamic subset
+                    $languageDetector = new LanguageDetector();
+                    $languageDetector->dynamicLangSubset($languages);
                 }
             } else {
                 // No data dir, we cannot save anything, so we work with a dynamic subset
@@ -302,5 +296,39 @@ class Engine
         }
 
         return $types;
+    }
+
+    private function loadNGramsFile(array $languages): ?string
+    {
+        $generateNgramsRefFile = function (string $ngramsRefFile, array $languages): bool {
+            // Prepare for the next time
+            $languageDetector = new LanguageDetector();
+            $file = $languageDetector->langSubset($languages)->file;
+
+            if ($file !== null) {
+                file_put_contents($ngramsRefFile, '<?php return ' . var_export($file, true) . ';');
+                return true;
+            }
+
+            return false;
+        };
+
+        sort($languages);
+        $ngramsRefFile = $this->getDataDir() . '/ngrams_' . sha1(implode(' ', $languages)) . '.php';
+        if (!file_exists($ngramsRefFile)) {
+            if (!$generateNgramsRefFile($ngramsRefFile, $languages)) {
+                return null;
+            }
+        }
+
+        $ngramsFile = include_once $ngramsRefFile;
+
+        if (!\is_string($ngramsFile) || !file_exists($ngramsFile)) {
+            if (!$generateNgramsRefFile($ngramsRefFile, $languages)) {
+                return null;
+            }
+        }
+
+        return $ngramsFile;
     }
 }
