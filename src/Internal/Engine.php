@@ -298,6 +298,9 @@ class Engine
         return $types;
     }
 
+    /**
+     * @param array<string> $languages
+     */
     private function loadNGramsFile(array $languages): ?string
     {
         $generateNgramsRefFile = function (string $ngramsRefFile, array $languages): bool {

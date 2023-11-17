@@ -52,7 +52,7 @@ final class SearchParameters
     {
         return match (true) {
             \is_bool($value) => $value ? 'true' : 'false',
-            \is_int($value), \is_float($value) => $value,
+            \is_int($value), \is_float($value) => (string) $value,
             default => "'" . str_replace("'", "''", $value) . "'"
         };
     }
