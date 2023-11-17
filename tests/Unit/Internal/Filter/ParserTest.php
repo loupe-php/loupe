@@ -9,6 +9,7 @@ use Loupe\Loupe\Exception\FilterFormatException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -23,6 +24,17 @@ class ParserTest extends TestCase
                     'attribute' => 'genres',
                     'operator' => '=',
                     'value' => 'Drama',
+                ],
+            ],
+        ];
+
+        yield 'Special string filter' => [
+            'foobar = ' . SearchParameters::escapeFilterValue("The 17\" O'Conner && O`Series \n OR a || 1%2 book?"),
+            [
+                [
+                    'attribute' => 'foobar',
+                    'operator' => '=',
+                    'value' => "The 17\" O'Conner && O`Series \n OR a || 1%2 book?",
                 ],
             ],
         ];

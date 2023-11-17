@@ -48,6 +48,15 @@ final class SearchParameters
         return new self();
     }
 
+    public static function escapeFilterValue(string|int|float|bool $value): string
+    {
+        return match (true) {
+            \is_bool($value) => $value ? 'true' : 'false',
+            \is_int($value), \is_float($value) => $value,
+            default => "'" . str_replace("'", "''", $value) . "'"
+        };
+    }
+
     /**
      * @return array<string>
      */

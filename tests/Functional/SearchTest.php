@@ -681,6 +681,39 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testEscapingFilterValues(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['title'])
+        ;
+        $title = "The 17\" O'Conner && O`Series \n OR a || 1%2 book?";
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'title' => $title,
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withFilter('title = ' . SearchParameters::escapeFilterValue($title))
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 42,
+                    'title' => $title,
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testFilteringAndSortingForIdentifier(): void
     {
         $configuration = Configuration::create()

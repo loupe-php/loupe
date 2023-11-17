@@ -84,6 +84,8 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 
 Loupe can even filter on geo distance! See geo search section for more information.
 
+To make sure you properly escape the filter values, you can use `SearchParameters::escapeFilterValue()`.
+
 ## Sort
 
 By default, Loupe sorts your results based on relevance. Relevance is determined using a TF-IDF algorithm combined 
