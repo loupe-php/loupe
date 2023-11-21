@@ -686,7 +686,7 @@ class SearchTest extends TestCase
         $configuration = Configuration::create()
             ->withFilterableAttributes(['title'])
         ;
-        $title = "The 17\" O'Conner && O`Series \n OR a || 1%2 book?";
+        $title = "^The 17\" O'Conner && O`Series \n OR a || 1%2 \r\n book? \r \twhat \\ text // ok? end$";
 
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocument([
