@@ -140,9 +140,14 @@ class Parser
         }
     }
 
-    private function assertStringOrFloat(?Token $token): void
+    private function assertStringOrFloatOrBoolean(?Token $token): void
     {
-        $this->assertTokenTypes($token, [Lexer::T_FLOAT, Lexer::T_STRING], 'valid string or float value');
+        $this->assertTokenTypes($token, [
+            Lexer::T_FLOAT,
+            Lexer::T_STRING,
+            Lexer::T_TRUE,
+            Lexer::T_FALSE,
+        ], 'valid string, float or boolean value');
     }
 
     /**
@@ -155,6 +160,23 @@ class Parser
         if ($type === null || !\in_array($type, $types, true)) {
             $this->syntaxError($error, $token);
         }
+    }
+
+    private function getTokenValueBasedOnType(): float|string|bool
+    {
+        $value = $this->lexer->token?->value;
+
+        if ($value === null) {
+            $this->syntaxError('NULL is not supported, use IS NULL or IS NOT NULL');
+        }
+
+        return match ($this->lexer->token?->type) {
+            Lexer::T_FLOAT => LoupeTypes::convertToFloat($value),
+            Lexer::T_STRING => LoupeTypes::convertToString($value),
+            Lexer::T_FALSE => false,
+            Lexer::T_TRUE => true,
+            default => throw new FilterFormatException('This should never happen, please file a bug report.')
+        };
     }
 
     private function handleAttribute(Engine $engine): void
@@ -192,19 +214,11 @@ class Parser
             return;
         }
 
-        $this->assertStringOrFloat($this->lexer->lookahead);
+        $this->assertStringOrFloatOrBoolean($this->lexer->lookahead);
 
         $this->lexer->moveNext();
 
-        if ($this->lexer->token?->type === Lexer::T_FLOAT) {
-            /** @var float $value */
-            $value = LoupeTypes::convertValueToType($this->lexer->token->value, LoupeTypes::TYPE_NUMBER);
-        } else {
-            /** @var string $value */
-            $value = LoupeTypes::convertValueToType($this->lexer->token?->value, LoupeTypes::TYPE_STRING);
-        }
-
-        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $value));
+        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $this->getTokenValueBasedOnType()));
     }
 
     private function handleGeoRadius(Engine $engine): void
@@ -247,8 +261,8 @@ class Parser
         $values = [];
 
         while (true) {
-            $this->assertStringOrFloat($this->lexer->token);
-            $values[] = $this->lexer->token?->value;
+            $this->assertStringOrFloatOrBoolean($this->lexer->token);
+            $values[] = $this->getTokenValueBasedOnType();
 
             if ($this->lexer->lookahead === null) {
                 $this->assertClosingParenthesis($this->lexer->token);

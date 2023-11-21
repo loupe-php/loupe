@@ -19,9 +19,9 @@ enum Operator: string
     case NotIn = 'NOT IN';
 
     /**
-     * @param float|string|array<mixed> $value
+     * @param float|string|bool|array<mixed> $value
      */
-    public function buildSql(Connection $connection, string $attribute, float|string|array $value): string
+    public function buildSql(Connection $connection, string $attribute, float|string|bool|array $value): string
     {
         if (\is_array($value)) {
             foreach ($value as &$v) {
@@ -91,7 +91,7 @@ enum Operator: string
         };
     }
 
-    private function quote(Connection $connection, float|string|null &$value): void
+    private function quote(Connection $connection, float|string|bool|null &$value): void
     {
         if (\is_string($value)) {
             $value = $connection->quote($value);

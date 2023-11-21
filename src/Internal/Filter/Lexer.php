@@ -21,6 +21,8 @@ class Lexer extends AbstractLexer
 
     public const T_EQUALS = 11;
 
+    public const T_FALSE = 7;
+
     public const T_FLOAT = 5;
 
     public const T_GEO_RADIUS = 101;
@@ -46,6 +48,8 @@ class Lexer extends AbstractLexer
     public const T_OR = 200;
 
     public const T_STRING = 3;
+
+    public const T_TRUE = 6;
 
     protected function getCatchablePatterns()
     {
@@ -95,6 +99,12 @@ class Lexer extends AbstractLexer
 
             case $value === 'NULL':
                 return self::T_NULL;
+
+            case $value === 'false':
+                return self::T_FALSE;
+
+            case $value === 'true':
+                return self::T_TRUE;
 
             case $value === '_geoRadius':
                 return self::T_GEO_RADIUS;

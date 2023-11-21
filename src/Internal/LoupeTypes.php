@@ -12,6 +12,8 @@ class LoupeTypes
 
     public const TYPE_ARRAY_STRING = 'array<string>';
 
+    public const TYPE_BOOLEAN = 'boolean';
+
     public const TYPE_GEO = 'geo';
 
     public const TYPE_NULL = 'null';
@@ -118,9 +120,9 @@ class LoupeTypes
     }
 
     /**
-     * @return array<string>|array<float>|string|float
+     * @return array<string>|array<float>|string|float|bool
      */
-    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float
+    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float|bool
     {
         if ($attributeValue === null) {
             return self::VALUE_NULL;
@@ -131,6 +133,7 @@ class LoupeTypes
             self::TYPE_ARRAY_EMPTY => self::VALUE_EMPTY,
             self::TYPE_STRING => self::convertToString($attributeValue),
             self::TYPE_NUMBER => self::convertToFloat($attributeValue),
+            self::TYPE_BOOLEAN => (bool) $attributeValue,
             self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
             self::TYPE_ARRAY_NUMBER, self::TYPE_GEO => self::convertToArrayOfFloats($attributeValue),
             default => throw new \InvalidArgumentException('Invalid type given.')
@@ -145,6 +148,10 @@ class LoupeTypes
 
         if (\is_float($variable) || \is_int($variable)) {
             return self::TYPE_NUMBER;
+        }
+
+        if (\is_bool($variable)) {
+            return self::TYPE_BOOLEAN;
         }
 
         if (\is_array($variable)) {
@@ -183,7 +190,13 @@ class LoupeTypes
     public static function isSingleType(string $type): bool
     {
         // The Geo type is not exactly a single type, but it has to be treated as such
-        return \in_array($type, [self::TYPE_NUMBER, self::TYPE_STRING, self::TYPE_GEO, self::TYPE_NULL], true);
+        return \in_array($type, [
+            self::TYPE_NUMBER,
+            self::TYPE_STRING,
+            self::TYPE_BOOLEAN,
+            self::TYPE_GEO,
+            self::TYPE_NULL,
+        ], true);
     }
 
     public static function typeMatchesType(string $schemaType, string $checkType): bool

@@ -684,26 +684,45 @@ class SearchTest extends TestCase
     public function testEscapingFilterValues(): void
     {
         $configuration = Configuration::create()
-            ->withFilterableAttributes(['title'])
+            ->withFilterableAttributes(['title', 'published'])
         ;
         $title = "^The 17\" O'Conner && O`Series \n OR a || 1%2 \r\n book? \r \twhat \\ text // ok? end$";
 
-        $loupe = $this->createLoupe($configuration);
+        $loupe = $this->createLoupe($configuration, __DIR__ . '/../../var/yanick');
         $loupe->addDocument([
             'id' => 42,
             'title' => $title,
+            'published' => true,
         ]);
 
         $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'title'])
+            ->withAttributesToRetrieve(['id', 'title', 'published'])
             ->withFilter('title = ' . SearchParameters::escapeFilterValue($title))
         ;
+        /*
+                $this->searchAndAssertResults($loupe, $searchParameters, [
+                    'hits' => [
+                        [
+                            'id' => 42,
+                            'title' => $title,
+                            'published' => true,
+                        ],
+                    ],
+                    'query' => '',
+                    'hitsPerPage' => 20,
+                    'page' => 1,
+                    'totalPages' => 1,
+                    'totalHits' => 1,
+                ]);*/
+
+        $searchParameters = $searchParameters->withFilter('published = ' . SearchParameters::escapeFilterValue(true));
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
                     'id' => 42,
                     'title' => $title,
+                    'published' => true,
                 ],
             ],
             'query' => '',

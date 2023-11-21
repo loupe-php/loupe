@@ -50,6 +50,17 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Basic boolean filter' => [
+            'age = false',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => '=',
+                    'value' => false,
+                ],
+            ],
+        ];
+
         yield 'Basic not equals filter' => [
             "genres != 'Drama'",
             [
@@ -346,7 +357,7 @@ class ParserTest extends TestCase
 
         yield 'Wrong contents in IN ()' => [
             'genres IN (_geoRadius(1.00, 2.00))',
-            "Col 11: Error: Expected valid string or float value, got '_geoRadius'",
+            "Col 11: Error: Expected valid string, float or boolean value, got '_geoRadius'",
         ];
 
         yield 'Missing space between NOT and IN' => [
