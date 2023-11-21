@@ -681,50 +681,39 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testEscapingFilterValues(): void
+    public function testEscapeFilterValues(): void
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['title', 'published'])
         ;
-        $title = "^The 17\" O'Conner && O`Series \n OR a || 1%2 \r\n book? \r \twhat \\ text // ok? end$";
 
-        $loupe = $this->createLoupe($configuration, __DIR__ . '/../../var/yanick');
-        $loupe->addDocument([
+        $document = [
             'id' => 42,
-            'title' => $title,
+            'title' => "^The 17\" O'Conner && O`Series \n OR a || 1%2 \r\n book? \r \twhat \\ text // ok? end$",
             'published' => true,
-        ]);
+        ];
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument($document);
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'title', 'published'])
-            ->withFilter('title = ' . SearchParameters::escapeFilterValue($title))
+            ->withFilter('title = ' . SearchParameters::escapeFilterValue($document['title']))
         ;
-        /*
-                $this->searchAndAssertResults($loupe, $searchParameters, [
-                    'hits' => [
-                        [
-                            'id' => 42,
-                            'title' => $title,
-                            'published' => true,
-                        ],
-                    ],
-                    'query' => '',
-                    'hitsPerPage' => 20,
-                    'page' => 1,
-                    'totalPages' => 1,
-                    'totalHits' => 1,
-                ]);*/
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [$document],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
 
         $searchParameters = $searchParameters->withFilter('published = ' . SearchParameters::escapeFilterValue(true));
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 42,
-                    'title' => $title,
-                    'published' => true,
-                ],
-            ],
+            'hits' => [$document],
             'query' => '',
             'hitsPerPage' => 20,
             'page' => 1,
