@@ -689,7 +689,7 @@ class SearchTest extends TestCase
 
         $document = [
             'id' => 42,
-            'title' => "^The 17\" O'Conner && O`Series \n OR a || 1%2 \r\n book? \r \twhat \\ text // ok? end$",
+            'title' => "^The 17\" O'Conner && O`Series \n OR a || 1%2 1~2 1*2 \r\n book? \r \twhat \\ text: }{ )( ][ - + // \n\r ok? end$",
             'published' => true,
         ];
 
