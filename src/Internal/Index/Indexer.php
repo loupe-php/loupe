@@ -121,14 +121,13 @@ class Indexer
         return $this;
     }
 
-    private function indexAttributeValue(string $attribute, string|float|null $value, int $documentId): void
+    private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void
     {
         if ($value === null) {
             return;
         }
 
-        $float = \is_float($value);
-        $valueColumn = $float ? 'numeric_value' : 'string_value';
+        $valueColumn = (\is_float($value) || \is_bool($value)) ? 'numeric_value' : 'string_value';
 
         $data = [
             'attribute' => $attribute,

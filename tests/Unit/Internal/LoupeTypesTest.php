@@ -18,6 +18,8 @@ class LoupeTypesTest extends TestCase
 
         yield 'Float' => [42.42, LoupeTypes::TYPE_NUMBER];
 
+        yield 'Boolean' => [true, LoupeTypes::TYPE_BOOLEAN];
+
         yield 'Array of strings' => [['foobar', 'foobar2'], LoupeTypes::TYPE_ARRAY_STRING];
 
         yield 'Array of integers' => [[42, 84], LoupeTypes::TYPE_ARRAY_NUMBER];

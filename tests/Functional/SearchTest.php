@@ -681,6 +681,47 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testEscapeFilterValues(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['title', 'published'])
+        ;
+
+        $document = [
+            'id' => 42,
+            'title' => "^The 17\" O'Conner && O`Series \n OR a || 1%2 1~2 1*2 \r\n book? \r \twhat \\ text: }{ )( ][ - + // \n\r ok? end$",
+            'published' => true,
+        ];
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument($document);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'title', 'published'])
+            ->withFilter('title = ' . SearchParameters::escapeFilterValue($document['title']))
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [$document],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $searchParameters = $searchParameters->withFilter('published = ' . SearchParameters::escapeFilterValue(true));
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [$document],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testFilteringAndSortingForIdentifier(): void
     {
         $configuration = Configuration::create()

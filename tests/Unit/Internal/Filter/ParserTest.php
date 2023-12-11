@@ -9,6 +9,7 @@ use Loupe\Loupe\Exception\FilterFormatException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -27,6 +28,17 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Special string filter' => [
+            'foobar = ' . SearchParameters::escapeFilterValue("The 17\" O'Conner && O`Series \n OR a || 1%2 book?"),
+            [
+                [
+                    'attribute' => 'foobar',
+                    'operator' => '=',
+                    'value' => "The 17\" O'Conner && O`Series \n OR a || 1%2 book?",
+                ],
+            ],
+        ];
+
         yield 'Basic integer filter' => [
             'age = 42',
             [
@@ -34,6 +46,17 @@ class ParserTest extends TestCase
                     'attribute' => 'age',
                     'operator' => '=',
                     'value' => 42.0,
+                ],
+            ],
+        ];
+
+        yield 'Basic boolean filter' => [
+            'age = false',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => '=',
+                    'value' => false,
                 ],
             ],
         ];
@@ -334,7 +357,7 @@ class ParserTest extends TestCase
 
         yield 'Wrong contents in IN ()' => [
             'genres IN (_geoRadius(1.00, 2.00))',
-            "Col 11: Error: Expected valid string or float value, got '_geoRadius'",
+            "Col 11: Error: Expected valid string, float or boolean value, got '_geoRadius'",
         ];
 
         yield 'Missing space between NOT and IN' => [

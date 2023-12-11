@@ -26,7 +26,7 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '0.3.0'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.3.1'; // Increase this whenever a re-index of all documents is needed
 
     private Parser $filterParser;
 
@@ -298,6 +298,9 @@ class Engine
         return $types;
     }
 
+    /**
+     * @param array<string> $languages
+     */
     private function loadNGramsFile(array $languages): ?string
     {
         $generateNgramsRefFile = function (string $ngramsRefFile, array $languages): bool {

@@ -336,6 +336,7 @@ class IndexInfo
                 LoupeTypes::TYPE_NULL => Types::STRING, // Null is represented as our internal string as well
                 LoupeTypes::TYPE_STRING => Types::STRING,
                 LoupeTypes::TYPE_NUMBER => Types::FLOAT,
+                LoupeTypes::TYPE_BOOLEAN => Types::FLOAT,
                 default => null
             };
 
