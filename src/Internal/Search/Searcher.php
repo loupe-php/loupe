@@ -15,6 +15,7 @@ use Loupe\Loupe\Internal\Filter\Ast\Group;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\Sorting\GeoPoint;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
@@ -351,8 +352,10 @@ class Searcher
             )
         ;
 
+        $isFloatType = LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($node->value));
+
         $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
-            (\is_float($node->value) ? 'numeric_value' : 'string_value');
+            ($isFloatType ? 'numeric_value' : 'string_value');
 
         $sql = $node->operator->isNegative() ?
             $node->operator->opposite()->buildSql($this->engine->getConnection(), $column, $node->value) :

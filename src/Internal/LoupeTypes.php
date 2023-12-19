@@ -187,6 +187,14 @@ class LoupeTypes
         return self::TYPE_STRING;
     }
 
+    public static function isFloatType(string $type): bool
+    {
+        return \in_array($type, [
+            self::TYPE_NUMBER,
+            self::TYPE_ARRAY_NUMBER,
+        ], true);
+    }
+
     public static function isSingleType(string $type): bool
     {
         // The Geo type is not exactly a single type, but it has to be treated as such

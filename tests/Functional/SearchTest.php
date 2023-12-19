@@ -1272,6 +1272,36 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testSearchingForNumericArrayType(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['months'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'months' => [04, 05],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'months'])
+            ->withFilter('months IN (04)')
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [[
+                'id' => 42,
+                'months' => [04, 05],
+            ]],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testSearchWithAttributesToSearchOn(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
