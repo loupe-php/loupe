@@ -46,6 +46,7 @@ class Highlighter
         $startTag = '<em>';
         $endTag = '</em>';
 
+        $pos = 0;
         $highlightedText = '';
         $spans = $this->extractSpansFromMatches($matches);
 
