@@ -273,6 +273,31 @@ class SearchTest extends TestCase
                 'totalHits' => 1,
             ],
         ];
+
+        yield 'Highlight with match at the end' => [
+            'Nemo',
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 12,
+                        'title' => 'Finding Nemo',
+                        'overview' => 'Nemo, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist\'s office aquarium. It\'s up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.',
+                        '_formatted' => [
+                            'id' => 12,
+                            'title' => 'Finding <em>Nemo</em>',
+                            'overview' => "<em>Nemo</em>, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist's office aquarium. It's up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring <em>Nemo</em> home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.",
+                        ],
+                    ],
+                ],
+                'query' => 'Nemo',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        ];
     }
 
     public static function inFilterProvider(): \Generator

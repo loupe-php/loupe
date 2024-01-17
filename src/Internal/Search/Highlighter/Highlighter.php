@@ -46,6 +46,7 @@ class Highlighter
         $startTag = '<em>';
         $endTag = '</em>';
 
+        $pos = 0;
         $highlightedText = '';
         $spans = $this->extractSpansFromMatches($matches);
 
@@ -58,6 +59,11 @@ class Highlighter
             }
 
             $highlightedText .= $char;
+        }
+
+        // Match at the end of the $text
+        if (\in_array($pos + 1, $spans['ends'])) {
+            $highlightedText .= $endTag;
         }
 
         return new HighlightResult($highlightedText, $matches);
