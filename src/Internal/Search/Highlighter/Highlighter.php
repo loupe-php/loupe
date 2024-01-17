@@ -79,7 +79,7 @@ class Highlighter
             'starts' => [],
             'ends' => [],
         ];
-        $lastEnd = 0;
+        $lastEnd = null;
 
         foreach ($matches as $match) {
             $end = $match['start'] + $match['length'];
