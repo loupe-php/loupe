@@ -187,8 +187,9 @@ class Engine
 
     public function needsReindex(): bool
     {
+        // If nothing hasn't been indexed yet, by definition it is not a "re-index".
         if ($this->getIndexInfo()->needsSetup()) {
-            return true;
+            return false;
         }
 
         if ($this->getIndexInfo()->getEngineVersion() !== self::VERSION) {
