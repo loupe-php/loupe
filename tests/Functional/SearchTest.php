@@ -307,7 +307,7 @@ class SearchTest extends TestCase
                 'totalHits' => 1,
             ],
         ];
-        
+
         yield 'Highlight with array fields' => [
             'Animation',
             ['genres'],
@@ -334,7 +334,7 @@ class SearchTest extends TestCase
                 'totalHits' => 1,
             ],
         ];
-        
+
         yield 'Highlight with matches position with array fields' => [
             'Family',
             ['genres'],
@@ -358,8 +358,8 @@ class SearchTest extends TestCase
                                     [
                                         'start' => 0,
                                         'length' => 6,
-                                    ]
-                                ]
+                                    ],
+                                ],
                             ],
                         ],
                     ],
@@ -379,10 +379,10 @@ class SearchTest extends TestCase
                                 0 => [
                                     'start' => 127,
                                     'length' => 6,
-                                ]
+                                ],
                             ],
                         ],
-                    ]
+                    ],
                 ],
                 'query' => 'Family',
                 'hitsPerPage' => 20,
