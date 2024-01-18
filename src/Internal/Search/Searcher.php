@@ -614,15 +614,30 @@ class Searcher
                 continue;
             }
 
-            $highlightResult = $this->engine->getHighlighter()
-                ->highlight($formatted[$attribute], $tokenCollection);
+            if (\is_array($formatted[$attribute])) {
+                foreach ($formatted[$attribute] as $key => $formattedEntry) {
+                    $highlightResult = $this->engine->getHighlighter()
+                        ->highlight($formattedEntry, $tokenCollection);
 
-            if (\in_array($attribute, $attributesToHighlight, true)) {
-                $formatted[$attribute] = $highlightResult->getHighlightedText();
-            }
+                    if (\in_array($attribute, $attributesToHighlight, true)) {
+                        $formatted[$attribute][$key] = $highlightResult->getHighlightedText();
+                    }
 
-            if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
-                $matchesPosition[$attribute] = $highlightResult->getMatches();
+                    if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
+                        $matchesPosition[$attribute][$key] = $highlightResult->getMatches();
+                    }
+                }
+            } else {
+                $highlightResult = $this->engine->getHighlighter()
+                    ->highlight($formatted[$attribute], $tokenCollection);
+
+                if (\in_array($attribute, $attributesToHighlight, true)) {
+                    $formatted[$attribute] = $highlightResult->getHighlightedText();
+                }
+
+                if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
+                    $matchesPosition[$attribute] = $highlightResult->getMatches();
+                }
             }
         }
 

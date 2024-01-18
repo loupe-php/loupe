@@ -177,6 +177,7 @@ class SearchTest extends TestCase
                         'id' => 24,
                         'title' => 'Kill Bill: Vol. 1',
                         'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
                         '_matchesPosition' => [
                             'overview' => [
                                 [
@@ -209,10 +210,12 @@ class SearchTest extends TestCase
                         'id' => 24,
                         'title' => 'Kill Bill: Vol. 1',
                         'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
                         '_formatted' => [
                             'id' => 24,
                             'title' => 'Kill Bill: Vol. 1',
                             'overview' => 'An <em>assassin</em> is shot by her ruthless employer, Bill, and other members of their <em>assassination</em> circle – but she lives to plot her vengeance.',
+                            'genres' => ['Action', 'Crime'],
                         ],
                     ],
                 ],
@@ -234,10 +237,12 @@ class SearchTest extends TestCase
                         'id' => 24,
                         'title' => 'Kill Bill: Vol. 1',
                         'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
                         '_formatted' => [
                             'id' => 24,
                             'title' => 'Kill Bill: Vol. 1',
                             'overview' => 'An <em>assassin</em> is shot by her ruthless employer, Bill, and other members of their <em>assassination</em> circle – but she lives to plot her vengeance.',
+                            'genres' => ['Action', 'Crime'],
                         ],
                     ],
                 ],
@@ -259,10 +264,12 @@ class SearchTest extends TestCase
                         'id' => 12,
                         'title' => 'Finding Nemo',
                         'overview' => 'Nemo, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist\'s office aquarium. It\'s up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.',
+                        'genres' => ['Animation', 'Family'],
                         '_formatted' => [
                             'id' => 12,
                             'title' => 'Finding Nemo',
                             'overview' => "Nemo, an adventurous young clownfish, is unexpectedly taken from his Great <em>Barrier Reef</em> home to a dentist's office aquarium. It's up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.",
+                            'genres' => ['Animation', 'Family'],
                         ],
                     ],
                 ],
@@ -284,10 +291,12 @@ class SearchTest extends TestCase
                         'id' => 12,
                         'title' => 'Finding Nemo',
                         'overview' => 'Nemo, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist\'s office aquarium. It\'s up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.',
+                        'genres' => ['Animation', 'Family'],
                         '_formatted' => [
                             'id' => 12,
                             'title' => 'Finding <em>Nemo</em>',
                             'overview' => "<em>Nemo</em>, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist's office aquarium. It's up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring <em>Nemo</em> home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.",
+                            'genres' => ['Animation', 'Family'],
                         ],
                     ],
                 ],
@@ -296,6 +305,90 @@ class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
+            ],
+        ];
+
+        yield 'Highlight with array fields' => [
+            'Animation',
+            ['genres'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 12,
+                        'title' => 'Finding Nemo',
+                        'overview' => 'Nemo, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist\'s office aquarium. It\'s up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.',
+                        'genres' => ['Animation', 'Family'],
+                        '_formatted' => [
+                            'id' => 12,
+                            'title' => 'Finding Nemo',
+                            'overview' => 'Nemo, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist\'s office aquarium. It\'s up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.',
+                            'genres' => ['<em>Animation</em>', 'Family'],
+                        ],
+                    ],
+                ],
+                'query' => 'Animation',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        ];
+
+        yield 'Highlight with matches position with array fields' => [
+            'Family',
+            ['genres'],
+            true,
+            [
+                'hits' => [
+                    [
+                        'id' => 12,
+                        'title' => 'Finding Nemo',
+                        'overview' => 'Nemo, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist\'s office aquarium. It\'s up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.',
+                        'genres' => ['Animation', 'Family'],
+                        '_formatted' => [
+                            'id' => 12,
+                            'title' => 'Finding Nemo',
+                            'overview' => 'Nemo, an adventurous young clownfish, is unexpectedly taken from his Great Barrier Reef home to a dentist\'s office aquarium. It\'s up to his worrisome father Marlin and a friendly but forgetful fish Dory to bring Nemo home -- meeting vegetarian sharks, surfer dude turtles, hypnotic jellyfish, hungry seagulls, and more along the way.',
+                            'genres' => ['Animation', '<em>Family</em>'],
+                        ],
+                        '_matchesPosition' => [
+                            'genres' => [
+                                1 => [
+                                    [
+                                        'start' => 0,
+                                        'length' => 6,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                    [
+                        'id' => 20,
+                        'title' => 'My Life Without Me',
+                        'overview' => 'A fatally ill mother with only two months to live creates a list of things she wants to do before she dies without telling her family of her illness.',
+                        'genres' => ['Drama', 'Romance'],
+                        '_formatted' => [
+                            'id' => 20,
+                            'title' => 'My Life Without Me',
+                            'overview' => 'A fatally ill mother with only two months to live creates a list of things she wants to do before she dies without telling her family of her illness.',
+                            'genres' => ['Drama', 'Romance'],
+                        ],
+                        '_matchesPosition' => [
+                            'overview' => [
+                                0 => [
+                                    'start' => 127,
+                                    'length' => 6,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'query' => 'Family',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 2,
             ],
         ];
     }
@@ -885,7 +978,7 @@ class SearchTest extends TestCase
     public function testHighlighting(string $query, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults): void
     {
         $configuration = Configuration::create()
-            ->withSearchableAttributes(['title', 'overview'])
+            ->withSearchableAttributes(['title', 'overview', 'genres'])
             ->withFilterableAttributes(['genres'])
             ->withSortableAttributes(['title'])
         ;
@@ -897,7 +990,7 @@ class SearchTest extends TestCase
             ->withQuery($query)
             ->withAttributesToHighlight($attributesToHighlight)
             ->withShowMatchesPosition($showMatchesPosition)
-            ->withAttributesToRetrieve(['id', 'title', 'overview'])
+            ->withAttributesToRetrieve(['id', 'title', 'overview', 'genres'])
             ->withSort(['title:asc'])
         ;
 
