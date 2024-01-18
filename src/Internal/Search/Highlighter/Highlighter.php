@@ -62,7 +62,7 @@ class Highlighter
         }
 
         // Match at the end of the $text
-        if (\in_array($pos + 1, $spans['ends'])) {
+        if (\in_array($pos + 1, $spans['ends'], true)) {
             $highlightedText .= $endTag;
         }
 
