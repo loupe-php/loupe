@@ -44,6 +44,7 @@
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
         "cs-fixer": "@php vendor/bin/ecs check --fix",
+        "ci-cs-fixer": "@php vendor/bin/ecs check",
         "phpstan": "@php vendor/bin/phpstan analyse"
     }
 }
