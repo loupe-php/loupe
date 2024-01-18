@@ -20,6 +20,19 @@ final class SearchResult
     ) {
     }
 
+    public static function createEmptyFromSearchParameters(SearchParameters $searchParameters): self
+    {
+        return new self(
+            [],
+            $searchParameters->getQuery(),
+            0,
+            $searchParameters->getHitsPerPage(),
+            $searchParameters->getPage(),
+            0,
+            0
+        );
+    }
+
     /**
      * @return array<array<string, mixed>>
      */

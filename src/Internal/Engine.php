@@ -205,6 +205,10 @@ class Engine
 
     public function search(SearchParameters $parameters): SearchResult
     {
+        if ($this->getIndexInfo()->needsSetup()) {
+            return SearchResult::createEmptyFromSearchParameters($parameters);
+        }
+
         return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
     }
 

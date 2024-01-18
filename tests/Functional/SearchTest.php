@@ -1532,6 +1532,21 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
     }
 
+    public function testWithoutSetup(): void
+    {
+        $loupe = $this->createLoupe(Configuration::create());
+        $searchParameters = SearchParameters::create()->withQuery('foobar');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => 'foobar',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
     public static function typoToleranceProvider(): \Generator
     {
         yield 'Test finds exact match when typo tolerance is disabled' => [
