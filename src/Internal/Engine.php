@@ -311,7 +311,7 @@ class Engine
         $generateNgramsRefFile = function (string $ngramsRefFile, array $languages): bool {
             // Prepare for the next time
             $languageDetector = new LanguageDetector();
-            $file = $languageDetector->langSubset($languages)->file;
+            $file = $languageDetector->langSubset($languages, false)->file;
 
             if ($file !== null) {
                 file_put_contents($ngramsRefFile, '<?php return ' . var_export($file, true) . ';');
