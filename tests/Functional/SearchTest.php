@@ -169,6 +169,40 @@ class SearchTest extends TestCase
     {
         yield 'Highlight with matches position only' => [
             'assassin',
+            ['title', 'overview'],
+            [],
+            true,
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        '_matchesPosition' => [
+                            'overview' => [
+                                [
+                                    'start' => 3,
+                                    'length' => 8,
+                                ],
+                                [
+                                    'start' => 79,
+                                    'length' => 13,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'query' => 'assassin',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        ];
+
+        yield 'Highlight with all searchable fields' => [
+            'assassin',
+            ['*'],
             [],
             true,
             [
@@ -202,6 +236,7 @@ class SearchTest extends TestCase
         yield 'Highlight with typo' => [
             'assasin',
             ['title', 'overview'],
+            ['title', 'overview'],
             false,
             [
                 'hits' => [
@@ -226,6 +261,7 @@ class SearchTest extends TestCase
 
         yield 'Highlight without typo' => [
             'assassin',
+            ['title', 'overview'],
             ['title', 'overview'],
             false,
             [
@@ -252,6 +288,7 @@ class SearchTest extends TestCase
         yield 'Highlight multiple matches with and without typos' => [
             'Barier Reef',
             ['title', 'overview'],
+            ['title', 'overview'],
             false,
             [
                 'hits' => [
@@ -276,6 +313,7 @@ class SearchTest extends TestCase
 
         yield 'Highlight with match at the end' => [
             'Nemo',
+            ['title', 'overview'],
             ['title', 'overview'],
             false,
             [
@@ -882,10 +920,10 @@ class SearchTest extends TestCase
      * @param array<mixed> $expectedResults
      */
     #[DataProvider('highlightingProvider')]
-    public function testHighlighting(string $query, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults): void
+    public function testHighlighting(string $query, array $searchableAttributes, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults): void
     {
         $configuration = Configuration::create()
-            ->withSearchableAttributes(['title', 'overview'])
+            ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])
             ->withSortableAttributes(['title'])
         ;

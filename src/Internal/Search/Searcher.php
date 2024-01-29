@@ -602,20 +602,24 @@ class Searcher
         $formatted = $hit;
         $matchesPosition = [];
 
+        $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes() ?
+            array_keys($hit) :
+            $this->engine->getConfiguration()->getSearchableAttributes();
+
         $highlightAllAttributes = ['*'] === $this->searchParameters->getAttributesToHighlight();
         $attributesToHighlight = $highlightAllAttributes ?
-            $this->engine->getConfiguration()->getSearchableAttributes() :
+            $searchableAttributes :
             $this->searchParameters->getAttributesToHighlight()
         ;
 
-        foreach ($this->engine->getConfiguration()->getSearchableAttributes() as $attribute) {
+        foreach ($searchableAttributes as $attribute) {
             // Do not include any attribute not required by the result (limited by attributesToRetrieve)
             if (!isset($formatted[$attribute])) {
                 continue;
             }
 
             $highlightResult = $this->engine->getHighlighter()
-                ->highlight($formatted[$attribute], $tokenCollection);
+                ->highlight((string) $formatted[$attribute], $tokenCollection);
 
             if (\in_array($attribute, $attributesToHighlight, true)) {
                 $formatted[$attribute] = $highlightResult->getHighlightedText();
