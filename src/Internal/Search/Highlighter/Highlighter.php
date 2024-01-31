@@ -17,8 +17,12 @@ class Highlighter
     ) {
     }
 
-    public function highlight(string $text, TokenCollection $queryTokens): HighlightResult
-    {
+    public function highlight(
+        string $text,
+        TokenCollection $queryTokens,
+        string $startTag = '<em>',
+        string $endTag = '</em>',
+    ): HighlightResult {
         if ($text === '') {
             return new HighlightResult($text, []);
         }
@@ -42,9 +46,6 @@ class Highlighter
         uasort($matches, function (array $a, array $b) {
             return $a['start'] <=> $b['start'];
         });
-
-        $startTag = '<em>';
-        $endTag = '</em>';
 
         $pos = 0;
         $highlightedText = '';
