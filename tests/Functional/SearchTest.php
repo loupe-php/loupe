@@ -263,6 +263,36 @@ class SearchTest extends TestCase
             ],
         ];
 
+        yield 'Highlight with custom start and end tag' => [
+            'assasin',
+            ['title', 'overview'],
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
+                        '_formatted' => [
+                            'id' => 24,
+                            'title' => 'Kill Bill: Vol. 1',
+                            'overview' => 'An <mark>assassin</mark> is shot by her ruthless employer, Bill, and other members of their <mark>assassination</mark> circle – but she lives to plot her vengeance.',
+                            'genres' => ['Action', 'Crime'],
+                        ],
+                    ],
+                ],
+                'query' => 'assasin',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            '<mark>',
+            '</mark>',
+        ];
+
         yield 'Highlight without typo' => [
             'assassin',
             ['title', 'overview'],
@@ -1012,12 +1042,20 @@ class SearchTest extends TestCase
     }
 
     /**
+     * @param array<string> $searchableAttributes
      * @param array<string> $attributesToHighlight
      * @param array<mixed> $expectedResults
      */
     #[DataProvider('highlightingProvider')]
-    public function testHighlighting(string $query, array $searchableAttributes, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults): void
-    {
+    public function testHighlighting(
+        string $query,
+        array $searchableAttributes,
+        array $attributesToHighlight,
+        bool $showMatchesPosition,
+        array $expectedResults,
+        string $highlightStartTag = '<em>',
+        string $highlightEndTag = '</em>',
+    ): void {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])
@@ -1029,7 +1067,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withQuery($query)
-            ->withAttributesToHighlight($attributesToHighlight)
+            ->withAttributesToHighlight($attributesToHighlight, $highlightStartTag, $highlightEndTag)
             ->withShowMatchesPosition($showMatchesPosition)
             ->withAttributesToRetrieve(['id', 'title', 'overview', 'genres'])
             ->withSort(['title:asc'])
