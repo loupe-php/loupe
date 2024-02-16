@@ -188,7 +188,11 @@ class IndexInfo
                 ->where("key = 'documentSchema'")
                 ->fetchOne();
 
-            $this->documentSchema = Util::decodeJson($schema);
+            if ($schema === false) {
+                $this->documentSchema = [];
+            } else {
+                $this->documentSchema = Util::decodeJson($schema);
+            }
         }
 
         return $this->documentSchema;
