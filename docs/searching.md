@@ -140,6 +140,14 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ```
 
 Your result hits will then contain a `_formatted` key where you'll find the matches embedded in `<em>` and `</em>` tags.
+The opening and closing tags can also be configured, in case you need something different from `<em>` and `</em>`. For this,
+use the second and third parameters like so:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToHighlight(['title', 'overview'], '<mark>', '</mark>')
+```
+
 This is how this could look like when having searched for `assassin`:
 
 ```php

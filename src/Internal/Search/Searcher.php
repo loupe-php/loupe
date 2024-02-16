@@ -612,21 +612,49 @@ class Searcher
             $this->searchParameters->getAttributesToHighlight()
         ;
 
+        $highlightStartTag = $this->searchParameters->getHighlightStartTag();
+        $highlightEndTag = $this->searchParameters->getHighlightEndTag();
+
         foreach ($searchableAttributes as $attribute) {
             // Do not include any attribute not required by the result (limited by attributesToRetrieve)
             if (!isset($formatted[$attribute])) {
                 continue;
             }
 
-            $highlightResult = $this->engine->getHighlighter()
-                ->highlight((string) $formatted[$attribute], $tokenCollection);
+            if (\is_array($formatted[$attribute])) {
+                foreach ($formatted[$attribute] as $key => $formattedEntry) {
+                    $highlightResult = $this->engine->getHighlighter()
+                        ->highlight(
+                            $formattedEntry,
+                            $tokenCollection,
+                            $highlightStartTag,
+                            $highlightEndTag
+                        );
 
-            if (\in_array($attribute, $attributesToHighlight, true)) {
-                $formatted[$attribute] = $highlightResult->getHighlightedText();
-            }
+                    if (\in_array($attribute, $attributesToHighlight, true)) {
+                        $formatted[$attribute][$key] = $highlightResult->getHighlightedText();
+                    }
 
-            if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
-                $matchesPosition[$attribute] = $highlightResult->getMatches();
+                    if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
+                        $matchesPosition[$attribute][$key] = $highlightResult->getMatches();
+                    }
+                }
+            } else {
+                $highlightResult = $this->engine->getHighlighter()
+                    ->highlight(
+                        (string) $formatted[$attribute],
+                        $tokenCollection,
+                        $highlightStartTag,
+                        $highlightEndTag
+                    );
+
+                if (\in_array($attribute, $attributesToHighlight, true)) {
+                    $formatted[$attribute] = $highlightResult->getHighlightedText();
+                }
+
+                if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
+                    $matchesPosition[$attribute] = $highlightResult->getMatches();
+                }
             }
         }
 

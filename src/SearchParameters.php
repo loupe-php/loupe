@@ -28,6 +28,10 @@ final class SearchParameters
 
     private string $filter = '';
 
+    private string $highlightEndTag = '</em>';
+
+    private string $highlightStartTag = '<em>';
+
     private int $hitsPerPage = 20;
 
     private int $page = 1;
@@ -94,6 +98,8 @@ final class SearchParameters
         $hash = [];
 
         $hash[] = json_encode($this->getAttributesToHighlight());
+        $hash[] = json_encode($this->getHighlightStartTag());
+        $hash[] = json_encode($this->getHighlightEndTag());
         $hash[] = json_encode($this->getAttributesToRetrieve());
         $hash[] = json_encode($this->getAttributesToSearchOn());
         $hash[] = json_encode($this->getFilter());
@@ -104,6 +110,16 @@ final class SearchParameters
         $hash[] = json_encode($this->showRankingScore());
 
         return hash('sha256', implode(';', $hash));
+    }
+
+    public function getHighlightEndTag(): string
+    {
+        return $this->highlightEndTag;
+    }
+
+    public function getHighlightStartTag(): string
+    {
+        return $this->highlightStartTag;
     }
 
     public function getHitsPerPage(): int
@@ -142,12 +158,17 @@ final class SearchParameters
     /**
      * @param array<string> $attributesToHighlight
      */
-    public function withAttributesToHighlight(array $attributesToHighlight): self
-    {
+    public function withAttributesToHighlight(
+        array $attributesToHighlight,
+        string $highlightStartTag = '<em>',
+        string $highlightEndTag = '</em>',
+    ): self {
         sort($attributesToHighlight);
 
         $clone = clone $this;
         $clone->attributesToHighlight = $attributesToHighlight;
+        $clone->highlightStartTag = $highlightStartTag;
+        $clone->highlightEndTag = $highlightEndTag;
 
         return $clone;
     }
