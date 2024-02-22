@@ -200,12 +200,18 @@ class IndexInfo
 
     public function getEngineVersion(): string
     {
-        return $this->engine->getConnection()
+        $version = $this->engine->getConnection()
             ->createQueryBuilder()
             ->select('value')
             ->from(self::TABLE_NAME_INDEX_INFO)
             ->where("key = 'engineVersion'")
             ->fetchOne();
+
+        if ($version === false) {
+            return Engine::VERSION;
+        }
+
+        return (string) $version;
     }
 
     /**
