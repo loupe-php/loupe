@@ -167,7 +167,7 @@ class IndexInfo
 
     public function getConfigHash(): string
     {
-        return $this->engine->getConnection()
+        return (string) $this->engine->getConnection()
             ->createQueryBuilder()
             ->select('value')
             ->from(self::TABLE_NAME_INDEX_INFO)
