@@ -1229,12 +1229,12 @@ class SearchTest extends TestCase
                     'title' => 'Star Wars',
                 ],
                 [
-                    'id' => 25,
-                    'title' => 'Jarhead',
-                ],
-                [
                     'id' => 28,
                     'title' => 'Apocalypse Now',
+                ],
+                [
+                    'id' => 25,
+                    'title' => 'Jarhead',
                 ],
             ],
             'query' => 'I like Star Wars',
@@ -1462,6 +1462,61 @@ class SearchTest extends TestCase
                 ],
             ],
             'query' => 'life learning',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+    }
+
+    public function testRelevanceAndRankingScoreForNonExistentQueryTerms(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withSortableAttributes(['content'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'The game of life is a game of everlasting learning',
+            ],
+            [
+                'id' => 2,
+                'content' => 'The unexamined life is not worth living',
+            ],
+            [
+                'id' => 3,
+                'content' => 'Never stop learning',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('foobar life learning')
+            ->withAttributesToRetrieve(['id', 'content'])
+            ->withShowRankingScore(true)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'content' => 'The game of life is a game of everlasting learning',
+                    '_rankingScore' => 0.6301,
+                ],
+                [
+                    'id' => 3,
+                    'content' => 'Never stop learning',
+                    '_rankingScore' => 0.51447,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The unexamined life is not worth living',
+                    '_rankingScore' => 0.36379,
+                ],
+            ],
+            'query' => 'foobar life learning',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,

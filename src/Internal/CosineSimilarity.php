@@ -11,15 +11,20 @@ class CosineSimilarity
      */
     private static array $queryTfIdfsCache = [];
 
-    public static function fromQuery(string $queryId, string $queryIdfs, string $documentTfIdfs): float
+    public static function fromQuery(string $queryId, string $totalTokenCount, string $queryIdfs, string $documentTfIdfs): float
     {
         // First we have to turn the query term IDFs into TF-IDF (we only have to do this once per query, so we can cache that)
         if (!isset(self::$queryTfIdfsCache[$queryId])) {
             $queryIdfs = array_map('floatval', explode(',', $queryIdfs));
             $tf = 1 / \count($queryIdfs);
-            self::$queryTfIdfsCache[$queryId] = array_map(function (float $idf) use ($tf) {
+
+            // Calculate the TF-IDF for the query. It's important that we pad the term matches to the total tokens searched
+            // so that terms that do not exist in our entire index are handled with a TF-IDF of 1. Otherwise, if you'd
+            // search for "foobar" and there is not a single document with "foobar" in your index, it would not be considered
+            // in the similarity giving you completely wrong results.
+            self::$queryTfIdfsCache[$queryId] = array_pad(array_map(function (float $idf) use ($tf) {
                 return $tf * $idf;
-            }, $queryIdfs);
+            }, $queryIdfs), (int) $totalTokenCount, 1);
         }
 
         return self::similarity(self::$queryTfIdfsCache[$queryId], array_map('floatval', explode(',', $documentTfIdfs)));
