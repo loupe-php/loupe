@@ -33,10 +33,12 @@ class Relevance extends AbstractSorter
         $select = sprintf(
             'loupe_relevance(
                     %s,
+                    %s,
                     (SELECT group_concat(idf) FROM %s),
                     (SELECT group_concat(tfidf) FROM %s WHERE %s.id=document)
             ) AS %s',
             $searcher->getQueryBuilder()->createNamedParameter($searcher->getQueryId()),
+            $searcher->getQueryBuilder()->createNamedParameter(\count($searcher->getTokens()->allTermsWithVariants())),
             Searcher::CTE_TERM_MATCHES,
             Searcher::CTE_TERM_DOCUMENT_MATCHES,
             $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),

@@ -129,7 +129,7 @@ final class LoupeFactory
             ],
             'loupe_relevance' => [
                 'callback' => [CosineSimilarity::class, 'fromQuery'],
-                'numArgs' => 3,
+                'numArgs' => 4,
             ],
         ];
 
