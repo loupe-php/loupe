@@ -999,6 +999,30 @@ class SearchTest extends TestCase
         ]);
 
         $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'name', 'location'])
+            ->withFilter('_geoRadius(location, -34.5567580, -58.4153774, 10000)') // search with negative coordinates
+            ->withSort(['_geoPoint(location, -34.5567580, -58.4153774):asc'])  // sort with negative coordinates
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 4,
+                    'name' => 'Revire Brasas Bravas',
+                    'location' => [
+                        'lat' => -34.6002321,
+                        'lng' => -58.3823691,
+                    ],
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'name', 'location', '_geoDistance(location)'])
             ->withSort(['_geoPoint(location, 48.8561446,2.2978204):asc'])
         ;
@@ -1032,12 +1056,21 @@ class SearchTest extends TestCase
                     ],
                     '_geoDistance(location)' => 642336,
                 ],
+                [
+                    'id' => 4,
+                    'name' => 'Revire Brasas Bravas',
+                    'location' => [
+                        'lat' => -34.6002321,
+                        'lng' => -58.3823691,
+                    ],
+                    '_geoDistance(location)' => 11046932,
+                ],
             ],
             'query' => '',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 3,
+            'totalHits' => 4,
         ]);
     }
 

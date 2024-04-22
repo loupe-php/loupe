@@ -31,5 +31,16 @@
             "lat": 45.4632046,
             "lng": 9.1719421
         }
+    },
+    {
+        "id": 4,
+        "name": "Revire Brasas Bravas",
+        "address": "Av. Corrientes 1124, C1043 Cdad. Autónoma de Buenos Aires, Argentina",
+        "type": "steak",
+        "rating": 10,
+        "location": {
+            "lat": -34.6002321,
+            "lng": -58.3823691
+        }
     }
 ]

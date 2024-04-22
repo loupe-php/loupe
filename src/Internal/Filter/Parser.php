@@ -111,6 +111,19 @@ class Parser
         return $this;
     }
 
+    private function assertAndExtractFloat(?Token $token, bool $allowNegative = false): float
+    {
+        $multipler = 1;
+        if ($allowNegative && $token !== null && $token?->type === Lexer::T_MINUS) {
+            $multipler = -1;
+            $this->lexer->moveNext();
+            $token = $this->lexer->token;
+        }
+
+        $this->assertFloat($token);
+        return (float) $this->lexer->token?->value * $multipler;
+    }
+
     private function assertClosingParenthesis(?Token $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_CLOSE_PARENTHESIS], "')'");
@@ -232,14 +245,12 @@ class Parser
         $this->validateFilterableAttribute($engine, $attributeName);
 
         $this->lexer->moveNext();
-        $this->assertFloat($this->lexer->lookahead);
         $this->lexer->moveNext();
-        $lat = (float) $this->lexer->token?->value;
+        $lat = $this->assertAndExtractFloat($this->lexer->token, true);
         $this->assertComma($this->lexer->lookahead);
         $this->lexer->moveNext();
-        $this->assertFloat($this->lexer->lookahead);
         $this->lexer->moveNext();
-        $lng = (float) $this->lexer->token?->value;
+        $lng = $this->assertAndExtractFloat($this->lexer->token, true);
         $this->assertComma($this->lexer->lookahead);
         $this->lexer->moveNext();
         $this->assertFloat($this->lexer->lookahead);

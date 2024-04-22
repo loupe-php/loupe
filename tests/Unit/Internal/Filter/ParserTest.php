@@ -161,6 +161,18 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Basic geo filter with negative coordinates' => [
+            '_geoRadius(location, -34.5567580, -58.4153774, 2000)',
+            [
+                [
+                    'attribute' => 'location',
+                    'lat' => -34.5567580,
+                    'lng' => -58.4153774,
+                    'distance' => 2000.0,
+                ],
+            ],
+        ];
+
         yield 'Basic IN filter' => [
             "genres IN ('Drama', 'Action', 'Documentary')",
             [

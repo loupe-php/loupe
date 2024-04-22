@@ -35,6 +35,8 @@ class Lexer extends AbstractLexer
 
     public const T_LOWER_THAN = 13;
 
+    public const T_MINUS = 20;
+
     public const T_NEGATE = 16;
 
     public const T_NONE = 1;
@@ -105,6 +107,9 @@ class Lexer extends AbstractLexer
 
             case $value === 'true':
                 return self::T_TRUE;
+
+            case $value === '-':
+                return self::T_MINUS;
 
             case $value === '_geoRadius':
                 return self::T_GEO_RADIUS;
