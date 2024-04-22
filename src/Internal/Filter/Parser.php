@@ -114,7 +114,7 @@ class Parser
     private function assertAndExtractFloat(?Token $token, bool $allowNegative = false): float
     {
         $multipler = 1;
-        if ($allowNegative && $token !== null && $token?->type === Lexer::T_MINUS) {
+        if ($allowNegative && $token !== null && $token->type === Lexer::T_MINUS) {
             $multipler = -1;
             $this->lexer->moveNext();
             $token = $this->lexer->token;
