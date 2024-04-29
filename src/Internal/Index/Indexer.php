@@ -434,7 +434,7 @@ class Indexer
               idf = 1.0 + (LN(
                 (SELECT COUNT(*) FROM %s) * 1.0
                     /
-                (SELECT COUNT(*) FROM %s AS td WHERE td.term = id ) * 1.0
+                (SELECT COUNT(DISTINCT td.document) FROM %s AS td WHERE td.term = %s.id) * 1.0
               ))
 QUERY;
 
@@ -443,6 +443,7 @@ QUERY;
             IndexInfo::TABLE_NAME_TERMS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            IndexInfo::TABLE_NAME_TERMS,
         );
 
         $this->engine->getConnection()->executeStatement($query);
