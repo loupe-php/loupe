@@ -246,14 +246,14 @@ class IndexTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 18,
-                    'title' => 'The Fifth Element',
-                    '_rankingScore' => 0.83688,
+                    'id' => 6,
+                    'title' => 'Judgment Night',
+                    '_rankingScore' => 0.863,
                 ],
                 [
-                    'id' => 16,
-                    'title' => 'Dancer in the Dark',
-                    '_rankingScore' => 0.74853,
+                    'id' => 25,
+                    'title' => 'Jarhead',
+                    '_rankingScore' => 0.5044,
                 ],
             ],
             'query' => 'the',
@@ -271,14 +271,14 @@ class IndexTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 18,
-                    'title' => 'The Fifth Element',
-                    '_rankingScore' => 0.84228,
+                    'id' => 6,
+                    'title' => 'Judgment Night',
+                    '_rankingScore' => 0.83189,
                 ],
                 [
-                    'id' => 27,
-                    'title' => '9 Songs',
-                    '_rankingScore' => 0.76244,
+                    'id' => 25,
+                    'title' => 'Jarhead',
+                    '_rankingScore' => 0.48588,
                 ],
             ],
             'query' => 'the',

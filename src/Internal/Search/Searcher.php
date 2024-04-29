@@ -156,6 +156,12 @@ class Searcher
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.term');
+        $cteSelectQb->addSelect(sprintf(
+            "%s || '-' || %s AS documentTermRelation",
+            $termsDocumentsAlias . '.document',
+            $termsDocumentsAlias . '.term',
+        ));
 
         // This is normalized term frequency (<number of occurrences of term in document>/<total terms in document>)
         // multiplied with the inversed term document frequency.
@@ -164,8 +170,8 @@ class Searcher
             sprintf(
                 '
             1.0 *
-            (SELECT COUNT(*) FROM %s WHERE term=td.term AND document=td.document) /
-            (SELECT COUNT(*) FROM %s WHERE document=td.document) *
+            (SELECT COUNT(DISTINCT document) FROM %s WHERE term=td.term AND document=td.document) /
+            (SELECT COUNT(DISTINCT term) FROM %s WHERE document=td.document) *
             (SELECT idf FROM %s WHERE td.term=id)',
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
@@ -203,10 +209,11 @@ class Searcher
             }
         }
 
+        $cteSelectQb->groupBy('documentTermRelation');
         $cteSelectQb->addOrderBy($termsDocumentsAlias . '.document');
         $cteSelectQb->addOrderBy($termsDocumentsAlias . '.term');
 
-        $this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES]['cols'] = ['document', 'tfidf'];
+        $this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES]['cols'] = ['document', 'term', 'documentTermRelation', 'tfidf'];
         $this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES]['sql'] = $cteSelectQb->getSQL();
     }
 

@@ -1253,14 +1253,11 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('I like Star Wars')
             ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
-                [
-                    'id' => 11,
-                    'title' => 'Star Wars',
-                ],
                 [
                     'id' => 28,
                     'title' => 'Apocalypse Now',
@@ -1268,6 +1265,10 @@ class SearchTest extends TestCase
                 [
                     'id' => 25,
                     'title' => 'Jarhead',
+                ],
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
                 ],
             ],
             'query' => 'I like Star Wars',
@@ -1444,6 +1445,33 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    public function testRankingWithLotsOfMatches(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Pirates of the Caribbean: The Curse of the Black Pearl')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withShowRankingScore(true)
+            ->withHitsPerPage(1)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 22,
+                    'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
+                    '_rankingScore' => 0.93289, // This is not 1.0 because of typo tolerance, might need investigation but good enough for now
+                ],
+            ],
+            'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
+            'hitsPerPage' => 1,
+            'page' => 1,
+            'totalPages' => 17,
+            'totalHits' => 17,
         ]);
     }
 
