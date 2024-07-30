@@ -88,8 +88,9 @@ class Searcher
 
             $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
 
-            if ($this->searchParameters->showRankingScore() && \array_key_exists(Relevance::RELEVANCE_ALIAS, $result)) {
-                $hit['_rankingScore'] = round($result[Relevance::RELEVANCE_ALIAS], 5);
+            if ($this->searchParameters->showRankingScore()) {
+                $hit['_rankingScore'] = \array_key_exists(Relevance::RELEVANCE_ALIAS, $result) ?
+                    round($result[Relevance::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
             $this->highlight($hit, $tokens);
