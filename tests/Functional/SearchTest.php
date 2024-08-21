@@ -1564,17 +1564,17 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.6301,
+                    '_rankingScore' => 0.51988,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.51447,
+                    '_rankingScore' => 0.42448,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living',
-                    '_rankingScore' => 0.36379,
+                    '_rankingScore' => 0.30015,
                 ],
             ],
             'query' => 'foobar life learning',
