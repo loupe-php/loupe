@@ -172,7 +172,7 @@ class Searcher
                 '
             1.0 *
             (SELECT COUNT(DISTINCT document) FROM %s WHERE term=td.term AND document=td.document) /
-            (SELECT COUNT(DISTINCT term) FROM %s WHERE document=td.document) *
+            (SELECT COUNT(term) FROM %s WHERE document=td.document) *
             (SELECT idf FROM %s WHERE td.term=id)',
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
