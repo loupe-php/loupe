@@ -1,0 +1,29 @@
+[
+    {
+        "id": "1",
+        "title": "New York",
+        "location": {
+            "lat": 40.7128,
+            "lng": -74.006
+        }
+    },
+    {
+        "id": "2",
+        "title": "London",
+        "location": {
+            "lat": 51.5074,
+            "lng": -0.1278
+        }
+    },
+    {
+        "id": "3",
+        "title": "Vienna",
+        "location": {
+            "lat": 48.2082,
+            "lng": 16.3738
+        }
+    },
+    {
+        "id": "4"
+    }
+]

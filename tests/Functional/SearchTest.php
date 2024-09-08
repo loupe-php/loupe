@@ -1074,6 +1074,58 @@ class SearchTest extends TestCase
         ]);
     }
 
+    #[DataProvider('distanceFilterProvider')]
+    public function testGeoSearchDistances(int $distance): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['location'])
+            ->withSearchableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'locations');
+
+        $searchParameters = SearchParameters::create()
+            ->withFilter('_geoRadius(location, 52.52, 13.405, ' . $distance . ')' /* Berlin */)
+            ->withAttributesToRetrieve(['id', 'title', 'location', '_geoDistance(location)'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => '2',
+                    'title' => 'London',
+                    'location' => [ // ~ 932 km
+                        'lat' => 51.5074,
+                        'lng' => -0.1278,
+                    ],
+                ],
+                [
+                    'id' => '3',
+                    'title' => 'Vienna',
+                    'location' => [ // ~ 545 km
+                        'lat' => 48.2082,
+                        'lng' => 16.3738,
+                    ],
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
+    /**
+     * @return iterable<array{distance: int}>
+     */
+    public static function distanceFilterProvider(): iterable
+    {
+        yield ['distance' => 4_587_758];
+        yield ['distance' => 4_587_759];
+    }
+
     /**
      * @param array<string> $searchableAttributes
      * @param array<string> $attributesToHighlight
