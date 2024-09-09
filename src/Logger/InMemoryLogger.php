@@ -24,6 +24,9 @@ class InMemoryLogger implements LoggerInterface
         return $this->records;
     }
 
+    /**
+     * @param string $level
+     */
     public function log($level, \Stringable|string $message, array $context = []): void
     {
         $this->records[] = [
