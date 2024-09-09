@@ -15,6 +15,19 @@ class SearchTest extends TestCase
 {
     use FunctionalTestTrait;
 
+    /**
+     * @return iterable<array{distance: int}>
+     */
+    public static function distanceFilterProvider(): iterable
+    {
+        yield [
+            'distance' => 4_587_758,
+        ];
+        yield [
+            'distance' => 4_587_759,
+        ];
+    }
+
     public static function emptyFilterProvider(): \Generator
     {
         yield 'IS EMPTY on multiple attribute' => [
@@ -1095,7 +1108,8 @@ class SearchTest extends TestCase
                 [
                     'id' => '2',
                     'title' => 'London',
-                    'location' => [ // ~ 932 km
+                    'location' => [
+                        // ~ 932 km
                         'lat' => 51.5074,
                         'lng' => -0.1278,
                     ],
@@ -1103,7 +1117,8 @@ class SearchTest extends TestCase
                 [
                     'id' => '3',
                     'title' => 'Vienna',
-                    'location' => [ // ~ 545 km
+                    'location' => [
+                        // ~ 545 km
                         'lat' => 48.2082,
                         'lng' => 16.3738,
                     ],
@@ -1115,15 +1130,6 @@ class SearchTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 2,
         ]);
-    }
-
-    /**
-     * @return iterable<array{distance: int}>
-     */
-    public static function distanceFilterProvider(): iterable
-    {
-        yield ['distance' => 4_587_758];
-        yield ['distance' => 4_587_759];
     }
 
     /**
