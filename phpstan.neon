@@ -1,6 +1,8 @@
 parameters:
     level: 8
-    checkGenericClassInNonGenericObjectType: false
+    ignoreErrors:
+        -
+            identifier: missingType.generics
     treatPhpDocTypesAsCertain: false
     paths:
         - src
