@@ -20,12 +20,11 @@ class SearchTest extends TestCase
      */
     public static function distanceFilterProvider(): iterable
     {
-        yield [
-            'distance' => 4_587_758,
-        ];
-        yield [
-            'distance' => 4_587_759,
-        ];
+        yield ['distance' => 4_587_758];
+        yield ['distance' => 4_587_759];
+        yield ['distance' => 4_642_695];
+        yield ['distance' => 4_642_696]; // TODO all distanced over >= 4_642_696 does not work
+        yield ['distance' => 6_000_000]; // TODO all distanced over >= 4_642_696 does not work
     }
 
     public static function emptyFilterProvider(): \Generator
@@ -1100,7 +1099,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withFilter('_geoRadius(location, 52.52, 13.405, ' . $distance . ')' /* Berlin */)
-            ->withAttributesToRetrieve(['id', 'title', 'location', '_geoDistance(location)'])
+            ->withAttributesToRetrieve(['id', 'title', 'location'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
@@ -1122,6 +1121,52 @@ class SearchTest extends TestCase
                         'lat' => 48.2082,
                         'lng' => 16.3738,
                     ],
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
+    public function testGeoSearchDistanceWithoutSort(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['location'])
+            ->withSearchableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'locations');
+
+        $searchParameters = SearchParameters::create()
+            ->withFilter('_geoRadius(location, 52.52, 13.405, 1000000)' /* Berlin */)
+            ->withAttributesToRetrieve(['id', 'title', 'location', '_geoDistance(location)'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => '2',
+                    'title' => 'London',
+                    'location' => [
+                        // ~ 932 km
+                        'lat' => 51.5074,
+                        'lng' => -0.1278,
+                    ],
+                    '_geoDistance(location)' => 932_000, // TODO correct value
+                ],
+                [
+                    'id' => '3',
+                    'title' => 'Vienna',
+                    'location' => [
+                        // ~ 545 km
+                        'lat' => 48.2082,
+                        'lng' => 16.3738,
+                    ],
+                    '_geoDistance(location)' => 545_000, // TODO correct value
                 ],
             ],
             'query' => '',
