@@ -20,11 +20,21 @@ class SearchTest extends TestCase
      */
     public static function distanceFilterProvider(): iterable
     {
-        yield ['distance' => 4_587_758];
-        yield ['distance' => 4_587_759];
-        yield ['distance' => 4_642_695];
-        yield ['distance' => 4_642_696]; // TODO all distanced over >= 4_642_696 does not work
-        yield ['distance' => 6_000_000]; // TODO all distanced over >= 4_642_696 does not work
+        yield [
+            'distance' => 4_587_758,
+        ];
+        yield [
+            'distance' => 4_587_759,
+        ];
+        yield [
+            'distance' => 4_642_695,
+        ];
+        yield [
+            'distance' => 4_642_696, // TODO all distanced over >= 4_642_696 does not work
+        ];
+        yield [
+            'distance' => 6_000_000,  // TODO all distanced over >= 4_642_696 does not work
+        ];
     }
 
     public static function emptyFilterProvider(): \Generator
@@ -1131,7 +1141,7 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testGeoSearchDistanceWithoutSort(): void
+    public function testGeoSearchRetrieveDistanceWithoutSort(): void
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['location'])
