@@ -555,26 +555,40 @@ class Searcher
 
             // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
             // the actual distance is compared. This can use indexes.
+            // We use floor() and ceil() respectively to ensure we get matches as the BearingSpherical calculation of the
+            // BBOX may not be as precise so when searching for the e.g. 3rd decimal floating point, we might exclude
+            // locations we shouldn't.
             $bounds = $node->getBbox();
+
+            // Prevent nullable
+            $nullTerm = $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL);
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
+            $whereStatement[] = '!=';
+            $whereStatement[] = $nullTerm;
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+            $whereStatement[] = '!=';
+            $whereStatement[] = $nullTerm;
+            $whereStatement[] = 'AND';
 
             // Latitude
             $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
             $whereStatement[] = '>=';
-            $whereStatement[] = $bounds->getSouth();
+            $whereStatement[] = floor($bounds->getSouth());
             $whereStatement[] = 'AND';
             $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
             $whereStatement[] = '<=';
-            $whereStatement[] = $bounds->getNorth();
+            $whereStatement[] = ceil($bounds->getNorth());
 
             // Longitude
             $whereStatement[] = 'AND';
             $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
             $whereStatement[] = '>=';
-            $whereStatement[] = $bounds->getWest();
+            $whereStatement[] = floor($bounds->getWest());
             $whereStatement[] = 'AND';
             $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
             $whereStatement[] = '<=';
-            $whereStatement[] = $bounds->getEast();
+            $whereStatement[] = ceil($bounds->getEast());
 
             // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
             // but not within the radius (which is a circle).
