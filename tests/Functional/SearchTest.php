@@ -30,10 +30,10 @@ class SearchTest extends TestCase
             'distance' => 4_642_695,
         ];
         yield [
-            'distance' => 4_642_696, // TODO all distanced over >= 4_642_696 does not work
+            'distance' => 4_642_696,
         ];
         yield [
-            'distance' => 6_000_000,  // TODO all distanced over >= 4_642_696 does not work
+            'distance' => 6_000_000,
         ];
     }
 

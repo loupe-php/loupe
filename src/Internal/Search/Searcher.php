@@ -581,26 +581,24 @@ class Searcher
             $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
             $whereStatement[] = '!=';
             $whereStatement[] = $nullTerm;
+
+            $whereStatement[] = 'AND';
+
+            // Longitude
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+            $whereStatement[] = 'BETWEEN';
+            $whereStatement[] = $bounds->getWest();
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $bounds->getEast();
+
             $whereStatement[] = 'AND';
 
             // Latitude
             $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-            $whereStatement[] = '>=';
-            $whereStatement[] = floor($bounds->getSouth());
+            $whereStatement[] = 'BETWEEN';
+            $whereStatement[] = $bounds->getSouth();
             $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-            $whereStatement[] = '<=';
-            $whereStatement[] = ceil($bounds->getNorth());
-
-            // Longitude
-            $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-            $whereStatement[] = '>=';
-            $whereStatement[] = floor($bounds->getWest());
-            $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-            $whereStatement[] = '<=';
-            $whereStatement[] = ceil($bounds->getEast());
+            $whereStatement[] = $bounds->getNorth();
 
             // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
             // but not within the radius (which is a circle).
