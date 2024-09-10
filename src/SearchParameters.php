@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Loupe\Loupe;
 
 use Loupe\Loupe\Exception\InvalidSearchParametersException;
-use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 
 final class SearchParameters
 {
@@ -45,7 +44,7 @@ final class SearchParameters
     /**
      * @var array<string>
      */
-    private array $sort = [Relevance::RELEVANCE_ALIAS . ':desc'];
+    private array $sort = [Internal\Search\Searcher::RELEVANCE_ALIAS . ':desc'];
 
     public static function create(): self
     {

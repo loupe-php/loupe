@@ -11,8 +11,6 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 class GeoPoint extends AbstractSorter
 {
-    public const DISTANCE_ALIAS = '_distance';
-
     private const COORDINATES_RGXP = '((\-?|\+?)?\d+(\.\d+)?),\s*((\-?|\+?)?\d+(\.\d+)?)'; // Maybe we can find a better one?
 
     private const GEOPOINT_RGXP = '^_geoPoint\((' . Configuration::ATTRIBUTE_NAME_RGXP . '),\s*' . self::COORDINATES_RGXP . '\)$';
@@ -30,23 +28,18 @@ class GeoPoint extends AbstractSorter
         $alias = $engine->getIndexInfo()
             ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
 
-        // We ignore if it's configured sortable (see supports()) but is not yet part of our document schema
-        if (!\in_array($this->attributeName, $engine->getIndexInfo()->getSortableAttributes(), true)) {
-            return;
-        }
-
         $searcher->getQueryBuilder()->addSelect(sprintf(
             'loupe_geo_distance(%f, %f, %s, %s) AS %s',
             $this->lat,
             $this->lng,
             $alias . '.' . $this->attributeName . '_geo_lat',
             $alias . '.' . $this->attributeName . '_geo_lng',
-            self::DISTANCE_ALIAS . '_' . $this->attributeName
+            Searcher::DISTANCE_ALIAS . '_' . $this->attributeName
         ));
 
         // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
         // value
-        $searcher->getQueryBuilder()->addOrderBy(self::DISTANCE_ALIAS . '_' . $this->attributeName, $this->direction->getSQL());
+        $searcher->getQueryBuilder()->addOrderBy(Searcher::DISTANCE_ALIAS . '_' . $this->attributeName, $this->direction->getSQL());
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self
@@ -62,7 +55,13 @@ class GeoPoint extends AbstractSorter
 
     public static function supports(string $value, Engine $engine): bool
     {
-        return self::split($value) !== null;
+        $matches = self::split($value);
+
+        if ($matches === null) {
+            return false;
+        }
+
+        return \in_array($matches['attribute'], $engine->getIndexInfo()->getSortableAttributes(), true);
     }
 
     /**

@@ -16,8 +16,6 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\Search\Sorting\GeoPoint;
-use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
@@ -29,6 +27,10 @@ class Searcher
     public const CTE_TERM_DOCUMENT_MATCHES = '_cte_term_document_matches';
 
     public const CTE_TERM_MATCHES = '_cte_term_matches';
+
+    public const DISTANCE_ALIAS = '_distance';
+
+    public const RELEVANCE_ALIAS = '_relevance';
 
     /**
      * @var array<string, array{cols: array<string>, sql: string}>
@@ -77,20 +79,20 @@ class Searcher
             $document = Util::decodeJson($result['document']);
 
             foreach ($result as $k => $v) {
-                if (str_starts_with($k, GeoPoint::DISTANCE_ALIAS)) {
-                    $document['_geoDistance(' . str_replace(GeoPoint::DISTANCE_ALIAS . '_', '', $k) . ')'] = (int) round((float) $v);
+                if (str_starts_with($k, self::DISTANCE_ALIAS)) {
+                    $document['_geoDistance(' . str_replace(self::DISTANCE_ALIAS . '_', '', $k) . ')'] = (int) round((float) $v);
                 }
             }
 
-            if (\array_key_exists(GeoPoint::DISTANCE_ALIAS, $result)) {
-                $document['_geoDistance'] = (int) round($result[GeoPoint::DISTANCE_ALIAS]);
+            if (\array_key_exists(self::DISTANCE_ALIAS, $result)) {
+                $document['_geoDistance'] = (int) round($result[self::DISTANCE_ALIAS]);
             }
 
             $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
 
             if ($this->searchParameters->showRankingScore()) {
-                $hit['_rankingScore'] = \array_key_exists(Relevance::RELEVANCE_ALIAS, $result) ?
-                    round($result[Relevance::RELEVANCE_ALIAS], 5) : 0.0;
+                $hit['_rankingScore'] = \array_key_exists(self::RELEVANCE_ALIAS, $result) ?
+                    round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
             $this->highlight($hit, $tokens);
@@ -550,6 +552,16 @@ class Searcher
                 return;
             }
 
+            // Add the distance to the select query, so it's also part of the result
+            $this->getQueryBuilder()->addSelect(sprintf(
+                'loupe_geo_distance(%f, %f, %s, %s) AS %s',
+                $node->lat,
+                $node->lng,
+                $documentAlias . '.' . $node->attributeName . '_geo_lat',
+                $documentAlias . '.' . $node->attributeName . '_geo_lng',
+                self::DISTANCE_ALIAS . '_' . $node->attributeName
+            ));
+
             // Start a group
             $whereStatement[] = '(';
 
@@ -569,37 +581,29 @@ class Searcher
             $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
             $whereStatement[] = '!=';
             $whereStatement[] = $nullTerm;
+
+            $whereStatement[] = 'AND';
+
+            // Longitude
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+            $whereStatement[] = 'BETWEEN';
+            $whereStatement[] = $bounds->getWest();
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $bounds->getEast();
+
             $whereStatement[] = 'AND';
 
             // Latitude
             $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-            $whereStatement[] = '>=';
-            $whereStatement[] = floor($bounds->getSouth());
+            $whereStatement[] = 'BETWEEN';
+            $whereStatement[] = $bounds->getSouth();
             $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-            $whereStatement[] = '<=';
-            $whereStatement[] = ceil($bounds->getNorth());
-
-            // Longitude
-            $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-            $whereStatement[] = '>=';
-            $whereStatement[] = floor($bounds->getWest());
-            $whereStatement[] = 'AND';
-            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-            $whereStatement[] = '<=';
-            $whereStatement[] = ceil($bounds->getEast());
+            $whereStatement[] = $bounds->getNorth();
 
             // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
             // but not within the radius (which is a circle).
             $whereStatement[] = 'AND';
-            $whereStatement[] = sprintf(
-                'loupe_geo_distance(%f, %f, %s, %s)',
-                $node->lat,
-                $node->lng,
-                $documentAlias . '.' . $node->attributeName . '_geo_lat',
-                $documentAlias . '.' . $node->attributeName . '_geo_lng'
-            );
+            $whereStatement[] = self::DISTANCE_ALIAS . '_' . $node->attributeName;
             $whereStatement[] = '<=';
             $whereStatement[] = $node->distance;
 
