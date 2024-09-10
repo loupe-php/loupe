@@ -10,8 +10,6 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 class Relevance extends AbstractSorter
 {
-    public const RELEVANCE_ALIAS = '_relevance';
-
     public function __construct(
         private Direction $direction
     ) {
@@ -42,14 +40,14 @@ class Relevance extends AbstractSorter
             Searcher::CTE_TERM_MATCHES,
             Searcher::CTE_TERM_DOCUMENT_MATCHES,
             $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-            self::RELEVANCE_ALIAS,
+            Searcher::RELEVANCE_ALIAS,
         );
 
         $searcher->getQueryBuilder()->addSelect($select);
 
         // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
         // value
-        $searcher->getQueryBuilder()->addOrderBy(self::RELEVANCE_ALIAS, $this->direction->getSQL());
+        $searcher->getQueryBuilder()->addOrderBy(Searcher::RELEVANCE_ALIAS, $this->direction->getSQL());
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): AbstractSorter
@@ -59,6 +57,6 @@ class Relevance extends AbstractSorter
 
     public static function supports(string $value, Engine $engine): bool
     {
-        return $value === self::RELEVANCE_ALIAS;
+        return $value === Searcher::RELEVANCE_ALIAS;
     }
 }

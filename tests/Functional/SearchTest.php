@@ -1166,7 +1166,7 @@ class SearchTest extends TestCase
                         'lat' => 51.5074,
                         'lng' => -0.1278,
                     ],
-                    '_geoDistance(location)' => 932_000, // TODO correct value
+                    '_geoDistance(location)' => 931571,
                 ],
                 [
                     'id' => '3',
@@ -1176,7 +1176,7 @@ class SearchTest extends TestCase
                         'lat' => 48.2082,
                         'lng' => 16.3738,
                     ],
-                    '_geoDistance(location)' => 545_000, // TODO correct value
+                    '_geoDistance(location)' => 523546,
                 ],
             ],
             'query' => '',
