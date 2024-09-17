@@ -25,6 +25,8 @@ class Lexer extends AbstractLexer
 
     public const T_FLOAT = 5;
 
+    public const T_GEO_BOUNDING_BOX = 102;
+
     public const T_GEO_RADIUS = 101;
 
     public const T_GREATER_THAN = 12;
@@ -113,6 +115,9 @@ class Lexer extends AbstractLexer
 
             case $value === '_geoRadius':
                 return self::T_GEO_RADIUS;
+
+            case $value === '_geoBoundingBox':
+                return self::T_GEO_BOUNDING_BOX;
 
                 // Attribute names
             case IndexInfo::isValidAttributeName($value):

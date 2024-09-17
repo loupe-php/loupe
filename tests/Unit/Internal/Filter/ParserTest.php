@@ -173,6 +173,19 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Basic geo bounding box' => [
+            '_geoBoundingBox(location, 53.3498, 23.7275, 37.9838, -6.2603)',
+            [
+                [
+                    'attribute' => 'location',
+                    'north' => 53.3498,
+                    'east' => 23.7275,
+                    'south' => 37.9838,
+                    'west' => -6.2603,
+                ],
+            ],
+        ];
+
         yield 'Basic IN filter' => [
             "genres IN ('Drama', 'Action', 'Documentary')",
             [

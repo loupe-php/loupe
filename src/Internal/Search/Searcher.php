@@ -10,6 +10,7 @@ use Doctrine\DBAL\Result;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
+use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Ast\Group;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
@@ -606,6 +607,51 @@ class Searcher
             $whereStatement[] = self::DISTANCE_ALIAS . '_' . $node->attributeName;
             $whereStatement[] = '<=';
             $whereStatement[] = $node->distance;
+
+            // End group
+            $whereStatement[] = ')';
+        }
+
+        if ($node instanceof GeoBoundingBox) {
+            // Not existing attributes need be handled as no match
+            if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
+                $whereStatement[] = '1 = 0';
+                return;
+            }
+
+            // Start a group GeoDistance BBOX
+            $whereStatement[] = '(';
+
+            // Same like above for
+            $bounds = $node->getBbox();
+
+            // Prevent nullable
+            $nullTerm = $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL);
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
+            $whereStatement[] = '!=';
+            $whereStatement[] = $nullTerm;
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+            $whereStatement[] = '!=';
+            $whereStatement[] = $nullTerm;
+
+            $whereStatement[] = 'AND';
+
+            // Longitude
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+            $whereStatement[] = 'BETWEEN';
+            $whereStatement[] = $bounds->getWest();
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $bounds->getEast();
+
+            $whereStatement[] = 'AND';
+
+            // Latitude
+            $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
+            $whereStatement[] = 'BETWEEN';
+            $whereStatement[] = $bounds->getSouth();
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $bounds->getNorth();
 
             // End group
             $whereStatement[] = ')';

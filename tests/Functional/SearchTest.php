@@ -978,6 +978,64 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testGeoBoundingBox(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['location'])
+            ->withSearchableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'locations');
+
+        $dublin = [
+            'lat' => 53.3498,
+            'lng' => -6.2603,
+        ];
+        $athen = [
+            'lat' => 37.9838,
+            'lng' => 23.7275,
+        ];
+
+        $searchParameters = SearchParameters::create()
+            ->withFilter(sprintf(
+                '_geoBoundingBox(location, %s, %s, %s, %s)',
+                // Top Right (North East) (why north east see: https://github.com/loupe-php/loupe/issues/83)
+                $dublin['lat'],
+                $athen['lng'],
+                // Bottom Left (South West) (why south west see: https://github.com/loupe-php/loupe/issues/83)
+                $athen['lat'],
+                $dublin['lng'],
+            ))
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => '2',
+                    'title' => 'London',
+                    'location' => [
+                        'lat' => 51.5074,
+                        'lng' => -0.1278,
+                    ],
+                ],
+                [
+                    'id' => '3',
+                    'title' => 'Vienna',
+                    'location' => [
+                        'lat' => 48.2082,
+                        'lng' => 16.3738,
+                    ],
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
     public function testGeoSearch(): void
     {
         $configuration = Configuration::create()

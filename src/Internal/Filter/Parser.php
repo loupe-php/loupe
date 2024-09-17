@@ -10,6 +10,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
+use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Ast\Group;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
@@ -49,6 +50,7 @@ class Parser
             if ($start && !$this->lexer->token?->isA(
                 Lexer::T_ATTRIBUTE_NAME,
                 Lexer::T_GEO_RADIUS,
+                Lexer::T_GEO_BOUNDING_BOX,
                 Lexer::T_OPEN_PARENTHESIS
             )) {
                 $this->syntaxError('an attribute name, _geoRadius() or \'(\'');
@@ -58,6 +60,11 @@ class Parser
 
             if ($this->lexer->token?->type === Lexer::T_GEO_RADIUS) {
                 $this->handleGeoRadius($engine);
+                continue;
+            }
+
+            if ($this->lexer->token?->type === Lexer::T_GEO_BOUNDING_BOX) {
+                $this->handleGeoBoundingBox($engine);
                 continue;
             }
 
@@ -232,6 +239,41 @@ class Parser
         $this->lexer->moveNext();
 
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $this->getTokenValueBasedOnType()));
+    }
+
+    private function handleGeoBoundingBox(Engine $engine): void
+    {
+        $this->assertOpeningParenthesis($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $this->lexer->moveNext();
+
+        $attributeName = (string) $this->lexer->token?->value;
+
+        $this->validateFilterableAttribute($engine, $attributeName);
+
+        $this->lexer->moveNext();
+        $this->lexer->moveNext();
+        $north = $this->assertAndExtractFloat($this->lexer->token, true);
+        $this->assertComma($this->lexer->lookahead);
+
+        $this->lexer->moveNext();
+        $this->lexer->moveNext();
+        $east = $this->assertAndExtractFloat($this->lexer->token, true);
+        $this->assertComma($this->lexer->lookahead);
+
+        $this->lexer->moveNext();
+        $this->lexer->moveNext();
+        $south = $this->assertAndExtractFloat($this->lexer->token, true);
+        $this->assertComma($this->lexer->lookahead);
+
+        $this->lexer->moveNext();
+        $this->lexer->moveNext();
+        $west = $this->assertAndExtractFloat($this->lexer->token, true);
+        $this->assertClosingParenthesis($this->lexer->lookahead);
+
+        $this->addNode(new GeoBoundingBox($attributeName, $north, $east, $south, $west));
+
+        $this->lexer->moveNext();
     }
 
     private function handleGeoRadius(Engine $engine): void
