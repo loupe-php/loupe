@@ -243,6 +243,8 @@ class Parser
 
     private function handleGeoBoundingBox(Engine $engine): void
     {
+        $startPosition = ($this->lexer->lookahead?->position ?? 0) + 1;
+
         $this->assertOpeningParenthesis($this->lexer->lookahead);
         $this->lexer->moveNext();
         $this->lexer->moveNext();
@@ -271,7 +273,16 @@ class Parser
         $west = $this->assertAndExtractFloat($this->lexer->token, true);
         $this->assertClosingParenthesis($this->lexer->lookahead);
 
-        $this->addNode(new GeoBoundingBox($attributeName, $north, $east, $south, $west));
+        try {
+            $this->addNode(new GeoBoundingBox($attributeName, $north, $east, $south, $west));
+        } catch (\InvalidArgumentException $e) {
+            $this->syntaxError(
+                $e->getMessage(),
+                // create a fake token to show the user the whole value for better developer experience as we don't know
+                // which latitude or longitude value caused the exception
+                new Token(implode(', ', [$attributeName, $north, $east, $south, $west]), Lexer::T_FLOAT, $startPosition),
+            );
+        }
 
         $this->lexer->moveNext();
     }

@@ -400,6 +400,16 @@ class ParserTest extends TestCase
             "Col 31: Error: Expected ',', got '2.00'",
         ];
 
+        yield 'Invalid coordinates for _geoBoundingBox latitude' => [
+            '_geoBoundingBox(location, 1.0, 2.00, 92.00, 3.00)',
+            "Col 16: Error: Expected Latitude value must be numeric -90.0 .. +90.0 (given: 92), got 'location, 1, 2, 92, 3'",
+        ];
+
+        yield 'Invalid coordinates for _geoBoundingBox longitude' => [
+            '_geoBoundingBox(location, 1.0, 182.00, 2.00, 3.00)',
+            "Col 16: Error: Expected Longitude value must be numeric -180.0 .. +180.0 (given: 182), got 'location, 1, 182, 2, 3'",
+        ];
+
         yield 'Unclosed IN ()' => [
             "genres IN ('Action', 'Music'",
             "Col 21: Error: Expected ')",
