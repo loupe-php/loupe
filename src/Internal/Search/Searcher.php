@@ -39,6 +39,11 @@ class Searcher
      */
     private array $CTEs = [];
 
+    /**
+     * @var array<string, bool>
+     */
+    private array $geoDistanceSelectsAdded = [];
+
     private string $id;
 
     private QueryBuilder $queryBuilder;
@@ -54,6 +59,33 @@ class Searcher
     ) {
         $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
         $this->id = uniqid('lqi', true);
+    }
+
+    public function addGeoDistanceSelectToQueryBuilder(string $attribute, float $latitude, float $longitude): string
+    {
+        $alias = self::DISTANCE_ALIAS . '_' . $attribute;
+
+        // Do not add multiple times for performance reasons
+        if (isset($this->geoDistanceSelectsAdded[$alias])) {
+            return $alias;
+        }
+
+        $documentAlias = $this->engine->getIndexInfo()
+            ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+
+        // Add the distance to the select query, so it's also part of the result
+        $this->getQueryBuilder()->addSelect(sprintf(
+            'loupe_geo_distance(%f, %f, %s, %s) AS %s',
+            $latitude,
+            $longitude,
+            $documentAlias . '.' . $attribute . '_geo_lat',
+            $documentAlias . '.' . $attribute . '_geo_lng',
+            self::DISTANCE_ALIAS . '_' . $attribute
+        ));
+
+        $this->geoDistanceSelectsAdded[$alias] = true;
+
+        return $alias;
     }
 
     public function fetchResult(): SearchResult
@@ -593,14 +625,7 @@ class Searcher
             }
 
             // Add the distance to the select query, so it's also part of the result
-            $this->getQueryBuilder()->addSelect(sprintf(
-                'loupe_geo_distance(%f, %f, %s, %s) AS %s',
-                $node->lat,
-                $node->lng,
-                $documentAlias . '.' . $node->attributeName . '_geo_lat',
-                $documentAlias . '.' . $node->attributeName . '_geo_lng',
-                self::DISTANCE_ALIAS . '_' . $node->attributeName
-            ));
+            $distanceSelectAlias = $this->addGeoDistanceSelectToQueryBuilder($node->attributeName, $node->lat, $node->lng);
 
             // Start a group
             $whereStatement[] = '(';
@@ -617,7 +642,7 @@ class Searcher
             // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
             // but not within the radius (which is a circle).
             $whereStatement[] = 'AND';
-            $whereStatement[] = self::DISTANCE_ALIAS . '_' . $node->attributeName;
+            $whereStatement[] = $distanceSelectAlias;
             $whereStatement[] = '<=';
             $whereStatement[] = $node->distance;
 
