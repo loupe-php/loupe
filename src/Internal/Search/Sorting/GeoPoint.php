@@ -6,7 +6,6 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 class GeoPoint extends AbstractSorter
@@ -25,21 +24,11 @@ class GeoPoint extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        $alias = $engine->getIndexInfo()
-            ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
-
-        $searcher->getQueryBuilder()->addSelect(sprintf(
-            'loupe_geo_distance(%f, %f, %s, %s) AS %s',
-            $this->lat,
-            $this->lng,
-            $alias . '.' . $this->attributeName . '_geo_lat',
-            $alias . '.' . $this->attributeName . '_geo_lng',
-            Searcher::DISTANCE_ALIAS . '_' . $this->attributeName
-        ));
+        $distanceSelectAlias = $searcher->addGeoDistanceSelectToQueryBuilder($this->attributeName, $this->lat, $this->lng);
 
         // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
         // value
-        $searcher->getQueryBuilder()->addOrderBy(Searcher::DISTANCE_ALIAS . '_' . $this->attributeName, $this->direction->getSQL());
+        $searcher->getQueryBuilder()->addOrderBy($distanceSelectAlias, $this->direction->getSQL());
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self
