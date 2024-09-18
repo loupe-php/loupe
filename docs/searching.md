@@ -286,11 +286,11 @@ $results = [
 
 Additional to a query based on distance we can also search for locations inside a bounding box.
 In this example we have 4 documents and 3 with geo coordinates (New York, London, Vienna).
-We have a bounding context which goes from Dublin to Athen which so returns only London and Vienna.
+We create a bounding box filter which spans from Dublin to Athens which then only matches our documents in London and Vienna.
 
 Keep in mind that the order of the arguments is important.
-The `_geoBoundingBox` expect `attributeName`, `north` (top), `east` (right), `south` (bottom), `west` (left).
-In this specific example top is Dublin Latitude, right is Athen Longitude, bottom is Athen Latitude and left is Dublin Longitude.
+The `_geoBoundingBox` expects `attributeName`, `north` (top), `east` (right), `south` (bottom), `west` (left).
+In this specific example, `top` is the latitude of Dublin,`right` is the longitude of Athens,`bottom` is the latitude of Athens and`left` equals Dublin's longitude.
 
 ```php
 $searchParameters = SearchParameters::create()
@@ -299,7 +299,7 @@ $searchParameters = SearchParameters::create()
 ;
 ```
 
-This will result looks like this::
+This is going to be your result:
 
 ```php
 $results = [
