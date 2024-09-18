@@ -9,31 +9,34 @@ use Location\Coordinate;
 
 class GeoBoundingBox extends Node
 {
+    private Bounds $bbox;
+
     public function __construct(
         public string $attributeName,
-        public float $north,
-        public float $east,
-        public float $south,
-        public float $west,
+        float $north,
+        float $east,
+        float $south,
+        float $west,
     ) {
+        $this->bbox = new Bounds(
+            new Coordinate($north, $west),
+            new Coordinate($south, $east),
+        );
     }
 
     public function getBbox(): Bounds
     {
-        return new Bounds(
-            new Coordinate($this->north, $this->west),
-            new Coordinate($this->south, $this->east),
-        );
+        return $this->bbox;
     }
 
     public function toArray(): array
     {
         return [
             'attribute' => $this->attributeName,
-            'north' => $this->north,
-            'east' => $this->east,
-            'south' => $this->south,
-            'west' => $this->west,
+            'north' => $this->bbox->getNorth(),
+            'east' => $this->bbox->getEast(),
+            'south' => $this->bbox->getSouth(),
+            'west' => $this->bbox->getWest(),
         ];
     }
 }
