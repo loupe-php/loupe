@@ -286,6 +286,44 @@ class Searcher
     }
 
     /**
+     * @return array<string|float>
+     */
+    private function createGeoBoundingBoxWhereStatement(string $documentAlias, GeoBoundingBox|GeoDistance $node, Bounds $bounds): array
+    {
+        $whereStatement = [];
+
+        // Prevent nullable
+        $nullTerm = $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL);
+        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
+        $whereStatement[] = '!=';
+        $whereStatement[] = $nullTerm;
+        $whereStatement[] = 'AND';
+        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+        $whereStatement[] = '!=';
+        $whereStatement[] = $nullTerm;
+
+        $whereStatement[] = 'AND';
+
+        // Longitude
+        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
+        $whereStatement[] = 'BETWEEN';
+        $whereStatement[] = $bounds->getWest();
+        $whereStatement[] = 'AND';
+        $whereStatement[] = $bounds->getEast();
+
+        $whereStatement[] = 'AND';
+
+        // Latitude
+        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
+        $whereStatement[] = 'BETWEEN';
+        $whereStatement[] = $bounds->getSouth();
+        $whereStatement[] = 'AND';
+        $whereStatement[] = $bounds->getNorth();
+
+        return $whereStatement;
+    }
+
+    /**
      * @param array<int> $states
      */
     private function createStatesMatchWhere(array $states, string $table, string $term, int $levenshteinDistance, string $termColumnName): string
@@ -760,43 +798,5 @@ class Searcher
     private function sortDocuments(): void
     {
         $this->sorting->applySorters($this);
-    }
-
-    /**
-     * @return array<string|float>
-     */
-    private function createGeoBoundingBoxWhereStatement(string $documentAlias, GeoBoundingBox|GeoDistance $node, Bounds $bounds): array
-    {
-        $whereStatement = [];
-
-        // Prevent nullable
-        $nullTerm = $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL);
-        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-        $whereStatement[] = '!=';
-        $whereStatement[] = $nullTerm;
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-        $whereStatement[] = '!=';
-        $whereStatement[] = $nullTerm;
-
-        $whereStatement[] = 'AND';
-
-        // Longitude
-        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-        $whereStatement[] = 'BETWEEN';
-        $whereStatement[] = $bounds->getWest();
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $bounds->getEast();
-
-        $whereStatement[] = 'AND';
-
-        // Latitude
-        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-        $whereStatement[] = 'BETWEEN';
-        $whereStatement[] = $bounds->getSouth();
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $bounds->getNorth();
-
-        return $whereStatement;
     }
 }
