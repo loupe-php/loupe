@@ -173,6 +173,19 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Basic geo bounding box' => [
+            '_geoBoundingBox(location, 53.3498, 23.7275, 37.9838, -6.2603)',
+            [
+                [
+                    'attribute' => 'location',
+                    'north' => 53.3498,
+                    'east' => 23.7275,
+                    'south' => 37.9838,
+                    'west' => -6.2603,
+                ],
+            ],
+        ];
+
         yield 'Basic IN filter' => [
             "genres IN ('Drama', 'Action', 'Documentary')",
             [
@@ -355,6 +368,46 @@ class ParserTest extends TestCase
         yield 'Missing comma for _geoRadius' => [
             '_geoRadius(location, 1.00 2.00, 200)',
             "Col 26: Error: Expected ',', got '2.00'",
+        ];
+
+        yield 'Invalid number of parameters for _geoBoundingBox no attribute' => [
+            '_geoBoundingBox(1.00, 2.00, 2.00, 3.00)',
+            "Col 16: Error: Expected filterable attribute, got '1.00'",
+        ];
+
+        yield 'Invalid number of parameters for _geoBoundingBox missing parameter' => [
+            '_geoBoundingBox(location, 1.00, 2.00, 2.00)',
+            "Col 42: Error: Expected ',', got ')'",
+        ];
+
+        yield 'Invalid number of parameters for _geoBoundingBox to much parameters' => [
+            '_geoBoundingBox(location, 1.00, 2.00, 2.00, 3.00, 4.00)',
+            "Col 48: Error: Expected ')', got ','",
+        ];
+
+        yield 'Missing ( for _geoBoundingBox' => [
+            '_geoBoundingBox&location, 1.00, 2.00, 2.00, 3.00)',
+            "Col 15: Error: Expected '(', got '&'",
+        ];
+
+        yield 'Missing ) for _geoBoundingBox' => [
+            '_geoBoundingBox(location, 1.00, 2.00, 2.00, 3.00',
+            "Col 44: Error: Expected ')', got end of string.",
+        ];
+
+        yield 'Missing comma for _geoBoundingBox' => [
+            '_geoBoundingBox(location, 1.00 2.00, 2.00, 3.00)',
+            "Col 31: Error: Expected ',', got '2.00'",
+        ];
+
+        yield 'Invalid coordinates for _geoBoundingBox latitude' => [
+            '_geoBoundingBox(location, 1.0, 2.00, 92.00, 3.00)',
+            "Col 16: Error: Expected Latitude value must be numeric -90.0 .. +90.0 (given: 92), got 'location, 1, 2, 92, 3'",
+        ];
+
+        yield 'Invalid coordinates for _geoBoundingBox longitude' => [
+            '_geoBoundingBox(location, 1.0, 182.00, 2.00, 3.00)',
+            "Col 16: Error: Expected Longitude value must be numeric -180.0 .. +180.0 (given: 182), got 'location, 1, 182, 2, 3'",
         ];
 
         yield 'Unclosed IN ()' => [

@@ -283,3 +283,51 @@ $results = [
 
 [Config]: configuration.md
 [Restaurant_Fixture]: ./../tests/Functional/IndexData/restaurants.json
+
+Additional to a query based on distance we can also search for locations inside a bounding box.
+In this example we have 4 documents and 3 with geo coordinates (New York, London, Vienna).
+We create a bounding box filter which spans from Dublin to Athens which then only matches our documents in London and Vienna.
+
+Keep in mind that the order of the arguments is important.
+The `_geoBoundingBox` expects `attributeName`, `north` (top), `east` (right), `south` (bottom), `west` (left).
+In this specific example, `top` is the latitude of Dublin,`right` is the longitude of Athens,`bottom` is the latitude of Athens and`left` equals Dublin's longitude.
+
+```php
+$searchParameters = SearchParameters::create()
+    ->withAttributesToRetrieve(['id', 'name', 'location'])
+    ->withFilter('_geoBoundingBox(location, 53.3498, 23.7275, 37.9838, -6.2603)')
+;
+```
+
+This is going to be your result:
+
+```php
+$results = [
+    'hits' => [
+        [
+            'id' => '2',
+            'title' => 'London',
+            'location' => [
+                'lat' => 51.5074,
+                'lng' => -0.1278,
+            ],
+        ],
+        [
+            'id' => '3',
+            'title' => 'Vienna',
+            'location' => [
+                'lat' => 48.2082,
+                'lng' => 16.3738,
+            ],
+        ],
+    ],
+    'query' => '',
+    'hitsPerPage' => 20,
+    'page' => 1,
+    'totalPages' => 1,
+    'totalHits' => 2,
+];
+```
+
+[Config]: configuration.md
+[Restaurant_Fixture]: ./../tests/Functional/IndexData/locations.json
