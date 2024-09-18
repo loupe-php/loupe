@@ -370,6 +370,36 @@ class ParserTest extends TestCase
             "Col 26: Error: Expected ',', got '2.00'",
         ];
 
+        yield 'Invalid number of parameters for _geoBoundingBox no attribute' => [
+            '_geoBoundingBox(1.00, 2.00, 2.00, 3.00)',
+            "Col 16: Error: Expected filterable attribute, got '1.00'",
+        ];
+
+        yield 'Invalid number of parameters for _geoBoundingBox missing parameter' => [
+            '_geoBoundingBox(location, 1.00, 2.00, 2.00)',
+            "Col 42: Error: Expected ',', got ')'",
+        ];
+
+        yield 'Invalid number of parameters for _geoBoundingBox to much parameters' => [
+            '_geoBoundingBox(location, 1.00, 2.00, 2.00, 3.00, 4.00)',
+            "Col 48: Error: Expected ')', got ','",
+        ];
+
+        yield 'Missing ( for _geoBoundingBox' => [
+            '_geoBoundingBox&location, 1.00, 2.00, 2.00, 3.00)',
+            "Col 15: Error: Expected '(', got '&'",
+        ];
+
+        yield 'Missing ) for _geoBoundingBox' => [
+            '_geoBoundingBox(location, 1.00, 2.00, 2.00, 3.00',
+            "Col 44: Error: Expected ')', got end of string.",
+        ];
+
+        yield 'Missing comma for _geoBoundingBox' => [
+            '_geoBoundingBox(location, 1.00 2.00, 2.00, 3.00)',
+            "Col 31: Error: Expected ',', got '2.00'",
+        ];
+
         yield 'Unclosed IN ()' => [
             "genres IN ('Action', 'Music'",
             "Col 21: Error: Expected ')",

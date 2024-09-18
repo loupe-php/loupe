@@ -1000,10 +1000,8 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withFilter(sprintf(
                 '_geoBoundingBox(location, %s, %s, %s, %s)',
-                // Top Right (North East) (why north east see: https://github.com/loupe-php/loupe/issues/83)
                 $dublin['lat'],
                 $athen['lng'],
-                // Bottom Left (South West) (why south west see: https://github.com/loupe-php/loupe/issues/83)
                 $athen['lat'],
                 $dublin['lng'],
             ))

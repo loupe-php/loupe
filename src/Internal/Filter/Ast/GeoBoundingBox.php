@@ -20,7 +20,6 @@ class GeoBoundingBox extends Node
 
     public function getBbox(): Bounds
     {
-        // phpgeo bounds are top left to bottom right but meilisearch and so loupe is top right to bottom left
         return new Bounds(
             new Coordinate($this->north, $this->west),
             new Coordinate($this->south, $this->east),
