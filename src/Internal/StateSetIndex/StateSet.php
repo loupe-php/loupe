@@ -95,7 +95,7 @@ class StateSet implements StateSetInterface
                 $data = $this->loadFromStorage();
                 $this->dumpStateSetCache($data);
             } else {
-                $data = require_once $cacheFile;
+                $data = require $cacheFile;
             }
         }
 
