@@ -185,6 +185,42 @@ class SearchTest extends TestCase
                 ],
             ],
         ];
+
+        yield '= on boolean attribute' => [
+            'isActive = false',
+            [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+            ],
+        ];
+
+        yield '!= on boolean attribute' => [
+            'isActive != false',
+            [
+                [
+                    'id' => 3,
+                    'firstname' => 'Alexander',
+                ],
+                [
+                    'id' => 4,
+                    'firstname' => 'Jonas',
+                ],
+                [
+                    'id' => 5,
+                    'firstname' => 'Marko',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
     }
 
     public static function highlightingProvider(): \Generator
@@ -2142,7 +2178,7 @@ class SearchTest extends TestCase
         }
 
         $configuration = $configuration
-            ->withFilterableAttributes(['departments', 'gender'])
+            ->withFilterableAttributes(['departments', 'gender', 'isActive'])
             ->withSortableAttributes(['firstname'])
             ->withSearchableAttributes(['firstname', 'lastname'])
         ;

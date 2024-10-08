@@ -6,7 +6,8 @@
         "gender": "female",
         "departments": ["Development", "Engineering"],
         "colors": ["Green", "Blue"],
-        "age": 40
+        "age": 40,
+        "isActive": true
     },
     {
         "id": 2,
@@ -15,7 +16,8 @@
         "gender": "female",
         "departments": ["Development", "Backoffice"],
         "colors": ["Red", "Orange"],
-        "age": 29
+        "age": 29,
+        "isActive": true
     },
     {
         "id": 3,
@@ -24,7 +26,8 @@
         "gender": "",
         "departments": [],
         "colors": ["Blue"],
-        "age": 32
+        "age": 32,
+        "isActive": true
     },
     {
         "id": 4,
@@ -33,7 +36,8 @@
         "gender": "other",
         "departments": ["Engineering", "Project Management"],
         "colors": ["Yellow", "Red"],
-        "age": 58
+        "age": 58,
+        "isActive": true
     },
     {
         "id": 5,
@@ -42,7 +46,8 @@
         "gender": null,
         "departments": null,
         "colors": ["Purple"],
-        "age": 22
+        "age": 22,
+        "isActive": true
     },
     {
         "id": 6,
@@ -51,6 +56,7 @@
         "gender": "male",
         "departments": ["Backoffice"],
         "colors": ["Green"],
-        "age": 18
+        "age": 18,
+        "isActive": false
     }
 ]

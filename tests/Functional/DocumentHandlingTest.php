@@ -31,6 +31,7 @@ class DocumentHandlingTest extends TestCase
             'colors' =>
                 ['Green', 'Blue'],
             'age' => 40,
+            'isActive' => true,
         ], $loupe->getDocument(1));
 
         $this->assertSame([
@@ -43,6 +44,7 @@ class DocumentHandlingTest extends TestCase
             'colors' =>
                 ['Green', 'Blue'],
             'age' => 40,
+            'isActive' => true,
         ], $loupe->getDocument('1'));
 
         $this->assertNull($loupe->getDocument('foobar'));
