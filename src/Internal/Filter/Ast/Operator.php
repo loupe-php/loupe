@@ -31,6 +31,10 @@ enum Operator: string
             $this->quote($connection, $value);
         }
 
+        if (\is_bool($value)) {
+            $value = $value ? 'true' : 'false';
+        }
+
         return match ($this) {
             self::Equals,
             self::NotEquals => $attribute . ' ' . $this->value . ' ' . $value,
