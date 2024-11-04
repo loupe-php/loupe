@@ -7,6 +7,7 @@ namespace Loupe\Loupe\Internal;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
@@ -36,6 +37,8 @@ class Engine
 
     private IndexInfo $indexInfo;
 
+    private string $sqliteVersion = '';
+
     private StateSetIndex $stateSetIndex;
 
     private ?Tokenizer $tokenizer = null;
@@ -58,6 +61,7 @@ class Engine
         $this->indexer = new Indexer($this);
         $this->highlighter = new Highlighter($this);
         $this->filterParser = new Parser();
+        $this->sqliteVersion = $this->connection->getServerVersion();
     }
 
     /**
@@ -213,8 +217,9 @@ class Engine
     }
 
     /**
-     * Unfortunately, we cannot use proper UPSERTs here (ON DUPLICATE() UPDATE) as somehow RETURNING does not work
-     * properly with Doctrine. Maybe we can improve that one day.
+     * Use native UPSERT if supported and fall back to a regular SELECT and INSERT INTO if not.
+     * We do not use the Doctrine query builder in this method as the method  is heavily used and the query builder
+     * will slow down performance considerably.
      *
      * @param array<string, mixed> $insertData
      * @param array<string> $uniqueIndexColumns
@@ -230,8 +235,60 @@ class Engine
             throw new \InvalidArgumentException('Need to provide data to insert.');
         }
 
-        // Do not use the query builder in this method as it is heavily used and the query builder will slow down
-        // performance considerably here.
+        // Use native UPSERT if possible
+        if (version_compare($this->sqliteVersion, '3.35.0', '>=')) {
+            $columns = [];
+            $set = [];
+            $values = [];
+            $updateSet = [];
+            $updateValues = [];
+            foreach ($insertData as $columnName => $value) {
+                $columns[] = $columnName;
+                $set[] = '?';
+                $values[] = $value;
+
+                if (\in_array($columnName, $uniqueIndexColumns, true)) {
+                    $updateSet[] = $columnName . ' = excluded.' . $columnName;
+                } else {
+                    $updateSet[] = $columnName . ' = ?';
+                    $updateValues[] = $value;
+                }
+            }
+
+            // Make sure the update values are added at the end for correct replacement
+            $values = array_merge($values, $updateValues);
+
+            $query = 'INSERT INTO ' . $table . ' (' . implode(', ', $columns) . ')' .
+                ' VALUES (' . implode(', ', $set) . ')' .
+                ' ON CONFLICT (' . implode(', ', $uniqueIndexColumns) . ')';
+
+            if (\count($updateSet) === 0) {
+                $query .= ' DO NOTHING';
+            } else {
+                $query .= ' DO UPDATE SET ' . implode(', ', $updateSet);
+            }
+
+            if ($insertIdColumn !== '') {
+                $query .= ' RETURNING ' . $insertIdColumn;
+            }
+
+            if ($table === IndexInfo::TABLE_NAME_DOCUMENTS) {
+            }
+
+            $insertValue = $this->getConnection()->executeQuery($query, $values, $this->extractDbalTypes($values))->fetchOne();
+
+            if ($insertValue === false) {
+                if ($insertIdColumn !== '') {
+                    throw new IndexException('This should not happen!');
+                }
+
+                return null;
+            }
+
+            return (int) $insertValue;
+        }
+
+        // Fallback logic for older SQLite versions
         $query = 'SELECT ' .
             implode(', ', array_filter(array_merge([$insertIdColumn], $uniqueIndexColumns))) .
             ' FROM ' .
