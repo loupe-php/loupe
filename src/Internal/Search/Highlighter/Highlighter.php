@@ -8,7 +8,6 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
-use voku\helper\UTF8;
 
 class Highlighter
 {
@@ -51,7 +50,7 @@ class Highlighter
         $highlightedText = '';
         $spans = $this->extractSpansFromMatches($matches);
 
-        foreach (UTF8::str_split($text) as $pos => $char) {
+        foreach (mb_str_split($text, 1, 'UTF-8') as $pos => $char) {
             if (\in_array($pos, $spans['starts'], true)) {
                 $highlightedText .= $startTag;
             }

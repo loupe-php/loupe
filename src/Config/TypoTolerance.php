@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Config;
 
 use Loupe\Loupe\Exception\InvalidConfigurationException;
-use voku\helper\UTF8;
 
 final class TypoTolerance
 {
@@ -68,7 +67,7 @@ final class TypoTolerance
             return 0;
         }
 
-        $termLength = (int) UTF8::strlen($term);
+        $termLength = (int) mb_strlen($term, 'UTF-8');
 
         foreach ($this->typoThresholds as $threshold => $distance) {
             if ($termLength >= $threshold) {

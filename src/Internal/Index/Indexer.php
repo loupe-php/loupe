@@ -12,7 +12,6 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Util;
-use voku\helper\UTF8;
 
 class Indexer
 {
@@ -246,7 +245,7 @@ class Indexer
                 IndexInfo::TABLE_NAME_PREFIXES,
                 [
                     'prefix' => $prefix,
-                    'length' => UTF8::strlen($prefix),
+                    'length' => mb_strlen($prefix, 'UTF-8'),
                     'state' => $state,
                 ],
                 ['prefix', 'length'],
@@ -310,7 +309,7 @@ class Indexer
             [
                 'term' => $term,
                 'state' => $state,
-                'length' => UTF8::strlen($term),
+                'length' => mb_strlen($term, 'UTF-8'),
                 'idf' => 1,
             ],
             ['term'],
