@@ -253,6 +253,10 @@ class Engine
         if ($existing === false) {
             $this->getConnection()->insert($table, $insertData, $this->extractDbalTypes($insertData));
 
+            if ($insertIdColumn === '') {
+                return null;
+            }
+
             return (int) $this->getConnection()->lastInsertId();
         }
 
@@ -285,8 +289,8 @@ class Engine
     }
 
     /**
-     * @param array<string|int, mixed> $data
-     * @return  array<string|int, int>
+     * @param array<int<0, max>|string, mixed> $data
+     * @return array<int<0, max>|string, \Doctrine\DBAL\ParameterType>
      */
     private function extractDbalTypes(array $data): array
     {

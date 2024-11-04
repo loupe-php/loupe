@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Tokenizer;
 
-use voku\helper\UTF8;
-
 class Token
 {
     /**
@@ -29,7 +27,7 @@ class Token
 
     public function getLength(): int
     {
-        return (int) UTF8::strlen($this->getTerm());
+        return (int) mb_strlen($this->getTerm(), 'UTF-8');
     }
 
     public function getStartPosition(): int

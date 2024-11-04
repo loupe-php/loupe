@@ -22,7 +22,6 @@ use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
-use voku\helper\UTF8;
 
 class Searcher
 {
@@ -382,14 +381,14 @@ class Searcher
             '%s.length >= %d',
             $this->engine->getIndexInfo()
                 ->getAliasForTable($table),
-            UTF8::strlen($term) - 1
+            mb_strlen($term, 'UTF-8') - 1
         );
         $where[] = 'AND';
         $where[] = sprintf(
             '%s.length <= %d',
             $this->engine->getIndexInfo()
                 ->getAliasForTable($table),
-            UTF8::strlen($term) + 1
+            mb_strlen($term, 'UTF-8') + 1
         );
         $where[] = 'AND';
         $where[] = sprintf(

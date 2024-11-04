@@ -6,10 +6,10 @@ namespace Loupe\Loupe;
 
 use Doctrine\DBAL\Configuration as DbalConfiguration;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\API\SQLite\UserDefinedFunctions;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Logging\Middleware;
+use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\CosineSimilarity;
 use Loupe\Loupe\Internal\Engine;
@@ -51,19 +51,22 @@ final class LoupeFactory
     private function createConnection(Configuration $configuration, ?string $folder = null): Connection
     {
         $connection = null;
-        $dsnPart = $folder === null ? ':memory:' : ('notused:inthis@case/' . realpath($folder) . '/loupe.db');
+        $dsnPart = $folder === null ? '/:memory:' : ('notused:inthis@case/' . realpath($folder) . '/loupe.db');
+        $dsnParser = new DsnParser();
 
         // Try sqlite3 first, it seems way faster than the pdo-sqlite driver
         try {
-            $connection = DriverManager::getConnection([
-                'url' => 'sqlite3://' . $dsnPart,
-            ], $this->getDbalConfiguration($configuration));
-        } catch (Exception $e) {
+            $connection = DriverManager::getConnection(
+                $dsnParser->parse('sqlite3://' . $dsnPart),
+                $this->getDbalConfiguration($configuration)
+            );
+        } catch (Exception) {
             try {
-                $connection = DriverManager::getConnection([
-                    'url' => 'pdo-sqlite://' . $dsnPart,
-                ], $this->getDbalConfiguration($configuration));
-            } catch (Exception $e) {
+                $connection = DriverManager::getConnection(
+                    $dsnParser->parse('pdo_sqlite://' . $dsnPart),
+                    $this->getDbalConfiguration($configuration)
+                );
+            } catch (Exception) {
                 // Noop
             }
         }
@@ -72,10 +75,7 @@ final class LoupeFactory
             throw new InvalidConfigurationException('You need either the sqlite3 (recommended) or pdo_sqlite PHP extension.');
         }
 
-        /** @var \PDO $nativeConnection */
-        $nativeConnection = $connection->getNativeConnection(); // Must be \PDO because we know what we instantiate here
-
-        $sqliteVersion = $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION);
+        $sqliteVersion = $connection->getServerVersion();
 
         if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
             throw new \InvalidArgumentException(sprintf(
@@ -141,8 +141,10 @@ final class LoupeFactory
             ];
         }
 
-        /** @phpstan-ignore-next-line */
-        UserDefinedFunctions::register([$connection->getNativeConnection(), 'sqliteCreateFunction'], $functions);
+        foreach ($functions as $functionName => $function) {
+            /** @phpstan-ignore-next-line */
+            $connection->getNativeConnection()->createFunction($functionName, $function['callback'], $function['numArgs']);
+        }
     }
 
     private function sqlLiteFunctionExists(Connection $connection, string $function): bool

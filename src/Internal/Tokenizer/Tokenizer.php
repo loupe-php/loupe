@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Tokenizer;
 
 use Nitotm\Eld\LanguageDetector;
-use voku\helper\UTF8;
 use Wamania\Snowball\NotFoundException;
 use Wamania\Snowball\Stemmer\Stemmer;
 use Wamania\Snowball\StemmerFactory;
@@ -101,7 +100,7 @@ class Tokenizer
             }
 
             if ($iterator->getRuleStatus() === \IntlBreakIterator::WORD_NONE) {
-                $position += UTF8::strlen($term);
+                $position += mb_strlen($term, 'UTF-8');
                 continue;
             }
 
@@ -109,7 +108,7 @@ class Tokenizer
                 break;
             }
 
-            $term = UTF8::strtolower($term);
+            $term = mb_strtolower($term, 'UTF-8');
             $variants = [];
 
             // Stem if we detected a language - but only if not part of a phrase
@@ -161,6 +160,6 @@ class Tokenizer
             return null;
         }
 
-        return $this->stemmerCache[$language][$term] = UTF8::strtolower($stemmer->stem($term));
+        return $this->stemmerCache[$language][$term] = mb_strtolower($stemmer->stem($term), 'UTF-8');
     }
 }
