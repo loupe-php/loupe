@@ -312,7 +312,7 @@ class Indexer
                 'length' => mb_strlen($term, 'UTF-8'),
                 'idf' => 1,
             ],
-            ['term'],
+            ['term', 'state', 'length'],
             'id'
         );
 
