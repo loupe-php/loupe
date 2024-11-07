@@ -12,7 +12,7 @@ Loupe…
 * …supports phrase search using `"` quotation marks
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * …supports filtering (and ordering) on Geo distance
-* …orders relevance based on a typical TF-IDF Cosine similarity algorithm
+* …orders relevance based on a number of factors such as nubmer of matching terms as well as proximity
 * …auto-detects languages
 * …supports stemming
 * …is very easy to use

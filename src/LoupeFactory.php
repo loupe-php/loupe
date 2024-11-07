@@ -11,10 +11,10 @@ use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Logging\Middleware;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
-use Loupe\Loupe\Internal\CosineSimilarity;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\Util;
 
 final class LoupeFactory
@@ -132,8 +132,8 @@ final class LoupeFactory
                 'numArgs' => 4,
             ],
             'loupe_relevance' => [
-                'callback' => [CosineSimilarity::class, 'fromQuery'],
-                'numArgs' => 4,
+                'callback' => [Relevance::class, 'fromQuery'],
+                'numArgs' => 2,
             ],
         ];
 

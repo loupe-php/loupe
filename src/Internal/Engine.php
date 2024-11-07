@@ -27,7 +27,7 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '0.4.0'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.8.0'; // Increase this whenever a re-index of all documents is needed
 
     private Parser $filterParser;
 

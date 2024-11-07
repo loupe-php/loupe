@@ -507,10 +507,6 @@ class IndexInfo
         $table->addColumn('length', Types::INTEGER)
             ->setNotnull(true);
 
-        // Inversed Document Frequency
-        $table->addColumn('idf', Types::FLOAT)
-            ->setNotnull(true);
-
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['term', 'state', 'length']);
         $table->addIndex(['state']);

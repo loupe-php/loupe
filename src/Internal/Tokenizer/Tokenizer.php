@@ -89,6 +89,7 @@ class Tokenizer
         $iterator->setText($string);
 
         $collection = new TokenCollection();
+        $id = 0;
         $position = 0;
         $phrase = false;
 
@@ -120,6 +121,7 @@ class Tokenizer
             }
 
             $token = new Token(
+                $id++,
                 $term,
                 $position,
                 $variants,
