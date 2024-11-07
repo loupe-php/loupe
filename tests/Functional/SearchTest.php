@@ -855,6 +855,44 @@ class SearchTest extends TestCase
         ];
     }
 
+    public function testAllQueriesMustMatch(): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        // Add another "Sandra"
+        $loupe->addDocument([
+            'id' => 7,
+            'firstname' => 'Sandra',
+            'lastname' => 'Williams',
+            'gender' => 'female',
+            'departments' => ['Marketing', 'Human Resources'],
+            'colors' => ['Red', 'Purple'],
+            'age' => 34,
+            'isActive' => false,
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Sandra Maier')
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                // Must not match ID 7. "Sandra" does match but "Maier" does not.
+            ],
+            'query' => 'Sandra Maier',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testComplexFilters(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
