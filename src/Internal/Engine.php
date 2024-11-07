@@ -390,7 +390,7 @@ class Engine
             }
         }
 
-        $ngramsFile = include_once $ngramsRefFile;
+        $ngramsFile = require $ngramsRefFile;
 
         if (!\is_string($ngramsFile) || !file_exists($ngramsFile)) {
             if (!$generateNgramsRefFile($ngramsRefFile, $languages)) {

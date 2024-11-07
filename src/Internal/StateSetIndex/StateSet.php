@@ -99,7 +99,7 @@ class StateSet implements StateSetInterface
             }
         }
 
-        $this->inMemoryStateSet = new InMemoryStateSet($data);
+        $this->inMemoryStateSet = new InMemoryStateSet(\is_array($data) ? $data : []);
 
         $this->initialized = true;
     }
