@@ -15,7 +15,6 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
-use Loupe\Loupe\Internal\Util;
 
 final class LoupeFactory
 {
@@ -91,7 +90,7 @@ final class LoupeFactory
         // Use Write-Ahead Logging if possible
         $connection->executeQuery('PRAGMA journal_mode=WAL;');
 
-        $this->registerSQLiteFunctions($connection, $sqliteVersion);
+        $this->registerSQLiteFunctions($connection);
 
         return $connection;
     }
@@ -120,7 +119,7 @@ final class LoupeFactory
         return $config;
     }
 
-    private function registerSQLiteFunctions(Connection $connection, string $sqliteVersion): void
+    private function registerSQLiteFunctions(Connection $connection): void
     {
         $functions = [
             'loupe_max_levenshtein' => [
@@ -137,25 +136,9 @@ final class LoupeFactory
             ],
         ];
 
-        // Introduction of LN()
-        if (version_compare($sqliteVersion, '3.35.0', '<') || !$this->sqlLiteFunctionExists($connection, 'ln')) {
-            $functions['ln'] = [
-                'callback' => [Util::class, 'log'],
-                'numArgs' => 1,
-            ];
-        }
-
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
             $connection->getNativeConnection()->createFunction($functionName, $function['callback'], $function['numArgs']);
         }
-    }
-
-    private function sqlLiteFunctionExists(Connection $connection, string $function): bool
-    {
-        return (bool) $connection->executeQuery(
-            'SELECT EXISTS(SELECT 1 FROM pragma_function_list WHERE name=?)',
-            [$function]
-        )->fetchOne();
     }
 }
