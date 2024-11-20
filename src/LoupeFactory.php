@@ -75,7 +75,11 @@ final class LoupeFactory
             throw new InvalidConfigurationException('You need either the sqlite3 (recommended) or pdo_sqlite PHP extension.');
         }
 
-        $sqliteVersion = $connection->getServerVersion();
+        $sqliteVersion = match (true) {
+            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(),
+            (($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
+            (($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
+        };
 
         if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
             throw new \InvalidArgumentException(sprintf(
