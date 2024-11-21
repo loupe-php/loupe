@@ -55,37 +55,41 @@ class Relevance extends AbstractSorter
     }
 
     /**
-     * @param array<int, array<int>> $positionsPerTerm
+     * @param array<int, array<int>> $positionsPerTerm The positions MUST be ordered ASC
      */
     public static function calculateProximityFactor(array $positionsPerTerm, float $decayFactor = 0.1): float
     {
         $allAdjacent = true;
         $totalProximity = 0;
-        $pairCount = 0;
+        $totalTermsRelevantForProximity = \count($positionsPerTerm) - 1;
+        $positionPrev = null;
 
-        // Iterate through all pairs of terms
-        for ($i = 0; $i < \count($positionsPerTerm) - 1; $i++) {
-            for ($j = $i + 1; $j < \count($positionsPerTerm); $j++) {
-                foreach ($positionsPerTerm[$i] as $pos1) {
-                    foreach ($positionsPerTerm[$j] as $pos2) {
-                        $distance = abs($pos1 - $pos2);
+        foreach ($positionsPerTerm as $positions) {
+            if ($positionPrev === null) {
+                $positionPrev = $positions[0];
+                continue;
+            }
 
-                        // Check if any distance is not 1
-                        if ($distance !== 1) {
-                            $allAdjacent = false;
-                        }
+            $distance = 0;
 
-                        // Calculate proximity with decay function
-                        $proximity = exp(-$decayFactor * $distance);
-                        $totalProximity += $proximity;
-                        $pairCount++;
-                    }
+            foreach ($positions as $position) {
+                if ($position > $positionPrev) {
+                    $distance = $position - $positionPrev;
+                    $positionPrev = $position;
+                    break;
                 }
             }
+
+            if ($distance !== 1) {
+                $allAdjacent = false;
+            }
+
+            // Calculate proximity with decay function using the distance
+            $proximity = exp(-$decayFactor * $distance);
+            $totalProximity += $proximity;
         }
 
-        // Return 1 if all terms are adjacent, otherwise average proximity
-        return $allAdjacent ? 1.0 : ($pairCount > 0 ? $totalProximity / $pairCount : 0);
+        return $allAdjacent ? 1.0 : ($totalTermsRelevantForProximity > 0 ? $totalProximity / $totalTermsRelevantForProximity : 0);
     }
 
     /**

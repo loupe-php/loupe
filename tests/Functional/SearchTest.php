@@ -1669,7 +1669,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 22,
                     'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
-                    '_rankingScore' => 0.84795,
+                    '_rankingScore' => 1.0,
                 ],
             ],
             'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
@@ -1726,14 +1726,14 @@ class SearchTest extends TestCase
                     '_rankingScore' => 0.8496,
                 ],
                 [
+                    'id' => 2,
+                    'content' => 'The unexamined life is not worth living. Life is life.',
+                    '_rankingScore' => 0.66667,
+                ],
+                [
                     'id' => 3,
                     'content' => 'Never stop learning',
                     '_rankingScore' => 0.58027,
-                ],
-                [
-                    'id' => 2,
-                    'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.50645,
                 ],
             ],
             'query' => 'life learning',
@@ -1782,22 +1782,22 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'content' => 'Book title: life learning',
-                    '_rankingScore' => 0.70178,
+                    '_rankingScore' => 0.71872,
                 ],
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.62078,
-                ],
-                [
-                    'id' => 3,
-                    'content' => 'Never stop learning',
-                    '_rankingScore' => 0.49796,
+                    '_rankingScore' => 0.64763,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.41822,
+                    '_rankingScore' => 0.51236,
+                ],
+                [
+                    'id' => 3,
+                    'content' => 'Never stop learning',
+                    '_rankingScore' => 0.51236,
                 ],
             ],
             'query' => 'foobar life learning',
