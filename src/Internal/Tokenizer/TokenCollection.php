@@ -64,6 +64,22 @@ class TokenCollection
         return array_unique($tokens);
     }
 
+    /**
+     * @return array<string>
+     */
+    public function allNegatedTerms(): array
+    {
+        $tokens = [];
+
+        foreach ($this->all() as $token) {
+            if ($token->isNegated()) {
+                $tokens[] = $token->getTerm();
+            }
+        }
+
+        return array_unique($tokens);
+    }
+
     public function count(): int
     {
         return \count($this->tokens);
