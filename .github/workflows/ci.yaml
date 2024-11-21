@@ -11,7 +11,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.2'
+                  php-version: '8.3'
                   coverage: none
 
             - name: Checkout
@@ -30,7 +30,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.2'
+                  php-version: '8.3'
                   coverage: none
 
             - name: Checkout
@@ -53,7 +53,7 @@ jobs:
             fail-fast: false
             matrix:
                 sqlite: ['3.16.0', 'default']
-                php: ['8.1', '8.2', '8.3']
+                php: ['8.1', '8.2', '8.3', '8.4']
                 composer: ['--prefer-stable', '--prefer-lowest']
         steps:
             - name: Setup PHP
