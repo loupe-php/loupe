@@ -9,6 +9,9 @@ use Doctrine\DBAL\Driver\Statement;
 
 final class CachePreparedStatementsConnection extends AbstractConnectionMiddleware
 {
+    /**
+     * @var array<string, Statement>
+     */
     private array $cachedStatements = [];
 
     public function prepare(string $sql): Statement
