@@ -104,6 +104,9 @@ class Tokenizer
             if ($term === '"') {
                 $position++;
                 $phrase = !$phrase;
+                if (!$phrase) {
+                    $negated = false;
+                }
                 continue;
             }
 
@@ -138,7 +141,9 @@ class Tokenizer
 
             $collection->add($token);
             $position += $token->getLength();
-            $negated = false;
+            if (!$phrase) {
+                $negated = false;
+            }
         }
 
         return $collection;
