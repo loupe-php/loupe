@@ -14,7 +14,8 @@ class Token
         private string $term,
         private int $startPosition,
         private array $variants,
-        private bool $isPartOfPhrase
+        private bool $isPartOfPhrase,
+        private bool $isNegated
     ) {
     }
 
@@ -57,5 +58,10 @@ class Token
     public function isPartOfPhrase(): bool
     {
         return $this->isPartOfPhrase;
+    }
+
+    public function isNegated(): bool
+    {
+        return $this->isNegated;
     }
 }

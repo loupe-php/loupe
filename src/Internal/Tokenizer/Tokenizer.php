@@ -92,8 +92,15 @@ class Tokenizer
         $id = 0;
         $position = 0;
         $phrase = false;
+        $negated = false;
 
         foreach ($iterator->getPartsIterator() as $term) {
+            if ($term === '-') {
+                $position++;
+                $negated = true;
+                continue;
+            }
+
             if ($term === '"') {
                 $position++;
                 $phrase = !$phrase;
@@ -112,8 +119,8 @@ class Tokenizer
             $term = mb_strtolower($term, 'UTF-8');
             $variants = [];
 
-            // Stem if we detected a language - but only if not part of a phrase
-            if ($language !== null && !$phrase) {
+            // Stem if we detected a language - but only if not part of a phrase and not negated
+            if ($language !== null && !$phrase && !$negated) {
                 $stem = $this->stem($term, $language);
                 if ($stem !== null && $term !== $stem) {
                     $variants = [$stem];
@@ -125,11 +132,13 @@ class Tokenizer
                 $term,
                 $position,
                 $variants,
-                $phrase
+                $phrase,
+                $negated
             );
 
             $collection->add($token);
             $position += $token->getLength();
+            $negated = false;
         }
 
         return $collection;
