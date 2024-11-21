@@ -1916,6 +1916,55 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testNegatedSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParametersWithoutNegation = SearchParameters::create()
+            ->withQuery('appears')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $searchParametersWithNegation = SearchParameters::create()
+            ->withQuery('appears -disappears')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
+            'hits' => [
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+                [
+                    'id' => 17,
+                    'title' => 'The Dark',
+                ],
+            ],
+            'query' => 'appears',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
+            'hits' => [
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+            ],
+            'query' => 'appears -disappears',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testSorting(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
