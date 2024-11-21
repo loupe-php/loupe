@@ -61,7 +61,11 @@ class Engine
         $this->indexer = new Indexer($this);
         $this->highlighter = new Highlighter($this);
         $this->filterParser = new Parser();
-        $this->sqliteVersion = $this->connection->getServerVersion();
+        $this->sqliteVersion = match (true) {
+            \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(),
+            (($nativeConnection = $this->connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
+            (($nativeConnection = $this->connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
+        };
     }
 
     /**
