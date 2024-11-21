@@ -164,6 +164,11 @@ class Searcher
         return $this->queryBuilder;
     }
 
+    public function getSearchParameters(): SearchParameters
+    {
+        return $this->searchParameters;
+    }
+
     public function getTokens(): TokenCollection
     {
         if ($this->tokens instanceof TokenCollection) {

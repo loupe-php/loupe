@@ -1742,6 +1742,29 @@ class SearchTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 4,
         ]);
+
+        // Test ranking score threshold
+        $searchParameters = $searchParameters->withRankingScoreThreshold(0.8);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 4,
+                    'content' => 'Book title: life learning',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 1,
+                    'content' => 'The game of life is a game of everlasting learning',
+                    '_rankingScore' => 0.8496,
+                ],
+            ],
+            'query' => 'life learning',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
     }
 
     public function testRelevanceAndRankingScoreForNonExistentQueryTerms(): void

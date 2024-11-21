@@ -37,6 +37,8 @@ final class SearchParameters
 
     private string $query = '';
 
+    private float $rankingScoreThreshold = 0.0;
+
     private bool $showMatchesPosition = false;
 
     private bool $showRankingScore = false;
@@ -136,6 +138,11 @@ final class SearchParameters
         return $this->query;
     }
 
+    public function getRankingScoreThreshold(): float
+    {
+        return $this->rankingScoreThreshold;
+    }
+
     /**
      * @return array<string>
      */
@@ -230,6 +237,14 @@ final class SearchParameters
     {
         $clone = clone $this;
         $clone->query = $query;
+
+        return $clone;
+    }
+
+    public function withRankingScoreThreshold(float $rankingScoreThreshold): self
+    {
+        $clone = clone $this;
+        $clone->rankingScoreThreshold = $rankingScoreThreshold;
 
         return $clone;
     }

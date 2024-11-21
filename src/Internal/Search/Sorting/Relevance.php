@@ -52,6 +52,11 @@ class Relevance extends AbstractSorter
         // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
         // value
         $searcher->getQueryBuilder()->addOrderBy(Searcher::RELEVANCE_ALIAS, $this->direction->getSQL());
+
+        // Apply threshold
+        if ($searcher->getSearchParameters()->getRankingScoreThreshold() > 0) {
+            $searcher->getQueryBuilder()->andWhere(Searcher::RELEVANCE_ALIAS . '>= ' . $searcher->getSearchParameters()->getRankingScoreThreshold());
+        }
     }
 
     /**

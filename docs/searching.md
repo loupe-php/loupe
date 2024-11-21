@@ -110,7 +110,15 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
-In this case, every hit will have an additional `_rankingScore` attribute with a value between `-1.0` and `1.0`.
+In this case, every hit will have an additional `_rankingScore` attribute with a value between `0.0` and `1.0`.
+
+You can also limit the search results to a `rankingScoreThreshold` between `0.0` and `1.0`:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withRankingScoreThreshold(0.8)
+;
+```
 
 ## Pagination
 
