@@ -23,7 +23,7 @@
         "php": "^8.1",
         "ext-intl": "*",
         "ext-mbstring": "*",
-        "doctrine/dbal": "^3.10 || ^4.0",
+        "doctrine/dbal": "^3.9 || ^4.0",
         "wamania/php-stemmer": "^3.0",
         "doctrine/lexer": "^2.0 || ^3.0",
         "mjaschen/phpgeo": "^4.2",

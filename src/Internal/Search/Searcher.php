@@ -18,6 +18,7 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
@@ -25,9 +26,9 @@ use Loupe\Loupe\SearchResult;
 
 class Searcher
 {
-    public const CTE_TERM_DOCUMENT_MATCHES = '_cte_term_document_matches';
+    public const CTE_TERM_DOCUMENT_MATCHES_PREFIX = '_cte_term_document_matches_';
 
-    public const CTE_TERM_MATCHES = '_cte_term_matches';
+    public const CTE_TERM_MATCHES_PREFIX = '_cte_term_matches_';
 
     public const DISTANCE_ALIAS = '_distance';
 
@@ -43,8 +44,6 @@ class Searcher
      */
     private array $geoDistanceSelectsAdded = [];
 
-    private string $id;
-
     private QueryBuilder $queryBuilder;
 
     private Sorting $sorting;
@@ -57,7 +56,6 @@ class Searcher
         private SearchParameters $searchParameters
     ) {
         $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
-        $this->id = uniqid('lqi', true);
     }
 
     public function addGeoDistanceSelectToQueryBuilder(string $attribute, float $latitude, float $longitude): string
@@ -148,6 +146,11 @@ class Searcher
         );
     }
 
+    public function getCTENameForToken(string $prefix, Token $token): string
+    {
+        return $prefix . $token->getId();
+    }
+
     /**
      * @return array<string, array{cols: array<string>, sql: string}>
      */
@@ -159,11 +162,6 @@ class Searcher
     public function getQueryBuilder(): QueryBuilder
     {
         return $this->queryBuilder;
-    }
-
-    public function getQueryId(): string
-    {
-        return $this->id;
     }
 
     public function getSearchParameters(): SearchParameters
@@ -186,10 +184,12 @@ class Searcher
         ;
     }
 
-    private function addTermDocumentMatchesCTE(TokenCollection $tokenCollection): void
+    private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
     {
         // No term matches CTE -> no term document matches CTE
-        if (!isset($this->CTEs[self::CTE_TERM_MATCHES])) {
+        $termMatchesCTE = $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token);
+
+        if (!isset($this->CTEs[$termMatchesCTE])) {
             return;
         }
 
@@ -198,27 +198,8 @@ class Searcher
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.term');
-        $cteSelectQb->addSelect(sprintf(
-            "%s || '-' || %s AS documentTermRelation",
-            $termsDocumentsAlias . '.document',
-            $termsDocumentsAlias . '.term',
-        ));
-
-        // This is normalized term frequency (<number of occurrences of term in document>/<total terms in document>)
-        // multiplied with the inversed term document frequency.
-        // Notice the * 1.0 addition to the COUNT() SELECTS in order to force floating point calculations
-        $cteSelectQb->addSelect(
-            sprintf(
-                '
-            1.0 *
-            (SELECT COUNT(DISTINCT document) FROM %s WHERE term=td.term AND document=td.document) /
-            (SELECT COUNT(term) FROM %s WHERE document=td.document) *
-            (SELECT idf FROM %s WHERE td.term=id)',
-                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                self::CTE_TERM_MATCHES
-            )
-        );
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
 
@@ -229,79 +210,84 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', self::CTE_TERM_MATCHES));
+        $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)));
 
-        // Ensure phrase positions if any
-        $previousPhraseTerm = null;
-        foreach ($tokenCollection->all() as $token) {
-            if ($token->isPartOfPhrase()) {
-                if ($previousPhraseTerm === null) {
-                    $previousPhraseTerm = $token->getTerm();
-                } else {
-                    $cteSelectQb->andWhere(sprintf(
-                        '%s.position = (SELECT position + 1 FROM %s WHERE term=(SELECT id FROM terms WHERE term=%s) AND document=td.document AND attribute=td.attribute)',
-                        $termsDocumentsAlias,
-                        IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                        $this->queryBuilder->createNamedParameter($previousPhraseTerm),
-                    ));
-                }
-            } else {
-                $previousPhraseTerm = null;
-            }
+        // Ensure phrase positions if any (token itself must be part of the phrase and the previous token must also be of that same phrase)
+        if ($token->isPartOfPhrase() && $previousPhraseToken) {
+            $cteSelectQb->andWhere(sprintf(
+                '%s.position = (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
+                $termsDocumentsAlias,
+                $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken),
+            ));
         }
 
-        $cteSelectQb->groupBy('documentTermRelation');
-        $cteSelectQb->addOrderBy($termsDocumentsAlias . '.document');
-        $cteSelectQb->addOrderBy($termsDocumentsAlias . '.term');
+        $cteSelectQb->addOrderBy('position');
 
-        $this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES]['cols'] = ['document', 'term', 'documentTermRelation', 'tfidf'];
-        $this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES]['sql'] = $cteSelectQb->getSQL();
+        $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position'];
+        $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
     }
 
-    private function addTermMatchesCTE(TokenCollection $tokenCollection): void
+    private function addTermDocumentMatchesCTEs(TokenCollection $tokenCollection): void
     {
         if ($tokenCollection->empty()) {
             return;
         }
 
+        $previousPhraseToken = null;
+        foreach ($tokenCollection->all() as $token) {
+            $this->addTermDocumentMatchesCTE($token, $previousPhraseToken);
+            $previousPhraseToken = $token->isPartOfPhrase() ? $token : null;
+        }
+    }
+
+    private function addTermMatchesCTE(Token $token, bool $isLastToken): void
+    {
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->addSelect($termsAlias . '.id');
-        $cteSelectQb->addSelect($termsAlias . '.idf');
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
 
-        $ors = [];
+        $ors = [$this->createWherePartForTerm($token->getTerm(), false)];
 
-        foreach ($tokenCollection->allTermsWithVariants() as $term) {
+        foreach ($token->getVariants() as $term) {
             $ors[] = $this->createWherePartForTerm($term, false);
         }
 
         // Prefix search
-        $lastToken = $tokenCollection->last();
-
-        if ($lastToken !== null &&
-            !$lastToken->isPartOfPhrase() &&
-            $lastToken->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()
+        if ($isLastToken &&
+            !$token->isPartOfPhrase() &&
+            $token->getLength() >= $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch()
         ) {
             // With typo tolerance on prefix search requires searching the prefix tables as well
             if ($this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
-                $ors[] = $this->createWherePartForTerm($lastToken->getTerm(), true);
+                $ors[] = $this->createWherePartForTerm($token->getTerm(), true);
             } else {
                 // Otherwise, prefix search is just a simple LIKE <token>% for better performance
                 $ors[] = sprintf(
                     '%s.term LIKE %s',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                    $this->queryBuilder->createNamedParameter($lastToken->getTerm() . '%')
+                    $this->queryBuilder->createNamedParameter($token->getTerm() . '%')
                 );
             }
         }
 
         $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
-        $cteSelectQb->orderBy($termsAlias . '.id');
 
-        $this->CTEs[self::CTE_TERM_MATCHES]['cols'] = ['id', 'idf'];
-        $this->CTEs[self::CTE_TERM_MATCHES]['sql'] = $cteSelectQb->getSQL();
+        $this->CTEs[$this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)]['cols'] = ['id'];
+        $this->CTEs[$this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)]['sql'] = $cteSelectQb->getSQL();
+    }
+
+    private function addTermMatchesCTEs(TokenCollection $tokenCollection): void
+    {
+        if ($tokenCollection->empty()) {
+            return;
+        }
+
+        foreach ($tokenCollection->all() as $token) {
+            $this->addTermMatchesCTE($token, $token === $tokenCollection->last());
+        }
     }
 
     private function createAnalyzedQuery(TokenCollection $tokens): string
@@ -793,18 +779,59 @@ class Searcher
 
     private function searchDocuments(TokenCollection $tokenCollection): void
     {
-        $this->addTermMatchesCTE($tokenCollection);
-        $this->addTermDocumentMatchesCTE($tokenCollection);
+        $this->addTermMatchesCTEs($tokenCollection);
+        $this->addTermDocumentMatchesCTEs($tokenCollection);
+        $orGroups = [];
+        $currentGroup = [];
+        $wasPreviousPhrase = false;
 
-        if (!isset($this->CTEs[self::CTE_TERM_DOCUMENT_MATCHES])) {
+        foreach ($tokenCollection->all() as $token) {
+            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+            if (!isset($this->CTEs[$cteName])) {
+                continue;
+            }
+
+            if ($token->isPartOfPhrase() && $wasPreviousPhrase) {
+                // If the current token is "AND" and the previous token was also "AND", continue the group
+                $currentGroup[] = sprintf(
+                    '%s.id IN (SELECT DISTINCT document FROM %s)',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    $cteName
+                );
+            } else {
+                // Finalize the current group if not empty
+                if (!empty($currentGroup)) {
+                    $orGroups[] = $currentGroup;
+                }
+                // Start a new group
+                $currentGroup = [sprintf(
+                    '%s.id IN (SELECT DISTINCT document FROM %s)',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    $cteName
+                )];
+            }
+            // Update the previous token's status
+            $wasPreviousPhrase = $token->isPartOfPhrase();
+        }
+
+        // Add the last group to the groups array if it's not empty
+        if ($currentGroup !== []) {
+            $orGroups[] = $currentGroup;
+        }
+
+        $ands = [];
+        foreach ($orGroups as $andGroup) {
+            $ands[] = '(' . implode(' AND ', $andGroup) . ')';
+        }
+
+        $where = implode(' OR ', $ands);
+
+        if ($where === '') {
             return;
         }
 
-        $this->queryBuilder->andWhere(sprintf(
-            '%s.id IN (SELECT DISTINCT document FROM %s)',
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-            self::CTE_TERM_DOCUMENT_MATCHES
-        ));
+        $this->queryBuilder->andWhere('(' . $where . ')');
     }
 
     private function selectDocuments(): void

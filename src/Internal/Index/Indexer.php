@@ -81,7 +81,7 @@ class Indexer
 
                     $this->persistStateSet();
 
-                    // Update storage (IDF etc.) only once
+                    // Update storage only once
                     $this->reviseStorage();
                 });
         } catch (\Throwable $e) {
@@ -310,7 +310,6 @@ class Indexer
                 'term' => $term,
                 'state' => $state,
                 'length' => mb_strlen($term, 'UTF-8'),
-                'idf' => 1,
             ],
             ['term', 'state', 'length'],
             'id'
@@ -420,31 +419,5 @@ class Indexer
     private function reviseStorage(): void
     {
         $this->removeOrphans();
-        $this->updateInverseDocumentFrequencies();
-    }
-
-    private function updateInverseDocumentFrequencies(): void
-    {
-        // Notice the * 1.0 additions to the COUNT() SELECTS in order to force floating point calculations
-        $query = <<<'QUERY'
-            UPDATE 
-              %s 
-            SET 
-              idf = 1.0 + (LN(
-                (SELECT COUNT(*) FROM %s) * 1.0
-                    /
-                (SELECT COUNT(DISTINCT td.document) FROM %s AS td WHERE td.term = %s.id) * 1.0
-              ))
-QUERY;
-
-        $query = sprintf(
-            $query,
-            IndexInfo::TABLE_NAME_TERMS,
-            IndexInfo::TABLE_NAME_DOCUMENTS,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            IndexInfo::TABLE_NAME_TERMS,
-        );
-
-        $this->engine->getConnection()->executeStatement($query);
     }
 }

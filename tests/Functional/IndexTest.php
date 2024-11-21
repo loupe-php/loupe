@@ -235,58 +235,9 @@ class IndexTest extends TestCase
 
         $this->assertSame('Star Wars', $loupe->getDocument(11)['title'] ?? '');
 
-        $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withQuery('the') // Search for a word which is likely to appear everywhere to affect the IDF
-            ->withHitsPerPage(2)
-            ->withShowRankingScore(true)
-            ->withSort(['_relevance:desc', 'title:asc'])
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 6,
-                    'title' => 'Judgment Night',
-                    '_rankingScore' => 0.863,
-                ],
-                [
-                    'id' => 25,
-                    'title' => 'Jarhead',
-                    '_rankingScore' => 0.5044,
-                ],
-            ],
-            'query' => 'the',
-            'hitsPerPage' => 2,
-            'page' => 1,
-            'totalPages' => 8,
-            'totalHits' => 16,
-        ]);
-
         // Delete document and assert it's gone
         $loupe->deleteDocument(11);
         $this->assertNull($loupe->getDocument(11));
-
-        // Search again to ensure the ranking score has changed and one hit less
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 6,
-                    'title' => 'Judgment Night',
-                    '_rankingScore' => 0.83189,
-                ],
-                [
-                    'id' => 25,
-                    'title' => 'Jarhead',
-                    '_rankingScore' => 0.48588,
-                ],
-            ],
-            'query' => 'the',
-            'hitsPerPage' => 2,
-            'page' => 1,
-            'totalPages' => 8,
-            'totalHits' => 15,
-        ]);
     }
 
     public function testDeleteDocumentWhenNotSetUpYet(): void

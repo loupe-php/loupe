@@ -1669,7 +1669,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 22,
                     'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
-                    '_rankingScore' => 0.93289, // This is not 1.0 because of typo tolerance, might need investigation but good enough for now
+                    '_rankingScore' => 1.0,
                 ],
             ],
             'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
@@ -1695,11 +1695,15 @@ class SearchTest extends TestCase
             ],
             [
                 'id' => 2,
-                'content' => 'The unexamined life is not worth living',
+                'content' => 'The unexamined life is not worth living. Life is life.',
             ],
             [
                 'id' => 3,
                 'content' => 'Never stop learning',
+            ],
+            [
+                'id' => 4,
+                'content' => 'Book title: life learning',
             ],
         ]);
 
@@ -1712,26 +1716,31 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
+                    'id' => 4,
+                    'content' => 'Book title: life learning',
+                    '_rankingScore' => 1.0,
+                ],
+                [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 1.0,
+                    '_rankingScore' => 0.8496,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The unexamined life is not worth living. Life is life.',
+                    '_rankingScore' => 0.66667,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.8165,
-                ],
-                [
-                    'id' => 2,
-                    'content' => 'The unexamined life is not worth living',
-                    '_rankingScore' => 0.57735,
+                    '_rankingScore' => 0.58027,
                 ],
             ],
             'query' => 'life learning',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 3,
+            'totalHits' => 4,
         ]);
 
         // Test ranking score threshold
@@ -1740,14 +1749,14 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 1,
-                    'content' => 'The game of life is a game of everlasting learning',
+                    'id' => 4,
+                    'content' => 'Book title: life learning',
                     '_rankingScore' => 1.0,
                 ],
                 [
-                    'id' => 3,
-                    'content' => 'Never stop learning',
-                    '_rankingScore' => 0.8165,
+                    'id' => 1,
+                    'content' => 'The game of life is a game of everlasting learning',
+                    '_rankingScore' => 0.8496,
                 ],
             ],
             'query' => 'life learning',
@@ -1773,11 +1782,15 @@ class SearchTest extends TestCase
             ],
             [
                 'id' => 2,
-                'content' => 'The unexamined life is not worth living',
+                'content' => 'The unexamined life is not worth living. Life is life.',
             ],
             [
                 'id' => 3,
                 'content' => 'Never stop learning',
+            ],
+            [
+                'id' => 4,
+                'content' => 'Book title: life learning',
             ],
         ]);
 
@@ -1790,26 +1803,31 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
+                    'id' => 4,
+                    'content' => 'Book title: life learning',
+                    '_rankingScore' => 0.71872,
+                ],
+                [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.51988,
+                    '_rankingScore' => 0.64763,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The unexamined life is not worth living. Life is life.',
+                    '_rankingScore' => 0.51236,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.42448,
-                ],
-                [
-                    'id' => 2,
-                    'content' => 'The unexamined life is not worth living',
-                    '_rankingScore' => 0.30015,
+                    '_rankingScore' => 0.51236,
                 ],
             ],
             'query' => 'foobar life learning',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 3,
+            'totalHits' => 4,
         ]);
     }
 

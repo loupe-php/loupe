@@ -10,6 +10,7 @@ class Token
      * @param array<string> $variants
      */
     public function __construct(
+        private int $id,
         private string $term,
         private int $startPosition,
         private array $variants,
@@ -23,6 +24,11 @@ class Token
     public function allTerms(): array
     {
         return array_unique(array_merge([$this->getTerm()], $this->getVariants()));
+    }
+
+    public function getId(): int
+    {
+        return $this->id;
     }
 
     public function getLength(): int
