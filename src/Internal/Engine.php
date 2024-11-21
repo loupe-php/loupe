@@ -276,9 +276,6 @@ class Engine
                 $query .= ' RETURNING ' . $insertIdColumn;
             }
 
-            if ($table === IndexInfo::TABLE_NAME_DOCUMENTS) {
-            }
-
             $insertValue = $this->getConnection()->executeQuery($query, $values, $this->extractDbalTypes($values))->fetchOne();
 
             if ($insertValue === false) {
