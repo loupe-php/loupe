@@ -88,8 +88,7 @@ final class LoupeFactory
             ));
         }
 
-        // Use Write-Ahead Logging if possible
-        $connection->executeQuery('PRAGMA journal_mode=WAL;');
+        $this->optimizeSQLiteConnection($connection);
 
         $this->registerSQLiteFunctions($connection);
 
@@ -119,6 +118,36 @@ final class LoupeFactory
         $config->setMiddlewares($middlewares);
 
         return $config;
+    }
+
+    private function optimizeSQLiteConnection(Connection $connection): void
+    {
+        $optimizations = [
+            // Increase page size to 8KB to reduce disk i/o
+            'PRAGMA page_size = 8192;',
+            // Set cache size to 20MB to reduce disk i/o
+            'PRAGMA cache_size = -20000;',
+            // Use write-ahead logging to allow concurrent reads and writes
+            'PRAGMA journal_mode=WAL;',
+            // Incremental vacuum to keep the database size in check
+            'PRAGMA auto_vacuum = incremental;',
+            // Incremental vacuum to keep the database size in check
+            'PRAGMA incremental_vacuum;',
+            // Set mmap size to 32MB to avoid i/o for database reads
+            'PRAGMA mmap_size = 33554432;',
+            // Store temporary tables in memory instead of on disk
+            'PRAGMA temp_store = MEMORY;',
+            // Set timeout to 2 seconds to avoid locking issues
+            'PRAGMA busy_timeout = 2000',
+        ];
+
+        foreach ($optimizations as $optimization) {
+            try {
+                $connection->executeQuery($optimization);
+            } catch (\Throwable $th) {
+                // Assume that the pragma is not supported
+            }
+        }
     }
 
     private function registerSQLiteFunctions(Connection $connection): void
