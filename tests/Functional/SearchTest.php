@@ -1681,7 +1681,7 @@ class SearchTest extends TestCase
             ->withSort(['title:asc'])
         ;
 
-        // Should not return all movies with the term "young" (OR matching)
+        // Should return all movies with the term "young" (OR matching)
         $this->searchAndAssertResults($loupe, $searchParametersWithoutStopWords, [
             'hits' => [
                 [
@@ -1711,7 +1711,7 @@ class SearchTest extends TestCase
             ->withSort(['title:asc'])
         ;
 
-        // Should not return other movies with the term "young"
+        // Should only return movies with the term "glaciologist" since "young" is a stop word
         $this->searchAndAssertResults($loupe, $searchParametersWithStopWords, [
             'hits' => [
                 [
