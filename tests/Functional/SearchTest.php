@@ -1664,69 +1664,6 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testStopWordSearch(): void
-    {
-        $configuration = Configuration::create()
-            ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview'])
-            ->withTypoTolerance(TypoTolerance::create()->disable())
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
-
-        $searchParametersWithoutStopWords = SearchParameters::create()
-            ->withQuery('young glaciologist')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
-
-        // Should return all movies with the term "young" (OR matching)
-        $this->searchAndAssertResults($loupe, $searchParametersWithoutStopWords, [
-            'hits' => [
-                [
-                    'id' => 27,
-                    'title' => '9 Songs',
-                ],
-                [
-                    'id' => 12,
-                    'title' => 'Finding Nemo',
-                ],
-                [
-                    'id' => 18,
-                    'title' => 'The Fifth Element',
-                ],
-            ],
-            'query' => 'young glaciologist',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 3,
-        ]);
-
-        $searchParametersWithStopWords = SearchParameters::create()
-            ->withQuery('young glaciologist')
-            ->withStopWords(['young'])
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
-
-        // Should only return movies with the term "glaciologist" since "young" is a stop word
-        $this->searchAndAssertResults($loupe, $searchParametersWithStopWords, [
-            'hits' => [
-                [
-                    'id' => 27,
-                    'title' => '9 Songs',
-                ],
-            ],
-            'query' => 'young glaciologist',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 1,
-        ]);
-    }
-
     public function testPhraseSearchOnlyConsidersIdenticalAttributes(): void
     {
         $configuration = Configuration::create()
@@ -2263,6 +2200,69 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    public function testStopWordSearch(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParametersWithoutStopWords = SearchParameters::create()
+            ->withQuery('young glaciologist')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        // Should return all movies with the term "young" (OR matching)
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutStopWords, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $searchParametersWithStopWords = SearchParameters::create()
+            ->withQuery('young glaciologist')
+            ->withStopWords(['young'])
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        // Should only return movies with the term "glaciologist" since "young" is a stop word
+        $this->searchAndAssertResults($loupe, $searchParametersWithStopWords, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
         ]);
     }
 

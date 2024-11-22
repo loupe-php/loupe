@@ -26,7 +26,10 @@ class Tokenizer
     ) {
     }
 
-    public function tokenize(string $string, ?int $maxTokens = null, ?array $stopWords = []): TokenCollection
+    /**
+     * @param array<string> $stopWords
+     */
+    public function tokenize(string $string, ?int $maxTokens = null, array $stopWords = []): TokenCollection
     {
         $language = null;
         $languageResult = $this->languageDetector->detect($string);
@@ -83,7 +86,10 @@ class Tokenizer
         return $result;
     }
 
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, ?array $stopWords = []): TokenCollection
+    /**
+     * @param array<string> $stopWords
+     */
+    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, array $stopWords = []): TokenCollection
     {
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
         $iterator->setText($string);
@@ -148,7 +154,7 @@ class Tokenizer
             $all->add($token);
 
             // Skip stop words
-            if (count(array_intersect([$term, ...$variants], $stopWords))) {
+            if (\count(array_intersect([$term, ...$variants], $stopWords))) {
                 continue;
             }
 

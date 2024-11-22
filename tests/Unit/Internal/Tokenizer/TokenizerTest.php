@@ -120,13 +120,15 @@ class TokenizerTest extends TestCase
     {
         $tokenizer = $this->createTokenizer();
 
-        $tokensWithStopWords = $tokenizer->tokenize('ist nicht seltsam',
+        $tokensWithStopWords = $tokenizer->tokenize(
+            'ist nicht seltsam',
             stopWords: ['ist', 'nicht']
         );
 
         $this->assertSame(['seltsam'], $tokensWithStopWords->allTermsWithVariants());
 
-        $tokensWithStopWordsOnly = $tokenizer->tokenize('ist oder nicht',
+        $tokensWithStopWordsOnly = $tokenizer->tokenize(
+            'ist oder nicht',
             stopWords: ['ist', 'oder', 'nicht']
         );
 

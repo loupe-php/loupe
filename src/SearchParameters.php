@@ -91,14 +91,6 @@ final class SearchParameters
         return $this->attributesToSearchOn;
     }
 
-    /**
-     * @return array<string>
-     */
-    public function getStopWords(): array
-    {
-        return $this->stopWords;
-    }
-
     public function getFilter(): string
     {
         return $this->filter;
@@ -165,6 +157,14 @@ final class SearchParameters
         return $this->sort;
     }
 
+    /**
+     * @return array<string>
+     */
+    public function getStopWords(): array
+    {
+        return $this->stopWords;
+    }
+
     public function showMatchesPosition(): bool
     {
         return $this->showMatchesPosition;
@@ -223,19 +223,6 @@ final class SearchParameters
     {
         $clone = clone $this;
         $clone->filter = $filter;
-
-        return $clone;
-    }
-
-    /**
-     * @param array<string> $stopWords
-     */
-    public function withStopWords(array $stopWords): self
-    {
-        sort($stopWords);
-
-        $clone = clone $this;
-        $clone->stopWords = $stopWords;
 
         return $clone;
     }
@@ -299,6 +286,19 @@ final class SearchParameters
     {
         $clone = clone $this;
         $clone->sort = $sort;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $stopWords
+     */
+    public function withStopWords(array $stopWords): self
+    {
+        sort($stopWords);
+
+        $clone = clone $this;
+        $clone->stopWords = $stopWords;
 
         return $clone;
     }
