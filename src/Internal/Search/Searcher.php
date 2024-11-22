@@ -18,6 +18,7 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Tokenizer\Phrase;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
@@ -148,6 +149,7 @@ class Searcher
 
     public function getCTENameForToken(string $prefix, Token $token): string
     {
+        // For debugging: return $prefix . $token->getId() . '_' .  $token->getTerm();
         return $prefix . $token->getId();
     }
 
@@ -436,6 +438,22 @@ class Searcher
         $qb->andWhere($sql);
 
         return $qb->getSQL();
+    }
+
+    private function createTermDocumentMatchesCTECondition(Token $token): ?string
+    {
+        $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+        if (!isset($this->CTEs[$cteName])) {
+            return null;
+        }
+
+        return sprintf(
+            '%s.id %s (SELECT DISTINCT document FROM %s)',
+            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+            $token->isNegated() ? 'NOT IN' : 'IN',
+            $cteName
+        );
     }
 
     private function createWherePartForTerm(string $term, bool $prefix): string
@@ -781,57 +799,41 @@ class Searcher
     {
         $this->addTermMatchesCTEs($tokenCollection);
         $this->addTermDocumentMatchesCTEs($tokenCollection);
-        $orGroups = [];
-        $currentGroup = [];
-        $wasPreviousPhrase = false;
+        $positiveConditions = [];
+        $negativeConditions = [];
 
-        foreach ($tokenCollection->all() as $token) {
-            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
-
-            if (!isset($this->CTEs[$cteName])) {
-                continue;
+        foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
+            $statements = [];
+            foreach ($tokenOrPhrase->getTokens() as $token) {
+                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
             }
 
-            if ($token->isPartOfPhrase() && $wasPreviousPhrase) {
-                // If the current token is "AND" and the previous token was also "AND", continue the group
-                $currentGroup[] = sprintf(
-                    '%s.id IN (SELECT DISTINCT document FROM %s)',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $cteName
-                );
-            } else {
-                // Finalize the current group if not empty
-                if (!empty($currentGroup)) {
-                    $orGroups[] = $currentGroup;
+            if (\count(array_filter($statements))) {
+                if ($tokenOrPhrase->isNegated()) {
+                    $negativeConditions[] = $statements;
+                } else {
+                    $positiveConditions[] = $statements;
                 }
-                // Start a new group
-                $currentGroup = [sprintf(
-                    '%s.id IN (SELECT DISTINCT document FROM %s)',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $cteName
-                )];
             }
-            // Update the previous token's status
-            $wasPreviousPhrase = $token->isPartOfPhrase();
         }
 
-        // Add the last group to the groups array if it's not empty
-        if ($currentGroup !== []) {
-            $orGroups[] = $currentGroup;
+        $where = implode(' OR ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $positiveConditions
+        ));
+
+        if ($where !== '') {
+            $this->queryBuilder->andWhere('(' . $where . ')');
         }
 
-        $ands = [];
-        foreach ($orGroups as $andGroup) {
-            $ands[] = '(' . implode(' AND ', $andGroup) . ')';
+        $whereNot = implode(' AND ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $negativeConditions
+        ));
+
+        if ($whereNot !== '') {
+            $this->queryBuilder->andWhere('(' . $whereNot . ')');
         }
-
-        $where = implode(' OR ', $ands);
-
-        if ($where === '') {
-            return;
-        }
-
-        $this->queryBuilder->andWhere('(' . $where . ')');
     }
 
     private function selectDocuments(): void
