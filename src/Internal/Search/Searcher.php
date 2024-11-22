@@ -817,22 +817,20 @@ class Searcher
             }
         }
 
-        $wheres = [];
-        foreach ($positiveConditions as $statements) {
-            $wheres[] = '(' . implode(' AND ', $statements) . ')';
-        }
+        $where = implode(' OR ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $positiveConditions
+        ));
 
-        $where = implode(' OR ', $wheres);
         if ($where !== '') {
             $this->queryBuilder->andWhere('(' . $where . ')');
         }
 
-        $whereNots = [];
-        foreach ($negativeConditions as $statements) {
-            $whereNots[] = '(' . implode(' AND ', $statements) . ')';
-        }
+        $whereNot = implode(' AND ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $negativeConditions
+        ));
 
-        $whereNot = implode(' AND ', $whereNots);
         if ($whereNot !== '') {
             $this->queryBuilder->andWhere('(' . $whereNot . ')');
         }
