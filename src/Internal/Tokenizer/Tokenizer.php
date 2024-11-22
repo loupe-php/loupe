@@ -122,11 +122,6 @@ class Tokenizer
             $term = mb_strtolower($term, 'UTF-8');
             $variants = [];
 
-            // Skip stop words
-            if (in_array($term, $stopWords)) {
-                continue;
-            }
-
             // Stem if we detected a language - but only if not part of a phrase
             if ($language !== null && !$phrase) {
                 $stem = $this->stem($term, $language);
@@ -144,11 +139,17 @@ class Tokenizer
                 $negated
             );
 
-            $collection->add($token);
             $position += $token->getLength();
             if (!$phrase) {
                 $negated = false;
             }
+
+            // Skip stop words
+            if (count(array_intersect([$term, ...$variants], $stopWords))) {
+                continue;
+            }
+
+            $collection->add($token);
         }
 
         return $collection;
