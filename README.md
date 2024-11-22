@@ -62,13 +62,11 @@ I even took the liberty to copy some of their test data to feed Loupe for functi
 
 ## Usage
 
+### Creating a client
+
+The first step is configuring and creating a client.
+
 ```php
-<?php
-
-namespace App;
-
-require_once 'vendor/autoload.php';
-
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\LoupeFactory;
@@ -82,13 +80,18 @@ $configuration = Configuration::create()
     ->withTypoTolerance(TypoTolerance::create()->withFirstCharTypoCountsDouble(false)) // can be further fine-tuned but is enabled by default
 ;
 
-$loupeFactory = new LoupeFactory();
+$loupe = (new LoupeFactory())->create('path/to/my_loupe_data_dir', $configuration);
+```
 
-$loupe = $loupeFactory->create('path/to/my_loupe_data_dir', $configuration);
+To create an in-memory search client:
 
-// or create in-memory search:
-$loupe = $loupeFactory->createInMemory($configuration);
+```php
+$loupe = (new LoupeFactory())->createInMemory($configuration);
+```
 
+### Adding documents
+
+```php
 $loupe->addDocuments([
     [
         'uuid' => 2,
@@ -110,8 +113,11 @@ $loupe->addDocuments([
         'age' => 18,
     ],
 ]);
+```
 
+### Performing search
 
+```php
 $searchParameters = SearchParameters::create()
     ->withQuery('Gucleberry')
     ->withAttributesToRetrieve(['uuid', 'firstname'])
@@ -121,29 +127,30 @@ $searchParameters = SearchParameters::create()
 
 $results = $loupe->search($searchParameters);
 
+foreach ($results->getHits() as $hit) {
+    echo $hit['title'] . PHP_EOL;
+}
+```
+
+The `$results` array contains a list of search hits and metadata about the query.
+
+```php
 print_r($results->toArray());
 
-/*
-Array
-(
-    [hits] => Array
-        (
-            [0] => Array
-                (
-                    [uuid] => 6
-                    [firstname] => Huckleberry
-                )
-
-        )
-
-    [query] => Gucleberry
-    [processingTimeMs] => 4
-    [hitsPerPage] => 20
-    [page] => 1
-    [totalPages] => 1
-    [totalHits] => 1
-)
-*/
+[
+    'hits' => [
+        [
+            'uuid' => 6,
+            'firstname' => 'Huckleberry'
+        ]
+    ],
+    'query' => 'Gucleberry',
+    'processingTimeMs' => 4,
+    'hitsPerPage' => 20,
+    'page' => 1,
+    'totalPages' => 1,
+    'totalHits' => 1
+]
 ```
 
 ## Docs
