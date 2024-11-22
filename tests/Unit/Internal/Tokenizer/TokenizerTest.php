@@ -116,6 +116,23 @@ class TokenizerTest extends TestCase
         ], $tokens->allTermsWithVariants());
     }
 
+    public function testStopWordsOnly(): void
+    {
+        $tokenizer = $this->createTokenizer();
+
+        $tokensWithStopWords = $tokenizer->tokenize('ist nicht seltsam',
+            stopWords: ['ist', 'nicht']
+        );
+
+        $this->assertSame(['seltsam'], $tokensWithStopWords->allTermsWithVariants());
+
+        $tokensWithStopWordsOnly = $tokenizer->tokenize('ist oder nicht',
+            stopWords: ['ist', 'oder', 'nicht']
+        );
+
+        $this->assertSame(['ist', 'oder', 'nicht'], $tokensWithStopWordsOnly->allTermsWithVariants());
+    }
+
     /**
      * @param array<string> $languages
      * @param array<string> $expectedTokens

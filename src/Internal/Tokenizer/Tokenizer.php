@@ -88,7 +88,8 @@ class Tokenizer
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
         $iterator->setText($string);
 
-        $collection = new TokenCollection();
+        $all = new TokenCollection();
+        $tokens = new TokenCollection();
         $id = 0;
         $position = 0;
         $phrase = false;
@@ -115,7 +116,7 @@ class Tokenizer
                 continue;
             }
 
-            if ($maxTokens !== null && $collection->count() >= $maxTokens) {
+            if ($maxTokens !== null && $tokens->count() >= $maxTokens) {
                 break;
             }
 
@@ -144,15 +145,17 @@ class Tokenizer
                 $negated = false;
             }
 
+            $all->add($token);
+
             // Skip stop words
             if (count(array_intersect([$term, ...$variants], $stopWords))) {
                 continue;
             }
 
-            $collection->add($token);
+            $tokens->add($token);
         }
 
-        return $collection;
+        return $tokens->empty() ? $all : $tokens;
     }
 
     private function getStemmerForLanguage(string $language): ?Stemmer
