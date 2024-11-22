@@ -805,16 +805,15 @@ class Searcher
         foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
             $statements = [];
             foreach ($tokenOrPhrase->getTokens() as $token) {
-                $statement = $this->createTermDocumentMatchesCTECondition($token);
-                if ($statement) {
-                    $statements[] = $statement;
-                }
+                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
             }
 
-            if ($tokenOrPhrase->isNegated()) {
-                $negativeConditions[] = $statements;
-            } else {
-                $positiveConditions[] = $statements;
+            if (count(array_filter($statements))) {
+                if ($tokenOrPhrase->isNegated()) {
+                    $negativeConditions[] = $statements;
+                } else {
+                    $positiveConditions[] = $statements;
+                }
             }
         }
 
