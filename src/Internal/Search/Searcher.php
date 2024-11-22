@@ -152,7 +152,8 @@ class Searcher
 
     public function getCTENameForToken(string $prefix, Token $token): string
     {
-        return $prefix . $token->getId() . '_' . $token->getTerm();
+        // For debugging: return $prefix . $token->getId() . '_' .  $token->getTerm();
+        return $prefix . $token->getId();
     }
 
     /**
