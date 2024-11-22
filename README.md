@@ -10,6 +10,7 @@ Loupe…
 * …only requires PHP and SQLite, you don't need anything else - no containers, no nothing
 * …is typo-tolerant (based on the State Set Index Algorithm and Levenshtein)
 * …supports phrase search using `"` quotation marks
+* …supports negative keyword and phrase search using `-` as modifier
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * …supports filtering (and ordering) on Geo distance
 * …orders relevance based on a number of factors such as nubmer of matching terms as well as proximity
@@ -31,7 +32,7 @@ Note that some implementation details (e.g. libraries used) referenced in this b
 Performance depends on many factors but here are some ballpark numbers based on indexing the [~32k movies fixture by 
 MeiliSearch][MeiliSearch_Movies] and the test files in `bin` of this repository:
 
-* Indexing (`php bin/index_performance_test.php`) will take less than 4min (~150 documents per second)
+* Indexing (`php bin/index_performance_test.php`) will take a little over 2min (~230 documents per second)
 * Querying (`php bin/search_performance_test.php`) for `Amakin Dkywalker` with typo tolerance enabled and ordered by 
   relevance finishes in about `120 ms`
 

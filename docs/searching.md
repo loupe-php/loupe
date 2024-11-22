@@ -31,6 +31,15 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
+You can also exclude documents that match to a given keyword. Use `-` as modifier. You can exclude both, regular keywords
+as well as phrases:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withQuery('This but -"not this" or -this')
+;
+```
+
 Hint: Note that your query is stripped if it's very long. See the section about [maximum query tokens in the 
 configuration settings][Config].
 

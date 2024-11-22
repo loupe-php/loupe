@@ -93,11 +93,21 @@ class Tokenizer
         $id = 0;
         $position = 0;
         $phrase = false;
+        $negated = false;
 
         foreach ($iterator->getPartsIterator() as $term) {
+            if ($term === '-') {
+                $position++;
+                $negated = true;
+                continue;
+            }
+
             if ($term === '"') {
                 $position++;
                 $phrase = !$phrase;
+                if (!$phrase) {
+                    $negated = false;
+                }
                 continue;
             }
 
@@ -126,11 +136,15 @@ class Tokenizer
                 $term,
                 $position,
                 $variants,
-                $phrase
+                $phrase,
+                $negated
             );
 
             $collection->add($token);
             $position += $token->getLength();
+            if (!$phrase) {
+                $negated = false;
+            }
         }
 
         return $collection;
