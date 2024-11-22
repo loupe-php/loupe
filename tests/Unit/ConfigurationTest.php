@@ -62,11 +62,17 @@ class ConfigurationTest extends TestCase
             false,
         ];
 
-        yield 'Typo thresholds are irrelevant for the hash' => [
+        yield 'Typo thresholds are irrelevant' => [
             Configuration::create(),
             Configuration::create()->withTypoTolerance(TypoTolerance::create()->withTypoThresholds([
                 7 => 3,
             ])),
+            true,
+        ];
+
+        yield 'Stop words are irrelevant ' => [
+            Configuration::create(),
+            Configuration::create()->withStopWords(['a', 'the']),
             true,
         ];
 

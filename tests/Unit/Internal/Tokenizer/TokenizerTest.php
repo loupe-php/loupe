@@ -93,6 +93,29 @@ class TokenizerTest extends TestCase
         ], $tokens->allNegatedTermsWithVariants());
     }
 
+    public function testStopWords(): void
+    {
+        $tokenizer = $this->createTokenizer();
+        $tokens = $tokenizer->tokenize(
+            'Hallo, mein Name ist Hase und ich weiß von nichts.',
+            stopWords: ['ist', 'und', 'von']
+        );
+
+        $this->assertSame([
+            'hallo',
+            'mein',
+            'name',
+            'nam',
+            'hase',
+            'has',
+            'ich',
+            'weiß',
+            'weiss',
+            'nichts',
+            'nicht',
+        ], $tokens->allTermsWithVariants());
+    }
+
     /**
      * @param array<string> $languages
      * @param array<string> $expectedTokens
