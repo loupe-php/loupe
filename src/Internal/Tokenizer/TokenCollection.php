@@ -100,6 +100,33 @@ class TokenCollection
         return array_unique($tokens);
     }
 
+    /**
+     * @return array<Phrase|Token>
+     */
+    public function getGroups(): array
+    {
+        $groups = [];
+        $phrase = null;
+
+        foreach ($this->tokens as $token) {
+            if ($token->isPartOfPhrase()) {
+                if (!$phrase) {
+                    $phrase = new Phrase([$token], $token->isNegated());
+                } else {
+                    $phrase->addToken($token);
+                }
+            } else {
+                if ($phrase) {
+                    $groups[] = $phrase;
+                    $phrase = null;
+                }
+                $groups[] = $token;
+            }
+        }
+
+        return $groups;
+    }
+
     public function count(): int
     {
         return \count($this->tokens);
