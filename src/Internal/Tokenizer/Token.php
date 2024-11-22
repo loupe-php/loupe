@@ -48,6 +48,17 @@ class Token
     }
 
     /**
+     * Return an array with a single element, the token itself.
+     * Useful for iterating over a TokenCollection with tokens and phrases.
+     *
+     * @return array<Token>
+     */
+    public function getTokens(): array
+    {
+        return [$this];
+    }
+
+    /**
      * @return array<string>
      */
     public function getVariants(): array

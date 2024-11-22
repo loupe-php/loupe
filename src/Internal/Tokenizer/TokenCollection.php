@@ -111,6 +111,8 @@ class TokenCollection
     }
 
     /**
+     * Return an array of "token groups" -- either single tokens or phrases as single objects.
+     *
      * @return array<Phrase|Token>
      */
     public function getGroups(): array

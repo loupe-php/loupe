@@ -803,10 +803,8 @@ class Searcher
         $negativeConditions = [];
 
         foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
-            $tokens = $tokenOrPhrase instanceof Phrase ? $tokenOrPhrase->getTokens() : [$tokenOrPhrase];
-
             $statements = [];
-            foreach ($tokens as $token) {
+            foreach ($tokenOrPhrase->getTokens() as $token) {
                 $statement = $this->createTermDocumentMatchesCTECondition($token);
                 if ($statement) {
                     $statements[] = $statement;
