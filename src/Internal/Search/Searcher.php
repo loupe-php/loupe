@@ -18,6 +18,10 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Search\Query\WhereGroup;
+use Loupe\Loupe\Internal\Search\Query\WhereOperator;
+use Loupe\Loupe\Internal\Search\Query\WhereStatement;
+use Loupe\Loupe\Internal\Tokenizer\Phrase;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
@@ -777,73 +781,63 @@ class Searcher
         );
     }
 
+    private function createTermDocumentMatchesCTECondition(Token $token): ?string
+    {
+        $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+        if (!isset($this->CTEs[$cteName])) {
+            return null;
+        }
+
+        return sprintf(
+            '%s.id %s (SELECT DISTINCT document FROM %s)',
+            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+            $token->isNegated() ? 'NOT IN' : 'IN',
+            $cteName
+        );
+    }
+
     private function searchDocuments(TokenCollection $tokenCollection): void
     {
         $this->addTermMatchesCTEs($tokenCollection);
         $this->addTermDocumentMatchesCTEs($tokenCollection);
-        $orGroups = [];
-        $currentGroup = [];
-        $notGroups = [];
-        $wasPreviousPhrase = false;
+        $positiveConditions = [];
+        $negativeConditions = [];
 
-        foreach ($tokenCollection->all() as $token) {
-            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+        foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
+            $tokens = $tokenOrPhrase instanceof Phrase ? $tokenOrPhrase->getTokens() : [$tokenOrPhrase];
 
-            if (!isset($this->CTEs[$cteName])) {
-                continue;
-            }
-
-            $statement = sprintf(
-                '%s.id %s (SELECT DISTINCT document FROM %s)',
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                $token->isNegated() ? 'NOT IN' : 'IN',
-                $cteName
-            );
-
-            if ($token->isPartOfPhrase() && $wasPreviousPhrase) {
-                // If the current token is "AND" and the previous token was also "AND", continue the group
-                $currentGroup[] = $statement;
-            } else {
-                // Finalize the current group if not empty
-                if (!empty($currentGroup)) {
-                    if ($token->isNegated()) {
-                        $notGroups[] = $currentGroup;
-                    } else {
-                        $orGroups[] = $currentGroup;
-                    }
+            $statements = [];
+            foreach ($tokens as $token) {
+                $statement = $this->createTermDocumentMatchesCTECondition($token);
+                if ($statement) {
+                    $statements[] = $statement;
                 }
-                // Start a new group
-                $currentGroup = [$statement];
             }
-            // Update the previous token's status
-            $wasPreviousPhrase = $token->isPartOfPhrase();
-        }
 
-        // Add the last group to the groups array if it's not empty
-        if ($currentGroup !== []) {
-            if (isset($token) && $token->isNegated()) {
-                $notGroups[] = $currentGroup;
+            if ($tokenOrPhrase->isNegated()) {
+                $negativeConditions[] = $statements;
             } else {
-                $orGroups[] = $currentGroup;
+                $positiveConditions[] = $statements;
             }
         }
 
-        $ands = [];
-        foreach ($orGroups as $andGroup) {
-            $ands[] = '(' . implode(' AND ', $andGroup) . ')';
+        $wheres = [];
+        foreach ($positiveConditions as $statements) {
+            $wheres[] = '(' . implode(' AND ', $statements) . ')';
         }
 
-        $where = implode(' OR ', $ands);
+        $where = implode(' OR ', $wheres);
         if ($where !== '') {
             $this->queryBuilder->andWhere('(' . $where . ')');
         }
 
-        $ands = [];
-        foreach ($notGroups as $andGroup) {
-            $ands[] = '(' . implode(' AND ', $andGroup) . ')';
+        $whereNots = [];
+        foreach ($negativeConditions as $statements) {
+            $whereNots[] = '(' . implode(' AND ', $statements) . ')';
         }
 
-        $whereNot = implode(' AND ', $ands);
+        $whereNot = implode(' AND ', $whereNots);
         if ($whereNot !== '') {
             $this->queryBuilder->andWhere('(' . $whereNot . ')');
         }
