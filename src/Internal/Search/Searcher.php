@@ -783,6 +783,7 @@ class Searcher
         $this->addTermDocumentMatchesCTEs($tokenCollection);
         $orGroups = [];
         $currentGroup = [];
+        $notGroups = [];
         $wasPreviousPhrase = false;
 
         foreach ($tokenCollection->all() as $token) {
@@ -792,24 +793,27 @@ class Searcher
                 continue;
             }
 
+            $statement = sprintf(
+                '%s.id %s (SELECT DISTINCT document FROM %s)',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                $token->isNegated() ? 'NOT IN' : 'IN',
+                $cteName
+            );
+
             if ($token->isPartOfPhrase() && $wasPreviousPhrase) {
                 // If the current token is "AND" and the previous token was also "AND", continue the group
-                $currentGroup[] = sprintf(
-                    '%s.id IN (SELECT DISTINCT document FROM %s)',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $cteName
-                );
+                $currentGroup[] = $statement;
             } else {
                 // Finalize the current group if not empty
                 if (!empty($currentGroup)) {
-                    $orGroups[] = $currentGroup;
+                    if ($token->isNegated()) {
+                        $notGroups[] = $currentGroup;
+                    } else {
+                        $orGroups[] = $currentGroup;
+                    }
                 }
                 // Start a new group
-                $currentGroup = [sprintf(
-                    '%s.id IN (SELECT DISTINCT document FROM %s)',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $cteName
-                )];
+                $currentGroup = [$statement];
             }
             // Update the previous token's status
             $wasPreviousPhrase = $token->isPartOfPhrase();
@@ -817,7 +821,11 @@ class Searcher
 
         // Add the last group to the groups array if it's not empty
         if ($currentGroup !== []) {
-            $orGroups[] = $currentGroup;
+            if ($token->isNegated()) {
+                $notGroups[] = $currentGroup;
+            } else {
+                $orGroups[] = $currentGroup;
+            }
         }
 
         $ands = [];
@@ -825,13 +833,18 @@ class Searcher
             $ands[] = '(' . implode(' AND ', $andGroup) . ')';
         }
 
-        $where = implode(' OR ', $ands);
-
-        if ($where === '') {
-            return;
+        if ($where = implode(' OR ', $ands)) {
+            $this->queryBuilder->andWhere('(' . $where . ')');
         }
 
-        $this->queryBuilder->andWhere('(' . $where . ')');
+        $ands = [];
+        foreach ($notGroups as $andGroup) {
+            $ands[] = '(' . implode(' AND ', $andGroup) . ')';
+        }
+
+        if ($whereNot = implode(' AND ', $ands)) {
+            $this->queryBuilder->andWhere('(' . $whereNot . ')');
+        }
     }
 
     private function selectDocuments(): void

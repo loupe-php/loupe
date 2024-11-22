@@ -1926,12 +1926,6 @@ class SearchTest extends TestCase
             ->withSort(['title:asc'])
         ;
 
-        $searchParametersWithNegation = SearchParameters::create()
-            ->withQuery('appears -disappears')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
-
         $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
             'hits' => [
                 [
@@ -1949,6 +1943,12 @@ class SearchTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 2,
         ]);
+
+        $searchParametersWithNegation = SearchParameters::create()
+            ->withQuery('appears -disappears')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
 
         $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
             'hits' => [
