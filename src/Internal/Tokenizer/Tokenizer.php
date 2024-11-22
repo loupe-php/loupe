@@ -122,8 +122,8 @@ class Tokenizer
             $term = mb_strtolower($term, 'UTF-8');
             $variants = [];
 
-            // Stem if we detected a language - but only if not part of a phrase and not negated
-            if ($language !== null && !$phrase && !$negated) {
+            // Stem if we detected a language - but only if not part of a phrase
+            if ($language !== null && !$phrase) {
                 $stem = $this->stem($term, $language);
                 if ($stem !== null && $term !== $stem) {
                     $variants = [$stem];
