@@ -22,12 +22,11 @@ class Tokenizer
     private array $stemmers = [];
 
     public function __construct(
-        private LanguageDetector $languageDetector,
-        private array $stopWords = []
+        private LanguageDetector $languageDetector
     ) {
     }
 
-    public function tokenize(string $string, ?int $maxTokens = null): TokenCollection
+    public function tokenize(string $string, ?int $maxTokens = null, ?array $stopWords = []): TokenCollection
     {
         $language = null;
         $languageResult = $this->languageDetector->detect($string);
@@ -38,7 +37,7 @@ class Tokenizer
             $language = $languageResult->language;
         }
 
-        return $this->doTokenize($string, $language, $maxTokens);
+        return $this->doTokenize($string, $language, $maxTokens, $stopWords);
     }
 
     /**
@@ -84,7 +83,7 @@ class Tokenizer
         return $result;
     }
 
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
+    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, ?array $stopWords = []): TokenCollection
     {
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
         $iterator->setText($string);
@@ -122,6 +121,11 @@ class Tokenizer
 
             $term = mb_strtolower($term, 'UTF-8');
             $variants = [];
+
+            // Skip stop words
+            if (in_array($term, $stopWords)) {
+                continue;
+            }
 
             // Stem if we detected a language - but only if not part of a phrase
             if ($language !== null && !$phrase) {

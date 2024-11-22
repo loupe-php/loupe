@@ -18,7 +18,6 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\Tokenizer\Phrase;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
@@ -181,9 +180,12 @@ class Searcher
             return $this->tokens = new TokenCollection();
         }
 
+        $query = $this->searchParameters->getQuery();
+        $maxQueryTokens = $this->engine->getConfiguration()->getMaxQueryTokens();
+        $stopWords = $this->engine->getConfiguration()->getStopWords();
+
         return $this->tokens = $this->engine->getTokenizer()
-            ->tokenize($this->searchParameters->getQuery(), $this->engine->getConfiguration()->getMaxQueryTokens())
-        ;
+            ->tokenize($query, $maxQueryTokens, $stopWords);
     }
 
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void

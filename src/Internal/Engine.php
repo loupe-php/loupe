@@ -164,7 +164,6 @@ class Engine
         }
 
         $languages = $this->getConfiguration()->getLanguages();
-        $stopWords = $this->getConfiguration()->getStopWords();
 
         if ($languages !== []) {
             // Load from data dir - this seems unnecessarily complicated, but we want to avoid calling new LanguageDetector()
@@ -191,7 +190,7 @@ class Engine
 
         $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
 
-        return $this->tokenizer = new Tokenizer($languageDetector, $stopWords);
+        return $this->tokenizer = new Tokenizer($languageDetector);
     }
 
     public function needsReindex(): bool
