@@ -440,6 +440,22 @@ class Searcher
         return $qb->getSQL();
     }
 
+    private function createTermDocumentMatchesCTECondition(Token $token): ?string
+    {
+        $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+        if (!isset($this->CTEs[$cteName])) {
+            return null;
+        }
+
+        return sprintf(
+            '%s.id %s (SELECT DISTINCT document FROM %s)',
+            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+            $token->isNegated() ? 'NOT IN' : 'IN',
+            $cteName
+        );
+    }
+
     private function createWherePartForTerm(string $term, bool $prefix): string
     {
         $where = [];
@@ -776,22 +792,6 @@ class Searcher
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
             $this->queryBuilder->getParameterTypes(),
-        );
-    }
-
-    private function createTermDocumentMatchesCTECondition(Token $token): ?string
-    {
-        $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
-
-        if (!isset($this->CTEs[$cteName])) {
-            return null;
-        }
-
-        return sprintf(
-            '%s.id %s (SELECT DISTINCT document FROM %s)',
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-            $token->isNegated() ? 'NOT IN' : 'IN',
-            $cteName
         );
     }
 

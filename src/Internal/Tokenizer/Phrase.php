@@ -15,19 +15,19 @@ class Phrase
     ) {
     }
 
-    /**
-     * @return array<string>
-     */
-    public function getTokens(): array
-    {
-        return $this->tokens;
-    }
-
     public function addToken(Token $token): self
     {
         $this->tokens[] = $token;
 
         return $this;
+    }
+
+    /**
+     * @return array<Token>
+     */
+    public function getTokens(): array
+    {
+        return $this->tokens;
     }
 
     public function isNegated(): bool

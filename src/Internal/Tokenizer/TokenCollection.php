@@ -100,6 +100,16 @@ class TokenCollection
         return array_unique($tokens);
     }
 
+    public function count(): int
+    {
+        return \count($this->tokens);
+    }
+
+    public function empty(): bool
+    {
+        return $this->tokens === [];
+    }
+
     /**
      * @return array<Phrase|Token>
      */
@@ -129,16 +139,6 @@ class TokenCollection
         }
 
         return $groups;
-    }
-
-    public function count(): int
-    {
-        return \count($this->tokens);
-    }
-
-    public function empty(): bool
-    {
-        return $this->tokens === [];
     }
 
     public function last(): ?Token

@@ -1418,6 +1418,39 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testNegatedComplexSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParametersWithoutNegation = SearchParameters::create()
+            ->withQuery('friendly mother -boy -"depressed suburban father" father')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'title' => 'Ariel',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 20,
+                    'title' => 'My Life Without Me',
+                ],
+            ],
+            'query' => 'friendly mother -boy -"depressed suburban father" father',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+    }
+
     public function testNegatedSearch(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
@@ -1545,39 +1578,6 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 5,
-        ]);
-    }
-
-    public function testNegatedComplexSearch(): void
-    {
-        $loupe = $this->setupLoupeWithMoviesFixture();
-
-        $searchParametersWithoutNegation = SearchParameters::create()
-            ->withQuery('friendly mother -boy -"depressed suburban father" father')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
-            'hits' => [
-                [
-                    'id' => 2,
-                    'title' => 'Ariel',
-                ],
-                [
-                    'id' => 12,
-                    'title' => 'Finding Nemo',
-                ],
-                [
-                    'id' => 20,
-                    'title' => 'My Life Without Me',
-                ],
-            ],
-            'query' => 'friendly mother -boy -"depressed suburban father" father',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 3,
         ]);
     }
 
