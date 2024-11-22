@@ -124,6 +124,10 @@ class TokenCollection
             }
         }
 
+        if ($phrase) {
+            $groups[] = $phrase;
+        }
+
         return $groups;
     }
 
