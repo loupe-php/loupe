@@ -821,7 +821,7 @@ class Searcher
 
         // Add the last group to the groups array if it's not empty
         if ($currentGroup !== []) {
-            if ($token->isNegated()) {
+            if (isset($token) && $token->isNegated()) {
                 $notGroups[] = $currentGroup;
             } else {
                 $orGroups[] = $currentGroup;
