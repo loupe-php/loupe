@@ -10,6 +10,7 @@ Loupe…
 * …only requires PHP and SQLite, you don't need anything else - no containers, no nothing
 * …is typo-tolerant (based on the State Set Index Algorithm and Levenshtein)
 * …supports phrase search using `"` quotation marks
+* …supports negative keyword and phrase search using `-` as modifier
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * …supports filtering (and ordering) on Geo distance
 * …orders relevance based on a number of factors such as nubmer of matching terms as well as proximity
