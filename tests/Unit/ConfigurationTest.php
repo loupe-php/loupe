@@ -70,12 +70,6 @@ class ConfigurationTest extends TestCase
             true,
         ];
 
-        yield 'Stop words are irrelevant ' => [
-            Configuration::create(),
-            Configuration::create()->withStopWords(['a', 'the']),
-            true,
-        ];
-
         yield 'First char typo counts double is irrelevant' => [
             Configuration::create(),
             Configuration::create()->withTypoTolerance(TypoTolerance::create()->withFirstCharTypoCountsDouble(false)),
