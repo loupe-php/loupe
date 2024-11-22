@@ -148,7 +148,7 @@ class Searcher
 
     public function getCTENameForToken(string $prefix, Token $token): string
     {
-        return $prefix . $token->getId();
+        return $prefix . $token->getId() . '_' . $token->getTerm();
     }
 
     /**
