@@ -1664,6 +1664,40 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testStopWordSearch(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young glaciologist')
+            ->withStopWords(['young'])
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        // Setting 'young' as a stop word should not return other movies with the term "young".
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testPhraseSearchOnlyConsidersIdenticalAttributes(): void
     {
         $configuration = Configuration::create()
