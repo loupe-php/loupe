@@ -22,7 +22,8 @@ class Tokenizer
     private array $stemmers = [];
 
     public function __construct(
-        private LanguageDetector $languageDetector
+        private LanguageDetector $languageDetector,
+        private array $stopWords = []
     ) {
     }
 
