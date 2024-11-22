@@ -219,6 +219,16 @@ $results = [
 ];
 ```
 
+## Stop words
+
+When searching, you can define a list of stop words to be ignored by the engine when matching and
+ranking search results.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withStopWords(['a', 'by', 'the']);
+```
+
 ## Caching
 
 Loupe does not ship with built-in caching, so you are free to choose the caching mechanism of your choice. However,
