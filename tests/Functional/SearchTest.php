@@ -1675,15 +1675,44 @@ class SearchTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
 
-        $searchParameters = SearchParameters::create()
+        $searchParametersWithoutStopWords = SearchParameters::create()
+            ->withQuery('young glaciologist')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        // Should not return all movies with the term "young" (OR matching)
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutStopWords, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $searchParametersWithStopWords = SearchParameters::create()
             ->withQuery('young glaciologist')
             ->withStopWords(['young'])
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc'])
         ;
 
-        // Setting 'young' as a stop word should not return other movies with the term "young".
-        $this->searchAndAssertResults($loupe, $searchParameters, [
+        // Should not return other movies with the term "young"
+        $this->searchAndAssertResults($loupe, $searchParametersWithStopWords, [
             'hits' => [
                 [
                     'id' => 27,
