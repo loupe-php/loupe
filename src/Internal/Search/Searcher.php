@@ -808,7 +808,7 @@ class Searcher
                 $statements[] = $this->createTermDocumentMatchesCTECondition($token);
             }
 
-            if (count(array_filter($statements))) {
+            if (\count(array_filter($statements))) {
                 if ($tokenOrPhrase->isNegated()) {
                     $negativeConditions[] = $statements;
                 } else {
