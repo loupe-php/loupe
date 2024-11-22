@@ -55,13 +55,13 @@ class Token
         return $this->variants;
     }
 
-    public function isPartOfPhrase(): bool
-    {
-        return $this->isPartOfPhrase;
-    }
-
     public function isNegated(): bool
     {
         return $this->isNegated;
+    }
+
+    public function isPartOfPhrase(): bool
+    {
+        return $this->isPartOfPhrase;
     }
 }

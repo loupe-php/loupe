@@ -833,7 +833,8 @@ class Searcher
             $ands[] = '(' . implode(' AND ', $andGroup) . ')';
         }
 
-        if ($where = implode(' OR ', $ands)) {
+        $where = implode(' OR ', $ands);
+        if ($where !== '') {
             $this->queryBuilder->andWhere('(' . $where . ')');
         }
 
@@ -842,7 +843,8 @@ class Searcher
             $ands[] = '(' . implode(' AND ', $andGroup) . ')';
         }
 
-        if ($whereNot = implode(' AND ', $ands)) {
+        $whereNot = implode(' AND ', $ands);
+        if ($whereNot !== '') {
             $this->queryBuilder->andWhere('(' . $whereNot . ')');
         }
     }

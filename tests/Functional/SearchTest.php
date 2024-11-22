@@ -1418,6 +1418,136 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testNegatedSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParametersWithoutNegation = SearchParameters::create()
+            ->withQuery('appears')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
+            'hits' => [
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+                [
+                    'id' => 17,
+                    'title' => 'The Dark',
+                ],
+            ],
+            'query' => 'appears',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+
+        $searchParametersWithNegation = SearchParameters::create()
+            ->withQuery('appears -disappears')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
+            'hits' => [
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+            ],
+            'query' => 'appears -disappears',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
+    public function testNegatedSearchPhrases(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParametersWithoutNegation = SearchParameters::create()
+            ->withQuery('life "new life"')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
+            'hits' => [
+                [
+                    'id' => 14,
+                    'title' => 'American Beauty',
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Ariel',
+                ],
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
+                ],
+                [
+                    'id' => 13,
+                    'title' => 'Forrest Gump',
+                ],
+                [
+                    'id' => 20,
+                    'title' => 'My Life Without Me',
+                ],
+            ],
+            'query' => 'life "new life"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 6,
+        ]);
+
+        $searchParametersWithNegation = SearchParameters::create()
+            ->withQuery('life -"new life"')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
+            'hits' => [
+                [
+                    'id' => 14,
+                    'title' => 'American Beauty',
+                ],
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
+                ],
+                [
+                    'id' => 13,
+                    'title' => 'Forrest Gump',
+                ],
+                [
+                    'id' => 20,
+                    'title' => 'My Life Without Me',
+                ],
+            ],
+            'query' => 'life -"new life"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 5,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
@@ -1913,136 +2043,6 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 2,
-        ]);
-    }
-
-    public function testNegatedSearch(): void
-    {
-        $loupe = $this->setupLoupeWithMoviesFixture();
-
-        $searchParametersWithoutNegation = SearchParameters::create()
-            ->withQuery('appears')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
-            'hits' => [
-                [
-                    'id' => 15,
-                    'title' => 'Citizen Kane',
-                ],
-                [
-                    'id' => 17,
-                    'title' => 'The Dark',
-                ],
-            ],
-            'query' => 'appears',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 2,
-        ]);
-
-        $searchParametersWithNegation = SearchParameters::create()
-            ->withQuery('appears -disappears')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
-            'hits' => [
-                [
-                    'id' => 15,
-                    'title' => 'Citizen Kane',
-                ],
-            ],
-            'query' => 'appears -disappears',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 1,
-        ]);
-    }
-
-    public function testNegatedSearchPhrases(): void
-    {
-        $loupe = $this->setupLoupeWithMoviesFixture();
-
-        $searchParametersWithoutNegation = SearchParameters::create()
-            ->withQuery('life "new life"')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
-            'hits' => [
-                [
-                    'id' => 14,
-                    'title' => 'American Beauty',
-                ],
-                [
-                    'id' => 2,
-                    'title' => 'Ariel',
-                ],
-                [
-                    'id' => 15,
-                    'title' => 'Citizen Kane',
-                ],
-                [
-                    'id' => 16,
-                    'title' => 'Dancer in the Dark',
-                ],
-                [
-                    'id' => 13,
-                    'title' => 'Forrest Gump',
-                ],
-                [
-                    'id' => 20,
-                    'title' => 'My Life Without Me',
-                ],
-            ],
-            'query' => 'life "new life"',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 6,
-        ]);
-
-        $searchParametersWithNegation = SearchParameters::create()
-            ->withQuery('life -"new life"')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
-            'hits' => [
-                [
-                    'id' => 14,
-                    'title' => 'American Beauty',
-                ],
-                [
-                    'id' => 15,
-                    'title' => 'Citizen Kane',
-                ],
-                [
-                    'id' => 16,
-                    'title' => 'Dancer in the Dark',
-                ],
-                [
-                    'id' => 13,
-                    'title' => 'Forrest Gump',
-                ],
-                [
-                    'id' => 20,
-                    'title' => 'My Life Without Me',
-                ],
-            ],
-            'query' => 'life -"new life"',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 5,
         ]);
     }
 

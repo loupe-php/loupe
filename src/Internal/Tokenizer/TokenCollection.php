@@ -39,6 +39,22 @@ class TokenCollection
     /**
      * @return array<string>
      */
+    public function allNegatedTerms(): array
+    {
+        $tokens = [];
+
+        foreach ($this->all() as $token) {
+            if ($token->isNegated()) {
+                $tokens[] = $token->getTerm();
+            }
+        }
+
+        return array_unique($tokens);
+    }
+
+    /**
+     * @return array<string>
+     */
     public function allTerms(): array
     {
         $tokens = [];
@@ -59,22 +75,6 @@ class TokenCollection
 
         foreach ($this->all() as $token) {
             $tokens = array_merge($tokens, $token->allTerms());
-        }
-
-        return array_unique($tokens);
-    }
-
-    /**
-     * @return array<string>
-     */
-    public function allNegatedTerms(): array
-    {
-        $tokens = [];
-
-        foreach ($this->all() as $token) {
-            if ($token->isNegated()) {
-                $tokens[] = $token->getTerm();
-            }
         }
 
         return array_unique($tokens);
