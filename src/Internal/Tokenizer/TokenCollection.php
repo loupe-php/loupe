@@ -37,16 +37,36 @@ class TokenCollection
     }
 
     /**
+     * @return Token[]
+     */
+    public function allNegated(): array
+    {
+        return array_filter($this->tokens, fn (Token $token) => $token->isNegated());
+    }
+
+    /**
      * @return array<string>
      */
     public function allNegatedTerms(): array
     {
         $tokens = [];
 
-        foreach ($this->all() as $token) {
-            if ($token->isNegated()) {
-                $tokens[] = $token->getTerm();
-            }
+        foreach ($this->allNegated() as $token) {
+            $tokens[] = $token->getTerm();
+        }
+
+        return array_unique($tokens);
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function allNegatedTermsWithVariants(): array
+    {
+        $tokens = [];
+
+        foreach ($this->allNegated() as $token) {
+            $tokens = array_merge($tokens, $token->allTerms());
         }
 
         return array_unique($tokens);

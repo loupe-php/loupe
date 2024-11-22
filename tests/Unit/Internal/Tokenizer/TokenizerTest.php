@@ -34,7 +34,7 @@ class TokenizerTest extends TestCase
     public function testNegatedPhrases(): void
     {
         $tokenizer = $this->createTokenizer();
-        $tokens = $tokenizer->tokenize('Hallo, mein -"Name ist Hase" und ich weiß von nichts.');
+        $tokens = $tokenizer->tokenize('Hallo, -mein -"Name ist Hase" und -ich "weiß von" -nichts.');
 
         $this->assertSame([
             'hallo',
@@ -45,23 +45,26 @@ class TokenizerTest extends TestCase
             'und',
             'ich',
             'weiß',
-            'weiss',
             'von',
             'nichts',
             'nicht',
         ], $tokens->allTermsWithVariants());
 
         $this->assertSame([
+            'mein',
             'name',
             'ist',
             'hase',
-        ], $tokens->allNegatedTerms());
+            'ich',
+            'nichts',
+            'nicht',
+        ], $tokens->allNegatedTermsWithVariants());
     }
 
     public function testNegatedTokens(): void
     {
         $tokenizer = $this->createTokenizer();
-        $tokens = $tokenizer->tokenize('Hallo, mein -Name ist -Hase und ich weiß von nichts.');
+        $tokens = $tokenizer->tokenize('Hallo, mein -Name ist -Hase und ich weiß von -nichts.');
 
         $this->assertSame([
             'hallo',
@@ -82,8 +85,12 @@ class TokenizerTest extends TestCase
 
         $this->assertSame([
             'name',
+            'nam',
             'hase',
-        ], $tokens->allNegatedTerms());
+            'has',
+            'nichts',
+            'nicht',
+        ], $tokens->allNegatedTermsWithVariants());
     }
 
     /**
