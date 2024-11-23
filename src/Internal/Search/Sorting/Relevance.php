@@ -63,6 +63,10 @@ class Relevance extends AbstractSorter
         }
     }
 
+    /**
+     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm
+     * @param array<string, int> $attributeWeights
+     */
     public static function calculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights): float
     {
         $matchedAttributes = array_reduce(
@@ -80,7 +84,7 @@ class Relevance extends AbstractSorter
     }
 
     /**
-     * @param array<int, array<int>> $positionsPerTerm
+     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm
      */
     public static function calculateMatchCountFactor(array $positionsPerTerm, int $totalQueryTokenCount): float
     {
@@ -93,7 +97,7 @@ class Relevance extends AbstractSorter
     }
 
     /**
-     * @param array<int, array<int>> $positionsPerTerm The positions MUST be ordered ASC
+     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm The positions MUST be ordered ASC
      */
     public static function calculateProximityFactor(array $positionsPerTerm, float $decayFactor = 0.1): float
     {
@@ -103,10 +107,8 @@ class Relevance extends AbstractSorter
         $positionPrev = null;
 
         foreach ($positionsPerTerm as $positions) {
-            if (is_numeric($positions[0])) {
-                // Account for old format without attribute: [1,2,3;4,5] → [[1,null],[2,null],[3,null];[4,null],[5,null]]
-                $positions = array_map(fn ($position) => [$position, null], $positions);
-            }
+            // Account for old format without attribute: [1,2,3;4,5] → [[1,null],[2,null],[3,null];[4,null],[5,null]]
+            $positions = array_map(fn ($position) => !\is_array($position) ? [$position, null] : $position, $positions);
 
             if ($positionPrev === null) {
                 [$position] = $positions[0];
@@ -149,29 +151,8 @@ class Relevance extends AbstractSorter
     public static function fromQuery(string $positionsInDocumentPerTerm, string $totalQueryTokenCount, string $attributeWeights): float
     {
         $totalQueryTokenCount = (int) $totalQueryTokenCount;
-
-        $positionsPerTerm = array_map(
-            fn ($term) => array_map(
-                fn ($position) => [
-                    (int) explode(':', "{$position}:")[0],
-                    explode(':', "{$position}:")[1] ?: null,
-                ],
-                explode(',', $term)
-            ),
-            explode(';', $positionsInDocumentPerTerm)
-        );
-
-        $attributeWeights = array_reduce(
-            array_filter(explode(';', $attributeWeights)),
-            function ($result, $item) {
-                [$key, $value] = explode(':', $item);
-                return [
-                    ...$result,
-                    $key => (int) $value,
-                ];
-            },
-            []
-        );
+        $positionsPerTerm = static::parseTermPositions($positionsInDocumentPerTerm);
+        $attributeWeightValues = static::parseAttributeWeights($attributeWeights);
 
         // Higher weight means more importance
         $relevanceWeights = [
@@ -188,7 +169,7 @@ class Relevance extends AbstractSorter
             self::calculateProximityFactor($positionsPerTerm),
 
             // 3rd: Weight of attributes matched
-            self::calculateAttributeWeightFactor($positionsPerTerm, $attributeWeights),
+            self::calculateAttributeWeightFactor($positionsPerTerm, $attributeWeightValues),
         ];
 
         // Calculate weighted average
@@ -207,5 +188,47 @@ class Relevance extends AbstractSorter
     public static function supports(string $value, Engine $engine): bool
     {
         return $value === Searcher::RELEVANCE_ALIAS;
+    }
+
+    /**
+     * Parse an intermediate string representation of attribute weights back into an array
+     *
+     * "title:3;summary:4" -> ["title" => 3, "summary" => 4]
+     *
+     * @return array<string, int>
+     */
+    protected static function parseAttributeWeights(string $attributeWeights): array
+    {
+        return array_reduce(
+            array_filter(explode(';', $attributeWeights)),
+            function ($result, $item) {
+                [$key, $value] = explode(':', $item);
+                return array_merge($result, [
+                    $key => (int) $value,
+                ]);
+            },
+            []
+        );
+    }
+
+    /**
+     * Parse an intermediate string representation of term positions and matches attributes
+     *
+     * "3:title,8:title,10:title;0;4:summary" -> [[3, "title"], [8, "title"], [10, "title"]], [[0, null]], [[4, "summary"]]
+     *
+     * @return array<int, array<int, array{int, string|null}>>
+     */
+    protected static function parseTermPositions(string $positionsInDocumentPerTerm): array
+    {
+        return array_map(
+            fn ($term) => array_map(
+                fn ($position) => [
+                    (int) explode(':', "{$position}:")[0],
+                    explode(':', "{$position}:")[1] ?: null,
+                ],
+                explode(',', $term)
+            ),
+            explode(';', $positionsInDocumentPerTerm)
+        );
     }
 }

@@ -98,7 +98,7 @@ class RelevanceTest extends TestCase
     }
 
     /**
-     * @param array<int, array<int>> $positionsPerTerm
+     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm $positionsPerTerm
      * @param array<string, int> $attributeWeights
      */
     #[DataProvider('attributeWeightProvider')]
@@ -108,7 +108,7 @@ class RelevanceTest extends TestCase
     }
 
     /**
-     * @param array<int, array<int>> $positionsPerTerm
+     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm $positionsPerTerm
      */
     #[DataProvider('proximityFactorProvider')]
     public function testCalculateProximityFactor(array $positionsPerTerm, float $decayFactor, float $expected): void
