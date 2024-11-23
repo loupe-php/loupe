@@ -127,9 +127,7 @@ class Indexer
         }
 
         $this->engine->getConnection()
-            ->executeStatement(
-                sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS)
-            );
+            ->executeStatement(sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
         $this->reviseStorage();
 
