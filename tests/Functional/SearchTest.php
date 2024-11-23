@@ -2042,7 +2042,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 2,
                     'title' => 'Everlasting learning',
-                    '_rankingScore' => 0.83333,
+                    '_rankingScore' => 1.0,
                 ],
             ],
             'query' => 'life game',

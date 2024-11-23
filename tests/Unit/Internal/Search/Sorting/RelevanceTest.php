@@ -78,13 +78,13 @@ class RelevanceTest extends TestCase
         yield 'Attribute weighs double against attribute' => [
             [[[1, 'title'], [2, 'summary']]],
             ['title' => 2],
-            1.5,
+            2.0,
         ];
 
-        yield 'Attribute weighs double against multiple attributes' => [
+        yield 'Attribute weighs triple against multiple attributes' => [
             [[[1, 'title'], [2, 'summary'], [2, 'content']]],
-            ['summary' => 2],
-            1.3333333333333333,
+            ['summary' => 3],
+            3.0,
         ];
     }
 

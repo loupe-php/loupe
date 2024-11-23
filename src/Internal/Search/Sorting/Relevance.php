@@ -129,11 +129,11 @@ class Relevance extends AbstractSorter
             []
         );
 
-        $matchedAttributeWeights = array_map(fn ($attribute) => $attributeWeights[$attribute] ?? null, array_unique($matchedAttributes));
+        $matchedAttributeWeights = array_map(fn ($attribute) => $attributeWeights[$attribute] ?? 1, $matchedAttributes);
         $matchedAttributeWeights = array_filter($matchedAttributeWeights, fn ($weight) => $weight !== 1);
 
         return count($matchedAttributeWeights) ?
-            (array_sum($matchedAttributeWeights) / count($matchedAttributeWeights))
+            (array_sum($matchedAttributeWeights) / count($positionsPerTerm))
             : 1;
     }
 
