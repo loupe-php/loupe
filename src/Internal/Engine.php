@@ -98,6 +98,13 @@ class Engine
         return $this;
     }
 
+    public function deleteAllDocuments(): self
+    {
+        $this->indexer->deleteAllDocuments();
+
+        return $this;
+    }
+
     public function getConfiguration(): Configuration
     {
         return $this->configuration;

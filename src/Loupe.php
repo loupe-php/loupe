@@ -51,6 +51,11 @@ final class Loupe
         $this->engine->deleteDocuments($ids);
     }
 
+    public function deleteAllDocuments(): void
+    {
+        $this->engine->deleteAllDocuments();
+    }
+
     public function getConfiguration(): Configuration
     {
         return $this->engine->getConfiguration();
