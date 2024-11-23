@@ -1994,6 +1994,65 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testRelevanceAndRankingScoreWithAttributeWeights(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'content'])
+            ->withSortableAttributes(['title', 'content'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'title' => 'Game of life',
+                'content' => 'A thing of everlasting learning',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Everlasting learning',
+                'content' => 'The unexamined game of life',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Learning to game',
+                'content' => 'What life taught me about learning',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('life game')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withAttributeWeights(['title' => 10])
+            ->withShowRankingScore(true)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Game of life',
+                    '_rankingScore' => 2.5,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Learning to game',
+                    '_rankingScore' => 1.66667,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Everlasting learning',
+                    '_rankingScore' => 0.83333,
+                ],
+            ],
+            'query' => 'life game',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+    }
+
     public function testSearchingForNumericArrayType(): void
     {
         $configuration = Configuration::create()
