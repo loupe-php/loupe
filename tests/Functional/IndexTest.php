@@ -233,11 +233,57 @@ class IndexTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
 
-        $this->assertSame('Star Wars', $loupe->getDocument(11)['title'] ?? '');
+        $this->assertSame('Star Wars', $loupe->getDocument(11)['title'] ?? null);
+        $this->assertSame('Finding Nemo', $loupe->getDocument(12)['title'] ?? null);
 
         // Delete document and assert it's gone
         $loupe->deleteDocument(11);
+        $this->assertNull($loupe->getDocument(11)['title'] ?? null);
+
+        // Assert the other document is still there
+        $this->assertSame('Finding Nemo', $loupe->getDocument(12)['title'] ?? null);
+    }
+
+    public function testDeleteDocuments(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withSortableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $this->assertSame('Star Wars', $loupe->getDocument(11)['title'] ?? '');
+        $this->assertSame('Finding Nemo', $loupe->getDocument(12)['title'] ?? '');
+        $this->assertSame('Forrest Gump', $loupe->getDocument(13)['title'] ?? '');
+
+        // Delete documents and assert they're gone
+        $loupe->deleteDocuments([11, 12]);
         $this->assertNull($loupe->getDocument(11));
+        $this->assertNull($loupe->getDocument(12));
+        $this->assertSame('Forrest Gump', $loupe->getDocument(13)['title'] ?? '');
+    }
+
+    public function testDeleteAllDocuments(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withSortableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        foreach (range(11, 20) as $id) {
+            $this->assertNotNull($loupe->getDocument($id));
+        }
+
+        // Delete all documents and assert they're gone
+        $loupe->deleteAllDocuments();
+        foreach (range(11, 20) as $id) {
+            $this->assertNull($loupe->getDocument($id));
+        }
     }
 
     public function testDeleteDocumentWhenNotSetUpYet(): void
