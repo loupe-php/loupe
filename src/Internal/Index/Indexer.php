@@ -95,6 +95,20 @@ class Indexer
         return new IndexResult($successfulCount, $documentExceptions);
     }
 
+    public function deleteAllDocuments(): self
+    {
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            return $this;
+        }
+
+        $this->engine->getConnection()
+            ->executeStatement(sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
+
+        $this->reviseStorage();
+
+        return $this;
+    }
+
     /**
      * @param array<int|string> $ids
      */
@@ -114,20 +128,6 @@ class Indexer
                     'ids' => ArrayParameterType::STRING,
                 ]
             );
-
-        $this->reviseStorage();
-
-        return $this;
-    }
-
-    public function deleteAllDocuments(): self
-    {
-        if ($this->engine->getIndexInfo()->needsSetup()) {
-            return $this;
-        }
-
-        $this->engine->getConnection()
-            ->executeStatement(sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
         $this->reviseStorage();
 

@@ -88,19 +88,19 @@ class Engine
             ->fetchOne();
     }
 
+    public function deleteAllDocuments(): self
+    {
+        $this->indexer->deleteAllDocuments();
+
+        return $this;
+    }
+
     /**
      * @param array<int|string> $ids
      */
     public function deleteDocuments(array $ids): self
     {
         $this->indexer->deleteDocuments($ids);
-
-        return $this;
-    }
-
-    public function deleteAllDocuments(): self
-    {
-        $this->indexer->deleteAllDocuments();
 
         return $this;
     }

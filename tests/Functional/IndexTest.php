@@ -223,6 +223,27 @@ class IndexTest extends TestCase
         ]);
     }
 
+    public function testDeleteAllDocuments(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withSortableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        foreach (range(11, 20) as $id) {
+            $this->assertNotNull($loupe->getDocument($id));
+        }
+
+        // Delete all documents and assert they're gone
+        $loupe->deleteAllDocuments();
+        foreach (range(11, 20) as $id) {
+            $this->assertNull($loupe->getDocument($id));
+        }
+    }
+
     public function testDeleteDocument(): void
     {
         $configuration = Configuration::create()
@@ -263,27 +284,6 @@ class IndexTest extends TestCase
         $this->assertNull($loupe->getDocument(11));
         $this->assertNull($loupe->getDocument(12));
         $this->assertSame('Forrest Gump', $loupe->getDocument(13)['title'] ?? '');
-    }
-
-    public function testDeleteAllDocuments(): void
-    {
-        $configuration = Configuration::create()
-            ->withSearchableAttributes(['title', 'overview'])
-            ->withSortableAttributes(['title'])
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
-
-        foreach (range(11, 20) as $id) {
-            $this->assertNotNull($loupe->getDocument($id));
-        }
-
-        // Delete all documents and assert they're gone
-        $loupe->deleteAllDocuments();
-        foreach (range(11, 20) as $id) {
-            $this->assertNull($loupe->getDocument($id));
-        }
     }
 
     public function testDeleteDocumentWhenNotSetUpYet(): void
