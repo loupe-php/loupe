@@ -10,6 +10,48 @@ use PHPUnit\Framework\TestCase;
 
 class RelevanceTest extends TestCase
 {
+    public static function attributeWeightProvider(): \Generator
+    {
+        yield 'No attributes are weighted' => [
+            [[[1, 'title'], [2, 'summary']]],
+            [],
+            1.0,
+        ];
+
+        yield 'No attributes are matched' => [
+            [[[1, 'title'], [2, 'summary']]],
+            [
+                'unknown_attribute' => 5,
+            ],
+            1.0,
+        ];
+
+        yield 'All attributes are equal' => [
+            [[[1, 'title'], [2, 'summary']]],
+            [
+                'title' => 1,
+                'summary' => 1,
+            ],
+            1.0,
+        ];
+
+        yield 'Attribute weighs double against attribute' => [
+            [[[1, 'title'], [2, 'summary']]],
+            [
+                'title' => 2,
+            ],
+            2.0,
+        ];
+
+        yield 'Attribute weighs triple against multiple attributes' => [
+            [[[1, 'title'], [2, 'summary'], [2, 'content']]],
+            [
+                'summary' => 3,
+            ],
+            3.0,
+        ];
+    }
+
     public static function proximityFactorProvider(): \Generator
     {
         yield 'All terms are adjacent' => [
@@ -52,39 +94,6 @@ class RelevanceTest extends TestCase
             [[1, 7, 12], [2, 7],  [3, 5, 8, 19, 28], [4], [3, 5, 8, 19, 28], [6], [2, 7], [3, 5, 8, 19, 28], [9], [10]],
             0.1,
             1,
-        ];
-    }
-
-    public static function attributeWeightProvider(): \Generator
-    {
-        yield 'No attributes are weighted' => [
-            [[[1, 'title'], [2, 'summary']]],
-            [],
-            1.0,
-        ];
-
-        yield 'No attributes are matched' => [
-            [[[1, 'title'], [2, 'summary']]],
-            ['unknown_attribute' => 5],
-            1.0,
-        ];
-
-        yield 'All attributes are equal' => [
-            [[[1, 'title'], [2, 'summary']]],
-            ['title' => 1, 'summary' => 1],
-            1.0,
-        ];
-
-        yield 'Attribute weighs double against attribute' => [
-            [[[1, 'title'], [2, 'summary']]],
-            ['title' => 2],
-            2.0,
-        ];
-
-        yield 'Attribute weighs triple against multiple attributes' => [
-            [[[1, 'title'], [2, 'summary'], [2, 'content']]],
-            ['summary' => 3],
-            3.0,
         ];
     }
 

@@ -46,7 +46,7 @@ class Relevance extends AbstractSorter
             Searcher::RELEVANCE_ALIAS . '_per_term',
             implode(' UNION ALL ', $positionsPerDocument),
             $searcher->getTokens()->count(),
-            implode(';', array_map(fn($attr, $weight) => "{$attr}:{$weight}", array_keys($weights), $weights)),
+            implode(';', array_map(fn ($attr, $weight) => "{$attr}:{$weight}", array_keys($weights), $weights)),
             Searcher::RELEVANCE_ALIAS,
         );
 
@@ -63,6 +63,35 @@ class Relevance extends AbstractSorter
         }
     }
 
+    public static function calculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights): float
+    {
+        $matchedAttributes = array_reduce(
+            $positionsPerTerm,
+            fn ($result, $term) => array_merge($result, array_map(fn ($position) => $position[1], $term)),
+            []
+        );
+
+        $matchedAttributeWeights = array_map(fn ($attribute) => $attributeWeights[$attribute] ?? 1, $matchedAttributes);
+        $matchedAttributeWeights = array_filter($matchedAttributeWeights, fn ($weight) => $weight !== 1);
+
+        return \count($matchedAttributeWeights) ?
+            (array_sum($matchedAttributeWeights) / \count($positionsPerTerm))
+            : 1;
+    }
+
+    /**
+     * @param array<int, array<int>> $positionsPerTerm
+     */
+    public static function calculateMatchCountFactor(array $positionsPerTerm, int $totalQueryTokenCount): float
+    {
+        $matchedTokens = array_filter(
+            $positionsPerTerm,
+            fn ($termArray) => !(\count($termArray) === 1 && $termArray[0][0] === 0)
+        );
+
+        return \count($matchedTokens) / $totalQueryTokenCount;
+    }
+
     /**
      * @param array<int, array<int>> $positionsPerTerm The positions MUST be ordered ASC
      */
@@ -76,7 +105,7 @@ class Relevance extends AbstractSorter
         foreach ($positionsPerTerm as $positions) {
             if (is_numeric($positions[0])) {
                 // Account for old format without attribute: [1,2,3;4,5] → [[1,null],[2,null],[3,null];[4,null],[5,null]]
-                $positions = array_map(fn($position) => [$position, null], $positions);
+                $positions = array_map(fn ($position) => [$position, null], $positions);
             }
 
             if ($positionPrev === null) {
@@ -109,35 +138,6 @@ class Relevance extends AbstractSorter
     }
 
     /**
-     * @param array<int, array<int>> $positionsPerTerm
-     */
-    public static function calculateMatchCountFactor(array $positionsPerTerm, int $totalQueryTokenCount): float
-    {
-        $matchedTokens = array_filter(
-            $positionsPerTerm,
-            fn ($termArray) => !(\count($termArray) === 1 && $termArray[0][0] === 0)
-        );
-
-        return \count($matchedTokens) / $totalQueryTokenCount;
-    }
-
-    public static function calculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights): float
-    {
-        $matchedAttributes = array_reduce(
-            $positionsPerTerm,
-            fn ($result, $term) => array_merge($result, array_map(fn ($position) => $position[1], $term)),
-            []
-        );
-
-        $matchedAttributeWeights = array_map(fn ($attribute) => $attributeWeights[$attribute] ?? 1, $matchedAttributes);
-        $matchedAttributeWeights = array_filter($matchedAttributeWeights, fn ($weight) => $weight !== 1);
-
-        return count($matchedAttributeWeights) ?
-            (array_sum($matchedAttributeWeights) / count($positionsPerTerm))
-            : 1;
-    }
-
-    /**
      * Example: A string with "3:title,8:title,10:title;0;4:summary" would read as follows:
      * - The query consisted of 3 tokens (terms).
      * - The first term matched. At positions 3, 8 and 10 in the `title` attribute.
@@ -154,7 +154,7 @@ class Relevance extends AbstractSorter
             fn ($term) => array_map(
                 fn ($position) => [
                     (int) explode(':', "{$position}:")[0],
-                    explode(':', "{$position}:")[1] ?: null
+                    explode(':', "{$position}:")[1] ?: null,
                 ],
                 explode(',', $term)
             ),
@@ -165,7 +165,10 @@ class Relevance extends AbstractSorter
             array_filter(explode(';', $attributeWeights)),
             function ($result, $item) {
                 [$key, $value] = explode(':', $item);
-                return [...$result, $key => (int) $value];
+                return [
+                    ...$result,
+                    $key => (int) $value,
+                ];
             },
             []
         );
