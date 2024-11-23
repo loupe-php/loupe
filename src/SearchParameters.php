@@ -28,7 +28,7 @@ final class SearchParameters
     /**
      * @var array<string, int>
      */
-    private array $attributeWeights = ['title' => 2];
+    private array $attributeWeights = [];
 
     private string $filter = '';
 
