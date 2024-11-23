@@ -55,6 +55,49 @@ class RelevanceTest extends TestCase
         ];
     }
 
+    public static function attributeWeightProvider(): \Generator
+    {
+        yield 'No attributes are weighted' => [
+            [[[1, 'title'], [2, 'summary']]],
+            [],
+            1.0,
+        ];
+
+        yield 'No attributes are matched' => [
+            [[[1, 'title'], [2, 'summary']]],
+            ['unknown_attribute' => 5],
+            1.0,
+        ];
+
+        yield 'All attributes are equal' => [
+            [[[1, 'title'], [2, 'summary']]],
+            ['title' => 1, 'summary' => 1],
+            1.0,
+        ];
+
+        yield 'Attribute weighs double against attribute' => [
+            [[[1, 'title'], [2, 'summary']]],
+            ['title' => 2],
+            1.5,
+        ];
+
+        yield 'Attribute weighs double against multiple attributes' => [
+            [[[1, 'title'], [2, 'summary'], [2, 'content']]],
+            ['summary' => 2],
+            1.3333333333333333,
+        ];
+    }
+
+    /**
+     * @param array<int, array<int>> $positionsPerTerm
+     * @param array<string, int> $attributeWeights
+     */
+    #[DataProvider('attributeWeightProvider')]
+    public function testCalculateAttributeWeight(array $positionsPerTerm, array $attributeWeights, float $expected): void
+    {
+        $this->assertSame($expected, Relevance::calculateAttributeWeightFactor($positionsPerTerm, $attributeWeights));
+    }
+
     /**
      * @param array<int, array<int>> $positionsPerTerm
      */

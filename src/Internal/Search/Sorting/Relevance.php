@@ -123,8 +123,13 @@ class Relevance extends AbstractSorter
 
     public static function calculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights): float
     {
-        $matchedAttributes = array_unique(array_filter(array_map(fn ($term) => $term[0][1], $positionsPerTerm)));
-        $matchedAttributeWeights = array_filter(array_map(fn ($attribute) => $attributeWeights[$attribute] ?? null, $matchedAttributes));
+        $matchedAttributes = array_reduce(
+            $positionsPerTerm,
+            fn ($result, $term) => array_merge($result, array_map(fn ($position) => $position[1], $term)),
+            []
+        );
+
+        $matchedAttributeWeights = array_filter(array_map(fn ($attribute) => $attributeWeights[$attribute] ?? 1, $matchedAttributes));
 
         return count($matchedAttributeWeights) ?
             (array_sum($matchedAttributeWeights) / count($matchedAttributeWeights))
@@ -165,7 +170,7 @@ class Relevance extends AbstractSorter
         );
 
         // Higher weight means more importance
-        static $relevanceWeights = [
+        $relevanceWeights = [
             3, // 1st: Number of query terms that match in a document
             2, // 2nd: Proximity of the words
             1, // 3rd: Weight of attributes matched
