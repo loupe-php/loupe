@@ -25,6 +25,11 @@ final class SearchParameters
      */
     private array $attributesToSearchOn = ['*'];
 
+    /**
+     * @var array<string, int>
+     */
+    private array $attributeWeights = ['title' => 10];
+
     private string $filter = '';
 
     private string $highlightEndTag = '</em>';
@@ -86,6 +91,14 @@ final class SearchParameters
         return $this->attributesToSearchOn;
     }
 
+    /**
+     * @return array<string, int>
+     */
+    public function getAttributeWeights(): array
+    {
+        return $this->attributeWeights;
+    }
+
     public function getFilter(): string
     {
         return $this->filter;
@@ -103,6 +116,7 @@ final class SearchParameters
         $hash[] = json_encode($this->getHighlightEndTag());
         $hash[] = json_encode($this->getAttributesToRetrieve());
         $hash[] = json_encode($this->getAttributesToSearchOn());
+        $hash[] = json_encode($this->getAttributeWeights());
         $hash[] = json_encode($this->getFilter());
         $hash[] = json_encode($this->getHitsPerPage());
         $hash[] = json_encode($this->getPage());
@@ -201,6 +215,17 @@ final class SearchParameters
 
         $clone = clone $this;
         $clone->attributesToSearchOn = $attributesToSearchOn;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string, int> $attributeWeights
+     */
+    public function withAttributeWeights(array $attributeWeights): self
+    {
+        $clone = clone $this;
+        $clone->attributeWeights = $attributeWeights;
 
         return $clone;
     }
