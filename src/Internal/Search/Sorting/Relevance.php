@@ -52,13 +52,14 @@ class Relevance extends AbstractSorter
 
         $searcher->getQueryBuilder()->addSelect($select);
 
-        // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
-        // value
+        // No need to use the abstract addOrderBy() here because the relevance alias cannot be of
+        // our internal null or empty value
         $searcher->getQueryBuilder()->addOrderBy(Searcher::RELEVANCE_ALIAS, $this->direction->getSQL());
 
         // Apply threshold
-        if ($searcher->getSearchParameters()->getRankingScoreThreshold() > 0) {
-            $searcher->getQueryBuilder()->andWhere(Searcher::RELEVANCE_ALIAS . '>= ' . $searcher->getSearchParameters()->getRankingScoreThreshold());
+        $threshold = $searcher->getSearchParameters()->getRankingScoreThreshold();
+        if ($threshold > 0) {
+            $searcher->getQueryBuilder()->andWhere(Searcher::RELEVANCE_ALIAS . '>= ' . $threshold);
         }
     }
 
@@ -73,6 +74,11 @@ class Relevance extends AbstractSorter
         $positionPrev = null;
 
         foreach ($positionsPerTerm as $positions) {
+            if (is_numeric($positions[0])) {
+                // Account for old format without attribute: [1,2,3;4,5] → [[1,null],[2,null],[3,null];[4,null],[5,null]]
+                $positions = array_map(fn($position) => [$position, null], $positions);
+            }
+
             if ($positionPrev === null) {
                 [$position] = $positions[0];
                 $positionPrev = $position;
@@ -107,19 +113,22 @@ class Relevance extends AbstractSorter
      */
     public static function calculateMatchCountFactor(array $positionsPerTerm, int $totalQueryTokenCount): float
     {
-        $matchedTokens = array_filter($positionsPerTerm, function ($termArray) {
-            return !(\count($termArray) === 1 && $termArray[0][0] === 0);
-        });
+        $matchedTokens = array_filter(
+            $positionsPerTerm,
+            fn ($termArray) => !(\count($termArray) === 1 && $termArray[0][0] === 0)
+        );
 
         return \count($matchedTokens) / $totalQueryTokenCount;
     }
 
     public static function calculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights): float
     {
-        $matchedAttributes = array_filter(array_map(fn ($term) => $term[0][1], $positionsPerTerm));
-        $matchedAttributeWeights = array_map(fn ($attribute) => $attributeWeights[$attribute] ?? 1, $matchedAttributes);
+        $matchedAttributes = array_unique(array_filter(array_map(fn ($term) => $term[0][1], $positionsPerTerm)));
+        $matchedAttributeWeights = array_filter(array_map(fn ($attribute) => $attributeWeights[$attribute] ?? null, $matchedAttributes));
 
-        return array_sum($matchedAttributeWeights) / count($matchedAttributes);
+        return count($matchedAttributeWeights) ?
+            (array_sum($matchedAttributeWeights) / count($matchedAttributeWeights))
+            : 1;
     }
 
     /**
@@ -133,27 +142,21 @@ class Relevance extends AbstractSorter
      */
     public static function fromQuery(string $positionsInDocumentPerTerm, string $totalQueryTokenCount, string $attributeWeights): float
     {
-        ray($positionsInDocumentPerTerm, $totalQueryTokenCount, $attributeWeights);
-
-        /**
-         * 1st: Number of query terms that match in a document
-         * 2nd: Weight of attributes matched
-         * 3rd: Proximity of the words
-         */
-        static $relevanceWeights = [2, 1, 1]; // Higher weight means more importance
-        static $totalWeight = array_sum($relevanceWeights);
-
-        $relevanceFactors = [];
         $totalQueryTokenCount = (int) $totalQueryTokenCount;
+
         $positionsPerTerm = array_map(
             fn ($term) => array_map(
-                fn ($position) => array_pad(explode(':', $position), 2, null),
+                fn ($position) => [
+                    (int) explode(':', "{$position}:")[0],
+                    explode(':', "{$position}:")[1] ?: null
+                ],
                 explode(',', $term)
             ),
             explode(';', $positionsInDocumentPerTerm)
         );
+
         $attributeWeights = array_reduce(
-            explode(';', $attributeWeights),
+            array_filter(explode(';', $attributeWeights)),
             function ($result, $item) {
                 [$key, $value] = explode(':', $item);
                 return [...$result, $key => (int) $value];
@@ -161,22 +164,30 @@ class Relevance extends AbstractSorter
             []
         );
 
-        // 1st: Number of query terms that match in a document
-        $relevanceFactors[] =  self::calculateMatchCountFactor($positionsPerTerm, $totalQueryTokenCount);
+        // Higher weight means more importance
+        static $relevanceWeights = [
+            3, // 1st: Number of query terms that match in a document
+            2, // 2nd: Proximity of the words
+            1, // 3rd: Weight of attributes matched
+        ];
 
-        // 2nd: Weight of attributes matched
-        $relevanceFactors[] = self::calculateAttributeWeightFactor($positionsPerTerm, $attributeWeights);
+        $relevanceFactors = [
+            // 1st: Number of query terms that match in a document
+            self::calculateMatchCountFactor($positionsPerTerm, $totalQueryTokenCount),
 
-        // 3rd: Proximity of the words
-        $relevanceFactors[] = self::calculateProximityFactor($positionsPerTerm);
+            // 2nd: Proximity of the words
+            self::calculateProximityFactor($positionsPerTerm),
+
+            // 3rd: Weight of attributes matched
+            self::calculateAttributeWeightFactor($positionsPerTerm, $attributeWeights),
+        ];
 
         // Calculate weighted average
-        $totalFactor = 0;
-        foreach ($relevanceFactors as $index => $factor) {
-            $totalFactor += $factor * $relevanceWeights[$index];
-        }
+        $totalFactor = array_sum(
+            array_map(fn ($factor, $weight) => $factor * $weight, $relevanceFactors, $relevanceWeights)
+        );
 
-        return $totalFactor /= $totalWeight;
+        return $totalFactor / array_sum($relevanceWeights);
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): AbstractSorter
