@@ -224,6 +224,11 @@ final class SearchParameters
      */
     public function withAttributeWeights(array $attributeWeights): self
     {
+        $attributeWeights = array_map(
+            fn ($weight) => ((int) $weight) ?: 1,
+            $attributeWeights
+        );
+
         $clone = clone $this;
         $clone->attributeWeights = $attributeWeights;
 
