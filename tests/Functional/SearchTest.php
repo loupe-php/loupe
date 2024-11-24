@@ -1832,7 +1832,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 22,
                     'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
-                    '_rankingScore' => 1.0,
+                    '_rankingScore' => 0.79194,
                 ],
             ],
             'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
@@ -1886,7 +1886,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.8496,
+                    '_rankingScore' => 0.8872,
                 ],
                 [
                     'id' => 2,
@@ -1896,7 +1896,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.66361,
+                    '_rankingScore' => 0.6852,
                 ],
             ],
             'query' => 'life learning',
@@ -1919,7 +1919,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.8496,
+                    '_rankingScore' => 0.8872,
                 ],
             ],
             'query' => 'life learning',
@@ -1968,22 +1968,22 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'content' => 'Book title: life learning',
-                    '_rankingScore' => 0.77428,
+                    '_rankingScore' =>  0.78904,
                 ],
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.70319,
+                    '_rankingScore' => 0.73572,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.62347,
+                    '_rankingScore' => 0.63427,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.62347,
+                    '_rankingScore' => 0.63427,
                 ],
             ],
             'query' => 'foobar life learning',
@@ -2021,7 +2021,7 @@ class SearchTest extends TestCase
         ]);
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('life game')
+            ->withQuery('game of life')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withShowRankingScore(true)
         ;
@@ -2031,20 +2031,20 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'title' => 'Game of life',
-                    '_rankingScore' => 2.5,
-                ],
-                [
-                    'id' => 3,
-                    'title' => 'Learning to game',
-                    '_rankingScore' => 1.66667,
+                    '_rankingScore' => 0.95,
                 ],
                 [
                     'id' => 2,
                     'title' => 'Everlasting learning',
-                    '_rankingScore' => 1.0,
+                    '_rankingScore' => 0.878,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Learning to game',
+                    '_rankingScore' => 0.78333,
                 ],
             ],
-            'query' => 'life game',
+            'query' => 'game of life',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,

@@ -102,9 +102,22 @@ class RelevanceTest extends TestCase
      * @param array<string, int> $attributeWeights
      */
     #[DataProvider('attributeWeightProvider')]
-    public function testCalculateAttributeWeight(array $positionsPerTerm, array $attributeWeights, float $expected): void
+    public function testCalculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights, float $expected): void
     {
         $this->assertSame($expected, Relevance::calculateAttributeWeightFactor($positionsPerTerm, $attributeWeights));
+    }
+
+    public function testCalculateIntrinsicAttributeWeights(): void
+    {
+        $this->assertSame(
+            [],
+            Relevance::calculateIntrinsicAttributeWeights(['*'])
+        );
+
+        $this->assertSame(
+            ['title' => 1.0, 'summary' => 0.8, 'body' => 0.64],
+            Relevance::calculateIntrinsicAttributeWeights(['title', 'summary', 'body'])
+        );
     }
 
     /**
