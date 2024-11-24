@@ -178,8 +178,6 @@ class Relevance extends AbstractSorter
         $positionsPerTerm = static::parseTermPositions($positionsInDocumentPerTerm);
         $attributeWeightValues = static::parseAttributeWeights($attributeWeights);
 
-        ray($attributeWeights);
-
         // Higher weight means more importance
         $relevanceWeights = [
             2, // 1st: Number of query terms that match in a document
