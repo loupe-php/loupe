@@ -223,7 +223,8 @@ final class Configuration
             self::validateAttributeNames($searchableAttributes);
         }
 
-        sort($searchableAttributes);
+        // Do not sort searchable attributes as their order is relevant for ranking
+        // sort($searchableAttributes);
 
         $clone = clone $this;
         $clone->searchableAttributes = $searchableAttributes;
