@@ -2052,7 +2052,6 @@ class SearchTest extends TestCase
             'totalHits' => 3,
         ]);
 
-
         $configurationWithAttributes = Configuration::create()
             ->withSearchableAttributes(['title', 'content'])
             ->withSortableAttributes(['title', 'content'])
