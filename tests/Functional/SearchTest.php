@@ -2065,7 +2065,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'title' => 'Game of life',
-                    '_rankingScore' => 0.95,
+                    '_rankingScore' => 1.0,
                 ],
                 [
                     'id' => 2,
