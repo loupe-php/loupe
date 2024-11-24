@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Sorting;
 
+use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Searcher;
@@ -39,7 +40,8 @@ class Relevance extends AbstractSorter
             return;
         }
 
-        $weights = $this->calculateIntrinsicAttributeWeights($engine);
+        $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
+        $weights = $this->calculateIntrinsicAttributeWeights($searchableAttributes);
 
         $select = sprintf(
             "loupe_relevance((SELECT group_concat(%s, ';') FROM (%s)), %s, '%s') AS %s",
@@ -76,26 +78,33 @@ class Relevance extends AbstractSorter
         );
 
         $matchedAttributeWeights = array_map(fn ($attribute) => $attributeWeights[$attribute] ?? 1, $matchedAttributes);
-        $matchedAttributeWeights = array_filter($matchedAttributeWeights, fn ($weight) => $weight !== 1);
 
-        return \count($matchedAttributeWeights) ?
-            (array_sum($matchedAttributeWeights) / \count($positionsPerTerm))
-            : 1;
+        return array_reduce($matchedAttributeWeights, fn ($result, $weight) => $result * $weight, 1);
     }
 
     /**
+     * @param array<int, string> $searchableAttributes
      * @return array<string, int>
      */
-    public static function calculateIntrinsicAttributeWeights(Engine $engine): array
+    public static function calculateIntrinsicAttributeWeights(array $searchableAttributes): array
     {
-        $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
         if ($searchableAttributes === ['*']) {
             return [];
         }
 
-        // Assign linear weight to each attribute that is searchable
-        // ['title', 'summary', 'body] → ['title' => 3, 'summary' => 2, 'body' => 1]
-        return array_combine($searchableAttributes, range(count($searchableAttributes), 1, -1));
+        // Assign decreasing weights to each attribute
+        // ['title', 'summary', 'body] → ['title' => 1, 'summary' => 0.8, 'body' => 0.8 ^ 2]
+        $weight = 1;
+        $factor = Configuration::ATTRIBUTE_RANKING_ORDER_FACTOR;
+        return array_reduce(
+            $searchableAttributes,
+            function ($result, $attribute) use (&$weight, $factor) {
+                $result[$attribute] = round($weight, 2);
+                $weight *= $factor;
+                return $result;
+            },
+            []
+        );
     }
 
     /**
@@ -169,10 +178,12 @@ class Relevance extends AbstractSorter
         $positionsPerTerm = static::parseTermPositions($positionsInDocumentPerTerm);
         $attributeWeightValues = static::parseAttributeWeights($attributeWeights);
 
+        ray($attributeWeights);
+
         // Higher weight means more importance
         $relevanceWeights = [
-            3, // 1st: Number of query terms that match in a document
-            2, // 2nd: Proximity of the words
+            2, // 1st: Number of query terms that match in a document
+            1, // 2nd: Proximity of the words
             1, // 3rd: Weight of attributes matched
         ];
 
@@ -208,9 +219,9 @@ class Relevance extends AbstractSorter
     /**
      * Parse an intermediate string representation of attribute weights back into an array
      *
-     * "title:0;summary:1" -> ["title" => 0, "summary" => 1]
+     * "title:1;summary:0.8" -> ["title" => 1, "summary" => 0.8]
      *
-     * @return array<string, int>
+     * @return array<string, float>
      */
     protected static function parseAttributeWeights(string $attributeWeights): array
     {
@@ -219,7 +230,7 @@ class Relevance extends AbstractSorter
             function ($result, $item) {
                 [$key, $value] = explode(':', $item);
                 return array_merge($result, [
-                    $key => (int) $value,
+                    $key => (float) $value,
                 ]);
             },
             []

@@ -14,6 +14,8 @@ final class Configuration
 
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
+    public const ATTRIBUTE_RANKING_ORDER_FACTOR = 0.8;
+
     /**
      * @var array<string>
      */
