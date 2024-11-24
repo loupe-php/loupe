@@ -1996,17 +1996,11 @@ class SearchTest extends TestCase
 
     public function testRelevanceAndRankingScoreWithAttributeWeights(): void
     {
-        $configuration = Configuration::create()
-            ->withSearchableAttributes(['title', 'content'])
-            ->withSortableAttributes(['title', 'content'])
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-        $loupe->addDocuments([
+        $documents = [
             [
                 'id' => 1,
                 'title' => 'Game of life',
-                'content' => 'A thing of everlasting learning',
+                'content' => 'A thing with everlasting learning',
             ],
             [
                 'id' => 2,
@@ -2018,13 +2012,54 @@ class SearchTest extends TestCase
                 'title' => 'Learning to game',
                 'content' => 'What life taught me about learning',
             ],
-        ]);
+        ];
 
         $searchParameters = SearchParameters::create()
             ->withQuery('game of life')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withShowRankingScore(true)
         ;
+
+        $configurationWithoutAttributes = Configuration::create()
+            ->withSortableAttributes(['title', 'content'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithoutAttributes);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Game of life',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Everlasting learning',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Learning to game',
+                    '_rankingScore' => 0.83333,
+                ],
+            ],
+            'query' => 'game of life',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+
+        $configurationWithAttributes = Configuration::create()
+            ->withSearchableAttributes(['title', 'content'])
+            ->withSortableAttributes(['title', 'content'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithAttributes);
+        $loupe->addDocuments($documents);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
