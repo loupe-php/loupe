@@ -39,7 +39,7 @@ class Relevance extends AbstractSorter
             return;
         }
 
-        $weights = $searcher->getSearchParameters()->getAttributeWeights();
+        $weights = $this->calculateIntrinsicAttributeWeights($engine);
 
         $select = sprintf(
             "loupe_relevance((SELECT group_concat(%s, ';') FROM (%s)), %s, '%s') AS %s",
@@ -81,6 +81,21 @@ class Relevance extends AbstractSorter
         return \count($matchedAttributeWeights) ?
             (array_sum($matchedAttributeWeights) / \count($positionsPerTerm))
             : 1;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    public static function calculateIntrinsicAttributeWeights(Engine $engine): array
+    {
+        $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
+        if ($searchableAttributes === ['*']) {
+            return [];
+        }
+
+        // Assign linear weight to each attribute that is searchable
+        // ['title', 'summary', 'body] → ['title' => 3, 'summary' => 2, 'body' => 1]
+        return array_combine($searchableAttributes, range(count($searchableAttributes), 1, -1));
     }
 
     /**
@@ -193,7 +208,7 @@ class Relevance extends AbstractSorter
     /**
      * Parse an intermediate string representation of attribute weights back into an array
      *
-     * "title:3;summary:4" -> ["title" => 3, "summary" => 4]
+     * "title:0;summary:1" -> ["title" => 0, "summary" => 1]
      *
      * @return array<string, int>
      */

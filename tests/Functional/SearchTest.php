@@ -2023,9 +2023,6 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('life game')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withAttributeWeights([
-                'title' => 10,
-            ])
             ->withShowRankingScore(true)
         ;
 
