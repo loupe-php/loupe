@@ -115,7 +115,11 @@ class RelevanceTest extends TestCase
         );
 
         $this->assertSame(
-            ['title' => 1.0, 'summary' => 0.8, 'body' => 0.64],
+            [
+                'title' => 1.0,
+                'summary' => 0.8,
+                'body' => 0.64,
+            ],
             Relevance::calculateIntrinsicAttributeWeights(['title', 'summary', 'body'])
         );
     }

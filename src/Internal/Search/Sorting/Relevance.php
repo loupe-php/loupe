@@ -67,7 +67,7 @@ class Relevance extends AbstractSorter
 
     /**
      * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm
-     * @param array<string, int> $attributeWeights
+     * @param array<string, float> $attributeWeights
      */
     public static function calculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights): float
     {

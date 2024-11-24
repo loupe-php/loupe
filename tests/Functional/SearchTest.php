@@ -1968,7 +1968,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'content' => 'Book title: life learning',
-                    '_rankingScore' =>  0.78904,
+                    '_rankingScore' => 0.78904,
                 ],
                 [
                     'id' => 1,

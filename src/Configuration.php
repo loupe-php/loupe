@@ -12,9 +12,9 @@ final class Configuration
 {
     public const ATTRIBUTE_NAME_RGXP = '[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*';
 
-    public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
-
     public const ATTRIBUTE_RANKING_ORDER_FACTOR = 0.8;
+
+    public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
     /**
      * @var array<string>
