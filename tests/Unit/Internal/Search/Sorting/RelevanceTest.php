@@ -55,13 +55,13 @@ class RelevanceTest extends TestCase
     public static function proximityFactorProvider(): \Generator
     {
         yield 'All terms are adjacent' => [
-            [[1], [2], [3]],
+            [[[1, 'term']], [[2, 'term']], [[3, 'term']]],
             0.1,
             1.0, // All distances are 1, so result is 1
         ];
 
         yield 'Non-adjacent terms' => [
-            [[1], [3], [5]],
+            [[[1, 'term']], [[3, 'term']], [[5, 'term']]],
             0.1,
             (exp(-0.1 * 2) + exp(-0.1 * 2)) / 2,
         ];
@@ -73,25 +73,25 @@ class RelevanceTest extends TestCase
         ];
 
         yield 'Single term' => [
-            [[1]],
+            [[[1, 'term']]],
             0.1,
             1.0, // One match, must be 1
         ];
 
         yield 'Multiple positions per term, only closest must be considered' => [
-            [[1, 4], [6, 10]],
+            [[[1, 'term'], [4, 'term']], [[6, 'term'], [10, 'term']]],
             0.1,
             (exp(-0.1 * 5)),
         ];
 
         yield 'Higher decay factor' => [
-            [[1], [4]],
+            [[[1, 'term']], [[4, 'term']]],
             0.5,
             exp(-0.5 * 3), // Only one pair, distance is 3
         ];
 
         yield 'Lots of terms but all in the correct order' => [
-            [[1, 7, 12], [2, 7],  [3, 5, 8, 19, 28], [4], [3, 5, 8, 19, 28], [6], [2, 7], [3, 5, 8, 19, 28], [9], [10]],
+            [[[1, 'term'], [7, 'term'], [12, 'term']], [[2, 'term'], [7, 'term']],  [[3, 'term'], [5, 'term'], [8, 'term'], [19, 'term'], [28, 'term']], [[4, 'term']], [[3, 'term'], [5, 'term'], [8, 'term'], [19, 'term'], [28, 'term']], [[6, 'term']], [[2, 'term'], [7, 'term']], [[3, 'term'], [5, 'term'], [8, 'term'], [19, 'term'], [28, 'term']], [[9, 'term']], [[10, 'term']]],
             0.1,
             1,
         ];

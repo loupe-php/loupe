@@ -130,9 +130,6 @@ class Relevance extends AbstractSorter
         $positionPrev = null;
 
         foreach ($positionsPerTerm as $positions) {
-            // Account for old format without attribute: [1,2,3;4,5] → [[1,null],[2,null],[3,null];[4,null],[5,null]]
-            $positions = array_map(fn ($position) => !\is_array($position) ? [$position, null] : $position, $positions);
-
             if ($positionPrev === null) {
                 [$position] = $positions[0];
                 $positionPrev = $position;
