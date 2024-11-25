@@ -93,29 +93,30 @@ class Tokenizer
         $position = 0;
         $phrase = false;
         $negated = false;
-        $status = null;
-        $previousStatus = null;
+        $whitespace = true;
 
         foreach ($iterator->getPartsIterator() as $term) {
-            $previousStatus = $status;
-            $status = $iterator->getRuleStatus();
-
-            if ($term === '-' && !$previousStatus) {
-                $negated = true;
-                $position++;
-                continue;
+            // Set negation if the previous token was not a word and we're not in a phrase
+            if (!$phrase && $whitespace) {
+                $negated = false;
+                if ($term === '-') {
+                    $negated = true;
+                }
             }
 
+            // Toggle phrases between quotes
             if ($term === '"') {
-                $position++;
                 $phrase = !$phrase;
                 if (!$phrase) {
                     $negated = false;
                 }
-                continue;
             }
 
-            if ($status === \IntlBreakIterator::WORD_NONE) {
+            $status = $iterator->getRuleStatus();
+            $word = $this->isWord($status);
+            $whitespace = $this->isWhitespace($status, $term);
+
+            if (!$word) {
                 $position += mb_strlen($term, 'UTF-8');
                 continue;
             }
@@ -146,12 +147,19 @@ class Tokenizer
 
             $collection->add($token);
             $position += $token->getLength();
-            if (!$phrase) {
-                $negated = false;
-            }
         }
 
         return $collection;
+    }
+
+    private function isWhitespace(?int $status, string $token): bool
+    {
+        return ($status === null || ($status >= \IntlBreakIterator::WORD_NONE && $status < \IntlBreakIterator::WORD_NONE_LIMIT)) && mb_trim($token) === '';
+    }
+
+    private function isWord(?int $status): bool
+    {
+        return $status >= \IntlBreakIterator::WORD_NONE_LIMIT;
     }
 
     private function getStemmerForLanguage(string $language): ?Stemmer
