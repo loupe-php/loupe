@@ -1,5 +1,9 @@
 # Loupe - a search engine with only PHP and SQLite
 
+> IMPORTANT: Quite a few things have changed over time. Loupe does not use the same libraries anymore and also does not
+> use a TF-IDF ranking order anymore. This blog post represents the initial version, make sure you also read the current
+> state of the documentation. The blog post might still help for the big picture though.
+
 They say that when you want to explain something to people, you should tell them a story. After all, we all read and 
 hear stories every day, and it makes topics understandable and relatable. So here we go:
 

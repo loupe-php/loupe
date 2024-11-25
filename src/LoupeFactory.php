@@ -11,11 +11,11 @@ use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Logging\Middleware;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
-use Loupe\Loupe\Internal\CosineSimilarity;
+use Loupe\Loupe\Internal\Doctrine\CachePreparedStatementsMiddleware;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
-use Loupe\Loupe\Internal\Util;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 
 final class LoupeFactory
 {
@@ -88,10 +88,9 @@ final class LoupeFactory
             ));
         }
 
-        // Use Write-Ahead Logging if possible
-        $connection->executeQuery('PRAGMA journal_mode=WAL;');
+        $this->optimizeSQLiteConnection($connection);
 
-        $this->registerSQLiteFunctions($connection, $sqliteVersion);
+        $this->registerSQLiteFunctions($connection);
 
         return $connection;
     }
@@ -110,17 +109,48 @@ final class LoupeFactory
     private function getDbalConfiguration(Configuration $configuration): DbalConfiguration
     {
         $config = new DbalConfiguration();
+        $middlewares = [new CachePreparedStatementsMiddleware()];
 
         if ($configuration->getLogger() !== null) {
-            $config->setMiddlewares([
-                new Middleware($configuration->getLogger()),
-            ]);
+            $middlewares[] = new Middleware($configuration->getLogger());
         }
+
+        $config->setMiddlewares($middlewares);
 
         return $config;
     }
 
-    private function registerSQLiteFunctions(Connection $connection, string $sqliteVersion): void
+    private function optimizeSQLiteConnection(Connection $connection): void
+    {
+        $optimizations = [
+            // Increase page size to 8KB to reduce disk i/o
+            'PRAGMA page_size = 8192;',
+            // Set cache size to 20MB to reduce disk i/o
+            'PRAGMA cache_size = -20000;',
+            // Use write-ahead logging to allow concurrent reads and writes
+            'PRAGMA journal_mode=WAL;',
+            // Incremental vacuum to keep the database size in check
+            'PRAGMA auto_vacuum = incremental;',
+            // Incremental vacuum to keep the database size in check
+            'PRAGMA incremental_vacuum;',
+            // Set mmap size to 32MB to avoid i/o for database reads
+            'PRAGMA mmap_size = 33554432;',
+            // Store temporary tables in memory instead of on disk
+            'PRAGMA temp_store = MEMORY;',
+            // Set timeout to 2 seconds to avoid locking issues
+            'PRAGMA busy_timeout = 2000',
+        ];
+
+        foreach ($optimizations as $optimization) {
+            try {
+                $connection->executeQuery($optimization);
+            } catch (\Throwable $th) {
+                // Assume that the pragma is not supported
+            }
+        }
+    }
+
+    private function registerSQLiteFunctions(Connection $connection): void
     {
         $functions = [
             'loupe_max_levenshtein' => [
@@ -132,30 +162,14 @@ final class LoupeFactory
                 'numArgs' => 4,
             ],
             'loupe_relevance' => [
-                'callback' => [CosineSimilarity::class, 'fromQuery'],
-                'numArgs' => 4,
+                'callback' => [Relevance::class, 'fromQuery'],
+                'numArgs' => 2,
             ],
         ];
-
-        // Introduction of LN()
-        if (version_compare($sqliteVersion, '3.35.0', '<') || !$this->sqlLiteFunctionExists($connection, 'ln')) {
-            $functions['ln'] = [
-                'callback' => [Util::class, 'log'],
-                'numArgs' => 1,
-            ];
-        }
 
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
             $connection->getNativeConnection()->createFunction($functionName, $function['callback'], $function['numArgs']);
         }
-    }
-
-    private function sqlLiteFunctionExists(Connection $connection, string $function): bool
-    {
-        return (bool) $connection->executeQuery(
-            'SELECT EXISTS(SELECT 1 FROM pragma_function_list WHERE name=?)',
-            [$function]
-        )->fetchOne();
     }
 }

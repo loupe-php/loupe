@@ -1418,6 +1418,169 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testNegatedComplexSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParametersWithoutNegation = SearchParameters::create()
+            ->withQuery('friendly mother -boy -"depressed suburban father" father')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'title' => 'Ariel',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 20,
+                    'title' => 'My Life Without Me',
+                ],
+            ],
+            'query' => 'friendly mother -boy -"depressed suburban father" father',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+    }
+
+    public function testNegatedSearch(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParametersWithoutNegation = SearchParameters::create()
+            ->withQuery('appears')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
+            'hits' => [
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+                [
+                    'id' => 17,
+                    'title' => 'The Dark',
+                ],
+            ],
+            'query' => 'appears',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+
+        $searchParametersWithNegation = SearchParameters::create()
+            ->withQuery('appears -disappears')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
+            'hits' => [
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+            ],
+            'query' => 'appears -disappears',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
+    public function testNegatedSearchPhrases(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParametersWithoutNegation = SearchParameters::create()
+            ->withQuery('life "new life"')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
+            'hits' => [
+                [
+                    'id' => 14,
+                    'title' => 'American Beauty',
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Ariel',
+                ],
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
+                ],
+                [
+                    'id' => 13,
+                    'title' => 'Forrest Gump',
+                ],
+                [
+                    'id' => 20,
+                    'title' => 'My Life Without Me',
+                ],
+            ],
+            'query' => 'life "new life"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 6,
+        ]);
+
+        $searchParametersWithNegation = SearchParameters::create()
+            ->withQuery('life -"new life"')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
+            'hits' => [
+                [
+                    'id' => 14,
+                    'title' => 'American Beauty',
+                ],
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
+                ],
+                [
+                    'id' => 13,
+                    'title' => 'Forrest Gump',
+                ],
+                [
+                    'id' => 20,
+                    'title' => 'My Life Without Me',
+                ],
+            ],
+            'query' => 'life -"new life"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 5,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
@@ -1669,7 +1832,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 22,
                     'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
-                    '_rankingScore' => 0.93289, // This is not 1.0 because of typo tolerance, might need investigation but good enough for now
+                    '_rankingScore' => 1.0,
                 ],
             ],
             'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
@@ -1695,11 +1858,15 @@ class SearchTest extends TestCase
             ],
             [
                 'id' => 2,
-                'content' => 'The unexamined life is not worth living',
+                'content' => 'The unexamined life is not worth living. Life is life.',
             ],
             [
                 'id' => 3,
                 'content' => 'Never stop learning',
+            ],
+            [
+                'id' => 4,
+                'content' => 'Book title: life learning',
             ],
         ]);
 
@@ -1712,26 +1879,54 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
+                    'id' => 4,
+                    'content' => 'Book title: life learning',
+                    '_rankingScore' => 1.0,
+                ],
+                [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 1.0,
+                    '_rankingScore' => 0.8496,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The unexamined life is not worth living. Life is life.',
+                    '_rankingScore' => 0.66667,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.8165,
-                ],
-                [
-                    'id' => 2,
-                    'content' => 'The unexamined life is not worth living',
-                    '_rankingScore' => 0.57735,
+                    '_rankingScore' => 0.58027,
                 ],
             ],
             'query' => 'life learning',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 3,
+            'totalHits' => 4,
+        ]);
+
+        // Test ranking score threshold
+        $searchParameters = $searchParameters->withRankingScoreThreshold(0.8);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 4,
+                    'content' => 'Book title: life learning',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 1,
+                    'content' => 'The game of life is a game of everlasting learning',
+                    '_rankingScore' => 0.8496,
+                ],
+            ],
+            'query' => 'life learning',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
         ]);
     }
 
@@ -1750,11 +1945,15 @@ class SearchTest extends TestCase
             ],
             [
                 'id' => 2,
-                'content' => 'The unexamined life is not worth living',
+                'content' => 'The unexamined life is not worth living. Life is life.',
             ],
             [
                 'id' => 3,
                 'content' => 'Never stop learning',
+            ],
+            [
+                'id' => 4,
+                'content' => 'Book title: life learning',
             ],
         ]);
 
@@ -1767,26 +1966,31 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
+                    'id' => 4,
+                    'content' => 'Book title: life learning',
+                    '_rankingScore' => 0.71872,
+                ],
+                [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.51988,
+                    '_rankingScore' => 0.64763,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The unexamined life is not worth living. Life is life.',
+                    '_rankingScore' => 0.51236,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.42448,
-                ],
-                [
-                    'id' => 2,
-                    'content' => 'The unexamined life is not worth living',
-                    '_rankingScore' => 0.30015,
+                    '_rankingScore' => 0.51236,
                 ],
             ],
             'query' => 'foobar life learning',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 3,
+            'totalHits' => 4,
         ]);
     }
 

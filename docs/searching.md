@@ -31,6 +31,15 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
+You can also exclude documents that match to a given keyword. Use `-` as modifier. You can exclude both, regular keywords
+as well as phrases:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withQuery('This but -"not this" or -this')
+;
+```
+
 Hint: Note that your query is stripped if it's very long. See the section about [maximum query tokens in the 
 configuration settings][Config].
 
@@ -88,9 +97,10 @@ To make sure you properly escape the filter values, you can use `SearchParameter
 
 ## Sort
 
-By default, Loupe sorts your results based on relevance. Relevance is determined using a TF-IDF algorithm combined 
-with cosine similarity. The relevance attribute is reserved and is called `_relevance`. You can sort by your own 
-attributes or by multiple ones and specify whether to sort ascending or descending:
+By default, Loupe sorts your results based on relevance. Relevance is determined using a number of factors such as the
+number of matching terms but also the proximity (search for `pink floyd` will make sure documents that contain `pink floyd`
+will be ranked higher than `the pink pullover of Floyd`). The relevance attribute is reserved and is called `_relevance`.
+You can sort by your own attributes or by multiple ones and specify whether to sort ascending or descending:
 
 Note that you can only sort [on attributes that you have defined to be sortable in the configuration][Config].
 
@@ -109,7 +119,15 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
-In this case, every hit will have an additional `_rankingScore` attribute with a value between `-1.0` and `1.0`.
+In this case, every hit will have an additional `_rankingScore` attribute with a value between `0.0` and `1.0`.
+
+You can also limit the search results to a `rankingScoreThreshold` between `0.0` and `1.0`:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withRankingScoreThreshold(0.8)
+;
+```
 
 ## Pagination
 
