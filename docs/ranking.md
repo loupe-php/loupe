@@ -8,7 +8,7 @@ Loupe uses a multi-factor ranking system to determine the relevance of search re
 
 ## Best Practices
 
-- Put your most important attributes first in the list of search attributes
+- Put your most important attributes first in the list of searchable attributes
 - Use the ranking score threshold to filter out low-quality matches
 - Consider the proximity factor when writing content - keep related terms close together
 - Monitor ranking scores during development to fine-tune your configuration
