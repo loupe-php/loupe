@@ -11,6 +11,8 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 class Relevance extends AbstractSorter
 {
+    protected static array $attributeWeightValuesCache = [];
+
     public function __construct(
         private Direction $direction
     ) {
@@ -219,7 +221,11 @@ class Relevance extends AbstractSorter
      */
     protected static function parseAttributeWeights(string $attributeWeights): array
     {
-        return array_reduce(
+        if (isset(static::$attributeWeightValuesCache[$attributeWeights])) {
+            return static::$attributeWeightValuesCache[$attributeWeights];
+        }
+
+        $weightValues = array_reduce(
             array_filter(explode(';', $attributeWeights)),
             function ($result, $item) {
                 [$key, $value] = explode(':', $item);
@@ -229,6 +235,10 @@ class Relevance extends AbstractSorter
             },
             []
         );
+
+        static::$attributeWeightValuesCache[$attributeWeights] = $weightValues;
+
+        return $weightValues;
     }
 
     /**
