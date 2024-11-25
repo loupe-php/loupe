@@ -119,10 +119,46 @@ class TokenizerTest extends TestCase
 
         $this->assertSame([
             'name',
+            'nam',
             'ist',
             'hase',
             'has',
             'ich',
+        ], $tokens->allNegatedTermsWithVariants());
+    }
+
+    public function testNegatedWordPartPhraseTokens(): void
+    {
+        $tokenizer = $this->createTokenizer();
+        $tokens = $tokenizer->tokenize('-Hallo, mein -Name-ist-Hase und -"ich weiß" von 64-bit-Dingen.');
+
+        $this->assertSame([
+            'hallo',
+            'mein',
+            'name',
+            'nam',
+            'ist',
+            'hase',
+            'has',
+            'und',
+            'ich',
+            'weiß',
+            'von',
+            '64',
+            'bit',
+            'dingen',
+            'ding',
+        ], $tokens->allTermsWithVariants());
+
+        $this->assertSame([
+            'hallo',
+            'name',
+            'nam',
+            'ist',
+            'hase',
+            'has',
+            'ich',
+            'weiß',
         ], $tokens->allNegatedTermsWithVariants());
     }
 
