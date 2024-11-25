@@ -178,7 +178,7 @@ class Relevance extends AbstractSorter
         $relevanceWeights = [
             2, // 1st: Number of query terms that match in a document
             1, // 2nd: Proximity of the words
-            1, // 3rd: Weight of attributes matched
+            1, // 3rd: Weight of attributes matched (use 1 as they are already weighted)
         ];
 
         $relevanceFactors = [
@@ -188,7 +188,7 @@ class Relevance extends AbstractSorter
             // 2nd: Proximity of the words
             self::calculateProximityFactor($positionsPerTerm),
 
-            // 3rd: Weight of attributes matched
+            // 3rd: Weight of attributes matched (use 1 as they are already weighted)
             self::calculateAttributeWeightFactor($positionsPerTerm, $attributeWeightValues),
         ];
 
