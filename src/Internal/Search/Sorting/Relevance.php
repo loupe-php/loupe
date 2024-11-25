@@ -41,7 +41,7 @@ class Relevance extends AbstractSorter
         }
 
         $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
-        $weights = $this->calculateIntrinsicAttributeWeights($searchableAttributes);
+        $weights = static::calculateIntrinsicAttributeWeights($searchableAttributes);
 
         $select = sprintf(
             "loupe_relevance((SELECT group_concat(%s, ';') FROM (%s)), %s, '%s') AS %s",
