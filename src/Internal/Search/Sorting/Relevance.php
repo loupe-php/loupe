@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Sorting;
 
+use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Searcher;
@@ -103,7 +104,7 @@ class Relevance extends AbstractSorter
             $searchableAttributes,
             function ($result, $attribute) use (&$weight) {
                 $result[$attribute] = round($weight, 2);
-                $weight *= 0.8;
+                $weight *= Configuration::ATTRIBUTE_RANKING_ORDER_FACTOR;
                 return $result;
             },
             []
