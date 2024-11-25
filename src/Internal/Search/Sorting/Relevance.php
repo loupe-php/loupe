@@ -10,6 +10,9 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 class Relevance extends AbstractSorter
 {
+    /**
+     * @var array<string, array<string, float>> $attributeWeightValuesCache
+     */
     protected static array $attributeWeightValuesCache = [];
 
     public function __construct(
