@@ -82,7 +82,6 @@ class Tokenizer
 
         return $result;
     }
-
     private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
     {
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
@@ -93,11 +92,16 @@ class Tokenizer
         $position = 0;
         $phrase = false;
         $negated = false;
+        $status = null;
+        $previousStatus = null;
 
         foreach ($iterator->getPartsIterator() as $term) {
-            if ($term === '-') {
-                $position++;
+            $previousStatus = $status;
+            $status = $iterator->getRuleStatus();
+
+            if ($term === '-' && !$previousStatus) {
                 $negated = true;
+                $position++;
                 continue;
             }
 
@@ -110,7 +114,7 @@ class Tokenizer
                 continue;
             }
 
-            if ($iterator->getRuleStatus() === \IntlBreakIterator::WORD_NONE) {
+            if ($status === \IntlBreakIterator::WORD_NONE) {
                 $position += mb_strlen($term, 'UTF-8');
                 continue;
             }
