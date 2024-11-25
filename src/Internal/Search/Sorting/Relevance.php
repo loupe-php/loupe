@@ -95,12 +95,11 @@ class Relevance extends AbstractSorter
         // Assign decreasing weights to each attribute
         // ['title', 'summary', 'body] → ['title' => 1, 'summary' => 0.8, 'body' => 0.8 ^ 2]
         $weight = 1;
-        $factor = Configuration::ATTRIBUTE_RANKING_ORDER_FACTOR;
         return array_reduce(
             $searchableAttributes,
-            function ($result, $attribute) use (&$weight, $factor) {
+            function ($result, $attribute) use (&$weight) {
                 $result[$attribute] = round($weight, 2);
-                $weight *= $factor;
+                $weight *= 0.8;
                 return $result;
             },
             []
