@@ -12,6 +12,8 @@ final class Configuration
 {
     public const ATTRIBUTE_NAME_RGXP = '[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*';
 
+    public const ATTRIBUTE_RANKING_ORDER_FACTOR = 0.8;
+
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
     /**
@@ -223,7 +225,8 @@ final class Configuration
             self::validateAttributeNames($searchableAttributes);
         }
 
-        sort($searchableAttributes);
+        // Do not sort searchable attributes as their order is relevant for ranking
+        // sort($searchableAttributes);
 
         $clone = clone $this;
         $clone->searchableAttributes = $searchableAttributes;
