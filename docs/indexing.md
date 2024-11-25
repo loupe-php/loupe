@@ -1,5 +1,7 @@
 # Indexing
 
+## Adding documents
+
 There are two methods to index documents in Loupe. Either you index only one document like so:
 
 ```php
@@ -42,6 +44,32 @@ Both of the methods return an `IndexResult` which provides the following methods
   exception implementing `LoupeExceptionInterface` as value.
 * `generalException()` - returns either `null` (if there was no general exception) or an exception implementing 
   `LoupeExceptionInterface`. A general exception is one that could not be linked to a document ID.
+
+## Removing documents
+
+To remove documents from the index, you can either remove a single document or batch the removal for
+better performance. Whenever possible, you should prefer deleting multiple documents at once over
+deleting each document on its own to improve performance and cleanup cost.
+
+You'll need to pass in the id of a document to have it removed from the index.
+
+```php
+$loupe->deleteDocument(123);
+```
+
+Or you can remove multiple documents at once:
+
+```php
+$loupe->deleteDocuments([123, 456]);
+```
+
+## Removing all documents
+
+If you need to remove all documents at once and start with a clean slate, there's a method for that:
+
+```php
+$loupe->deleteAllDocuments();
+```
 
 For schema related logic, read [the dedicated schema docs][Schema].
 
