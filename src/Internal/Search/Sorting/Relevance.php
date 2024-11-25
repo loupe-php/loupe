@@ -11,7 +11,7 @@ use Loupe\Loupe\Internal\Search\Searcher;
 class Relevance extends AbstractSorter
 {
     /**
-     * @var array<string, array<string, float>> $attributeWeightValuesCache
+     * @var array<string, array<string, float>>
      */
     protected static array $attributeWeightValuesCache = [];
 
