@@ -21,7 +21,7 @@ class RelevanceTest extends TestCase
         yield 'No attributes are matched' => [
             [[[1, 'title'], [2, 'summary']]],
             [
-                'unknown_attribute' => 5,
+                'unknown_attribute' => 0.5,
             ],
             1.0,
         ];
@@ -35,20 +35,31 @@ class RelevanceTest extends TestCase
             1.0,
         ];
 
-        yield 'Attribute weighs double against attribute' => [
-            [[[1, 'title'], [2, 'summary']]],
+        yield 'Attributes are applied when found' => [
+            [[[1, 'title']]],
             [
-                'title' => 2,
+                'title' => 1,
+                'summary' => 0.8,
             ],
-            2.0,
+            1.0,
         ];
 
-        yield 'Attribute weighs triple against multiple attributes' => [
-            [[[1, 'title'], [2, 'summary'], [2, 'content']]],
+        yield 'Attributes are applied when found later in list' => [
+            [[[1, 'non_existent'], [2, 'summary']]],
             [
-                'summary' => 3,
+                'title' => 1,
+                'summary' => 0.8,
             ],
-            3.0,
+            0.8,
+        ];
+
+        yield 'Terms found in multiple attributes are applied the highest factor' => [
+            [[[1, 'title'], [2, 'summary']]],
+            [
+                'title' => 1,
+                'summary' => 0.8,
+            ],
+            1.0,
         ];
     }
 
