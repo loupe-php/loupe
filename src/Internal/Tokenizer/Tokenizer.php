@@ -82,6 +82,7 @@ class Tokenizer
 
         return $result;
     }
+
     private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
     {
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
