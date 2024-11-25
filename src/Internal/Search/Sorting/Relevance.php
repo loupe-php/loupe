@@ -76,15 +76,18 @@ class Relevance extends AbstractSorter
      */
     public static function calculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights): float
     {
-        $matchedAttributes = array_reduce(
-            $positionsPerTerm,
-            fn ($result, $term) => array_merge($result, array_map(fn ($position) => $position[1], $term)),
-            []
-        );
+        // Group weights by term, making sure to go with the higher weight if multiple attributes are matched
+        // So if `title` (1.0) and `summary` (0.8) are matched, the weight of `title` should be used
+        $weightsPerTerm = [];
+        foreach ($positionsPerTerm as $index => $term) {
+            foreach ($term as [, $attribute]) {
+                if ($attribute && isset($attributeWeights[$attribute])) {
+                    $weightsPerTerm[$index] = max($weightsPerTerm[$index] ?? 0, $attributeWeights[$attribute]);
+                }
+            }
+        }
 
-        $matchedAttributeWeights = array_map(fn ($attribute) => $attributeWeights[$attribute] ?? 1, $matchedAttributes);
-
-        return array_reduce($matchedAttributeWeights, fn ($result, $weight) => $result * $weight, 1);
+        return array_reduce($weightsPerTerm, fn ($result, $weight) => $result * $weight, 1);
     }
 
     /**

@@ -1832,7 +1832,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 22,
                     'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
-                    '_rankingScore' => 0.79194,
+                    '_rankingScore' => 1.0,
                 ],
             ],
             'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
