@@ -152,16 +152,6 @@ class Tokenizer
         return $collection;
     }
 
-    private function isWhitespace(?int $status, string $token): bool
-    {
-        return ($status === null || ($status >= \IntlBreakIterator::WORD_NONE && $status < \IntlBreakIterator::WORD_NONE_LIMIT)) && mb_trim($token) === '';
-    }
-
-    private function isWord(?int $status): bool
-    {
-        return $status >= \IntlBreakIterator::WORD_NONE_LIMIT;
-    }
-
     private function getStemmerForLanguage(string $language): ?Stemmer
     {
         if (isset($this->stemmers[$language])) {
@@ -175,6 +165,16 @@ class Tokenizer
         }
 
         return $this->stemmers[$language] = $stemmer;
+    }
+
+    private function isWhitespace(?int $status, string $token): bool
+    {
+        return ($status === null || ($status >= \IntlBreakIterator::WORD_NONE && $status < \IntlBreakIterator::WORD_NONE_LIMIT)) && mb_trim($token) === '';
+    }
+
+    private function isWord(?int $status): bool
+    {
+        return $status >= \IntlBreakIterator::WORD_NONE_LIMIT;
     }
 
     private function stem(string $term, string $language): ?string
