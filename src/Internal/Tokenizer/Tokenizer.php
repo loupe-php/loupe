@@ -169,7 +169,7 @@ class Tokenizer
 
     private function isWhitespace(?int $status, string $token): bool
     {
-        return ($status === null || ($status >= \IntlBreakIterator::WORD_NONE && $status < \IntlBreakIterator::WORD_NONE_LIMIT)) && mb_trim($token) === '';
+        return ($status === null || ($status >= \IntlBreakIterator::WORD_NONE && $status < \IntlBreakIterator::WORD_NONE_LIMIT)) && trim($token) === '';
     }
 
     private function isWord(?int $status): bool
