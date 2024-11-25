@@ -102,7 +102,8 @@ number of matching terms but also their proximity in the document. The relevance
 called `_relevance`. See [Ranking](./ranking.md) for details about how relevance is calculated for each result
 and how you can influence the ranking from the configuration.
 
-You can sort by your own attributes or by multiple ones and specify whether to sort ascending or descending. Note that you can only sort [on attributes that you have defined to be sortable in the configuration][Config].
+You can sort by your own attributes or by multiple ones and specify whether to sort ascending or descending.
+Note that you can only sort [on attributes that you have defined to be sortable in the configuration][Config].
 
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create()
