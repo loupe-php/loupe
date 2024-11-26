@@ -180,12 +180,12 @@ class Searcher
             return $this->tokens = new TokenCollection();
         }
 
-        $query = $this->searchParameters->getQuery();
-        $stopWords = $this->engine->getConfiguration()->getStopWords();
-        $maxQueryTokens = $this->engine->getConfiguration()->getMaxQueryTokens();
-
         return $this->tokens = $this->engine->getTokenizer()
-            ->tokenize($query, $maxQueryTokens, $stopWords);
+            ->tokenize(
+                $this->searchParameters->getQuery(),
+                $this->engine->getConfiguration()->getMaxQueryTokens(),
+                $this->engine->getConfiguration()->getStopWords()
+            );
     }
 
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
