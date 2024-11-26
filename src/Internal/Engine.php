@@ -88,6 +88,13 @@ class Engine
             ->fetchOne();
     }
 
+    public function deleteAllDocuments(): self
+    {
+        $this->indexer->deleteAllDocuments();
+
+        return $this;
+    }
+
     /**
      * @param array<int|string> $ids
      */

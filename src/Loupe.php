@@ -35,6 +35,11 @@ final class Loupe
         return $this->engine->countDocuments();
     }
 
+    public function deleteAllDocuments(): void
+    {
+        $this->engine->deleteAllDocuments();
+    }
+
     /**
      * @throws IndexException
      */
