@@ -123,6 +123,9 @@ class StateSetTest extends TestCase
         $this->assertInstanceOf(StateSetIndex::class, $engine->getStateSetIndex());
     }
 
+    /**
+     * @param array<int> $expected
+     */
     private function assertStateSetContents(Engine $engine, array $expected): void
     {
         $set = $engine->getStateSetIndex()->getStateSet();
