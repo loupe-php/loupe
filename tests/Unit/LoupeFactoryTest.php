@@ -12,17 +12,17 @@ use PHPUnit\Framework\TestCase;
 
 class LoupeFactoryTest extends TestCase
 {
-    public function testIsSupported(): void
-    {
-        $factory = new LoupeFactory();
-        $this->assertTrue($factory->isSupported());
-    }
-
     public function testInMemoryClient(): void
     {
         $configuration = Configuration::create();
         $client = (new LoupeFactory())->createInMemory($configuration);
         $this->assertInstanceOf(Loupe::class, $client);
+    }
+
+    public function testIsSupported(): void
+    {
+        $factory = new LoupeFactory();
+        $this->assertTrue($factory->isSupported());
     }
 
     public function testPersistedClient(): void
