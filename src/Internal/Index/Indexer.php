@@ -106,6 +106,8 @@ class Indexer
 
         $this->reviseStorage();
 
+        $this->clearStateSet();
+
         return $this;
     }
 
@@ -132,6 +134,13 @@ class Indexer
         $this->reviseStorage();
 
         return $this;
+    }
+
+    private function clearStateSet(): void
+    {
+        /** @var StateSet $stateSet */
+        $stateSet = $this->engine->getStateSetIndex()->getStateSet();
+        $stateSet->clear();
     }
 
     private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void

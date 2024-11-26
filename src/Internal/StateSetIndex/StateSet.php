@@ -32,6 +32,17 @@ class StateSet implements StateSetInterface
         return $this->inMemoryStateSet->all();
     }
 
+    public function clear(): void
+    {
+        $this->inMemoryStateSet = new InMemoryStateSet([]);
+
+        // Clear out state_sets table
+        $this->engine->getConnection()
+            ->executeStatement(sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_STATE_SET));
+
+        $this->dumpStateSetCache([]);
+    }
+
     public function has(int $state): bool
     {
         $this->initialize();
