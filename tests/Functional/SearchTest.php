@@ -2205,23 +2205,23 @@ class SearchTest extends TestCase
 
     public function testStopWordSearch(): void
     {
-        $configuration = Configuration::create()
-            ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview'])
-            ->withTypoTolerance(TypoTolerance::create()->disable())
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
-
-        $searchParametersWithoutStopWords = SearchParameters::create()
+        $searchParameters = SearchParameters::create()
             ->withQuery('young glaciologist')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc'])
         ;
 
+        $configurationWithoutStopWords = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+
+        $loupe = $this->createLoupe($configurationWithoutStopWords);
+        $this->indexFixture($loupe, 'movies');
+
         // Should return all movies with the term "young" (OR matching)
-        $this->searchAndAssertResults($loupe, $searchParametersWithoutStopWords, [
+        $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
                     'id' => 27,
@@ -2243,15 +2243,18 @@ class SearchTest extends TestCase
             'totalHits' => 3,
         ]);
 
-        $searchParametersWithStopWords = SearchParameters::create()
-            ->withQuery('young glaciologist')
+        $configurationWithStopWords = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
             ->withStopWords(['young'])
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
         ;
 
+        $loupe = $this->createLoupe($configurationWithStopWords);
+        $this->indexFixture($loupe, 'movies');
+
         // Should only return movies with the term "glaciologist" since "young" is a stop word
-        $this->searchAndAssertResults($loupe, $searchParametersWithStopWords, [
+        $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
                     'id' => 27,

@@ -75,4 +75,24 @@ class Token
     {
         return $this->isPartOfPhrase;
     }
+
+    /**
+     * @param array<string> $terms
+     */
+    public function isOneOf(array $haystack): bool
+    {
+        if ($haystack === []) {
+            return false;
+        }
+
+        foreach ($this->allTerms() as $term) {
+            foreach ($haystack as $needle) {
+                if ($term === $needle) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }

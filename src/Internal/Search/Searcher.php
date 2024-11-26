@@ -181,7 +181,7 @@ class Searcher
         }
 
         $query = $this->searchParameters->getQuery();
-        $stopWords = $this->searchParameters->getStopWords();
+        $stopWords = $this->engine->getConfiguration()->getStopWords();
         $maxQueryTokens = $this->engine->getConfiguration()->getMaxQueryTokens();
 
         return $this->tokens = $this->engine->getTokenizer()

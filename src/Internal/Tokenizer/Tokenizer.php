@@ -151,16 +151,19 @@ class Tokenizer
                 $negated = false;
             }
 
+            // Collect all tokens regardless of stop word status
             $all->add($token);
 
             // Skip stop words
-            if (\count(array_intersect([$term, ...$variants], $stopWords))) {
+            if ($token->isOneOf($stopWords)) {
                 continue;
             }
 
+            // Only add non-stop words to the result
             $tokens->add($token);
         }
 
+        // If removing stop words resulted in an empty collection, return all tokens
         return $tokens->empty() ? $all : $tokens;
     }
 

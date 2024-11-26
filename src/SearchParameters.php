@@ -48,11 +48,6 @@ final class SearchParameters
      */
     private array $sort = [Internal\Search\Searcher::RELEVANCE_ALIAS . ':desc'];
 
-    /**
-     * @var array<string>
-     */
-    private array $stopWords = [];
-
     public static function create(): self
     {
         return new self();
@@ -112,7 +107,6 @@ final class SearchParameters
         $hash[] = json_encode($this->getHitsPerPage());
         $hash[] = json_encode($this->getPage());
         $hash[] = json_encode($this->getQuery());
-        $hash[] = json_encode($this->getStopWords());
         $hash[] = json_encode($this->showMatchesPosition());
         $hash[] = json_encode($this->showRankingScore());
 
@@ -155,14 +149,6 @@ final class SearchParameters
     public function getSort(): array
     {
         return $this->sort;
-    }
-
-    /**
-     * @return array<string>
-     */
-    public function getStopWords(): array
-    {
-        return $this->stopWords;
     }
 
     public function showMatchesPosition(): bool
@@ -286,19 +272,6 @@ final class SearchParameters
     {
         $clone = clone $this;
         $clone->sort = $sort;
-
-        return $clone;
-    }
-
-    /**
-     * @param array<string> $stopWords
-     */
-    public function withStopWords(array $stopWords): self
-    {
-        sort($stopWords);
-
-        $clone = clone $this;
-        $clone->stopWords = $stopWords;
 
         return $clone;
     }

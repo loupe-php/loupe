@@ -42,6 +42,11 @@ final class Configuration
      */
     private array $sortableAttributes = [];
 
+    /**
+     * @var array<string>
+     */
+    private array $stopWords = [];
+
     private TypoTolerance $typoTolerance;
 
     public function __construct()
@@ -87,6 +92,7 @@ final class Configuration
         $hash[] = json_encode($this->getSearchableAttributes());
         $hash[] = json_encode($this->getFilterableAttributes());
         $hash[] = json_encode($this->getSortableAttributes());
+        $hash[] = json_encode($this->getStopWords());
 
         $hash[] = $this->getTypoTolerance()->isDisabled() ? 'disabled' : 'enabled';
         $hash[] = $this->getTypoTolerance()->getAlphabetSize();
@@ -102,6 +108,14 @@ final class Configuration
     public function getLanguages(): array
     {
         return $this->languages;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getStopWords(): array
+    {
+        return $this->stopWords;
     }
 
     public function getLogger(): ?LoggerInterface
@@ -165,6 +179,19 @@ final class Configuration
 
         $clone = clone $this;
         $clone->filterableAttributes = $filterableAttributes;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $stopWords
+     */
+    public function withStopWords(array $stopWords): self
+    {
+        sort($stopWords);
+
+        $clone = clone $this;
+        $clone->stopWords = $stopWords;
 
         return $clone;
     }

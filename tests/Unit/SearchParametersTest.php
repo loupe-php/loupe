@@ -18,11 +18,6 @@ class SearchParametersTest extends TestCase
             $searchParameters->getHash(),
             $searchParameters->withPage(2)->getHash()
         );
-
-        $this->assertNotSame(
-            $searchParameters->getHash(),
-            $searchParameters->withStopWords(['a', 'the'])->getHash()
-        );
     }
 
     public function testMaxHitsPerPage(): void

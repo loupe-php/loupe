@@ -221,11 +221,11 @@ $results = [
 
 ## Stop words
 
-When searching, you can define a list of stop words to be ignored by the engine when matching and
+When configuring Loupe, you can define a list of stop words to be ignored by the engine when matching and
 ranking search results.
 
 ```php
-$searchParameters = \Loupe\Loupe\SearchParameters::create()
+$configuration = \Loupe\Loupe\Configuration::create()
     ->withStopWords(['a', 'by', 'the']);
 ```
 
