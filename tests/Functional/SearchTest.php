@@ -2295,6 +2295,72 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testStopWordSearch(): void
+    {
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young glaciologist')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $configurationWithoutStopWords = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+
+        $loupe = $this->createLoupe($configurationWithoutStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Should return all movies with the term "young" (OR matching)
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithStopWords = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withStopWords(['young'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Should only return movies with the term "glaciologist" since "young" is a stop word
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<mixed> $expectedResults
      */
