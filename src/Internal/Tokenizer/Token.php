@@ -71,13 +71,8 @@ class Token
         return $this->isNegated;
     }
 
-    public function isPartOfPhrase(): bool
-    {
-        return $this->isPartOfPhrase;
-    }
-
     /**
-     * @param array<string> $terms
+     * @param array<string> $haystack
      */
     public function isOneOf(array $haystack): bool
     {
@@ -94,5 +89,10 @@ class Token
         }
 
         return false;
+    }
+
+    public function isPartOfPhrase(): bool
+    {
+        return $this->isPartOfPhrase;
     }
 }

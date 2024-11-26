@@ -110,14 +110,6 @@ final class Configuration
         return $this->languages;
     }
 
-    /**
-     * @return array<string>
-     */
-    public function getStopWords(): array
-    {
-        return $this->stopWords;
-    }
-
     public function getLogger(): ?LoggerInterface
     {
         return $this->logger;
@@ -154,6 +146,14 @@ final class Configuration
         return $this->sortableAttributes;
     }
 
+    /**
+     * @return array<string>
+     */
+    public function getStopWords(): array
+    {
+        return $this->stopWords;
+    }
+
     public function getTypoTolerance(): TypoTolerance
     {
         return $this->typoTolerance;
@@ -179,19 +179,6 @@ final class Configuration
 
         $clone = clone $this;
         $clone->filterableAttributes = $filterableAttributes;
-
-        return $clone;
-    }
-
-    /**
-     * @param array<string> $stopWords
-     */
-    public function withStopWords(array $stopWords): self
-    {
-        sort($stopWords);
-
-        $clone = clone $this;
-        $clone->stopWords = $stopWords;
 
         return $clone;
     }
@@ -269,6 +256,19 @@ final class Configuration
 
         $clone = clone $this;
         $clone->sortableAttributes = $sortableAttributes;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $stopWords
+     */
+    public function withStopWords(array $stopWords): self
+    {
+        sort($stopWords);
+
+        $clone = clone $this;
+        $clone->stopWords = $stopWords;
 
         return $clone;
     }
