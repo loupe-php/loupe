@@ -42,7 +42,7 @@ class StateSet implements StateSetInterface
     {
         $this->initialize();
 
-        foreach ($this->inMemoryStateSet->all() as $state => $data) {
+        foreach ($this->inMemoryStateSet->all() as $state) {
             $this->engine->upsert(IndexInfo::TABLE_NAME_STATE_SET, [
                 'state' => $state,
             ], ['state']);
