@@ -41,16 +41,26 @@ class StateSet implements StateSetInterface
     public function persist(): void
     {
         $this->initialize();
-
+        $this->engine->getConnection()->executeStatement('DELETE FROM ' . IndexInfo::TABLE_NAME_STATE_SET);
+        $this->engine->getConnection()->executeStatement('DELETE FROM sqlite_sequence WHERE name = ?', [IndexInfo::TABLE_NAME_STATE_SET]);
+        $values = [];
         foreach ($this->inMemoryStateSet->all() as $state => $data) {
-            $this->engine->upsert(IndexInfo::TABLE_NAME_STATE_SET, [
-                'state' => $state,
-            ], ['state']);
+            $values[] = '(' . $state . ')';
+        }
+
+        if ($values !== []) {
+            $this->engine->getConnection()->executeStatement(sprintf('INSERT INTO ' . IndexInfo::TABLE_NAME_STATE_SET . ' (state) VALUES %s', implode(',', $values)));
         }
 
         $all = $this->inMemoryStateSet->all();
         $all = array_combine($this->inMemoryStateSet->all(), array_fill(0, \count($all), true));
         $this->dumpStateSetCache($all);
+    }
+
+    public function remove(int $state): void
+    {
+        $this->initialize();
+        $this->inMemoryStateSet->remove($state);
     }
 
     /**
