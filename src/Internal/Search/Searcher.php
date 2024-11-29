@@ -501,7 +501,7 @@ class Searcher
             return implode(' ', $where);
         }
 
-        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance);
+        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance, 2);
 
         // No result possible, we add AND 1=0 to ensure no results
         if ($states === []) {
