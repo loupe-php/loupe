@@ -44,7 +44,7 @@ class StateSet implements StateSetInterface
         $this->engine->getConnection()->executeStatement('DELETE FROM ' . IndexInfo::TABLE_NAME_STATE_SET);
         $this->engine->getConnection()->executeStatement('DELETE FROM sqlite_sequence WHERE name = ?', [IndexInfo::TABLE_NAME_STATE_SET]);
         $values = [];
-        foreach ($this->inMemoryStateSet->all() as $state => $data) {
+        foreach ($this->inMemoryStateSet->all() as $state) {
             $values[] = '(' . $state . ')';
         }
 
@@ -110,7 +110,6 @@ class StateSet implements StateSetInterface
         }
 
         $this->inMemoryStateSet = new InMemoryStateSet(\is_array($data) ? $data : []);
-
         $this->initialized = true;
     }
 
