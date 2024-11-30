@@ -178,7 +178,7 @@ class StateSetTest extends TestCase
             4, 18, 73,
             // (Dog) Bus
             3, 14, 60,
-            // (Dog) Van
+            // (Cat) Van
             3, 14, 59,
         ]);
     }
