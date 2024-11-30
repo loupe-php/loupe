@@ -45,6 +45,47 @@ class StateSetTest extends TestCase
         $this->assertStateSetContents($engine, []);
     }
 
+    public function testStateSetIndexEmpty(): void
+    {
+        $engine = $this->createTestEngine();
+
+        $this->assertStateSetContents($engine, []);
+    }
+
+    public function testStateSetIndexFilledFromDocument(): void
+    {
+        $engine = $this->createTestEngine();
+
+        $this->assertStateSetContents($engine, []);
+
+        $engine->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'John Doe',
+            ],
+            [
+                'id' => 2,
+                'content' => 'Jane Doe',
+            ],
+        ]);
+
+        $this->assertStateSetContents($engine, [
+            // John
+            3, 16, 65, 263,
+            // Doe
+            1, 8, 34,
+            // Jane
+            3, 14, 59, 238,
+        ]);
+    }
+
+    public function testStateSetIndexInstance(): void
+    {
+        $engine = $this->createTestEngine();
+
+        $this->assertInstanceOf(StateSetIndex::class, $engine->getStateSetIndex());
+    }
+
     public function testStateSetIndexRevisedAfterDocumentDeleted(): void
     {
         $engine = $this->createTestEngine();
@@ -140,47 +181,6 @@ class StateSetTest extends TestCase
             // (Dog) Van
             3, 14, 59,
         ]);
-    }
-
-    public function testStateSetIndexEmpty(): void
-    {
-        $engine = $this->createTestEngine();
-
-        $this->assertStateSetContents($engine, []);
-    }
-
-    public function testStateSetIndexFilledFromDocument(): void
-    {
-        $engine = $this->createTestEngine();
-
-        $this->assertStateSetContents($engine, []);
-
-        $engine->addDocuments([
-            [
-                'id' => 1,
-                'content' => 'John Doe',
-            ],
-            [
-                'id' => 2,
-                'content' => 'Jane Doe',
-            ],
-        ]);
-
-        $this->assertStateSetContents($engine, [
-            // John
-            3, 16, 65, 263,
-            // Doe
-            1, 8, 34,
-            // Jane
-            3, 14, 59, 238,
-        ]);
-    }
-
-    public function testStateSetIndexInstance(): void
-    {
-        $engine = $this->createTestEngine();
-
-        $this->assertInstanceOf(StateSetIndex::class, $engine->getStateSetIndex());
     }
 
     /**
