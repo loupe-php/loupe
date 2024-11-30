@@ -1886,17 +1886,17 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.8496,
+                    '_rankingScore' => 0.8872,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.66667,
+                    '_rankingScore' => 0.75,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.58027,
+                    '_rankingScore' => 0.6852,
                 ],
             ],
             'query' => 'life learning',
@@ -1919,7 +1919,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.8496,
+                    '_rankingScore' => 0.8872,
                 ],
             ],
             'query' => 'life learning',
@@ -1968,22 +1968,22 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'content' => 'Book title: life learning',
-                    '_rankingScore' => 0.71872,
+                    '_rankingScore' => 0.78904,
                 ],
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.64763,
+                    '_rankingScore' => 0.73572,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.51236,
+                    '_rankingScore' => 0.63427,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.51236,
+                    '_rankingScore' => 0.63427,
                 ],
             ],
             'query' => 'foobar life learning',
@@ -1991,6 +1991,98 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 4,
+        ]);
+    }
+
+    public function testRelevanceAndRankingScoreWithAttributeWeights(): void
+    {
+        $documents = [
+            [
+                'id' => 1,
+                'title' => 'Game of life',
+                'content' => 'A thing with everlasting learning',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Everlasting learning',
+                'content' => 'The unexamined game of life',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Learning to game',
+                'content' => 'What life taught me about learning',
+            ],
+        ];
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('game of life')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withShowRankingScore(true)
+        ;
+
+        $configurationWithoutAttributes = Configuration::create()
+            ->withSortableAttributes(['title', 'content'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithoutAttributes);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Game of life',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Everlasting learning',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Learning to game',
+                    '_rankingScore' => 0.83333,
+                ],
+            ],
+            'query' => 'game of life',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithAttributes = Configuration::create()
+            ->withSearchableAttributes(['title', 'content'])
+            ->withSortableAttributes(['title', 'content'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithAttributes);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Game of life',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Everlasting learning',
+                    '_rankingScore' => 0.878,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Learning to game',
+                    '_rankingScore' => 0.78333,
+                ],
+            ],
+            'query' => 'game of life',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
         ]);
     }
 
@@ -2200,6 +2292,72 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    public function testStopWordSearch(): void
+    {
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young glaciologist')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $configurationWithoutStopWords = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+
+        $loupe = $this->createLoupe($configurationWithoutStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Should return all movies with the term "young" (OR matching)
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithStopWords = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withStopWords(['young'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Should only return movies with the term "glaciologist" since "young" is a stop word
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
         ]);
     }
 

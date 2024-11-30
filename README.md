@@ -159,6 +159,7 @@ print_r($results->toArray());
 * [Configuration](./docs/configuration.md)
 * [Indexing](./docs/indexing.md)
 * [Searching](./docs/searching.md)
+* [Ranking](./docs/ranking.md)
 * [Tokenizer](./docs/tokenizer.md)
 * [Performance](./docs/performance.md)
 

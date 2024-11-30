@@ -29,6 +29,9 @@ $configuration = \Loupe\Loupe\Configuration::create()
 ;
 ```
 
+Note that the order of searchable attributes has an influence on the [relevance ranking](./ranking.md) of search
+results: attributes listed earlier carry more weight than attributes listed later.
+
 ## Filterable attributes
 
 By default, no attribute can be filtered on in Loupe. Any attribute you want to filter for, needs to be defined as 

@@ -12,6 +12,8 @@ final class Configuration
 {
     public const ATTRIBUTE_NAME_RGXP = '[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*';
 
+    public const ATTRIBUTE_RANKING_ORDER_FACTOR = 0.8;
+
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
     /**
@@ -41,6 +43,11 @@ final class Configuration
      * @var array<string>
      */
     private array $sortableAttributes = [];
+
+    /**
+     * @var array<string>
+     */
+    private array $stopWords = [];
 
     private TypoTolerance $typoTolerance;
 
@@ -87,6 +94,7 @@ final class Configuration
         $hash[] = json_encode($this->getSearchableAttributes());
         $hash[] = json_encode($this->getFilterableAttributes());
         $hash[] = json_encode($this->getSortableAttributes());
+        $hash[] = json_encode($this->getStopWords());
 
         $hash[] = $this->getTypoTolerance()->isDisabled() ? 'disabled' : 'enabled';
         $hash[] = $this->getTypoTolerance()->getAlphabetSize();
@@ -138,6 +146,14 @@ final class Configuration
     public function getSortableAttributes(): array
     {
         return $this->sortableAttributes;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getStopWords(): array
+    {
+        return $this->stopWords;
     }
 
     public function getTypoTolerance(): TypoTolerance
@@ -223,7 +239,8 @@ final class Configuration
             self::validateAttributeNames($searchableAttributes);
         }
 
-        sort($searchableAttributes);
+        // Do not sort searchable attributes as their order is relevant for ranking
+        // sort($searchableAttributes);
 
         $clone = clone $this;
         $clone->searchableAttributes = $searchableAttributes;
@@ -242,6 +259,19 @@ final class Configuration
 
         $clone = clone $this;
         $clone->sortableAttributes = $sortableAttributes;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $stopWords
+     */
+    public function withStopWords(array $stopWords): self
+    {
+        sort($stopWords);
+
+        $clone = clone $this;
+        $clone->stopWords = $stopWords;
 
         return $clone;
     }

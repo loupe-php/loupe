@@ -18,7 +18,6 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\Tokenizer\Phrase;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
@@ -182,8 +181,11 @@ class Searcher
         }
 
         return $this->tokens = $this->engine->getTokenizer()
-            ->tokenize($this->searchParameters->getQuery(), $this->engine->getConfiguration()->getMaxQueryTokens())
-        ;
+            ->tokenize(
+                $this->searchParameters->getQuery(),
+                $this->engine->getConfiguration()->getMaxQueryTokens(),
+                $this->engine->getConfiguration()->getStopWords()
+            );
     }
 
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
@@ -499,7 +501,7 @@ class Searcher
             return implode(' ', $where);
         }
 
-        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance);
+        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance, 2);
 
         // No result possible, we add AND 1=0 to ensure no results
         if ($states === []) {

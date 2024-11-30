@@ -26,7 +26,10 @@ class Tokenizer
     ) {
     }
 
-    public function tokenize(string $string, ?int $maxTokens = null): TokenCollection
+    /**
+     * @param array<string> $stopWords
+     */
+    public function tokenize(string $string, ?int $maxTokens = null, array $stopWords = []): TokenCollection
     {
         $language = null;
         $languageResult = $this->languageDetector->detect($string);
@@ -37,7 +40,7 @@ class Tokenizer
             $language = $languageResult->language;
         }
 
-        return $this->doTokenize($string, $language, $maxTokens);
+        return $this->doTokenize($string, $language, $maxTokens, $stopWords);
     }
 
     /**
@@ -83,12 +86,16 @@ class Tokenizer
         return $result;
     }
 
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
+    /**
+     * @param array<string> $stopWords
+     */
+    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, array $stopWords = []): TokenCollection
     {
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
         $iterator->setText($string);
 
-        $collection = new TokenCollection();
+        $all = new TokenCollection();
+        $tokens = new TokenCollection();
         $id = 0;
         $position = 0;
         $phrase = false;
@@ -115,7 +122,7 @@ class Tokenizer
                 continue;
             }
 
-            if ($maxTokens !== null && $collection->count() >= $maxTokens) {
+            if ($maxTokens !== null && $tokens->count() >= $maxTokens) {
                 break;
             }
 
@@ -139,14 +146,25 @@ class Tokenizer
                 $negated
             );
 
-            $collection->add($token);
             $position += $token->getLength();
             if (!$phrase) {
                 $negated = false;
             }
+
+            // Collect all tokens regardless of stop word status
+            $all->add($token);
+
+            // Skip stop words
+            if ($token->isOneOf($stopWords)) {
+                continue;
+            }
+
+            // Only add non-stop words to the result
+            $tokens->add($token);
         }
 
-        return $collection;
+        // If removing stop words resulted in an empty collection, return all tokens
+        return $tokens->empty() ? $all : $tokens;
     }
 
     private function getStemmerForLanguage(string $language): ?Stemmer
