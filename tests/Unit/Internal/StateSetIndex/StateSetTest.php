@@ -20,6 +20,8 @@ class StateSetTest extends TestCase
     {
         $engine = $this->createTestEngine();
 
+        $this->assertStateSetContents($engine, []);
+
         $engine->addDocuments([
             [
                 'id' => 1,
@@ -32,13 +34,10 @@ class StateSetTest extends TestCase
         ]);
 
         $this->assertStateSetContents($engine, [
-            // You
-            2,
-            12,
-            50,
+            // // You
+            2, 12, 50,
             // Me
-            3,
-            10,
+            2, 10,
         ]);
 
         $engine->deleteAllDocuments();
@@ -169,19 +168,11 @@ class StateSetTest extends TestCase
 
         $this->assertStateSetContents($engine, [
             // John
-            2,
-            3,
-            16,
-            65,
-            263,
+            3, 16, 65, 263,
             // Doe
-            1,
-            8,
-            34,
+            1, 8, 34,
             // Jane
-            14,
-            59,
-            238,
+            3, 14, 59, 238,
         ]);
     }
 
