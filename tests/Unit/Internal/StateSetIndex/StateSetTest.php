@@ -16,34 +16,6 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class StateSetTest extends TestCase
 {
-    // public function testStateSetIndexDeletedAfterDocumentDeleted(): void
-    // {
-    //     $engine = $this->createTestEngine();
-
-    //     $engine->addDocuments([
-    //         ['id' => 1, 'name' => 'You'],
-    //         ['id' => 2, 'name' => 'Me'],
-    //     ]);
-
-    //     $this->assertStateSetContents($engine, [
-    //         // You
-    //         2,
-    //         12,
-    //         50,
-    //         // Me
-    //         3,
-    //         10,
-    //     ]);
-
-    //     $engine->deleteDocuments([1]);
-
-    //     $this->assertStateSetContents($engine, [
-    //         // Me
-    //         3,
-    //         10,
-    //     ]);
-    // }
-
     public function testStateSetIndexDeletedAfterAllDocumentsDeleted(): void
     {
         $engine = $this->createTestEngine();
@@ -51,11 +23,11 @@ class StateSetTest extends TestCase
         $engine->addDocuments([
             [
                 'id' => 1,
-                'name' => 'You',
+                'content' => 'You',
             ],
             [
                 'id' => 2,
-                'name' => 'Me',
+                'content' => 'Me',
             ],
         ]);
 
@@ -74,6 +46,89 @@ class StateSetTest extends TestCase
         $this->assertStateSetContents($engine, []);
     }
 
+    public function testStateSetIndexRevisedAfterDocumentDeleted(): void
+    {
+        $engine = $this->createTestEngine();
+
+        $engine->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'Dog Car',
+            ],
+        ]);
+
+        $this->assertStateSetContents($engine, [
+            // Dog
+            1, 8, 36,
+            // (Dog) Car
+            4, 18, 75,
+        ]);
+
+        $engine->addDocuments([
+            [
+                'id' => 2,
+                'content' => 'Cat Car',
+            ],
+        ]);
+
+        $this->assertStateSetContents($engine, [
+            // Dog
+            1, 8, 36,
+            // Cat
+            4, 18, 73,
+            // (Dog) Car + (Cat) Car
+            4, 18, 75,
+        ]);
+
+        $engine->deleteDocuments([1]);
+
+        $this->assertStateSetContents($engine, [
+            // Cat
+            4, 18, 73,
+            // (Cat) Car
+            4, 18, 75,
+        ]);
+
+        $engine->addDocuments([
+            [
+                'id' => 3,
+                'content' => 'Rat Car',
+            ],
+        ]);
+
+        $this->assertStateSetContents($engine, [
+            // Cat
+            4, 18, 73,
+            // Rat
+            3, 14, 57,
+            // (Rat) Car + (Cat) Car
+            4, 18, 75,
+        ]);
+
+        $engine->deleteDocuments([2]);
+
+        $this->assertStateSetContents($engine, [
+            // Rat
+            3, 14, 57,
+            // (Rat) Car
+            4, 18, 75,
+        ]);
+
+        $engine->addDocuments([
+            [
+                'id' => 3,
+                'content' => 'Rat Bike',
+            ],
+        ]);
+
+        $this->assertStateSetContents($engine, [
+            // Rat
+            3, 14, 57,
+            // (Rat) Bike
+            3, 14, 60, 242,
+        ]);
+    }
+
     public function testStateSetIndexEmpty(): void
     {
         $engine = $this->createTestEngine();
@@ -90,11 +145,11 @@ class StateSetTest extends TestCase
         $engine->addDocuments([
             [
                 'id' => 1,
-                'name' => 'John Doe',
+                'content' => 'John Doe',
             ],
             [
                 'id' => 2,
-                'name' => 'Jane Doe',
+                'content' => 'Jane Doe',
             ],
         ]);
 
@@ -128,13 +183,20 @@ class StateSetTest extends TestCase
      */
     private function assertStateSetContents(Engine $engine, array $expected): void
     {
+        $expected = array_unique($expected);
+        sort($expected);
+
         $set = $engine->getStateSetIndex()->getStateSet();
 
         $all = $set->all();
-        $dump = require $engine->getDataDir() . '/state_set.php';
+        sort($all);
 
-        $this->assertEquals($all, $expected);
-        $this->assertEquals(array_keys($dump), $all);
+        $dump = require $engine->getDataDir() . '/state_set.php';
+        $dump = array_keys($dump);
+        sort($dump);
+
+        $this->assertEquals($expected, $all);
+        $this->assertEquals($dump, $all);
     }
 
     private function createTestEngine(): Engine
@@ -151,7 +213,7 @@ class StateSetTest extends TestCase
         $dbConfig = new DbalConfiguration();
         $dbConfig->setMiddlewares([]);
 
-        $configuration = Configuration::create();
+        $configuration = Configuration::create()->withSearchableAttributes(['content']);
 
         $connection = DriverManager::getConnection(
             (new DsnParser())->parse('sqlite3://notused:inthis@case/' . $path)
