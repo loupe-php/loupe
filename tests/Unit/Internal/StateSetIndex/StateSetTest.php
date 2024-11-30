@@ -55,16 +55,6 @@ class StateSetTest extends TestCase
                 'id' => 1,
                 'content' => 'Dog Car',
             ],
-        ]);
-
-        $this->assertStateSetContents($engine, [
-            // Dog
-            1, 8, 36,
-            // (Dog) Car
-            4, 18, 75,
-        ]);
-
-        $engine->addDocuments([
             [
                 'id' => 2,
                 'content' => 'Cat Car',
@@ -96,15 +86,6 @@ class StateSetTest extends TestCase
             ],
         ]);
 
-        $this->assertStateSetContents($engine, [
-            // Cat
-            4, 18, 73,
-            // Rat
-            3, 14, 57,
-            // (Rat) Car + (Cat) Car
-            4, 18, 75,
-        ]);
-
         $engine->deleteDocuments([2]);
 
         $this->assertStateSetContents($engine, [
@@ -113,19 +94,52 @@ class StateSetTest extends TestCase
             // (Rat) Car
             4, 18, 75,
         ]);
+    }
+
+    public function testStateSetIndexRevisedAfterDocumentUpdated(): void
+    {
+        $engine = $this->createTestEngine();
 
         $engine->addDocuments([
             [
-                'id' => 3,
-                'content' => 'Rat Bike',
+                'id' => 1,
+                'content' => 'Dog Car',
+            ],
+            [
+                'id' => 2,
+                'content' => 'Cat Car',
             ],
         ]);
 
         $this->assertStateSetContents($engine, [
-            // Rat
-            3, 14, 57,
-            // (Rat) Bike
-            3, 14, 60, 242,
+            // Dog
+            1, 8, 36,
+            // Cat
+            4, 18, 73,
+            // (Dog) Car + (Cat) Car
+            4, 18, 75,
+        ]);
+
+        $engine->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'Dog Bus',
+            ],
+            [
+                'id' => 2,
+                'content' => 'Cat Van',
+            ],
+        ]);
+
+        $this->assertStateSetContents($engine, [
+            // Dog
+            1, 8, 36,
+            // Cat
+            4, 18, 73,
+            // (Dog) Bus
+            3, 14, 60,
+            // (Dog) Van
+            3, 14, 59,
         ]);
     }
 
