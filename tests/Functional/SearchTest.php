@@ -2344,6 +2344,54 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
     }
 
+    public function testUpdatedDocumentSearch(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('vienna')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'locations');
+
+        // Should return Vienna
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => '3',
+                    'title' => 'Vienna',
+                ],
+            ],
+            'query' => 'vienna',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $loupe->addDocument([
+            'id' => '3',
+            'title' => 'Munich',
+        ]);
+
+        // Should not return old Vienna document
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => 'vienna',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
     /**
      * @param array<mixed> $expectedResults
      */
