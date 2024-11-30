@@ -60,6 +60,10 @@ class Indexer
 
                             $this->engine->getConnection()
                                 ->transactional(function () use ($document) {
+                                    // Delete the document first if it already exists to avoid orphaned data
+                                    $userId = (string) $document[$this->engine->getConfiguration()->getPrimaryKey()];
+                                    $this->deleteDocuments([$userId], reviseStorage: false);
+
                                     $documentId = $this->indexDocument($document);
                                     $this->indexMultiAttributes($document, $documentId);
                                     $this->indexTerms($document, $documentId);
@@ -98,7 +102,7 @@ class Indexer
     /**
      * @param array<int|string> $ids
      */
-    public function deleteDocuments(array $ids): self
+    public function deleteDocuments(array $ids, bool $reviseStorage = true): self
     {
         if ($this->engine->getIndexInfo()->needsSetup()) {
             return $this;
@@ -115,7 +119,9 @@ class Indexer
                 ]
             );
 
-        $this->reviseStorage();
+        if ($reviseStorage) {
+            $this->reviseStorage();
+        }
 
         return $this;
     }
