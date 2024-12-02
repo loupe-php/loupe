@@ -7,15 +7,16 @@ namespace Loupe\Loupe\Tests\Unit\Internal\StateSetIndex;
 use Doctrine\DBAL\Configuration as DbalConfiguration;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
-use Exception;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Tests\Util;
+use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 use Toflar\StateSetIndex\StateSetIndex;
 
 class StateSetTest extends TestCase
 {
+    use StorageFixturesTestTrait;
+
     public function testStateSetIndexDeletedAfterAllDocumentsDeleted(): void
     {
         $engine = $this->createTestEngine();
@@ -206,14 +207,8 @@ class StateSetTest extends TestCase
 
     private function createTestEngine(): Engine
     {
-        $dir = Util::fixturesPath('Storage/DB/' . uniqid());
+        $dir = $this->createTemporaryDirectory();
         $path = $dir . '/loupe.db';
-
-        if (!is_dir($dir)) {
-            if (!mkdir($dir, 0777, true)) {
-                throw new Exception('Could not create directory: ' . $dir);
-            }
-        }
 
         $dbConfig = new DbalConfiguration();
         $dbConfig->setMiddlewares([]);

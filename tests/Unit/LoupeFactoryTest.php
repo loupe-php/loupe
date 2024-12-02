@@ -7,11 +7,13 @@ namespace Loupe\Loupe\Tests\Unit;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Loupe;
 use Loupe\Loupe\LoupeFactory;
-use Loupe\Loupe\Tests\Util;
+use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 
 class LoupeFactoryTest extends TestCase
 {
+    use StorageFixturesTestTrait;
+
     public function testInMemoryClient(): void
     {
         $configuration = Configuration::create();
@@ -28,7 +30,7 @@ class LoupeFactoryTest extends TestCase
     public function testPersistedClient(): void
     {
         $configuration = Configuration::create();
-        $client = (new LoupeFactory())->create(Util::fixturesPath('Storage/DB'), $configuration);
+        $client = (new LoupeFactory())->create($this->createTemporaryDirectory(), $configuration);
         $this->assertInstanceOf(Loupe::class, $client);
     }
 }
