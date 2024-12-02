@@ -425,14 +425,31 @@ class Indexer
         $this->engine->getConnection()->executeStatement($query);
 
         // Clean up prefixes which no longer have any relations
-        $this->removeOrphanedTerms(
+        $this->removeOrphansFromTermsTable(
             IndexInfo::TABLE_NAME_PREFIXES,
             IndexInfo::TABLE_NAME_PREFIXES_TERMS,
             'prefix'
         );
     }
 
-    private function removeOrphanedTerms(string $table = IndexInfo::TABLE_NAME_TERMS, string $relationTable = IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, string $column = 'term'): void
+    private function removeOrphanedTerms(): void
+    {
+        // Clean up terms which no longer have any relations
+        $this->removeOrphansFromTermsTable(
+            IndexInfo::TABLE_NAME_TERMS,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            'term'
+        );
+    }
+
+    private function removeOrphans(): void
+    {
+        $this->removeOrphanedDocuments();
+        $this->removeOrphanedTerms();
+        $this->removeOrphanedPrefixes();
+    }
+
+    private function removeOrphansFromTermsTable(string $table, string $relationTable, string $column): void
     {
         // Iterate over all terms of documents which no longer exist
         // and remove them from the state set index
@@ -472,13 +489,6 @@ class Indexer
         );
 
         $this->engine->getConnection()->executeStatement($query);
-    }
-
-    private function removeOrphans(): void
-    {
-        $this->removeOrphanedDocuments();
-        $this->removeOrphanedTerms();
-        $this->removeOrphanedPrefixes();
     }
 
     private function reviseStorage(): void
