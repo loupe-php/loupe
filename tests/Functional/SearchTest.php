@@ -1227,6 +1227,55 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testExactnessRelevanceScoring(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withSortableAttributes(['content'])
+            ->withLanguages(['en'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'The administrative assistant managed the files.',
+            ],
+            [
+                'id' => 2,
+                'content' => 'The administrator organized the new files efficiently.',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('administrative files')
+            ->withAttributesToRetrieve(['id', 'content'])
+            ->withShowRankingScore(true)
+        ;
+
+        // Both documents would weigh exactly the same because both "administrative" and "administrator" get stemmed
+        // for "administr". Also, the terms are exactly the same distance apart. Hence, we test the exactness feature here.
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'content' => 'The administrative assistant managed the files.',
+                    '_rankingScore' => 0.94, // TODO: This should rank higher because "administrative" is an exact hit
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The administrator organized the new files efficiently.',
+                    '_rankingScore' => 0.91758,
+                ],
+            ],
+            'query' => 'administrative files',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
     public function testFilteringAndSortingForIdentifier(): void
     {
         $configuration = Configuration::create()
