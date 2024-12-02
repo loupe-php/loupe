@@ -415,51 +415,33 @@ class Indexer
 
     private function removeOrphanedPrefixes(): void
     {
-        // Iterate over all prefixes of terms which no longer exist
-        // and remove them from the state set index
+        // Clean up prefix-term relations of terms which no longer exist
         $query = sprintf(
-            'SELECT prefix FROM %s WHERE id NOT IN (SELECT prefix FROM %s)',
-            IndexInfo::TABLE_NAME_PREFIXES,
+            'DELETE FROM %s WHERE term NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_PREFIXES_TERMS,
-        );
-
-        $iterator = $this->engine->getConnection()->executeQuery($query)->iterateAssociative();
-
-        $stateSetIndex = $this->engine->getStateSetIndex();
-
-        $chunkSize = 1000;
-        $termsChunk = [];
-        foreach ($iterator as $row) {
-            $termsChunk[] = reset($row);
-
-            if (\count($termsChunk) >= $chunkSize) {
-                $stateSetIndex->removeFromIndex($termsChunk);
-                $termsChunk = [];
-            }
-        }
-
-        if (!empty($termsChunk)) {
-            $stateSetIndex->removeFromIndex($termsChunk);
-        }
-
-        // Remove all orphaned prefixes from the prefixes table
-        $query = sprintf(
-            'DELETE FROM %s WHERE id NOT IN (SELECT prefix FROM %s)',
-            IndexInfo::TABLE_NAME_PREFIXES,
-            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+            IndexInfo::TABLE_NAME_TERMS,
         );
 
         $this->engine->getConnection()->executeStatement($query);
+
+        // Clean up prefixes which no longer have any relations
+        $this->removeOrphanedTerms(
+            IndexInfo::TABLE_NAME_PREFIXES,
+            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+            'prefix'
+        );
     }
 
-    private function removeOrphanedTerms(): void
+    private function removeOrphanedTerms(string $table = IndexInfo::TABLE_NAME_TERMS, string $relationTable = IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, string $column = 'term'): void
     {
         // Iterate over all terms of documents which no longer exist
         // and remove them from the state set index
         $query = sprintf(
-            'SELECT term FROM %s WHERE id NOT IN (SELECT term FROM %s)',
-            IndexInfo::TABLE_NAME_TERMS,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            'SELECT %s FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
+            $column,
+            $table,
+            $column,
+            $relationTable,
         );
 
         $iterator = $this->engine->getConnection()->executeQuery($query)->iterateAssociative();
@@ -483,18 +465,10 @@ class Indexer
 
         // Remove all orphaned terms from the terms table
         $query = sprintf(
-            'DELETE FROM %s WHERE id NOT IN (SELECT term FROM %s)',
-            IndexInfo::TABLE_NAME_TERMS,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-        );
-
-        $this->engine->getConnection()->executeStatement($query);
-
-        // Clean up prefix-term relations of terms which no longer exist
-        $query = sprintf(
-            'DELETE FROM %s WHERE term NOT IN (SELECT id FROM %s)',
-            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
-            IndexInfo::TABLE_NAME_TERMS,
+            'DELETE FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
+            $table,
+            $column,
+            $relationTable,
         );
 
         $this->engine->getConnection()->executeStatement($query);
