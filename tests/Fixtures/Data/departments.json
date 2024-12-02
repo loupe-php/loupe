@@ -58,5 +58,15 @@
         "colors": ["Green"],
         "age": 18,
         "isActive": false
+    },
+    {
+        "id": 7,
+        "firstname": "Thomas",
+        "lastname": "Müller-Lüdenscheidt",
+        "gender": "male",
+        "departments": ["Facility-Management"],
+        "colors": ["Magenta"],
+        "age": 96,
+        "isActive": false
     }
 ]
