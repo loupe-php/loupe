@@ -83,8 +83,6 @@ class Indexer
                         }
                     }
 
-                    $this->persistStateSet();
-
                     // Update storage only once
                     $this->reviseStorage();
                 });
@@ -394,43 +392,100 @@ class Indexer
         $stateSet->persist();
     }
 
-    private function removeOrphans(): void
+    private function removeOrphanedDocuments(): void
     {
-        // Cleanup all terms of documents which no longer exist
-        $query = <<<'QUERY'
-            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
-           QUERY;
-
+        // Clean up term-document relations of documents which no longer exist
         $query = sprintf(
-            $query,
+            'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
         );
 
         $this->engine->getConnection()->executeStatement($query);
 
-        // Cleanup all multi attributes of documents which no longer exist
-        $query = <<<'QUERY'
-            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
-           QUERY;
-
+        // Clean up multi-attribute-document relations of documents which no longer exist
         $query = sprintf(
-            $query,
+            'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
         );
 
         $this->engine->getConnection()->executeStatement($query);
+    }
 
-        // Cleanup all terms that are not in terms_documents anymore
-        $query = <<<'QUERY'
-            DELETE FROM %s WHERE id NOT IN (SELECT term FROM %s)
-           QUERY;
-
+    private function removeOrphanedPrefixes(): void
+    {
+        // Clean up prefix-term relations of terms which no longer exist
         $query = sprintf(
-            $query,
+            'DELETE FROM %s WHERE term NOT IN (SELECT id FROM %s)',
+            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+            IndexInfo::TABLE_NAME_TERMS,
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // Clean up prefixes which no longer have any relations
+        $this->removeOrphansFromTermsTable(
+            IndexInfo::TABLE_NAME_PREFIXES,
+            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+            'prefix'
+        );
+    }
+
+    private function removeOrphanedTerms(): void
+    {
+        // Clean up terms which no longer have any relations
+        $this->removeOrphansFromTermsTable(
             IndexInfo::TABLE_NAME_TERMS,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            'term'
+        );
+    }
+
+    private function removeOrphans(): void
+    {
+        $this->removeOrphanedDocuments();
+        $this->removeOrphanedTerms();
+        $this->removeOrphanedPrefixes();
+    }
+
+    private function removeOrphansFromTermsTable(string $table, string $relationTable, string $column): void
+    {
+        // Iterate over all terms of documents which no longer exist
+        // and remove them from the state set index
+        $query = sprintf(
+            'SELECT %s FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
+            $column,
+            $table,
+            $column,
+            $relationTable,
+        );
+
+        $iterator = $this->engine->getConnection()->executeQuery($query)->iterateAssociative();
+
+        $stateSetIndex = $this->engine->getStateSetIndex();
+
+        $chunkSize = 1000;
+        $termsChunk = [];
+        foreach ($iterator as $row) {
+            $termsChunk[] = reset($row);
+
+            if (\count($termsChunk) >= $chunkSize) {
+                $stateSetIndex->removeFromIndex($termsChunk);
+                $termsChunk = [];
+            }
+        }
+
+        if (!empty($termsChunk)) {
+            $stateSetIndex->removeFromIndex($termsChunk);
+        }
+
+        // Remove all orphaned terms from the terms table
+        $query = sprintf(
+            'DELETE FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
+            $table,
+            $column,
+            $relationTable,
         );
 
         $this->engine->getConnection()->executeStatement($query);
@@ -439,5 +494,6 @@ class Indexer
     private function reviseStorage(): void
     {
         $this->removeOrphans();
+        $this->persistStateSet();
     }
 }

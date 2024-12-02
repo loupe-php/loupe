@@ -10,13 +10,14 @@ use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\SearchParameters;
+use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Filesystem\Filesystem;
 
 class IndexTest extends TestCase
 {
     use FunctionalTestTrait;
+    use StorageFixturesTestTrait;
 
     public static function invalidSchemaChangesProvider(): \Generator
     {
@@ -354,9 +355,7 @@ class IndexTest extends TestCase
 
     public function testReindex(): void
     {
-        $fs = new Filesystem();
-        $tmpDataDir = sys_get_temp_dir() . '/' . uniqid('lt');
-        $fs->mkdir($tmpDataDir);
+        $tmpDataDir = $this->createTemporaryDirectory();
 
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
@@ -378,8 +377,6 @@ class IndexTest extends TestCase
         $this->assertSame(1, $loupe->countDocuments());
 
         $this->assertTrue($loupe->needsReindex());
-
-        $fs->remove($tmpDataDir);
     }
 
     public function testReplacingTheSameDocumentWorks(): void
