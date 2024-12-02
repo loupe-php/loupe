@@ -100,24 +100,30 @@ class Tokenizer
         $position = 0;
         $phrase = false;
         $negated = false;
+        $whitespace = true;
 
         foreach ($iterator->getPartsIterator() as $term) {
-            if ($term === '-') {
-                $position++;
-                $negated = true;
-                continue;
+            // Set negation if the previous token was not a word and we're not in a phrase
+            if (!$phrase && $whitespace) {
+                $negated = false;
+                if ($term === '-') {
+                    $negated = true;
+                }
             }
 
+            // Toggle phrases between quotes
             if ($term === '"') {
-                $position++;
                 $phrase = !$phrase;
                 if (!$phrase) {
                     $negated = false;
                 }
-                continue;
             }
 
-            if ($iterator->getRuleStatus() === \IntlBreakIterator::WORD_NONE) {
+            $status = $iterator->getRuleStatus();
+            $word = $this->isWord($status);
+            $whitespace = $this->isWhitespace($status, $term);
+
+            if (!$word) {
                 $position += mb_strlen($term, 'UTF-8');
                 continue;
             }
@@ -147,9 +153,6 @@ class Tokenizer
             );
 
             $position += $token->getLength();
-            if (!$phrase) {
-                $negated = false;
-            }
 
             // Collect all tokens regardless of stop word status
             $all->add($token);
@@ -180,6 +183,16 @@ class Tokenizer
         }
 
         return $this->stemmers[$language] = $stemmer;
+    }
+
+    private function isWhitespace(?int $status, string $token): bool
+    {
+        return ($status === null || ($status >= \IntlBreakIterator::WORD_NONE && $status < \IntlBreakIterator::WORD_NONE_LIMIT)) && trim($token) === '';
+    }
+
+    private function isWord(?int $status): bool
+    {
+        return $status >= \IntlBreakIterator::WORD_NONE_LIMIT;
     }
 
     private function stem(string $term, string $language): ?string
