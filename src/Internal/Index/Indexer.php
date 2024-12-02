@@ -415,23 +415,32 @@ class Indexer
 
     private function removeOrphanedTerms(): void
     {
-        // Get all terms of documents which no longer exist
+        // Iterate over all terms of documents which no longer exist
+        //  and remove them from the state set index
         $query = sprintf(
             'SELECT term FROM %s WHERE id NOT IN (SELECT term FROM %s)',
             IndexInfo::TABLE_NAME_TERMS,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
         );
 
-        $terms = $this->engine->getConnection()->executeQuery($query)->fetchFirstColumn();
-
-        if ($terms === []) {
-            return;
-        }
-
-        // Remove all orphaned terms from the state set index
+        $iterator = $this->engine->getConnection()->executeQuery($query)->iterateAssociative();
 
         $stateSetIndex = $this->engine->getStateSetIndex();
-        $stateSetIndex->removeFromIndex($terms);
+
+        $chunkSize = 1000;
+        $termsChunk = [];
+        foreach ($iterator as $row) {
+            $termsChunk[] = reset($row);
+
+            if (\count($termsChunk) >= $chunkSize) {
+                $stateSetIndex->removeFromIndex($termsChunk);
+                $termsChunk = [];
+            }
+        }
+
+        if (!empty($termsChunk)) {
+            $stateSetIndex->removeFromIndex($termsChunk);
+        }
 
         // Remove all orphaned terms from the terms table
 
