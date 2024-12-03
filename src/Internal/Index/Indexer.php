@@ -416,7 +416,7 @@ class Indexer
 
     private function removeOrphanedDocuments(): void
     {
-        // Cleanup all terms of documents which no longer exist
+        // Clean up term-document relations of documents which no longer exist
         $query = sprintf(
             'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
