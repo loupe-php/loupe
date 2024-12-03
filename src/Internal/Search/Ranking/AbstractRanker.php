@@ -6,5 +6,9 @@ namespace Loupe\Loupe\Internal\Search\Ranking;
 
 abstract class AbstractRanker
 {
-    abstract public function calculate(int $totalQueryTokenCount, array $termPositions): float;
+    /**
+     * @param array<string> $searchableAttributes
+     * @param array<int, array<int, array{int, string|null}>> $termPositions
+     */
+    abstract public function calculate(array $searchableAttributes, int $totalQueryTokenCount, array $termPositions): float;
 }
