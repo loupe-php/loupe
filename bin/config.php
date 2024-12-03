@@ -1,8 +1,9 @@
 <?php
 
-
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\LoupeFactory;
+
+ini_set('memory_limit', '256M');
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -10,8 +11,7 @@ $movies = __DIR__ . '/../var/movies.json';
 $dataDir = __DIR__ . '/../var/movies-test';
 
 if (!file_exists($movies)) {
-    echo 'movies.json does not exist. Run "wget https://www.meilisearch.com/movies.json -O var/movies.json" first.';
-    exit(1);
+    echo 'movies.json does not exist. Run "wget https://www.meilisearch.com/movies.json -O var/movies.json" first.';    exit(1);
 }
 
 // Only index the title and the overview. There's no point in performance tests for unrealistic scenarios. If you want
