@@ -52,8 +52,8 @@ class AttributeWeightTest extends TestCase
     }
 
     /**
-     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm $positionsPerTerm
-     * @param array<string, int> $attributes
+     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm
+     * @param array<string> $attributes
      */
     #[DataProvider('attributeWeightProvider')]
     public function testAttributeWeightCalculation(array $positionsPerTerm, array $attributes, float $expected): void

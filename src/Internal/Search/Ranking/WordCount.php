@@ -21,6 +21,6 @@ class WordCount extends AbstractRanker
             fn ($termArray) => !(\count($termArray) === 1 && $termArray[0][0] === 0)
         );
 
-        return \count($matchedTokens) / count($termPositions);
+        return \count($matchedTokens) / \count($termPositions);
     }
 }

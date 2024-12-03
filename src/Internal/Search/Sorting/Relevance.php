@@ -15,11 +15,6 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 class Relevance extends AbstractSorter
 {
-    /**
-     * @var array<string, array<string, float>>
-     */
-    protected static array $attributeWeightValuesCache = [];
-
     private const RANKERS = [
         'words' => WordCount::class,
         // 'typo' => TypoCount::class, // Not implemented yet
@@ -27,6 +22,11 @@ class Relevance extends AbstractSorter
         'attribute' => AttributeWeight::class,
         // 'exactness' => Exactness::class, // Not implemented yet
     ];
+
+    /**
+     * @var array<string, array<string, float>>
+     */
+    protected static array $attributeWeightValuesCache = [];
 
     public function __construct(
         private Direction $direction
@@ -36,7 +36,7 @@ class Relevance extends AbstractSorter
     public function apply(Searcher $searcher, Engine $engine): void
     {
         $tokens = $searcher->getTokens()->all();
-        if (!count($tokens)) {
+        if (!\count($tokens)) {
             return;
         }
 
@@ -130,9 +130,21 @@ class Relevance extends AbstractSorter
         return new self($direction);
     }
 
-    public static function supports(string $value, Engine $engine): bool
+    /**
+     * @param array<string> $rules
+     * @return array<array{string, float}>
+     */
+    public static function getRankers(array $rules): array
     {
-        return $value === Searcher::RELEVANCE_ALIAS;
+        return array_map(
+            function ($rule, $index) {
+                $class = self::RANKERS[$rule];
+                $weight = Configuration::RANKING_RULES_ORDER_FACTOR ** $index;
+                return [$class, $weight];
+            },
+            $rules,
+            range(0, \count($rules) - 1)
+        );
     }
 
     /**
@@ -142,7 +154,7 @@ class Relevance extends AbstractSorter
      *
      * @return array<int, array<int, array{int, string|null}>>
      */
-    private static function parseTermPositions(string $positionsInDocumentPerTerm): array
+    public static function parseTermPositions(string $positionsInDocumentPerTerm): array
     {
         return array_map(
             fn ($term) => array_map(
@@ -154,6 +166,11 @@ class Relevance extends AbstractSorter
             ),
             explode(';', $positionsInDocumentPerTerm)
         );
+    }
+
+    public static function supports(string $value, Engine $engine): bool
+    {
+        return $value === Searcher::RELEVANCE_ALIAS;
     }
 
     /**
@@ -173,22 +190,5 @@ class Relevance extends AbstractSorter
                 throw new InvalidConfigurationException('Unknown ranking rule: ' . $v);
             }
         }
-    }
-
-    /**
-     * @param array<string> $rules
-     * @return array<array{string, float}>
-     */
-    private static function getRankers(array $rules): array
-    {
-        return array_map(
-            function ($rule, $index) {
-                $class = self::RANKERS[$rule];
-                $weight = Configuration::RANKING_RULES_ORDER_FACTOR ** $index;
-                return [$class, $weight];
-            },
-            $rules,
-            range(0, \count($rules) - 1)
-        );
     }
 }

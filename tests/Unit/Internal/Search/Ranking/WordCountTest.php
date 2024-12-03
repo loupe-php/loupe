@@ -10,6 +10,15 @@ use PHPUnit\Framework\TestCase;
 
 class WordCountTest extends TestCase
 {
+    /**
+     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm $positionsPerTerm
+     */
+    #[DataProvider('wordCountFactorProvider')]
+    public function testWordCountCalculation(array $positionsPerTerm, float $expected): void
+    {
+        $this->assertSame($expected, WordCount::calculateWordCount($positionsPerTerm));
+    }
+
     public static function wordCountFactorProvider(): \Generator
     {
         yield 'No terms match' => [
@@ -19,26 +28,17 @@ class WordCountTest extends TestCase
 
         yield 'One of three terms matches' => [
             [[[1, 'title']], [[0]], [[0]]],
-            1 / 3
+            1 / 3,
         ];
 
         yield 'Two of three terms match' => [
             [[[1, 'title']], [[2, 'summary']], [[0]]],
-            2 / 3
+            2 / 3,
         ];
 
         yield 'All terms match' => [
             [[[1, 'title']], [[2, 'summary']], [[3, 'summary']]],
-            1
+            1,
         ];
-    }
-
-    /**
-     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm $positionsPerTerm
-     */
-    #[DataProvider('wordCountFactorProvider')]
-    public function testWordCountCalculation(array $positionsPerTerm, float $expected): void
-    {
-        $this->assertSame($expected, WordCount::calculateWordCount($positionsPerTerm));
     }
 }

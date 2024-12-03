@@ -14,23 +14,14 @@ final class Configuration
 
     public const ATTRIBUTE_RANKING_ORDER_FACTOR = 0.8;
 
-    public const RANKING_RULES_ORDER_FACTOR = 0.7;
-
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
+
+    public const RANKING_RULES_ORDER_FACTOR = 0.7;
 
     /**
      * @var array<string>
      */
     private array $filterableAttributes = [];
-
-    /**
-     * @var array<string>
-     */
-    private array $rankingRules = [
-        'words',
-        'proximity',
-        'attribute' ,
-    ];
 
     /**
      * @var array<string>
@@ -44,6 +35,15 @@ final class Configuration
     private int $minTokenLengthForPrefixSearch = 3;
 
     private string $primaryKey = 'id';
+
+    /**
+     * @var array<string>
+     */
+    private array $rankingRules = [
+        'words',
+        'proximity',
+        'attribute',
+    ];
 
     /**
      * @var array<string>
@@ -250,6 +250,17 @@ final class Configuration
     }
 
     /**
+     * @param array<string> $rankingRules
+     */
+    public function withRankingRules(array $rankingRules): self
+    {
+        $clone = clone $this;
+        $clone->rankingRules = $rankingRules;
+
+        return $clone;
+    }
+
+    /**
      * @param array<string> $searchableAttributes
      */
     public function withSearchableAttributes(array $searchableAttributes): self
@@ -263,17 +274,6 @@ final class Configuration
 
         $clone = clone $this;
         $clone->searchableAttributes = $searchableAttributes;
-
-        return $clone;
-    }
-
-    /**
-     * @param array<string> $rankingRules
-     */
-    public function withRankingRules(array $rankingRules): self
-    {
-        $clone = clone $this;
-        $clone->rankingRules = $rankingRules;
 
         return $clone;
     }

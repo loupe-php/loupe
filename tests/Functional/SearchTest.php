@@ -2310,7 +2310,7 @@ class SearchTest extends TestCase
                     'id' => 2,
                     'title' => 'Lorem dolor sit amet',
                     'content' => 'Ipsum',
-                    '_rankingScore' =>  1.0,
+                    '_rankingScore' => 1.0,
                 ],
                 [
                     'id' => 3,
@@ -2345,7 +2345,7 @@ class SearchTest extends TestCase
                     'id' => 2,
                     'title' => 'Lorem dolor sit amet',
                     'content' => 'Ipsum',
-                    '_rankingScore' =>  0.8,
+                    '_rankingScore' => 0.8,
                 ],
                 [
                     'id' => 3,

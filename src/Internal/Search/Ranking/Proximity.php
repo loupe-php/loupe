@@ -13,6 +13,9 @@ class Proximity extends AbstractRanker
         return static::calculateProximity($termPositions, self::DECAY_FACTOR);
     }
 
+    /**
+     * @param array<int, array<int, array{int, string|null}>> $termPositions
+     */
     public static function calculateProximity(array $termPositions, float $decayFactor): float
     {
         $allAdjacent = true;
