@@ -73,8 +73,8 @@ class Relevance extends AbstractSorter
                 json_array('%s'),
                 (SELECT group_concat(%s, ';') FROM (%s))
             ) AS %s",
-            implode("','", $rankingRules),
             implode("','", $searchableAttributes),
+            implode("','", $rankingRules),
             implode("','", $positiveTerms),
             Searcher::RELEVANCE_ALIAS . '_per_term',
             implode(' UNION ALL ', $positionsPerDocument),
@@ -103,7 +103,7 @@ class Relevance extends AbstractSorter
      *
      * @param string $termPositions A string of ";" separated per term and "," separated for all the term positions within a document
      */
-    public static function fromQuery(string $rankingRules, string $searchableAttributes, string $queryTokens, string $termPositions): float
+    public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
     {
         // ray(func_get_args());
 
