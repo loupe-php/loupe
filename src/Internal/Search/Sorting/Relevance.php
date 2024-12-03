@@ -106,15 +106,14 @@ class Relevance extends AbstractSorter
         $totalQueryTokenCount = (int) $totalQueryTokenCount;
         $positionsPerTerm = static::parseTermPositions($positionsInDocumentPerTerm);
 
-        $weights = array_map(
-            function ($ranker) use ($searchableAttributes, $totalQueryTokenCount, $positionsPerTerm) {
-                [$class, $weight] = $ranker;
-                return $class::calculate($searchableAttributes, $totalQueryTokenCount, $positionsPerTerm) * $weight;
-            },
-            static::$rankers
-        );
+        $weights = [];
+        $totalWeight = 0;
+        foreach (static::$rankers as [$class, $weight]) {
+            $weights[] = $class::calculate($searchableAttributes, $totalQueryTokenCount, $positionsPerTerm) * $weight;
+            $totalWeight += $weight;
+        }
 
-        return array_sum($weights) / count($weights);
+        return array_sum($weights) / $totalWeight;
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): AbstractSorter

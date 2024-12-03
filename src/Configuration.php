@@ -14,7 +14,7 @@ final class Configuration
 
     public const ATTRIBUTE_RANKING_ORDER_FACTOR = 0.8;
 
-    public const RANKING_RULES_ORDER_FACTOR = 0.8;
+    public const RANKING_RULES_ORDER_FACTOR = 0.7;
 
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
