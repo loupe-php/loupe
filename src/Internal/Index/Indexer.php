@@ -391,27 +391,25 @@ class Indexer
 
     private function removeDocumentData(int $documentId): void
     {
-        // Remove terms of this document
+        // Remove term relations of this document
         $query = sprintf(
-            'DELETE FROM %s WHERE id IN (SELECT term FROM %s WHERE document = %d)',
-            IndexInfo::TABLE_NAME_TERMS,
+            'DELETE FROM %s WHERE document = %d',
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             $documentId
         );
 
         $this->engine->getConnection()->executeStatement($query);
 
-        // Remove multi-attributes of this document
+        // Remove multi-attribute relations of this document
         $query = sprintf(
-            'DELETE FROM %s WHERE id IN (SELECT attribute FROM %s WHERE document = %d)',
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+            'DELETE FROM %s WHERE document = %d',
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
             $documentId
         );
 
         $this->engine->getConnection()->executeStatement($query);
 
-        // The rest (relations, prefixes, state set, etc) is handled by reviseStorage()
+        // The rest (prefixes, state set, etc) is handled by reviseStorage()
     }
 
     private function removeOrphanedDocuments(): void
