@@ -20,11 +20,6 @@ class Relevance extends AbstractSorter
      */
     protected static array $attributeWeightValuesCache = [];
 
-    /**
-     * @var array<AbstractRanker>
-     */
-    protected static ?array $rankers = null;
-
     private const RANKERS = [
         'words' => WordCount::class,
         // 'typo' => TypoCount::class, // Not implemented yet
@@ -110,8 +105,10 @@ class Relevance extends AbstractSorter
      */
     public static function fromQuery(string $rankingRules, string $searchableAttributes, string $queryTokens, string $termPositions): float
     {
+        // ray(func_get_args());
+
         $rankingRules = json_decode($rankingRules, true);
-        static::$rankers ??= static::getRankers($rankingRules);
+        $rankers = static::getRankers($rankingRules);
 
         $searchableAttributes = json_decode($searchableAttributes, true);
 
@@ -120,7 +117,7 @@ class Relevance extends AbstractSorter
 
         $weights = [];
         $totalWeight = 0;
-        foreach (static::$rankers as [$class, $weight]) {
+        foreach ($rankers as [$class, $weight]) {
             $weights[] = $class::calculate($searchableAttributes, $queryTokens, $termPositions) * $weight;
             $totalWeight += $weight;
         }
@@ -180,7 +177,7 @@ class Relevance extends AbstractSorter
 
     /**
      * @param array<string> $rules
-     * @return array<int, array<string, float>>
+     * @return array<array{string, float}>
      */
     private static function getRankers(array $rules): array
     {
