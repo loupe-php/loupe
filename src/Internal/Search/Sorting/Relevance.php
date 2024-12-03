@@ -47,7 +47,7 @@ class Relevance extends AbstractSorter
             // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
             // because it's just a ";" separated list.
             $positionsPerDocument[] = sprintf(
-                "SELECT (SELECT COALESCE(json_group_array(json_array(position, attribute)), '0') FROM %s WHERE %s.id=document) AS %s",
+                "SELECT (SELECT COALESCE(group_concat(DISTINCT position || ':' || attribute), '0') FROM %s WHERE %s.id=document) AS %s",
                 $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token),
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 Searcher::RELEVANCE_ALIAS . '_per_term',
@@ -71,7 +71,7 @@ class Relevance extends AbstractSorter
                 json_array('%s'),
                 json_array('%s'),
                 json_array('%s'),
-                (SELECT json_group_array(%s) FROM (%s))
+                (SELECT group_concat(%s, ';') FROM (%s))
             ) AS %s",
             implode("','", $searchableAttributes),
             implode("','", $rankingRules),
@@ -105,8 +105,6 @@ class Relevance extends AbstractSorter
      */
     public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
     {
-        ray(func_get_args());
-
         $rankingRules = json_decode($rankingRules, true);
         $rankers = static::getRankers($rankingRules);
 
