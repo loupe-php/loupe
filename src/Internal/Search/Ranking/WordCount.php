@@ -6,7 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Ranking;
 
 class WordCount extends AbstractRanker
 {
-    public function calculate(array $searchableAttributes, int $totalQueryTokenCount, array $termPositions): float
+    public static function calculate(array $searchableAttributes, int $totalQueryTokenCount, array $termPositions): float
     {
         $matchedTokens = array_filter(
             $termPositions,

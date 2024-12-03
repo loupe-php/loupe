@@ -58,10 +58,6 @@ class Relevance extends AbstractSorter
             );
         }
 
-        if ($positionsPerDocument === []) {
-            return;
-        }
-
         $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
 
         // Check ranking rules at beginning to throw early
@@ -112,8 +108,8 @@ class Relevance extends AbstractSorter
 
         $weights = array_map(
             function ($ranker) use ($searchableAttributes, $totalQueryTokenCount, $positionsPerTerm) {
-                [$ranker, $weight] = $ranker;
-                return $ranker->calculate($searchableAttributes, $totalQueryTokenCount, $positionsPerTerm) * $weight;
+                [$class, $weight] = $ranker;
+                return $class::calculate($searchableAttributes, $totalQueryTokenCount, $positionsPerTerm) * $weight;
             },
             static::$rankers
         );
@@ -173,16 +169,15 @@ class Relevance extends AbstractSorter
 
     /**
      * @param array<string> $rules
-     * @return array<int, array<AbstractRanker, float>>
+     * @return array<int, array<string, float>>
      */
     private static function getRankers(array $rules): array
     {
         return array_map(
             function ($rule, $index) {
                 $class = self::RANKERS[$rule];
-                $ranker = new $class();
                 $weight = Configuration::RANKING_RULES_ORDER_FACTOR ** $index;
-                return [$ranker, $weight];
+                return [$class, $weight];
             },
             $rules,
             range(0, \count($rules) - 1)

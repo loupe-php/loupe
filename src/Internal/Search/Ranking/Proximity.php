@@ -8,7 +8,12 @@ class Proximity extends AbstractRanker
 {
     private const float DECAY_FACTOR = 0.1;
 
-    public function calculate(array $searchableAttributes, int $totalQueryTokenCount, array $termPositions): float
+    public static function calculate(array $searchableAttributes, int $totalQueryTokenCount, array $termPositions): float
+    {
+        return static::calculateProximity($termPositions, self::DECAY_FACTOR);
+    }
+
+    public static function calculateProximity(array $termPositions, float $decayFactor): float
     {
         $allAdjacent = true;
         $totalProximity = 0;
@@ -38,7 +43,7 @@ class Proximity extends AbstractRanker
             }
 
             // Calculate proximity with decay function using the distance
-            $proximity = exp(-1 * self::DECAY_FACTOR * $distance);
+            $proximity = exp(-1 * $decayFactor * $distance);
             $totalProximity += $proximity;
         }
 
