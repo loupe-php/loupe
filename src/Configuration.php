@@ -24,6 +24,11 @@ final class Configuration
     /**
      * @var array<string>
      */
+    private array $rankingRules = [];
+
+    /**
+     * @var array<string>
+     */
     private array $languages = [];
 
     private ?LoggerInterface $logger = null;
@@ -130,6 +135,14 @@ final class Configuration
     public function getPrimaryKey(): string
     {
         return $this->primaryKey;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getRankingRules(): array
+    {
+        return $this->rankingRules;
     }
 
     /**
@@ -244,6 +257,17 @@ final class Configuration
 
         $clone = clone $this;
         $clone->searchableAttributes = $searchableAttributes;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $rankingRules
+     */
+    public function withRankingRules(array $rankingRules): self
+    {
+        $clone = clone $this;
+        $clone->rankingRules = $rankingRules;
 
         return $clone;
     }
