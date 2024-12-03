@@ -2360,6 +2360,39 @@ class SearchTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 3,
         ]);
+
+        $searchParametersWithoutMatch = SearchParameters::create()
+            ->withQuery('pepsi cola')
+            ->withShowRankingScore(true)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParametersWithoutMatch, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Lorem ipsum',
+                    'content' => 'dolor sit amet',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Lorem dolor sit amet',
+                    'content' => 'Ipsum',
+                    '_rankingScore' => 0.8,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Dolor',
+                    'content' => 'Lorem sit amet',
+                    '_rankingScore' => 0.8,
+                ],
+            ],
+            'query' => 'lorem ipsum',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
     }
 
     public function testSearchingForNumericArrayType(): void
