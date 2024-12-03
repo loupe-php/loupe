@@ -105,12 +105,12 @@ class Relevance extends AbstractSorter
      */
     public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
     {
-        $rankingRules = json_decode($rankingRules, true);
+        $rankingRules = json_decode($rankingRules);
         $rankers = static::getRankers($rankingRules);
 
-        $searchableAttributes = json_decode($searchableAttributes, true);
+        $searchableAttributes = json_decode($searchableAttributes);
 
-        $queryTokens = json_decode($queryTokens, true);
+        $queryTokens = json_decode($queryTokens);
         $termPositions = static::parseTermPositions($termPositions);
 
         $weights = [];
