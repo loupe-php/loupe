@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Tests\Unit\Internal\Search\Sorting;
 
 use Loupe\Loupe\Internal\Search\Ranking\Proximity;
-use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -60,7 +59,7 @@ class ProximityTest extends TestCase
      * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm $positionsPerTerm
      */
     #[DataProvider('proximityFactorProvider')]
-    public function testCalculateProximityFactor(array $positionsPerTerm, float $decayFactor, float $expected): void
+    public function testProximityCalculation(array $positionsPerTerm, float $decayFactor, float $expected): void
     {
         $this->assertSame($expected, Proximity::calculateProximity($positionsPerTerm, $decayFactor));
     }

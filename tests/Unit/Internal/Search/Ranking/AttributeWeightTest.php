@@ -56,13 +56,13 @@ class AttributeWeightTest extends TestCase
      * @param array<string, int> $attributes
      */
     #[DataProvider('attributeWeightProvider')]
-    public function testCalculateAttributeWeightFactor(array $positionsPerTerm, array $attributes, float $expected): void
+    public function testAttributeWeightCalculation(array $positionsPerTerm, array $attributes, float $expected): void
     {
         $totalQueryTokenCount = 2; // ignored by AttributeWeight ranker
         $this->assertSame($expected, AttributeWeight::calculate($attributes, $totalQueryTokenCount, $positionsPerTerm));
     }
 
-    public function testCalculateIntrinsicAttributeWeights(): void
+    public function testIntrinsicAttributeWeightCalculation(): void
     {
         $this->assertSame(
             [],

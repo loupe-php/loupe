@@ -2032,17 +2032,17 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.8872,
+                    '_rankingScore' => 0.85578,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.75,
+                    '_rankingScore' => 0.77169,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.6852,
+                    '_rankingScore' => 0.68885,
                 ],
             ],
             'query' => 'life learning',
@@ -2065,7 +2065,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.8872,
+                    '_rankingScore' => 0.85578,
                 ],
             ],
             'query' => 'life learning',
@@ -2114,22 +2114,22 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'content' => 'Book title: life learning',
-                    '_rankingScore' => 0.78904,
+                    '_rankingScore' => 0.79116,
                 ],
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.73572,
+                    '_rankingScore' => 0.723,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.63427,
+                    '_rankingScore' => 0.65416,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.63427,
+                    '_rankingScore' => 0.65416,
                 ],
             ],
             'query' => 'foobar life learning',
@@ -2188,7 +2188,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 3,
                     'title' => 'Learning to game',
-                    '_rankingScore' => 0.83333,
+                    '_rankingScore' => 0.84779,
                 ],
             ],
             'query' => 'game of life',
@@ -2216,12 +2216,12 @@ class SearchTest extends TestCase
                 [
                     'id' => 2,
                     'title' => 'Everlasting learning',
-                    '_rankingScore' => 0.878,
+                    '_rankingScore' => 0.89081,
                 ],
                 [
                     'id' => 3,
                     'title' => 'Learning to game',
-                    '_rankingScore' => 0.78333,
+                    '_rankingScore' => 0.80304,
                 ],
             ],
             'query' => 'game of life',
