@@ -26,7 +26,11 @@ final class Configuration
     /**
      * @var array<string>
      */
-    private array $rankingRules = [];
+    private array $rankingRules = [
+        'words',
+        'proximity',
+        'attribute' ,
+    ];
 
     /**
      * @var array<string>
