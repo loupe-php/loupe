@@ -32,6 +32,12 @@ class StateSet implements StateSetInterface
         return $this->inMemoryStateSet->all();
     }
 
+    public function clear(): void
+    {
+        $this->initialize();
+        $this->inMemoryStateSet = new InMemoryStateSet([]);
+    }
+
     public function has(int $state): bool
     {
         $this->initialize();

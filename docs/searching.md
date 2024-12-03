@@ -311,7 +311,7 @@ $results = [
 ```
 
 [Config]: configuration.md
-[Restaurant_Fixture]: ./../tests/Functional/IndexData/restaurants.json
+[Restaurant_Fixture]: ./../tests/Fixtures/Data/restaurants.json
 
 Additional to a query based on distance we can also search for locations inside a bounding box.
 In this example we have 4 documents and 3 with geo coordinates (New York, London, Vienna).
@@ -359,4 +359,4 @@ $results = [
 ```
 
 [Config]: configuration.md
-[Restaurant_Fixture]: ./../tests/Functional/IndexData/locations.json
+[Restaurant_Fixture]: ./../tests/Fixtures/Data/locations.json

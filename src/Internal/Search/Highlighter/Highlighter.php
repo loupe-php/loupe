@@ -114,7 +114,7 @@ class Highlighter
                     }
                 } else {
                     foreach ($textToken->allTerms() as $textTerm) {
-                        if (Levenshtein::levenshtein($term, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                        if (Levenshtein::damerauLevenshtein($term, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
                             return true;
                         }
                     }
@@ -139,14 +139,14 @@ class Highlighter
         $prefix = implode('', \array_slice($chars, 0, $configuration->getMinTokenLengthForPrefixSearch()));
         $rest = \array_slice($chars, $configuration->getMinTokenLengthForPrefixSearch());
 
-        if (Levenshtein::levenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+        if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
             return true;
         }
 
         while ($rest !== []) {
             $prefix .= array_shift($rest);
 
-            if (Levenshtein::levenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+            if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
                 return true;
             }
         }

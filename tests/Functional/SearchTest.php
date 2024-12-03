@@ -989,6 +989,43 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testDamerauLevensthein(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title'])
+        ;
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('convesre') // With Levenshtein this would be a total cost of 3, with Damerau-Levenshtein, just 2
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withAttributesToHighlight(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'title' => 'These are my Converse Chucks!',
+        ]);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 42,
+                    'title' => 'These are my Converse Chucks!',
+                    '_formatted' => [
+                        'id' => 42,
+                        'title' => 'These are my <em>Converse</em> Chucks!',
+                    ],
+                ],
+            ],
+            'query' => 'convesre',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
@@ -2685,18 +2722,22 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 4) - no match with threshold to 3' => [
+        yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 3) - match with threshold to 3 thanks to Damerau-Levenshtein' => [
             TypoTolerance::create()->withTypoThresholds([
                 8 => 3,
             ]),
             'Gukcleberry',
             [
-                'hits' => [],
+                'hits' => [[
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                    'lastname' => 'Finn',
+                ]],
                 'query' => 'Gukcleberry',
                 'hitsPerPage' => 20,
                 'page' => 1,
-                'totalPages' => 0,
-                'totalHits' => 0,
+                'totalPages' => 1,
+                'totalHits' => 1,
             ],
         ];
 
