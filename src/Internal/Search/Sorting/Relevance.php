@@ -128,11 +128,35 @@ class Relevance extends AbstractSorter
         return new self($direction);
     }
 
+    public static function supports(string $value, Engine $engine): bool
+    {
+        return $value === Searcher::RELEVANCE_ALIAS;
+    }
+
+    /**
+     * @param array<string> $rules
+     */
+    protected static function checkRules(array $rules): void
+    {
+        if (!\count($rules)) {
+            throw new InvalidConfigurationException('Ranking rules cannot be empty.');
+        }
+
+        foreach ($rules as $v) {
+            if (!\is_string($v)) {
+                throw new InvalidConfigurationException('Ranking rules must be an array of strings.');
+            }
+            if (!\in_array($v, array_keys(self::RANKERS), true)) {
+                throw new InvalidConfigurationException('Unknown ranking rule: ' . $v);
+            }
+        }
+    }
+
     /**
      * @param array<string> $rules
      * @return array<array{string, float}>
      */
-    public static function getRankers(array $rules): array
+    protected static function getRankers(array $rules): array
     {
         return array_map(
             function ($rule, $index) {
@@ -152,7 +176,7 @@ class Relevance extends AbstractSorter
      *
      * @return array<int, array<int, array{int, string|null}>>
      */
-    public static function parseTermPositions(string $positionsInDocumentPerTerm): array
+    protected static function parseTermPositions(string $positionsInDocumentPerTerm): array
     {
         return array_map(
             fn ($term) => array_map(
@@ -164,29 +188,5 @@ class Relevance extends AbstractSorter
             ),
             explode(';', $positionsInDocumentPerTerm)
         );
-    }
-
-    public static function supports(string $value, Engine $engine): bool
-    {
-        return $value === Searcher::RELEVANCE_ALIAS;
-    }
-
-    /**
-     * @param array<string> $rules
-     */
-    private static function checkRules(array $rules): void
-    {
-        if (!\count($rules)) {
-            throw new InvalidConfigurationException('Ranking rules cannot be empty.');
-        }
-
-        foreach ($rules as $v) {
-            if (!\is_string($v)) {
-                throw new InvalidConfigurationException('Ranking rules must be an array of strings.');
-            }
-            if (!\in_array($v, array_keys(self::RANKERS), true)) {
-                throw new InvalidConfigurationException('Unknown ranking rule: ' . $v);
-            }
-        }
     }
 }

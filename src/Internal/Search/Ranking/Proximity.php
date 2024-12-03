@@ -6,11 +6,11 @@ namespace Loupe\Loupe\Internal\Search\Ranking;
 
 class Proximity extends AbstractRanker
 {
-    private const float DECAY_FACTOR = 0.1;
+    protected static float $decayFactor = 0.1;
 
     public static function calculate(array $searchableAttributes, array $queryTokens, array $termPositions): float
     {
-        return static::calculateProximity($termPositions, self::DECAY_FACTOR);
+        return static::calculateProximity($termPositions, static::$decayFactor);
     }
 
     /**
