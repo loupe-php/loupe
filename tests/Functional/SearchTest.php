@@ -2232,6 +2232,136 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testRelevanceWithCustomRankingRules(): void
+    {
+        $documents = [
+            [
+                'id' => 1,
+                'title' => 'Lorem ipsum',
+                'content' => 'dolor sit amet',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Lorem dolor sit amet',
+                'content' => 'Ipsum',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Dolor',
+                'content' => 'Lorem sit amet',
+            ],
+        ];
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('lorem ipsum')
+            ->withShowRankingScore(true)
+        ;
+
+        $configurationWithDefaultRules = Configuration::create()
+            ->withSearchableAttributes(['title', 'content']);
+
+        $loupe = $this->createLoupe($configurationWithDefaultRules);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Lorem ipsum',
+                    'content' => 'dolor sit amet',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Lorem dolor sit amet',
+                    'content' => 'Ipsum',
+                    '_rankingScore' => 0.95525,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Dolor',
+                    'content' => 'Lorem sit amet',
+                    '_rankingScore' => 0.72694,
+                ],
+            ],
+            'query' => 'lorem ipsum',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithWordsOnly = Configuration::create()
+            ->withSearchableAttributes(['title', 'content'])
+            ->withRankingRules(['words']);
+
+        $loupe = $this->createLoupe($configurationWithWordsOnly);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Lorem ipsum',
+                    'content' => 'dolor sit amet',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Lorem dolor sit amet',
+                    'content' => 'Ipsum',
+                    '_rankingScore' =>  1.0,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Dolor',
+                    'content' => 'Lorem sit amet',
+                    '_rankingScore' => 0.5,
+                ],
+            ],
+            'query' => 'lorem ipsum',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithAttributesOnly = Configuration::create()
+            ->withSearchableAttributes(['title', 'content'])
+            ->withRankingRules(['attribute']);
+
+        $loupe = $this->createLoupe($configurationWithAttributesOnly);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Lorem ipsum',
+                    'content' => 'dolor sit amet',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Lorem dolor sit amet',
+                    'content' => 'Ipsum',
+                    '_rankingScore' =>  0.8,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Dolor',
+                    'content' => 'Lorem sit amet',
+                    '_rankingScore' => 0.8,
+                ],
+            ],
+            'query' => 'lorem ipsum',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+    }
+
     public function testSearchingForNumericArrayType(): void
     {
         $configuration = Configuration::create()
