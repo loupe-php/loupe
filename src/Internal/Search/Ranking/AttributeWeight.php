@@ -8,7 +8,7 @@ use Loupe\Loupe\Configuration;
 
 class AttributeWeight extends AbstractRanker
 {
-    public static function calculate(array $searchableAttributes, int $totalQueryTokenCount, array $termPositions): float
+    public static function calculate(array $searchableAttributes, array $queryTokens, array $termPositions): float
     {
         $weights = static::calculateIntrinsicAttributeWeights($searchableAttributes);
 

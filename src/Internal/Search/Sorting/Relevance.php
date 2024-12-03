@@ -40,13 +40,14 @@ class Relevance extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        if ($searcher->getTokens()->empty()) {
+        $tokens = $searcher->getTokens()->all();
+        if (!count($tokens)) {
             return;
         }
 
         $positionsPerDocument = [];
 
-        foreach ($searcher->getTokens()->all() as $token) {
+        foreach ($tokens as $token) {
             // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
             // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
             // because it's just a ";" separated list.
@@ -58,17 +59,28 @@ class Relevance extends AbstractSorter
             );
         }
 
-        $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
+        // Positive weights to determine word count
+        $allTerms = $searcher->getTokens()->allTerms();
+        $negatedTerms = $searcher->getTokens()->allNegatedTerms();
+        $positiveTerms = array_diff($allTerms, $negatedTerms);
 
         // Check ranking rules at beginning to throw early
         $rankingRules = $engine->getConfiguration()->getRankingRules();
         self::checkRules($rankingRules);
 
+        // Searchable attributes to determine attribute weight
+        $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
+
         $select = sprintf(
-            "loupe_relevance(json_array('%s'), json_array('%s'), %d, (SELECT group_concat(%s, ';') FROM (%s))) AS %s",
+            "loupe_relevance(
+                json_array('%s'),
+                json_array('%s'),
+                json_array('%s'),
+                (SELECT group_concat(%s, ';') FROM (%s))
+            ) AS %s",
             implode("','", $rankingRules),
             implode("','", $searchableAttributes),
-            $searcher->getTokens()->count(),
+            implode("','", $positiveTerms),
             Searcher::RELEVANCE_ALIAS . '_per_term',
             implode(' UNION ALL ', $positionsPerDocument),
             Searcher::RELEVANCE_ALIAS,
@@ -94,22 +106,22 @@ class Relevance extends AbstractSorter
      * - The second term did not match (position 0).
      * - The third term matched. At position 4 in the `summary` attribute.
      *
-     * @param string $positionsInDocumentPerTerm A string of ";" separated per term and "," separated for all the term positions within a document
+     * @param string $termPositions A string of ";" separated per term and "," separated for all the term positions within a document
      */
-    public static function fromQuery(string $rankingRules, string $searchableAttributes, string $totalQueryTokenCount, string $positionsInDocumentPerTerm): float
+    public static function fromQuery(string $rankingRules, string $searchableAttributes, string $queryTokens, string $termPositions): float
     {
         $rankingRules = json_decode($rankingRules, true);
         static::$rankers ??= static::getRankers($rankingRules);
 
         $searchableAttributes = json_decode($searchableAttributes, true);
 
-        $totalQueryTokenCount = (int) $totalQueryTokenCount;
-        $positionsPerTerm = static::parseTermPositions($positionsInDocumentPerTerm);
+        $queryTokens = json_decode($queryTokens, true);
+        $termPositions = static::parseTermPositions($termPositions);
 
         $weights = [];
         $totalWeight = 0;
         foreach (static::$rankers as [$class, $weight]) {
-            $weights[] = $class::calculate($searchableAttributes, $totalQueryTokenCount, $positionsPerTerm) * $weight;
+            $weights[] = $class::calculate($searchableAttributes, $queryTokens, $termPositions) * $weight;
             $totalWeight += $weight;
         }
 

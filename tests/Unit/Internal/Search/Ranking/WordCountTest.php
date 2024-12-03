@@ -14,25 +14,21 @@ class WordCountTest extends TestCase
     {
         yield 'No terms match' => [
             [[[0]], [[0]], [[0]]],
-            3,
             0,
         ];
 
         yield 'One of three terms matches' => [
-            [[[1, 'term1']], [[0]], [[0]]],
-            3,
+            [[[1, 'title']], [[0]], [[0]]],
             1 / 3
         ];
 
         yield 'Two of three terms match' => [
-            [[[1, 'term1']], [[2, 'term2']], [[0]]],
-            3,
+            [[[1, 'title']], [[2, 'summary']], [[0]]],
             2 / 3
         ];
 
         yield 'All terms match' => [
-            [[[1, 'term1']], [[2, 'term2']], [[3, 'term3']]],
-            3,
+            [[[1, 'title']], [[2, 'summary']], [[3, 'summary']]],
             1
         ];
     }
@@ -41,9 +37,8 @@ class WordCountTest extends TestCase
      * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm $positionsPerTerm
      */
     #[DataProvider('wordCountFactorProvider')]
-    public function testWordCountCalculation(array $positionsPerTerm, int $queryTokenCount, float $expected): void
+    public function testWordCountCalculation(array $positionsPerTerm, float $expected): void
     {
-        $attributes = []; // Not used in the method
-        $this->assertSame($expected, WordCount::calculate($attributes, $queryTokenCount, $positionsPerTerm));
+        $this->assertSame($expected, WordCount::calculateWordCount($positionsPerTerm));
     }
 }
