@@ -21,44 +21,32 @@ class AttributeWeightTest extends TestCase
         yield 'No attributes are matched' => [
             [[[1, 'title'], [2, 'summary']]],
             [
-                'unknown_attribute' => 0.5,
+                'unknown_attribute',
             ],
             1.0,
         ];
 
         yield 'All attributes are equal' => [
             [[[1, 'title'], [2, 'summary']]],
-            [
-                'title' => 1,
-                'summary' => 1,
-            ],
+            ['*'],
             1.0,
         ];
 
         yield 'Attributes are applied when found' => [
             [[[1, 'title']]],
-            [
-                'title' => 1,
-                'summary' => 0.8,
-            ],
+            ['title', 'summary'],
             1.0,
         ];
 
         yield 'Attributes are applied when found later in list' => [
             [[[1, 'non_existent'], [2, 'summary']]],
-            [
-                'title' => 1,
-                'summary' => 0.8,
-            ],
+            ['title', 'summary'],
             0.8,
         ];
 
         yield 'Terms found in multiple attributes are applied the highest factor' => [
             [[[1, 'title'], [2, 'summary']]],
-            [
-                'title' => 1,
-                'summary' => 0.8,
-            ],
+            ['title', 'summary'],
             1.0,
         ];
     }
