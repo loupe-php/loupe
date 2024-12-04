@@ -108,7 +108,7 @@ class Relevance extends AbstractSorter
         $rankingRules = json_decode($rankingRules, true);
         $rankers = static::getRankers($rankingRules);
 
-        $searchableAttributes = json_decode($searchableAttributes);
+        $searchableAttributes = json_decode($searchableAttributes, true);
 
         $queryTokens = json_decode($queryTokens);
         $termPositions = static::parseTermPositions($termPositions);
