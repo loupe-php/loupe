@@ -60,11 +60,8 @@ class Indexer
 
                             $this->engine->getConnection()
                                 ->transactional(function () use ($document) {
-                                    // Delete the document first if it already exists to avoid orphaned data
-                                    $userId = (string) $document[$this->engine->getConfiguration()->getPrimaryKey()];
-                                    $this->deleteDocuments([$userId], reviseStorage: false);
-
-                                    $documentId = $this->indexDocument($document);
+                                    $documentId = $this->createDocument($document);
+                                    $this->removeDocumentData($documentId);
                                     $this->indexMultiAttributes($document, $documentId);
                                     $this->indexTerms($document, $documentId);
                                 });
@@ -138,41 +135,11 @@ class Indexer
         return $this;
     }
 
-    private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void
-    {
-        if ($value === null) {
-            return;
-        }
-
-        $valueColumn = (\is_float($value) || \is_bool($value)) ? 'numeric_value' : 'string_value';
-
-        $data = [
-            'attribute' => $attribute,
-            $valueColumn => $value,
-        ];
-
-        $attributeId = $this->engine->upsert(
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-            $data,
-            ['attribute', $valueColumn],
-            'id'
-        );
-
-        $this->engine->upsert(
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-            [
-                'attribute' => $attributeId,
-                'document' => $documentId,
-            ],
-            ['attribute', 'document']
-        );
-    }
-
     /**
      * @param array<string, mixed> $document
      * @return int The document ID
      */
-    private function indexDocument(array $document): int
+    private function createDocument(array $document): int
     {
         $data = [
             'user_id' => (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
@@ -217,6 +184,36 @@ class Indexer
             $data,
             ['user_id'],
             'id'
+        );
+    }
+
+    private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void
+    {
+        if ($value === null) {
+            return;
+        }
+
+        $valueColumn = (\is_float($value) || \is_bool($value)) ? 'numeric_value' : 'string_value';
+
+        $data = [
+            'attribute' => $attribute,
+            $valueColumn => $value,
+        ];
+
+        $attributeId = $this->engine->upsert(
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+            $data,
+            ['attribute', $valueColumn],
+            'id'
+        );
+
+        $this->engine->upsert(
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            [
+                'attribute' => $attributeId,
+                'document' => $documentId,
+            ],
+            ['attribute', 'document']
         );
     }
 
@@ -390,6 +387,29 @@ class Indexer
         /** @var StateSet $stateSet */
         $stateSet = $this->engine->getStateSetIndex()->getStateSet();
         $stateSet->persist();
+    }
+
+    private function removeDocumentData(int $documentId): void
+    {
+        // Remove term relations of this document
+        $query = sprintf(
+            'DELETE FROM %s WHERE document = %d',
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            $documentId
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // Remove multi-attribute relations of this document
+        $query = sprintf(
+            'DELETE FROM %s WHERE document = %d',
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            $documentId
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // The rest (prefixes, state set, etc) is handled by reviseStorage()
     }
 
     private function removeOrphanedDocuments(): void
