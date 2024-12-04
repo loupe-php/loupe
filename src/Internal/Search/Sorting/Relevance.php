@@ -110,7 +110,7 @@ class Relevance extends AbstractSorter
 
         $searchableAttributes = json_decode($searchableAttributes, true);
 
-        $queryTokens = json_decode($queryTokens);
+        $queryTokens = json_decode($queryTokens, true);
         $termPositions = static::parseTermPositions($termPositions);
 
         $weights = [];
