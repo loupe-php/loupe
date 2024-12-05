@@ -32,8 +32,8 @@ Note that some implementation details (e.g. libraries used) referenced in this b
 Performance depends on many factors but here are some ballpark numbers based on indexing the [~32k movies fixture by 
 MeiliSearch][MeiliSearch_Movies] and the test files in `bin` of this repository:
 
-* Indexing (`php bin/index_performance_test.php`) will take a little over 2min (~230 documents per second)
-* Querying (`php bin/search_performance_test.php`) for `Amakin Dkywalker` with typo tolerance enabled and ordered by 
+* Indexing (`php bin/bench/index.php`) will take a little over 2min (~230 documents per second)
+* Querying (`php bin/bench/search.php`) for `Amakin Dkywalker` with typo tolerance enabled and ordered by 
   relevance finishes in about `120 ms`
 
 Note that anything above 50k documents is probably not a use case for Loupe. Please, also read the
