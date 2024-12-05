@@ -13,12 +13,13 @@ trait MemoizationTrait
 
     private function memoize(callable $compute): callable
     {
-        $namespace = crc32(serialize($compute));
+        $namespace = serialize($compute);
 
-        return function(...$args) use ($namespace, $compute) {
-            $key = crc32($namespace . ':' . serialize($args));
+        return function() use ($namespace, $compute) {
+            $args = func_get_args();
+            $key = $namespace . ':' . implode(':', $args);
             if (!array_key_exists($key, $this->memo)) {
-                $this->memo[$key] = call_user_func($compute, ...$args);
+                $this->memo[$key] = call_user_func_array($compute, $args);
             }
             return $this->memo[$key];
         };
