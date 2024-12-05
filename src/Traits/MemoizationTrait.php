@@ -7,18 +7,20 @@ namespace Loupe\Loupe\Traits;
 trait MemoizationTrait
 {
     /**
-     * @var array<mixed>
+     * @var array<string, mixed>
      */
     private array $memo = [];
 
-    private function memoize(callable $compute): mixed
+    private function memoize(callable $compute): callable
     {
-        $namespace = serialize($compute);
+        $namespace = crc32(serialize($compute));
 
-        return function() use ($namespace, $compute) {
-            $args = func_get_args();
-            $key = md5($namespace . serialize($args));
-            return $this->memo[$key] ??= call_user_func_array($compute, $args);
+        return function(...$args) use ($namespace, $compute) {
+            $key = crc32($namespace . ':' . serialize($args));
+            if (!array_key_exists($key, $this->memo)) {
+                $this->memo[$key] = call_user_func($compute, ...$args);
+            }
+            return $this->memo[$key];
         };
     }
 }
