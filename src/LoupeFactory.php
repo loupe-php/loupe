@@ -16,9 +16,12 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
+use Loupe\Loupe\Traits\MemoizationTrait;
 
 final class LoupeFactory
 {
+    use MemoizationTrait;
+
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
     public function create(string $dataDir, Configuration $configuration): Loupe
@@ -154,15 +157,15 @@ final class LoupeFactory
     {
         $functions = [
             'loupe_max_levenshtein' => [
-                'callback' => [Levenshtein::class, 'maxLevenshtein'],
+                'callback' => $this->memoize([Levenshtein::class, 'maxLevenshtein']),
                 'numArgs' => 4,
             ],
             'loupe_geo_distance' => [
-                'callback' => [Geo::class, 'geoDistance'],
+                'callback' => $this->memoize([Geo::class, 'geoDistance']),
                 'numArgs' => 4,
             ],
             'loupe_relevance' => [
-                'callback' => [Relevance::class, 'fromQuery'],
+                'callback' => $this->memoize([Relevance::class, 'fromQuery']),
                 'numArgs' => 3,
             ],
         ];
