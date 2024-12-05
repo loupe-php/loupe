@@ -176,7 +176,7 @@ class Relevance extends AbstractSorter
      *
      * @param string $positionsInDocumentPerTerm A string of ";" separated per term and "," separated for all the term positions within a document
      */
-    public static function fromQuery(string $positionsInDocumentPerTerm, string $totalQueryTokenCount, string $attributeWeights): float
+    public static function fromQuery(string $positionsInDocumentPerTerm, int|string $totalQueryTokenCount, string $attributeWeights): float
     {
         $totalQueryTokenCount = (int) $totalQueryTokenCount;
         $positionsPerTerm = static::parseTermPositions($positionsInDocumentPerTerm);
