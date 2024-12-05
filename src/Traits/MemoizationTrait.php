@@ -15,11 +15,11 @@ trait MemoizationTrait
     {
         $namespace = serialize($compute);
 
-        return function() use ($namespace, $compute) {
-            $args = func_get_args();
+        return function () use ($namespace, $compute) {
+            $args = \func_get_args();
             $key = $namespace . ':' . implode(':', $args);
-            if (!array_key_exists($key, $this->memo)) {
-                $this->memo[$key] = call_user_func_array($compute, $args);
+            if (!\array_key_exists($key, $this->memo)) {
+                $this->memo[$key] = \call_user_func_array($compute, $args);
             }
             return $this->memo[$key];
         };
