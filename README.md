@@ -29,16 +29,16 @@ Note that some implementation details (e.g. libraries used) referenced in this b
 
 ## Performance
 
-Performance depends on many factors but here are some ballpark numbers based on indexing the [~32k movies fixture by 
-MeiliSearch][MeiliSearch_Movies] and the test files in `bin` of this repository:
+Performance depends on many factors but here are some ballpark numbers based on indexing the 
+[~32k movies fixture][MeiliSearch_Movies] provided by MeiliSearch.
 
-* Indexing (`php bin/index_performance_test.php`) will take a little over 2min (~230 documents per second)
-* Querying (`php bin/search_performance_test.php`) for `Amakin Dkywalker` with typo tolerance enabled and ordered by 
-  relevance finishes in about `120 ms`
+* **Indexing** will take a little over **90 seconds** (~350 documents per second)
+* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **120 ms**
 
-Note that anything above 50k documents is probably not a use case for Loupe. Please, also read the
-[Performance](./docs/performance.md) chapter in the docs. You may report your own performance 
-measurements and more details in the [respective discussion][Performance_Topic].
+Note that anything above 50k documents is probably not a use case for Loupe. You can run your own benchmarks 
+using the scripts in the `bin/bench` folder: `index.php` for indexing and `search.php` for searching. 
+Please, also read the [Performance](./docs/performance.md) chapter in the docs. You may report your own performance 
+measurements and more details in the [respective discussion][Performance_Topic]. 
 
 ## Acknowledgement
 
