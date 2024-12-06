@@ -807,6 +807,9 @@ class Searcher
         foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
             $statements = [];
             foreach ($tokenOrPhrase->getTokens() as $token) {
+                if ($token->isStopWord()) {
+                    continue;
+                }
                 $statements[] = $this->createTermDocumentMatchesCTECondition($token);
             }
 
