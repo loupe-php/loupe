@@ -23,11 +23,6 @@ class Relevance extends AbstractSorter
         // 'exactness' => Exactness::class, // Not implemented yet
     ];
 
-    /**
-     * @var array<string, array<string, float>>
-     */
-    protected static array $attributeWeightValuesCache = [];
-
     public function __construct(
         private Direction $direction
     ) {
