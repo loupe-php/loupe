@@ -16,11 +16,14 @@ class WordCount extends AbstractRanker
      */
     public static function calculateWordCount(array &$termPositions): float
     {
-        $matchedTokens = array_filter(
-            $termPositions,
-            fn ($termArray) => !(\count($termArray) === 1 && $termArray[0][0] === 0)
-        );
+        $matchedWords = 0;
+        foreach ($termPositions as $term) {
+            if ((\count($term) === 1 && $term[0][0] === 0)) {
+                continue;
+            }
+            $matchedWords += 1;
+        }
 
-        return \count($matchedTokens) / \count($termPositions);
+        return $matchedWords / \count($termPositions);
     }
 }
