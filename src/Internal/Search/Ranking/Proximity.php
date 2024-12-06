@@ -8,7 +8,7 @@ class Proximity extends AbstractRanker
 {
     protected static float $decayFactor = 0.1;
 
-    public static function calculate(array $searchableAttributes, array $queryTokens, array $termPositions): float
+    public static function calculate(array &$searchableAttributes, array &$queryTokens, array &$termPositions): float
     {
         return static::calculateProximity($termPositions, static::$decayFactor);
     }
@@ -16,7 +16,7 @@ class Proximity extends AbstractRanker
     /**
      * @param array<int, array<int, array{int, string|null}>> $termPositions
      */
-    public static function calculateProximity(array $termPositions, float $decayFactor): float
+    public static function calculateProximity(array &$termPositions, float $decayFactor): float
     {
         $allAdjacent = true;
         $totalProximity = 0;

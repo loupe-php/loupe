@@ -6,7 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Ranking;
 
 class WordCount extends AbstractRanker
 {
-    public static function calculate(array $searchableAttributes, array $queryTokens, array $termPositions): float
+    public static function calculate(array &$searchableAttributes, array &$queryTokens, array &$termPositions): float
     {
         return static::calculateWordCount($termPositions);
     }
@@ -14,7 +14,7 @@ class WordCount extends AbstractRanker
     /**
      * @param array<int, array<int, array{int, string|null}>> $termPositions
      */
-    public static function calculateWordCount(array $termPositions): float
+    public static function calculateWordCount(array &$termPositions): float
     {
         $matchedTokens = array_filter(
             $termPositions,
