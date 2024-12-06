@@ -22,8 +22,5 @@ if ($update) {
     $config['loupe']->addDocuments($movies);
 }
 
-$endTime = microtime(true) - $startTime;
-$memoryUsage = memory_get_peak_usage(true) / 1024 / 1024;
-
-echo sprintf('Indexed in %.2F s using %.2F MiB', $endTime, $memoryUsage);
+echo sprintf('Indexed in %.2F s using %.2F MiB', microtime(true) - $startTime, memory_get_peak_usage(true) / 1024 / 1024);
 echo PHP_EOL;
