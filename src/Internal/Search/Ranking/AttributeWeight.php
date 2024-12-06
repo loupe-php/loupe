@@ -10,7 +10,7 @@ class AttributeWeight extends AbstractRanker
 {
     public static function calculate(array &$searchableAttributes, array &$queryTokens, array &$termPositions): float
     {
-        static $weights = static::calculateIntrinsicAttributeWeights($searchableAttributes);
+        $weights = static::calculateIntrinsicAttributeWeights($searchableAttributes);
 
         // Group weights by term, making sure to go with the higher weight if multiple attributes are matched
         // So if `title` (1.0) and `summary` (0.8) are matched, the weight of `title` should be used
