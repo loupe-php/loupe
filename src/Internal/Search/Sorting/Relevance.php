@@ -98,10 +98,10 @@ class Relevance extends AbstractSorter
      */
     public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
     {
+        $searchableAttributes = explode(':', $searchableAttributes);
+
         $rankingRules = explode(':', $rankingRules);
         $rankers = static::getRankers($rankingRules);
-
-        $searchableAttributes = explode(':', $searchableAttributes);
 
         $queryTokens = explode(':', $queryTokens);
         $termPositions = static::parseTermPositions($termPositions);
