@@ -367,6 +367,7 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+            [],
             '<mark>',
             '</mark>',
         ];
@@ -425,6 +426,35 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+        ];
+
+        yield 'Highlight multiple matches across stop words' => [
+            'racing to a boxing match',
+            ['title', 'overview'],
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 6,
+                        'title' => 'Judgment Night',
+                        'overview' => 'While racing to a boxing match, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama',
+                        'genres' => ["Action","Thriller","Crime"],
+                        '_formatted' => [
+                            'id' => 6,
+                            'title' => 'Judgment Night',
+                            'overview' => "<em>racing to a boxing match</em>, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama",
+                            'genres' => ["Action","Thriller","Crime"],
+                        ],
+                    ],
+                ],
+                'query' => 'racing to a boxing match',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['of', 'the', 'an', 'but', 'to', 'a']
         ];
 
         yield 'Highlight with match at the end' => [
@@ -1437,6 +1467,7 @@ class SearchTest extends TestCase
         array $attributesToHighlight,
         bool $showMatchesPosition,
         array $expectedResults,
+        array $stopWords = [],
         string $highlightStartTag = '<em>',
         string $highlightEndTag = '</em>',
     ): void {
@@ -1444,6 +1475,7 @@ class SearchTest extends TestCase
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])
             ->withSortableAttributes(['title'])
+            ->withStopWords($stopWords)
         ;
 
         $loupe = $this->createLoupe($configuration);
