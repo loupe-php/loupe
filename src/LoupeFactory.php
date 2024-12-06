@@ -123,14 +123,16 @@ final class LoupeFactory
     private function optimizeSQLiteConnection(Connection $connection): void
     {
         $optimizations = [
-            // Increase page size to 8KB to reduce disk i/o
-            'PRAGMA page_size = 8192;',
+            // Incremental vacuum to keep the database size in check (vacuum to apply the changes)
+            'PRAGMA auto_vacuum = incremental; VACUUM;',
+            // Temporary disable WAL to allow setting page size
+            'PRAGMA journal_mode=DELETE;',
+            // Increase page size to 8KB to reduce disk i/o  (vacuum to apply the changes)
+            'PRAGMA page_size = 8192; VACUUM;',
+            // Now enable write-ahead logging to allow concurrent reads and writes
+            'PRAGMA journal_mode=WAL;',
             // Set cache size to 20MB to reduce disk i/o
             'PRAGMA cache_size = -20000;',
-            // Use write-ahead logging to allow concurrent reads and writes
-            'PRAGMA journal_mode=WAL;',
-            // Incremental vacuum to keep the database size in check
-            'PRAGMA auto_vacuum = incremental;',
             // Incremental vacuum to keep the database size in check
             'PRAGMA incremental_vacuum;',
             // Set mmap size to 32MB to avoid i/o for database reads

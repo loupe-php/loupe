@@ -130,11 +130,11 @@ Those are the two major configuration values that affect basically everything in
 - The indexing performance
 - The search performance
 
-It's pretty hard to explain the State Set Index algorithm in a few short words but I tried my very best to explain 
+It's pretty hard to explain the State Set Index algorithm in a few short words, but I tried my very best to explain 
 some of it in the [Performance](performance.md) section. Best is to read the academic paper
 linked. However, one thing to note: You **cannot** get wrong search results no matter what values you configure. Those  
 values are basically about the number of potential false-positives that then have to be filtered by 
-running the Levenshtein algorithm on all results. The higher the values, the less false-positives. But also the more 
+running the Damerau-Levenshtein algorithm on all results. The higher the values, the less false-positives. But also the more 
 space required for the index.
 
 The alphabet size is configured to `4` by default. The index length to `14`.
@@ -145,6 +145,9 @@ $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
     ->withIndexLength(18)
 ;
 ```
+
+Note: The paper works using the Levenshtein algorithm. Loupe includes adjustments built on top of that paper to support
+Damerau-Levenshtein.
 
 ### Typo thresholds
 
