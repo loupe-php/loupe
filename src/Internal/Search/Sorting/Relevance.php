@@ -63,14 +63,12 @@ class Relevance extends AbstractSorter
 
         $select = sprintf(
             "loupe_relevance(
-                json_array('%s'),
-                json_array('%s'),
-                json_array('%s'),
+                '%s', '%s', '%s',
                 (SELECT group_concat(%s, ';') FROM (%s))
             ) AS %s",
-            implode("','", $searchableAttributes),
-            implode("','", $rankingRules),
-            implode("','", $positiveTerms),
+            implode(':', $searchableAttributes),
+            implode(':', $rankingRules),
+            implode(':', $positiveTerms),
             Searcher::RELEVANCE_ALIAS . '_per_term',
             implode(' UNION ALL ', $positionsPerDocument),
             Searcher::RELEVANCE_ALIAS,
@@ -100,12 +98,12 @@ class Relevance extends AbstractSorter
      */
     public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
     {
-        $rankingRules = json_decode($rankingRules, true);
+        $rankingRules = explode(':', $rankingRules);
         $rankers = static::getRankers($rankingRules);
 
-        $searchableAttributes = json_decode($searchableAttributes, true);
+        $searchableAttributes = explode(':', $searchableAttributes);
 
-        $queryTokens = json_decode($queryTokens, true);
+        $queryTokens = explode(':', $queryTokens);
         $termPositions = static::parseTermPositions($termPositions);
 
         $weights = [];
