@@ -23,7 +23,12 @@ class AttributeWeight extends AbstractRanker
             }
         }
 
-        return array_reduce($weightsPerTerm, fn ($result, $weight) => $result * $weight, 1);
+        $totalWeight = 1;
+        foreach ($weightsPerTerm as $termWeight) {
+            $totalWeight = $totalWeight * $termWeight;
+        }
+
+        return $totalWeight;
     }
 
     /**
