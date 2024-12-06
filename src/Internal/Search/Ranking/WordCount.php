@@ -21,7 +21,7 @@ class WordCount extends AbstractRanker
             if ((\count($term) === 1 && $term[0][0] === 0)) {
                 continue;
             }
-            $matchedWords += 1;
+            ++$matchedWords;
         }
 
         return $matchedWords / \count($termPositions);
