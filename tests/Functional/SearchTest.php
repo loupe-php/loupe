@@ -262,10 +262,12 @@ class SearchTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
+                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -296,10 +298,12 @@ class SearchTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
+                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -311,6 +315,53 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+        ];
+
+        yield 'Highlight with matches position of stopwords' => [
+            'her assassin',
+            ['title', 'overview'],
+            [],
+            true,
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
+                        '_matchesPosition' => [
+                            'overview' => [
+                                [
+                                    'start' => 3,
+                                    'length' => 8,
+                                    'stopword' => false,
+                                ],
+                                [
+                                    'start' => 23,
+                                    'length' => 3,
+                                    'stopword' => true,
+                                ],
+                                [
+                                    'start' => 79,
+                                    'length' => 13,
+                                    'stopword' => false,
+                                ],
+                                [
+                                    'start' => 124,
+                                    'length' => 3,
+                                    'stopword' => true,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'query' => 'her assassin',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['her'],
         ];
 
         yield 'Highlight with typo' => [
@@ -439,12 +490,12 @@ class SearchTest extends TestCase
                         'id' => 6,
                         'title' => 'Judgment Night',
                         'overview' => 'While racing to a boxing match, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama',
-                        'genres' => ["Action","Thriller","Crime"],
+                        'genres' => ['Action', 'Thriller', 'Crime'],
                         '_formatted' => [
                             'id' => 6,
                             'title' => 'Judgment Night',
-                            'overview' => "While <em>racing to a boxing match</em>, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama",
-                            'genres' => ["Action","Thriller","Crime"],
+                            'overview' => 'While <em>racing to a boxing match</em>, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama',
+                            'genres' => ['Action', 'Thriller', 'Crime'],
                         ],
                     ],
                 ],
@@ -454,7 +505,7 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
-            ['of', 'the', 'an', 'but', 'to', 'a']
+            ['of', 'the', 'an', 'but', 'to', 'a'],
         ];
 
         yield 'Highlight literal match including stopwords' => [
@@ -468,12 +519,12 @@ class SearchTest extends TestCase
                         'id' => 22,
                         'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
                         'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
-                        'genres' => ["Adventure","Fantasy","Action"],
+                        'genres' => ['Adventure', 'Fantasy', 'Action'],
                         '_formatted' => [
                             'id' => 22,
                             'title' => '<em>Pirates of the Caribbean</em>: <em>The Curse of the Black Pearl</em>',
                             'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
-                            'genres' => ["Adventure","Fantasy","Action"],
+                            'genres' => ['Adventure', 'Fantasy', 'Action'],
                         ],
                     ],
                 ],
@@ -483,7 +534,7 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
-            ['of', 'the', 'an', 'but', 'to', 'a', 'back']
+            ['of', 'the', 'an', 'but', 'to', 'a', 'back'],
         ];
 
         yield 'Highlight with match at the end' => [
@@ -566,6 +617,7 @@ class SearchTest extends TestCase
                                     [
                                         'start' => 0,
                                         'length' => 6,
+                                        'stopword' => false,
                                     ],
                                 ],
                             ],
@@ -587,6 +639,7 @@ class SearchTest extends TestCase
                                 0 => [
                                     'start' => 127,
                                     'length' => 6,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
