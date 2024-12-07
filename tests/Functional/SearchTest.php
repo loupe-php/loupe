@@ -443,7 +443,7 @@ class SearchTest extends TestCase
                         '_formatted' => [
                             'id' => 6,
                             'title' => 'Judgment Night',
-                            'overview' => "<em>racing to a boxing match</em>, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama",
+                            'overview' => "While <em>racing to a boxing match</em>, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama",
                             'genres' => ["Action","Thriller","Crime"],
                         ],
                     ],
@@ -455,6 +455,35 @@ class SearchTest extends TestCase
                 'totalHits' => 1,
             ],
             ['of', 'the', 'an', 'but', 'to', 'a']
+        ];
+
+        yield 'Highlight literal match including stopwords' => [
+            'Pirates of the Caribbean: The Curse of the Black Pearl',
+            ['title'],
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 22,
+                        'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
+                        'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
+                        'genres' => ["Adventure","Fantasy","Action"],
+                        '_formatted' => [
+                            'id' => 22,
+                            'title' => '<em>Pirates of the Caribbean</em>: <em>The Curse of the Black Pearl</em>',
+                            'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
+                            'genres' => ["Adventure","Fantasy","Action"],
+                        ],
+                    ],
+                ],
+                'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['of', 'the', 'an', 'but', 'to', 'a', 'back']
         ];
 
         yield 'Highlight with match at the end' => [
