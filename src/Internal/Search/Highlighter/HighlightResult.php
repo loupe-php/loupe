@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Internal\Search\Highlighter;
 class HighlightResult
 {
     /**
-     * @param array<int, array{start: int, length: int}> $matches
+     * @param array<int, array{start: int, length: int, stopword: bool}> $matches
      */
     public function __construct(
         private string $highlightedText,
@@ -21,7 +21,7 @@ class HighlightResult
     }
 
     /**
-     * @return array<int, array{start: int, length: int}>
+     * @return array<int, array{start: int, length: int, stopword: bool}>
      */
     public function getMatches(): array
     {

@@ -27,12 +27,17 @@ class Highlighter
         }
 
         $matches = [];
+        $stopWords = $this->engine->getConfiguration()->getStopWords();
+        $textTokens = $this->engine->getTokenizer()->tokenize($text, stopWords: $stopWords);
 
-        foreach ($this->engine->getTokenizer()->tokenize($text)->all() as $textToken) {
+        foreach ($textTokens->all() as $textToken) {
             if ($this->matches($textToken, $queryTokens)) {
+                ray('matched token', $textToken->getTerm());
                 $matches[] = [
                     'start' => $textToken->getStartPosition(),
                     'length' => $textToken->getLength(),
+                    'content' => $textToken->getTerm(),
+                    'stopword' => $textToken->isStopWord(),
                 ];
             }
         }
@@ -71,6 +76,45 @@ class Highlighter
 
     /**
      * @param array<array{start:int, length:int}> $matches
+     * @return array<array{start:int, length:int}> $matches
+     */
+    private function removeStopWordMatches(array $matches): array
+    {
+        $maxCharDistance = 1;
+        $maxWordDistance = 1;
+
+        foreach ($matches as $i => $match) {
+            if (!$match['stopword']) {
+                continue;
+            }
+
+            $hasNonStopWordNeighbor = false;
+
+            for ($j = 1; $j <= $maxWordDistance; $j++) {
+                $prevMatch = $matches[$i - $j] ?? null;
+                $nextMatch = $matches[$i + $j] ?? null;
+
+                // Keep stopword matches between non-stopword matches of interest
+                $hasNonStopWordNeighbor = $hasNonStopWordNeighbor
+                    || ($prevMatch && $prevMatch['stopword'] === false && ($prevMatch['start'] + $prevMatch['length']) >= $match['start'] - $maxCharDistance)
+                    || ($nextMatch && $nextMatch['stopword'] === false && $nextMatch['start'] <= $match['start'] + $match['length'] + $maxCharDistance);
+
+                if ($hasNonStopWordNeighbor) {
+                    break;
+                }
+
+            }
+
+            if (!$hasNonStopWordNeighbor) {
+                unset($matches[$i]);
+            }
+        }
+
+        return $matches;
+    }
+
+    /**
+     * @param array<array{start:int, length:int}> $matches
      * @return array{starts: array<int>, ends: array<int>}
      */
     private function extractSpansFromMatches(array $matches): array
@@ -80,6 +124,8 @@ class Highlighter
             'ends' => [],
         ];
         $lastEnd = null;
+
+        $matches = $this->removeStopWordMatches($matches);
 
         foreach ($matches as $match) {
             $end = $match['start'] + $match['length'];
