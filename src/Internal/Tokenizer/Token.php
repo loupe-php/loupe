@@ -15,7 +15,7 @@ class Token
         private int $startPosition,
         private array $variants,
         private bool $isPartOfPhrase,
-        private bool $isNegated,
+        private bool $isNegated
     ) {
     }
 

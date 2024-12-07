@@ -143,15 +143,13 @@ class Tokenizer
                 }
             }
 
-            $stopword = \in_array($term, $stopWords, true);
-
             $token = new Token(
                 $id++,
                 $term,
                 $position,
                 $variants,
                 $phrase,
-                $negated,
+                $negated
             );
 
             $position += $token->getLength();
