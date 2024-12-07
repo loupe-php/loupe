@@ -73,7 +73,7 @@ class Highlighter
     }
 
     /**
-     * @param array<array{start:int, length:int}> $matches
+     * @param array<array{start:int, length:int, stopword:bool}> $matches
      * @return array{starts: array<int>, ends: array<int>}
      */
     private function extractSpansFromMatches(array $matches): array
@@ -160,8 +160,8 @@ class Highlighter
     }
 
     /**
-     * @param array<array{start:int, length:int}> $matches
-     * @return array<array{start:int, length:int}> $matches
+     * @param array<array{start:int, length:int, stopword:bool}> $matches
+     * @return array<array{start:int, length:int, stopword:bool}> $matches
      */
     private function removeStopWordMatches(array $matches): array
     {
@@ -180,8 +180,7 @@ class Highlighter
                 $nextMatch = $matches[$i + $j] ?? null;
 
                 // Keep stopword matches between non-stopword matches of interest
-                $hasNonStopWordNeighbor = $hasNonStopWordNeighbor
-                    || ($prevMatch && $prevMatch['stopword'] === false && ($prevMatch['start'] + $prevMatch['length']) >= $match['start'] - $maxCharDistance)
+                $hasNonStopWordNeighbor = ($prevMatch && $prevMatch['stopword'] === false && ($prevMatch['start'] + $prevMatch['length']) >= $match['start'] - $maxCharDistance)
                     || ($nextMatch && $nextMatch['stopword'] === false && $nextMatch['start'] <= $match['start'] + $match['length'] + $maxCharDistance);
 
                 if ($hasNonStopWordNeighbor) {

@@ -1541,6 +1541,7 @@ class SearchTest extends TestCase
      * @param array<string> $searchableAttributes
      * @param array<string> $attributesToHighlight
      * @param array<mixed> $expectedResults
+     * @param array<string> $stopWords
      */
     #[DataProvider('highlightingProvider')]
     public function testHighlighting(
