@@ -5,16 +5,23 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
+use Loupe\Loupe\Internal\Search\Ranking\Proximity;
+use Loupe\Loupe\Internal\Search\Ranking\WordCount;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 class Relevance extends AbstractSorter
 {
-    /**
-     * @var array<string, array<string, float>>
-     */
-    protected static array $attributeWeightValuesCache = [];
+    private const RANKERS = [
+        'words' => WordCount::class,
+        // 'typo' => TypoCount::class, // Not implemented yet
+        'proximity' => Proximity::class,
+        'attribute' => AttributeWeight::class,
+        // 'exactness' => Exactness::class, // Not implemented yet
+    ];
 
     public function __construct(
         private Direction $direction
@@ -23,13 +30,14 @@ class Relevance extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        if ($searcher->getTokens()->empty()) {
+        $tokens = $searcher->getTokens()->all();
+        if (!\count($tokens)) {
             return;
         }
 
         $positionsPerDocument = [];
 
-        foreach ($searcher->getTokens()->all() as $token) {
+        foreach ($tokens as $token) {
             // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
             // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
             // because it's just a ";" separated list.
@@ -41,19 +49,28 @@ class Relevance extends AbstractSorter
             );
         }
 
-        if ($positionsPerDocument === []) {
-            return;
-        }
+        // Positive weights to determine word count
+        $allTerms = $searcher->getTokens()->allTerms();
+        $negatedTerms = $searcher->getTokens()->allNegatedTerms();
+        $positiveTerms = array_diff($allTerms, $negatedTerms);
 
+        // Check ranking rules at beginning to throw early
+        $rankingRules = $engine->getConfiguration()->getRankingRules();
+        self::checkRules($rankingRules);
+
+        // Searchable attributes to determine attribute weight
         $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
-        $weights = static::calculateIntrinsicAttributeWeights($searchableAttributes);
 
         $select = sprintf(
-            "loupe_relevance((SELECT group_concat(%s, ';') FROM (%s)), %s, '%s') AS %s",
+            "loupe_relevance(
+                '%s', '%s', '%s',
+                (SELECT group_concat(%s, ';') FROM (%s))
+            ) AS %s",
+            implode(':', $searchableAttributes),
+            implode(':', $rankingRules),
+            implode(':', $positiveTerms),
             Searcher::RELEVANCE_ALIAS . '_per_term',
             implode(' UNION ALL ', $positionsPerDocument),
-            $searcher->getTokens()->count(),
-            implode(';', array_map(fn ($attr, $weight) => "{$attr}:{$weight}", array_keys($weights), $weights)),
             Searcher::RELEVANCE_ALIAS,
         );
 
@@ -71,141 +88,32 @@ class Relevance extends AbstractSorter
     }
 
     /**
-     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm
-     * @param array<string, float> $attributeWeights
-     */
-    public static function calculateAttributeWeightFactor(array $positionsPerTerm, array $attributeWeights): float
-    {
-        // Group weights by term, making sure to go with the higher weight if multiple attributes are matched
-        // So if `title` (1.0) and `summary` (0.8) are matched, the weight of `title` should be used
-        $weightsPerTerm = [];
-        foreach ($positionsPerTerm as $index => $term) {
-            foreach ($term as [, $attribute]) {
-                if ($attribute && isset($attributeWeights[$attribute])) {
-                    $weightsPerTerm[$index] = max($weightsPerTerm[$index] ?? 0, $attributeWeights[$attribute]);
-                }
-            }
-        }
-
-        return array_reduce($weightsPerTerm, fn ($result, $weight) => $result * $weight, 1);
-    }
-
-    /**
-     * @param array<int, string> $searchableAttributes
-     * @return array<string, int>
-     */
-    public static function calculateIntrinsicAttributeWeights(array $searchableAttributes): array
-    {
-        if ($searchableAttributes === ['*']) {
-            return [];
-        }
-
-        // Assign decreasing weights to each attribute
-        // ['title', 'summary', 'body] → ['title' => 1, 'summary' => 0.8, 'body' => 0.8 ^ 2]
-        $weight = 1;
-        return array_reduce(
-            $searchableAttributes,
-            function ($result, $attribute) use (&$weight) {
-                $result[$attribute] = round($weight, 2);
-                $weight *= Configuration::ATTRIBUTE_RANKING_ORDER_FACTOR;
-                return $result;
-            },
-            []
-        );
-    }
-
-    /**
-     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm
-     */
-    public static function calculateMatchCountFactor(array $positionsPerTerm, int $totalQueryTokenCount): float
-    {
-        $matchedTokens = array_filter(
-            $positionsPerTerm,
-            fn ($termArray) => !(\count($termArray) === 1 && $termArray[0][0] === 0)
-        );
-
-        return \count($matchedTokens) / $totalQueryTokenCount;
-    }
-
-    /**
-     * @param array<int, array<int, array{int, string|null}>> $positionsPerTerm The positions MUST be ordered ASC
-     */
-    public static function calculateProximityFactor(array $positionsPerTerm, float $decayFactor = 0.1): float
-    {
-        $allAdjacent = true;
-        $totalProximity = 0;
-        $totalTermsRelevantForProximity = \count($positionsPerTerm) - 1;
-        $positionPrev = null;
-
-        foreach ($positionsPerTerm as $positions) {
-            if ($positionPrev === null) {
-                [$position] = $positions[0];
-                $positionPrev = $position;
-                continue;
-            }
-
-            $distance = 0;
-
-            foreach ($positions as $positionAndAttribute) {
-                [$position] = $positionAndAttribute;
-                if ($position > $positionPrev) {
-                    $distance = $position - $positionPrev;
-                    $positionPrev = $position;
-                    break;
-                }
-            }
-
-            if ($distance !== 1) {
-                $allAdjacent = false;
-            }
-
-            // Calculate proximity with decay function using the distance
-            $proximity = exp(-$decayFactor * $distance);
-            $totalProximity += $proximity;
-        }
-
-        return $allAdjacent ? 1.0 : ($totalTermsRelevantForProximity > 0 ? $totalProximity / $totalTermsRelevantForProximity : 0);
-    }
-
-    /**
      * Example: A string with "3:title,8:title,10:title;0;4:summary" would read as follows:
      * - The query consisted of 3 tokens (terms).
      * - The first term matched. At positions 3, 8 and 10 in the `title` attribute.
      * - The second term did not match (position 0).
      * - The third term matched. At position 4 in the `summary` attribute.
      *
-     * @param string $positionsInDocumentPerTerm A string of ";" separated per term and "," separated for all the term positions within a document
+     * @param string $termPositions A string of ";" separated per term and "," separated for all the term positions within a document
      */
-    public static function fromQuery(string $positionsInDocumentPerTerm, string $totalQueryTokenCount, string $attributeWeights): float
+    public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
     {
-        $totalQueryTokenCount = (int) $totalQueryTokenCount;
-        $positionsPerTerm = static::parseTermPositions($positionsInDocumentPerTerm);
-        $attributeWeightValues = static::parseAttributeWeights($attributeWeights);
+        $searchableAttributes = explode(':', $searchableAttributes);
 
-        // Higher weight means more importance
-        $relevanceWeights = [
-            2, // 1st: Number of query terms that match in a document
-            1, // 2nd: Proximity of the words
-            1, // 3rd: Weight of attributes matched (use 1 as they are already weighted)
-        ];
+        $rankingRules = explode(':', $rankingRules);
+        $rankers = static::getRankers($rankingRules);
 
-        $relevanceFactors = [
-            // 1st: Number of query terms that match in a document
-            self::calculateMatchCountFactor($positionsPerTerm, $totalQueryTokenCount),
+        $queryTokens = explode(':', $queryTokens);
+        $termPositions = static::parseTermPositions($termPositions);
 
-            // 2nd: Proximity of the words
-            self::calculateProximityFactor($positionsPerTerm),
+        $weights = [];
+        $totalWeight = 0;
+        foreach ($rankers as [$class, $weight]) {
+            $weights[] = $class::calculate($searchableAttributes, $queryTokens, $termPositions) * $weight;
+            $totalWeight += $weight;
+        }
 
-            // 3rd: Weight of attributes matched (use 1 as they are already weighted)
-            self::calculateAttributeWeightFactor($positionsPerTerm, $attributeWeightValues),
-        ];
-
-        // Calculate weighted average
-        $totalFactor = array_sum(
-            array_map(fn ($factor, $weight) => $factor * $weight, $relevanceFactors, $relevanceWeights)
-        );
-
-        return $totalFactor / array_sum($relevanceWeights);
+        return array_sum($weights) / $totalWeight;
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): AbstractSorter
@@ -219,32 +127,39 @@ class Relevance extends AbstractSorter
     }
 
     /**
-     * Parse an intermediate string representation of attribute weights back into an array
-     *
-     * "title:1;summary:0.8" -> ["title" => 1, "summary" => 0.8]
-     *
-     * @return array<string, float>
+     * @param array<string> $rules
      */
-    protected static function parseAttributeWeights(string $attributeWeights): array
+    protected static function checkRules(array $rules): void
     {
-        if (isset(static::$attributeWeightValuesCache[$attributeWeights])) {
-            return static::$attributeWeightValuesCache[$attributeWeights];
+        if (!\count($rules)) {
+            throw new InvalidConfigurationException('Ranking rules cannot be empty.');
         }
 
-        $weightValues = array_reduce(
-            array_filter(explode(';', $attributeWeights)),
-            function ($result, $item) {
-                [$key, $value] = explode(':', $item);
-                return array_merge($result, [
-                    $key => (float) $value,
-                ]);
+        foreach ($rules as $v) {
+            if (!\is_string($v)) {
+                throw new InvalidConfigurationException('Ranking rules must be an array of strings.');
+            }
+            if (!\in_array($v, array_keys(self::RANKERS), true)) {
+                throw new InvalidConfigurationException('Unknown ranking rule: ' . $v);
+            }
+        }
+    }
+
+    /**
+     * @param array<string> $rules
+     * @return array<array{string, float}>
+     */
+    protected static function getRankers(array $rules): array
+    {
+        return array_map(
+            function ($rule, $index) {
+                $class = self::RANKERS[$rule];
+                $weight = Configuration::RANKING_RULES_ORDER_FACTOR ** $index;
+                return [$class, $weight];
             },
-            []
+            $rules,
+            range(0, \count($rules) - 1)
         );
-
-        static::$attributeWeightValuesCache[$attributeWeights] = $weightValues;
-
-        return $weightValues;
     }
 
     /**
