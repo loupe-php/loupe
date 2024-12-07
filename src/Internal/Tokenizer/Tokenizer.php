@@ -143,7 +143,7 @@ class Tokenizer
                 }
             }
 
-            $stopword = in_array($term, $stopWords);
+            $stopword = \in_array($term, $stopWords, true);
 
             $token = new Token(
                 $id++,
