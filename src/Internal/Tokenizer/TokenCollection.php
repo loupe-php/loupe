@@ -73,28 +73,6 @@ class TokenCollection
     }
 
     /**
-     * @return Token[]
-     */
-    public function allStopWords(): array
-    {
-        return array_filter($this->tokens, fn (Token $token) => $token->isStopWord());
-    }
-
-    /**
-     * @return array<string>
-     */
-    public function allStopWordTerms(): array
-    {
-        $tokens = [];
-
-        foreach ($this->allStopWords() as $token) {
-            $tokens[] = $token->getTerm();
-        }
-
-        return array_unique($tokens);
-    }
-
-    /**
      * @return array<string>
      */
     public function allTerms(): array

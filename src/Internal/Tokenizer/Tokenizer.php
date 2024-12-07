@@ -152,15 +152,24 @@ class Tokenizer
                 $variants,
                 $phrase,
                 $negated,
-                $stopword
             );
 
-            $tokens->add($token);
-
             $position += $token->getLength();
+
+            // Collect all tokens regardless of stop word status
+            $all->add($token);
+
+            // Skip stop words
+            if ($token->isOneOf($stopWords)) {
+                continue;
+            }
+
+            // Only add non-stop words to the result
+            $tokens->add($token);
         }
 
-        return $tokens;
+        // If removing stop words resulted in an empty collection, return all tokens
+        return $tokens->empty() ? $all : $tokens;
     }
 
     private function getStemmerForLanguage(string $language): ?Stemmer

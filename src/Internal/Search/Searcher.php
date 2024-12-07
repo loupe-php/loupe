@@ -93,6 +93,7 @@ class Searcher
             ->createQueryBuilder();
 
         $tokens = $this->getTokens();
+        $tokensIncludingStopwords = $this->getTokensIncludingStopwords();
 
         $this->selectTotalHits();
         $this->selectDocuments();
@@ -126,7 +127,7 @@ class Searcher
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
-            $this->highlight($hit, $tokens);
+            $this->highlight($hit, $tokensIncludingStopwords);
 
             $hits[] = $hit;
         }
@@ -185,6 +186,16 @@ class Searcher
                 $this->searchParameters->getQuery(),
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
                 $this->engine->getConfiguration()->getStopWords()
+            );
+    }
+
+    public function getTokensIncludingStopwords(): TokenCollection
+    {
+        return $this->tokens = $this->engine->getTokenizer()
+            ->tokenize(
+                $this->searchParameters->getQuery(),
+                $this->engine->getConfiguration()->getMaxQueryTokens(),
+                []
             );
     }
 
@@ -807,9 +818,6 @@ class Searcher
         foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
             $statements = [];
             foreach ($tokenOrPhrase->getTokens() as $token) {
-                if ($token->isStopWord()) {
-                    continue;
-                }
                 $statements[] = $this->createTermDocumentMatchesCTECondition($token);
             }
 

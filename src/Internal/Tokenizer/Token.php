@@ -16,7 +16,6 @@ class Token
         private array $variants,
         private bool $isPartOfPhrase,
         private bool $isNegated,
-        private bool $isStopWord,
     ) {
     }
 
@@ -95,10 +94,5 @@ class Token
     public function isPartOfPhrase(): bool
     {
         return $this->isPartOfPhrase;
-    }
-
-    public function isStopWord(): bool
-    {
-        return $this->isStopWord;
     }
 }

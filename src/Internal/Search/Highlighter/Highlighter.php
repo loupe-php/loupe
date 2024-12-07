@@ -28,14 +28,14 @@ class Highlighter
 
         $matches = [];
         $stopWords = $this->engine->getConfiguration()->getStopWords();
-        $textTokens = $this->engine->getTokenizer()->tokenize($text, stopWords: $stopWords);
+        $textTokens = $this->engine->getTokenizer()->tokenize($text);
 
         foreach ($textTokens->all() as $textToken) {
             if ($this->matches($textToken, $queryTokens)) {
                 $matches[] = [
                     'start' => $textToken->getStartPosition(),
                     'length' => $textToken->getLength(),
-                    'stopword' => $textToken->isStopWord(),
+                    'stopword' => $textToken->isOneOf($stopWords),
                 ];
             }
         }

@@ -167,7 +167,7 @@ class TokenizerTest extends TestCase
         $tokenizer = $this->createTokenizer();
         $tokens = $tokenizer->tokenize(
             'Hallo, mein Name ist Hase und ich weiß von nichts.',
-            stopWords: ['und', 'von']
+            stopWords: ['ist', 'und', 'von']
         );
 
         $this->assertSame([
@@ -175,24 +175,33 @@ class TokenizerTest extends TestCase
             'mein',
             'name',
             'nam',
-            'ist',
             'hase',
             'has',
-            'und',
             'ich',
             'weiß',
             'weiss',
-            'von',
             'nichts',
             'nicht',
         ], $tokens->allTermsWithVariants());
+    }
 
-        $this->assertCount(2, $tokens->allStopWords());
+    public function testStopWordsOnly(): void
+    {
+        $tokenizer = $this->createTokenizer();
 
-        $this->assertSame([
-            'und',
-            'von',
-        ], $tokens->allStopWordTerms());
+        $tokensWithStopWords = $tokenizer->tokenize(
+            'ist nicht seltsam',
+            stopWords: ['ist', 'nicht']
+        );
+
+        $this->assertSame(['seltsam'], $tokensWithStopWords->allTermsWithVariants());
+
+        $tokensWithStopWordsOnly = $tokenizer->tokenize(
+            'ist oder nicht',
+            stopWords: ['ist', 'oder', 'nicht']
+        );
+
+        $this->assertSame(['ist', 'oder', 'nicht'], $tokensWithStopWordsOnly->allTermsWithVariants());
     }
 
     /**
