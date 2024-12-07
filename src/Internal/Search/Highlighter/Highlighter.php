@@ -32,11 +32,9 @@ class Highlighter
 
         foreach ($textTokens->all() as $textToken) {
             if ($this->matches($textToken, $queryTokens)) {
-                ray('matched token', $textToken->getTerm());
                 $matches[] = [
                     'start' => $textToken->getStartPosition(),
                     'length' => $textToken->getLength(),
-                    'content' => $textToken->getTerm(),
                     'stopword' => $textToken->isStopWord(),
                 ];
             }
