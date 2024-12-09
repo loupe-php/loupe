@@ -16,6 +16,8 @@ final class Configuration
 
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
+    public const RANKING_RULES_ORDER_FACTOR = 0.7;
+
     /**
      * @var array<string>
      */
@@ -33,6 +35,15 @@ final class Configuration
     private int $minTokenLengthForPrefixSearch = 3;
 
     private string $primaryKey = 'id';
+
+    /**
+     * @var array<string>
+     */
+    private array $rankingRules = [
+        'words',
+        'proximity',
+        'attribute',
+    ];
 
     /**
      * @var array<string>
@@ -135,6 +146,14 @@ final class Configuration
     /**
      * @return array<string>
      */
+    public function getRankingRules(): array
+    {
+        return $this->rankingRules;
+    }
+
+    /**
+     * @return array<string>
+     */
     public function getSearchableAttributes(): array
     {
         return $this->searchableAttributes;
@@ -226,6 +245,17 @@ final class Configuration
     {
         $clone = clone $this;
         $clone->primaryKey = $primaryKey;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $rankingRules
+     */
+    public function withRankingRules(array $rankingRules): self
+    {
+        $clone = clone $this;
+        $clone->rankingRules = $rankingRules;
 
         return $clone;
     }

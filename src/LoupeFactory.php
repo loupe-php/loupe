@@ -165,7 +165,7 @@ final class LoupeFactory
             ],
             'loupe_relevance' => [
                 'callback' => [Relevance::class, 'fromQuery'],
-                'numArgs' => 3,
+                'numArgs' => 4,
             ],
         ];
 
