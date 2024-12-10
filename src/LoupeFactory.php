@@ -180,14 +180,15 @@ final class LoupeFactory
         }
     }
 
-    private static function wrapSQLiteMethodForStaticCache(string $prefix, callable $callback)
+    private static function wrapSQLiteMethodForStaticCache(string $prefix, callable $callback): \Closure
     {
         return function () use ($prefix, $callback) {
             $args = \func_get_args();
             $cacheKey = $prefix . ':' . implode('--', $args);
+            $cachedValue = StaticCache::get($cacheKey);
 
-            if ($cached = StaticCache::get($cacheKey)) {
-                return $cached;
+            if ($cachedValue !== null) {
+                return $cachedValue;
             }
 
             return StaticCache::set($cacheKey, \call_user_func_array($callback, $args));
