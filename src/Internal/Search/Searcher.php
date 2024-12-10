@@ -26,13 +26,6 @@ use Loupe\Loupe\SearchResult;
 
 class Searcher
 {
-    /**
-     * If searching for a query that is super broad like "this is taking so long", way too many
-     * documents are going to match so we have to internally limit those matches to prevent
-     * "endless" search queries.
-     */
-    private const MAX_DOCUMENT_MATCHES = 1000;
-
     public const CTE_TERM_DOCUMENT_MATCHES_PREFIX = '_cte_term_document_matches_';
 
     public const CTE_TERM_MATCHES_PREFIX = '_cte_term_matches_';
@@ -40,6 +33,13 @@ class Searcher
     public const DISTANCE_ALIAS = '_distance';
 
     public const RELEVANCE_ALIAS = '_relevance';
+
+    /**
+     * If searching for a query that is super broad like "this is taking so long", way too many
+     * documents are going to match so we have to internally limit those matches to prevent
+     * "endless" search queries.
+     */
+    private const MAX_DOCUMENT_MATCHES = 1000;
 
     /**
      * @var array<string, array{cols: array<string>, sql: string}>
