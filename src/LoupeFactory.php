@@ -16,6 +16,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
+use Loupe\Loupe\Internal\StaticCache;
 
 final class LoupeFactory
 {
@@ -171,7 +172,25 @@ final class LoupeFactory
 
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->createFunction($functionName, $function['callback'], $function['numArgs']);
+            $connection->getNativeConnection()->createFunction(
+                $functionName,
+                self::wrapSQLiteMethodForStaticCache($functionName, $function['callback']),
+                $function['numArgs']
+            );
         }
+    }
+
+    private static function wrapSQLiteMethodForStaticCache(string $prefix, callable $callback)
+    {
+        return function () use ($prefix, $callback) {
+            $args = \func_get_args();
+            $cacheKey = $prefix . ':' . implode('--', $args);
+
+            if ($cached = StaticCache::get($cacheKey)) {
+                return $cached;
+            }
+
+            return StaticCache::set($cacheKey, \call_user_func_array($callback, $args));
+        };
     }
 }

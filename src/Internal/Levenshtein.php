@@ -19,7 +19,7 @@ class Levenshtein
         return $distance;
     }
 
-    public static function maxLevenshtein(string $string1, string $string2, int $maxDistance, bool $firstCharTypoCountsDouble): bool
+    public static function maxLevenshtein(string $string1, string $string2, int $maxDistance, int|bool $firstCharTypoCountsDouble): bool
     {
         $distance = DamerauLevenshtein::distance($string1, $string2, $maxDistance + 1);
 
