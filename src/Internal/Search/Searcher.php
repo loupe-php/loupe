@@ -226,6 +226,7 @@ class Searcher
         }
 
         $cteSelectQb->addOrderBy('position');
+        $cteSelectQb->setMaxResults(1000);
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
         $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position'];

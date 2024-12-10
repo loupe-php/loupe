@@ -6,6 +6,7 @@ namespace Loupe\Loupe;
 
 use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\StaticCache;
 
 final class Loupe
 {
@@ -14,11 +15,17 @@ final class Loupe
     ) {
     }
 
+    public function __destruct()
+    {
+        StaticCache::cleanUp($this);
+    }
+
     /**
      * @param array<string, mixed> $document
      */
     public function addDocument(array $document): IndexResult
     {
+        StaticCache::enterContext($this);
         return $this->addDocuments([$document]);
     }
 
@@ -27,16 +34,19 @@ final class Loupe
      */
     public function addDocuments(array $documents): IndexResult
     {
+        StaticCache::enterContext($this);
         return $this->engine->addDocuments($documents);
     }
 
     public function countDocuments(): int
     {
+        StaticCache::enterContext($this);
         return $this->engine->countDocuments();
     }
 
     public function deleteAllDocuments(): void
     {
+        StaticCache::enterContext($this);
         $this->engine->deleteAllDocuments();
     }
 
@@ -45,6 +55,7 @@ final class Loupe
      */
     public function deleteDocument(int|string $id): void
     {
+        StaticCache::enterContext($this);
         $this->deleteDocuments([$id]);
     }
 
@@ -53,11 +64,13 @@ final class Loupe
      */
     public function deleteDocuments(array $ids): void
     {
+        StaticCache::enterContext($this);
         $this->engine->deleteDocuments($ids);
     }
 
     public function getConfiguration(): Configuration
     {
+        StaticCache::enterContext($this);
         return $this->engine->getConfiguration();
     }
 
@@ -66,16 +79,19 @@ final class Loupe
      */
     public function getDocument(int|string $identifier): ?array
     {
+        StaticCache::enterContext($this);
         return $this->engine->getDocument($identifier);
     }
 
     public function needsReindex(): bool
     {
+        StaticCache::enterContext($this);
         return $this->engine->needsReindex();
     }
 
     public function search(SearchParameters $parameters): SearchResult
     {
+        StaticCache::enterContext($this);
         return $this->engine->search($parameters);
     }
 }
