@@ -370,7 +370,7 @@ class Parser
         $this->syntaxError('"NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is', $this->lexer->lookahead);
     }
 
-    private function syntaxError(string $expected = '', Token $token = null): void
+    private function syntaxError(string $expected = '', ?Token $token = null): void
     {
         if ($token === null) {
             $token = $this->lexer->token;
