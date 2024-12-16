@@ -2362,6 +2362,51 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testSearchingForAQueryThatMatchesWayTooManyDocumentsDoesNotTakeForeverAndAlsoStillReturnsTheMostRelevantDocument(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $documents = [];
+        foreach (range(0, 2000) as $id) {
+            $documents[] = [
+                'id' => $id,
+                'content' => 'This is just a very long text that takes so long to index.',
+            ];
+        }
+
+        $documents[] = [
+            'id' => 99999,
+            'content' => 'This is taking so long',
+        ];
+
+        $loupe->addDocuments($documents);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('This is taking so long')
+            ->withAttributesToRetrieve(['id', 'content'])
+            ->withShowRankingScore(true)
+            ->withHitsPerPage(1)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 99999,
+                    'content' => 'This is taking so long',
+                    '_rankingScore' => 1.0,
+                ],
+            ],
+            'query' => 'This is taking so long',
+            'hitsPerPage' => 1,
+            'page' => 1,
+            'totalPages' => 1000,
+            'totalHits' => 1000,
+        ]);
+    }
+
     public function testSearchingForNumericArrayType(): void
     {
         $configuration = Configuration::create()
