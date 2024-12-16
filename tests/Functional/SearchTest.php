@@ -2370,7 +2370,7 @@ class SearchTest extends TestCase
 
         $loupe = $this->createLoupe($configuration);
         $documents = [];
-        foreach (range(0, 2000) as $id) {
+        foreach (range(1, 2000) as $id) {
             $documents[] = [
                 'id' => $id,
                 'content' => 'This is just a very long text that takes so long to index.',
@@ -2402,8 +2402,8 @@ class SearchTest extends TestCase
             'query' => 'This is taking so long',
             'hitsPerPage' => 1,
             'page' => 1,
-            'totalPages' => 1000,
-            'totalHits' => 1000,
+            'totalPages' => 1001,
+            'totalHits' => 1001,
         ]);
     }
 
