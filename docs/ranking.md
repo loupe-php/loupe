@@ -5,6 +5,7 @@ Loupe uses a multi-factor ranking system to determine the relevance of search re
 1. Number of matched query terms
 2. Proximity of matched terms in the text
 3. Ranking of matched attributes
+4. Exactness of match
 
 ## Best Practices
 
@@ -57,6 +58,12 @@ $configuration = Configuration::create()
 ```
 
 Note: When using the default `['*']`, all attributes are weighted equally.
+
+### 4. Exactness Ranking
+
+Due to stemming, when searching e.g. for `learning`, Loupe also searches for `learn`. The Exactness ranking algorithm
+makes sure that if you search for `learning`, results containing exactly what you searched for will be ranked higher
+than their counterparts.
 
 ## Fine-tuning Results
 
