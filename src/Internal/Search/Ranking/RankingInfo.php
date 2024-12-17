@@ -7,8 +7,8 @@ namespace Loupe\Loupe\Internal\Search\Ranking;
 final class RankingInfo
 {
     /**
-     * @var array<string>
-     * @var array<string>
+     * @param array<string> $rankingRules
+     * @param array<string> $searchableAttributes
      */
     private function __construct(
         private array $rankingRules,
