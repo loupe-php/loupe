@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -2366,6 +2367,8 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withLogger($logger = new InMemoryLogger)
         ;
 
         $loupe = $this->createLoupe($configuration);
@@ -2373,38 +2376,55 @@ class SearchTest extends TestCase
         foreach (range(1, 2000) as $id) {
             $documents[] = [
                 'id' => $id,
-                'content' => 'This is just a very long text that takes so long to index.',
+                'content' => 'This is a very long text with content',
             ];
         }
 
         $documents[] = [
-            'id' => 99999,
-            'content' => 'This is taking so long',
+            'id' => 9999,
+            'content' => 'This is a very long text with content about something',
         ];
 
         $loupe->addDocuments($documents);
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('This is taking so long')
+            ->withQuery('This is a very long text with content about something')
             ->withAttributesToRetrieve(['id', 'content'])
             ->withShowRankingScore(true)
-            ->withHitsPerPage(1)
+            ->withHitsPerPage(4)
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 99999,
-                    'content' => 'This is taking so long',
+                    'id' => 9999,
+                    'content' => 'This is a very long text with a little bit of content',
                     '_rankingScore' => 1.0,
                 ],
+                [
+                    'id' => 1,
+                    'content' => 'This is a very long text with content',
+                    '_rankingScore' => 0.76952,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'This is a very long text with content',
+                    '_rankingScore' => 0.76952,
+                ],
+                [
+                    'id' => 3,
+                    'content' => 'This is a very long text with content',
+                    '_rankingScore' => 0.76952,
+                ],
             ],
-            'query' => 'This is taking so long',
-            'hitsPerPage' => 1,
+            'query' => 'This is a very long text with content about something',
+            'hitsPerPage' => 4,
             'page' => 1,
-            'totalPages' => 1001,
+            'totalPages' => 251,
             'totalHits' => 1001,
         ]);
+
+        ray($logger->getRecords());
     }
 
     public function testSearchingForNumericArrayType(): void

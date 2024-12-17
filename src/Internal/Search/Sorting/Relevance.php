@@ -103,6 +103,8 @@ class Relevance extends AbstractSorter
         $rankingRules = explode(':', $rankingRules);
         $rankers = static::getRankers($rankingRules);
 
+        ray('----', $queryTokens, $termPositions);
+
         $queryTokens = explode(':', $queryTokens);
         $termPositions = static::parseTermPositions($termPositions);
 
@@ -110,8 +112,11 @@ class Relevance extends AbstractSorter
         $totalWeight = 0;
         foreach ($rankers as [$class, $weight]) {
             $weights[] = $class::calculate($searchableAttributes, $queryTokens, $termPositions) * $weight;
+            ray($class, $class::calculate($searchableAttributes, $queryTokens, $termPositions), $weight);
             $totalWeight += $weight;
         }
+
+        ray(array_sum($weights) / $totalWeight);
 
         return array_sum($weights) / $totalWeight;
     }
