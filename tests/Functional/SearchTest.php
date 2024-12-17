@@ -2373,22 +2373,28 @@ class SearchTest extends TestCase
 
         $loupe = $this->createLoupe($configuration);
         $documents = [];
+
+        // $documents[] = [
+        //     'id' => 8888,
+        //     'content' => 'dog house',
+        // ];
+
         foreach (range(1, 2000) as $id) {
             $documents[] = [
                 'id' => $id,
-                'content' => 'This is a very long text with content',
+                'content' => 'dog',
             ];
         }
 
         $documents[] = [
             'id' => 9999,
-            'content' => 'This is a very long text with content about something',
+            'content' => 'dog house',
         ];
 
         $loupe->addDocuments($documents);
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('This is a very long text with content about something')
+            ->withQuery('dog house')
             ->withAttributesToRetrieve(['id', 'content'])
             ->withShowRankingScore(true)
             ->withHitsPerPage(4)
@@ -2398,26 +2404,26 @@ class SearchTest extends TestCase
             'hits' => [
                 [
                     'id' => 9999,
-                    'content' => 'This is a very long text with a little bit of content',
+                    'content' => 'dog house',
                     '_rankingScore' => 1.0,
                 ],
                 [
                     'id' => 1,
-                    'content' => 'This is a very long text with content',
-                    '_rankingScore' => 0.76952,
+                    'content' => 'dog',
+                    '_rankingScore' => 0.77169,
                 ],
                 [
                     'id' => 2,
-                    'content' => 'This is a very long text with content',
-                    '_rankingScore' => 0.76952,
+                    'content' => 'dog',
+                    '_rankingScore' => 0.77169,
                 ],
                 [
                     'id' => 3,
-                    'content' => 'This is a very long text with content',
-                    '_rankingScore' => 0.76952,
+                    'content' => 'dog',
+                    '_rankingScore' => 0.77169,
                 ],
             ],
-            'query' => 'This is a very long text with content about something',
+            'query' => 'dog house',
             'hitsPerPage' => 4,
             'page' => 1,
             'totalPages' => 251,
