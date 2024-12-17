@@ -814,7 +814,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-        //dd(implode(' ', $queryParts));
+
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
