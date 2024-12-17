@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Internal\Search\Ranking\TermPositions;
 final class TermMatch
 {
     /**
-     * @param array<int> $positions
+     * @param array<Position> $positions
      */
     public function __construct(
         private readonly string $attribute,
@@ -17,17 +17,28 @@ final class TermMatch
         sort($this->positions);
     }
 
+    public function hasExactMatch(): bool
+    {
+        foreach ($this->positions as $position) {
+            if ($position->isExactMatch) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function getAttribute(): string
     {
         return $this->attribute;
     }
 
-    public function getFirstPosition(): int
+    public function getFirstPosition(): Position
     {
         return $this->positions[0];
     }
 
-    public function getPositionAfter(int $referencePosition): ?int
+    public function getPositionAfter(int $referencePosition): ?Position
     {
         foreach ($this->positions as $position) {
             if ($position > $referencePosition) {
@@ -36,13 +47,5 @@ final class TermMatch
         }
 
         return null;
-    }
-
-    /**
-     * @return int[]
-     */
-    public function getPositions(): array
-    {
-        return $this->positions;
     }
 }

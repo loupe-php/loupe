@@ -222,6 +222,11 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.term');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
+        $cteSelectQb->addSelect(sprintf("CASE WHEN (SELECT term FROM %s WHERE id=%s.term) = '%s' THEN 1 ELSE 0 END AS exact_match",
+            IndexInfo::TABLE_NAME_TERMS,
+            $termsDocumentsAlias,
+            $token->getTerm(),
+        ));
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
 
@@ -247,7 +252,7 @@ class Searcher
         $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
-        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position'];
+        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position', 'exact_match'];
         $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
     }
 
@@ -808,7 +813,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-
+//dd(implode(' ', $queryParts));
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),

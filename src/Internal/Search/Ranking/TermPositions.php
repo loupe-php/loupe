@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Ranking;
 
+use Loupe\Loupe\Internal\Search\Ranking\TermPositions\Position;
 use Loupe\Loupe\Internal\Search\Ranking\TermPositions\Term;
 use Loupe\Loupe\Internal\Search\Ranking\TermPositions\TermMatch;
 
@@ -15,6 +16,8 @@ class TermPositions
     private array $matchingAttributes = [];
 
     private int $totalMatchingTerms = 0;
+
+    private int $totalExactMatchingTerms = 0;
 
     private int $totalTermsSearchedFor;
 
@@ -29,6 +32,11 @@ class TermPositions
         foreach ($this->terms as $term) {
             if ($term->hasMatches()) {
                 $this->totalMatchingTerms++;
+
+                if ($term->hasExactMatch()) {
+                    $this->totalExactMatchingTerms++;
+                }
+
                 foreach ($term->getMatches() as $match) {
                     $this->matchingAttributes[$match->getAttribute()] = true;
                 }
@@ -55,7 +63,7 @@ class TermPositions
             return new self($terms);
         }
 
-        foreach (explode(';', $positionsInDocumentPerTerm) as $index => $termSearchedFor) {
+        foreach (explode(';', $positionsInDocumentPerTerm) as $termSearchedFor) {
             // Document did not match this term
             if ($termSearchedFor === '0') {
                 $terms[] = new Term([]);
@@ -66,8 +74,8 @@ class TermPositions
             $termMatches = [];
 
             foreach (explode(',', $termSearchedFor) as $positionAttributeCombination) {
-                [$position, $attribute] = explode(':', $positionAttributeCombination);
-                $attributePositions[$attribute][] = (int) $position;
+                [$position, $attribute, $exactMatch] = explode(':', $positionAttributeCombination, 3);
+                $attributePositions[$attribute][] = new Position((int) $position, (bool) $exactMatch);
             }
 
             foreach ($attributePositions as $attribute => $positions) {
@@ -99,6 +107,11 @@ class TermPositions
     public function getTotalMatchingTerms(): int
     {
         return $this->totalMatchingTerms;
+    }
+
+    public function getTotalExactMatchingTerms(): int
+    {
+        return $this->totalExactMatchingTerms;
     }
 
     public function getTotalTermsSearchedFor(): int

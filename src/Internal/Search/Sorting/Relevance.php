@@ -44,17 +44,12 @@ class Relevance extends AbstractSorter
             // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
             // because it's just a ";" separated list.
             $positionsPerDocument[] = sprintf(
-                "SELECT (SELECT COALESCE(group_concat(DISTINCT position || ':' || attribute), '0') FROM %s WHERE %s.id=document) AS %s",
+                "SELECT (SELECT COALESCE(group_concat(DISTINCT position || ':' || attribute || ':' || exact_match), '0') FROM %s WHERE %s.id=document) AS %s",
                 $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token),
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 Searcher::RELEVANCE_ALIAS . '_per_term',
             );
         }
-
-        // Positive weights to determine word count
-        $allTerms = $searcher->getTokens()->allTerms();
-        $negatedTerms = $searcher->getTokens()->allNegatedTerms();
-        $positiveTerms = array_diff($allTerms, $negatedTerms);
 
         // Check ranking rules at beginning to throw early
         $rankingRules = $engine->getConfiguration()->getRankingRules();
@@ -65,12 +60,11 @@ class Relevance extends AbstractSorter
 
         $select = sprintf(
             "loupe_relevance(
-                '%s', '%s', '%s',
+                '%s', '%s',
                 (SELECT group_concat(%s, ';') FROM (%s))
             ) AS %s",
             implode(':', $searchableAttributes),
             implode(':', $rankingRules),
-            implode(':', $positiveTerms),
             Searcher::RELEVANCE_ALIAS . '_per_term',
             implode(' UNION ALL ', $positionsPerDocument),
             Searcher::RELEVANCE_ALIAS,
@@ -98,9 +92,9 @@ class Relevance extends AbstractSorter
      *
      * @param string $termPositions A string of ";" separated per term and "," separated for all the term positions within a document
      */
-    public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
+    public static function fromQuery(string $searchableAttributes, string $rankingRules, string $termPositions): float
     {
-        $rankingInfo = RankingInfo::fromQueryFunction($searchableAttributes, $rankingRules, $queryTokens, $termPositions);
+        $rankingInfo = RankingInfo::fromQueryFunction($searchableAttributes, $rankingRules, $termPositions);
         $rankers = static::getRankers($rankingInfo->getRankingRules());
 
         $weights = [];

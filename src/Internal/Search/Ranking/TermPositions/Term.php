@@ -26,4 +26,15 @@ class Term
     {
         return !empty($this->termMatches);
     }
+
+    public function hasExactMatch(): bool
+    {
+        foreach ($this->termMatches as $termMatch) {
+            if ($termMatch->hasExactMatch()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

@@ -8,7 +8,6 @@ class Exactness extends AbstractRanker
 {
     public static function calculate(RankingInfo $rankingInfo): float
     {
-        // TODO: Implement me
-        return 1;
+        return $rankingInfo->getTermPositions()->getTotalExactMatchingTerms() / $rankingInfo->getTermPositions()->getTotalTermsSearchedFor();
     }
 }
