@@ -10,6 +10,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
 use Loupe\Loupe\Internal\Search\Ranking\Proximity;
+use Loupe\Loupe\Internal\Search\Ranking\RankingInfo;
 use Loupe\Loupe\Internal\Search\Ranking\WordCount;
 use Loupe\Loupe\Internal\Search\Searcher;
 
@@ -98,18 +99,13 @@ class Relevance extends AbstractSorter
      */
     public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
     {
-        $searchableAttributes = explode(':', $searchableAttributes);
-
-        $rankingRules = explode(':', $rankingRules);
-        $rankers = static::getRankers($rankingRules);
-
-        $queryTokens = explode(':', $queryTokens);
-        $termPositions = static::parseTermPositions($termPositions);
+        $rankingInfo = RankingInfo::fromQueryFunction($searchableAttributes, $rankingRules, $queryTokens, $termPositions);
+        $rankers = static::getRankers($rankingInfo->getRankingRules());
 
         $weights = [];
         $totalWeight = 0;
         foreach ($rankers as [$class, $weight]) {
-            $weights[] = $class::calculate($searchableAttributes, $queryTokens, $termPositions) * $weight;
+            $weights[] = $class::calculate($rankingInfo) * $weight;
             $totalWeight += $weight;
         }
 
@@ -159,27 +155,6 @@ class Relevance extends AbstractSorter
             },
             $rules,
             range(0, \count($rules) - 1)
-        );
-    }
-
-    /**
-     * Parse an intermediate string representation of term positions and matches attributes
-     *
-     * "3:title,8:title,10:title;0;4:summary" -> [[3, "title"], [8, "title"], [10, "title"]], [[0, null]], [[4, "summary"]]
-     *
-     * @return array<int, array<int, array{int, string|null}>>
-     */
-    protected static function parseTermPositions(string $positionsInDocumentPerTerm): array
-    {
-        return array_map(
-            fn ($term) => array_map(
-                fn ($position) => [
-                    (int) explode(':', "{$position}:")[0],
-                    explode(':', "{$position}:")[1] ?: null,
-                ],
-                explode(',', $term)
-            ),
-            explode(';', $positionsInDocumentPerTerm)
         );
     }
 }

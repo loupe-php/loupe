@@ -4,26 +4,14 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Ranking;
 
+/**
+ * Ranks based on the number of matching terms vs. number of terms searched for in total.
+ * E.g. if you search for "this is my hobby" then it's better if a document matches all 4 terms instead of just 3.
+ */
 class WordCount extends AbstractRanker
 {
-    public static function calculate(array &$searchableAttributes, array &$queryTokens, array &$termPositions): float
+    public static function calculate(RankingInfo $rankingInfo): float
     {
-        return static::calculateWordCount($termPositions);
-    }
-
-    /**
-     * @param array<int, array<int, array{int, string|null}>> $termPositions
-     */
-    public static function calculateWordCount(array &$termPositions): float
-    {
-        $matchedWords = 0;
-        foreach ($termPositions as $term) {
-            if ((\count($term) === 1 && $term[0][0] === 0)) {
-                continue;
-            }
-            ++$matchedWords;
-        }
-
-        return $matchedWords / \count($termPositions);
+        return $rankingInfo->getTermPositions()->getTotalMatchingTerms() / $rankingInfo->getTermPositions()->getTotalTermsSearchedFor();
     }
 }

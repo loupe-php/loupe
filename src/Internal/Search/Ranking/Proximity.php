@@ -6,50 +6,88 @@ namespace Loupe\Loupe\Internal\Search\Ranking;
 
 class Proximity extends AbstractRanker
 {
-    protected static float $decayFactor = 0.1;
-
-    public static function calculate(array &$searchableAttributes, array &$queryTokens, array &$termPositions): float
+    public static function calculate(RankingInfo $rankingInfo): float
     {
-        return static::calculateProximity($termPositions, static::$decayFactor);
+        return self::calculateWithDecayFactor($rankingInfo->getTermPositions());
     }
 
-    /**
-     * @param array<int, array<int, array{int, string|null}>> $termPositions
-     */
-    public static function calculateProximity(array &$termPositions, float $decayFactor): float
+    public static function calculateWithDecayFactor(TermPositions $termPositions, float $decayFactor = 0.1): float
     {
-        $allAdjacent = true;
-        $totalProximity = 0;
-        $totalTermsRelevantForProximity = \count($termPositions) - 1;
-        $positionPrev = null;
+        $consecutivePositionsPerAttribute = array_fill_keys($termPositions->getMatchingAttributes(), []);
 
-        foreach ($termPositions as $positions) {
-            if ($positionPrev === null) {
-                [$position] = $positions[0];
-                $positionPrev = $position;
+        // No terms (shouldn't happen anyway) or just one, there's no distance between terms to calculate
+        if (\count($termPositions->getTerms()) <= 1) {
+            return 1.0;
+        }
+
+        foreach ($termPositions->getTerms() as $term) {
+            if (!$term->hasMatches()) {
                 continue;
             }
 
-            $distance = 0;
+            foreach ($term->getMatches() as $match) {
+                $lastPosition = end($consecutivePositionsPerAttribute[$match->getAttribute()]);
 
-            foreach ($positions as $positionAndAttribute) {
-                [$position] = $positionAndAttribute;
-                if ($position > $positionPrev) {
-                    $distance = $position - $positionPrev;
-                    $positionPrev = $position;
-                    break;
+                // First element
+                if ($lastPosition === false) {
+                    $consecutivePositionsPerAttribute[$match->getAttribute()][] = $match->getFirstPosition();
+                } else {
+                    $positionAfter = $match->getPositionAfter($lastPosition);
+                    if ($positionAfter) {
+                        $consecutivePositionsPerAttribute[$match->getAttribute()][] = $positionAfter;
+                    }
                 }
             }
-
-            if ($distance !== 1) {
-                $allAdjacent = false;
-            }
-
-            // Calculate proximity with decay function using the distance
-            $proximity = exp(-1 * $decayFactor * $distance);
-            $totalProximity += $proximity;
         }
 
-        return $allAdjacent ? 1.0 : ($totalTermsRelevantForProximity > 0 ? $totalProximity / $totalTermsRelevantForProximity : 0);
+        $allAdjacentPerAttribute = array_fill_keys($termPositions->getMatchingAttributes(), true);
+        $proximityPerAttribute = array_fill_keys($termPositions->getMatchingAttributes(), 0);
+        $totalTermsRelevantForProximity = $termPositions->getTotalMatchingTerms() - 1; // Minus one for the first term which can never have a distance
+
+        foreach ($consecutivePositionsPerAttribute as $attribute => $positions) {
+            $positionPrev = null;
+            $totalProximity = 0;
+            $positionsCount = \count($positions);
+
+            // Not found for every term, cannot be a 100% match
+            if ($positionsCount !== $termPositions->getTotalMatchingTerms()) {
+                $allAdjacentPerAttribute[$attribute] = false;
+            }
+
+            if ($positionsCount === 1) {
+                $proximityPerAttribute[$attribute] = 1.0 / $termPositions->getTotalMatchingTerms();
+                continue;
+            }
+
+            foreach ($positions as $position) {
+                if ($positionPrev === null) {
+                    $positionPrev = $position;
+                    continue;
+                }
+
+                $distance = $position - $positionPrev;
+
+                if ($distance !== 1) {
+                    $allAdjacentPerAttribute[$attribute] = false;
+                }
+
+                // Calculate proximity with decay function using the distance
+                $proximity = exp(-1 * $decayFactor * $distance);
+                $totalProximity += $proximity;
+                $positionPrev = $position;
+            }
+
+            $proximityPerAttribute[$attribute] = $totalProximity / $totalTermsRelevantForProximity;
+        }
+
+        // If all terms are adjacent for one attribute, we found a 100% match
+        foreach ($allAdjacentPerAttribute as $allAdjacent) {
+            if ($allAdjacent) {
+                return 1.0;
+            }
+        }
+
+        // Otherwise we take the highest proximity of all attributes
+        return max($proximityPerAttribute);
     }
 }
