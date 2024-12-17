@@ -43,6 +43,7 @@ final class Configuration
         'words',
         'proximity',
         'attribute',
+        'exactness',
     ];
 
     /**

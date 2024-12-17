@@ -9,6 +9,7 @@ use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
+use Loupe\Loupe\Internal\Search\Ranking\Exactness;
 use Loupe\Loupe\Internal\Search\Ranking\Proximity;
 use Loupe\Loupe\Internal\Search\Ranking\RankingInfo;
 use Loupe\Loupe\Internal\Search\Ranking\WordCount;
@@ -21,7 +22,7 @@ class Relevance extends AbstractSorter
         // 'typo' => TypoCount::class, // Not implemented yet
         'proximity' => Proximity::class,
         'attribute' => AttributeWeight::class,
-        // 'exactness' => Exactness::class, // Not implemented yet
+        'exactness' => Exactness::class,
     ];
 
     public function __construct(

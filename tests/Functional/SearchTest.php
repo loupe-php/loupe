@@ -1265,7 +1265,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 2,
                     'content' => 'The administrator organized the new files efficiently.',
-                    '_rankingScore' => 0.91758,
+                    '_rankingScore' => 0.89462,
                 ],
             ],
             'query' => 'administrative files',
