@@ -22,11 +22,6 @@ class Term
         return $this->termMatches;
     }
 
-    public function hasMatches(): bool
-    {
-        return !empty($this->termMatches);
-    }
-
     public function hasExactMatch(): bool
     {
         foreach ($this->termMatches as $termMatch) {
@@ -36,5 +31,10 @@ class Term
         }
 
         return false;
+    }
+
+    public function hasMatches(): bool
+    {
+        return !empty($this->termMatches);
     }
 }

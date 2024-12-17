@@ -17,17 +17,6 @@ final class TermMatch
         sort($this->positions);
     }
 
-    public function hasExactMatch(): bool
-    {
-        foreach ($this->positions as $position) {
-            if ($position->isExactMatch) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     public function getAttribute(): string
     {
         return $this->attribute;
@@ -41,11 +30,22 @@ final class TermMatch
     public function getPositionAfter(int $referencePosition): ?Position
     {
         foreach ($this->positions as $position) {
-            if ($position > $referencePosition) {
+            if ($position->position > $referencePosition) {
                 return $position;
             }
         }
 
         return null;
+    }
+
+    public function hasExactMatch(): bool
+    {
+        foreach ($this->positions as $position) {
+            if ($position->isExactMatch) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

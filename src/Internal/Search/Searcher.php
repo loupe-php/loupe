@@ -222,7 +222,8 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.term');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
-        $cteSelectQb->addSelect(sprintf("CASE WHEN (SELECT term FROM %s WHERE id=%s.term) = '%s' THEN 1 ELSE 0 END AS exact_match",
+        $cteSelectQb->addSelect(sprintf(
+            "CASE WHEN (SELECT term FROM %s WHERE id=%s.term) = '%s' THEN 1 ELSE 0 END AS exact_match",
             IndexInfo::TABLE_NAME_TERMS,
             $termsDocumentsAlias,
             $token->getTerm(),
@@ -813,7 +814,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-//dd(implode(' ', $queryParts));
+        //dd(implode(' ', $queryParts));
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),

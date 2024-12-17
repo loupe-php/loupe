@@ -15,9 +15,9 @@ class TermPositions
      */
     private array $matchingAttributes = [];
 
-    private int $totalMatchingTerms = 0;
-
     private int $totalExactMatchingTerms = 0;
+
+    private int $totalMatchingTerms = 0;
 
     private int $totalTermsSearchedFor;
 
@@ -104,14 +104,14 @@ class TermPositions
         return $this->terms;
     }
 
-    public function getTotalMatchingTerms(): int
-    {
-        return $this->totalMatchingTerms;
-    }
-
     public function getTotalExactMatchingTerms(): int
     {
         return $this->totalExactMatchingTerms;
+    }
+
+    public function getTotalMatchingTerms(): int
+    {
+        return $this->totalMatchingTerms;
     }
 
     public function getTotalTermsSearchedFor(): int
