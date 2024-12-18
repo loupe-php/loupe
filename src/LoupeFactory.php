@@ -160,6 +160,10 @@ final class LoupeFactory
                 'callback' => [Levenshtein::class, 'maxLevenshtein'],
                 'numArgs' => 4,
             ],
+            'loupe_levensthein' => [
+                'callback' => [Levenshtein::class, 'damerauLevenshtein'],
+                'numArgs' => 3,
+            ],
             'loupe_geo_distance' => [
                 'callback' => [Geo::class, 'geoDistance'],
                 'numArgs' => 4,

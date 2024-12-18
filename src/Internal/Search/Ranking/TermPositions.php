@@ -19,6 +19,8 @@ class TermPositions
 
     private int $totalMatchingTerms = 0;
 
+    private int $totalNumberOfTypos = 0;
+
     private int $totalTermsSearchedFor;
 
     /**
@@ -33,7 +35,9 @@ class TermPositions
             if ($term->hasMatches()) {
                 $this->totalMatchingTerms++;
 
-                if ($term->hasExactMatch()) {
+                $this->totalNumberOfTypos += $totalNumberOfTypos = $term->getLowestNumberOfTypos();
+
+                if ($totalNumberOfTypos === 0) {
                     $this->totalExactMatchingTerms++;
                 }
 
@@ -74,8 +78,8 @@ class TermPositions
             $termMatches = [];
 
             foreach (explode(',', $termSearchedFor) as $positionAttributeCombination) {
-                [$position, $attribute, $exactMatch] = explode(':', $positionAttributeCombination, 3);
-                $attributePositions[$attribute][] = new Position((int) $position, (bool) $exactMatch);
+                [$position, $attribute, $numberOfTypos] = explode(':', $positionAttributeCombination, 3);
+                $attributePositions[$attribute][] = new Position((int) $position, (int) $numberOfTypos);
             }
 
             foreach ($attributePositions as $attribute => $positions) {
@@ -112,6 +116,11 @@ class TermPositions
     public function getTotalMatchingTerms(): int
     {
         return $this->totalMatchingTerms;
+    }
+
+    public function getTotalNumberOfTypos(): int
+    {
+        return $this->totalNumberOfTypos;
     }
 
     public function getTotalTermsSearchedFor(): int

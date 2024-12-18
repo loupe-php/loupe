@@ -27,6 +27,24 @@ final class TermMatch
         return $this->positions[0];
     }
 
+    public function getLowestNumberOfTypos(): int
+    {
+        $lowestNumber = PHP_INT_MAX;
+
+        foreach ($this->positions as $position) {
+            if ($position->numberOfTypos < $lowestNumber) {
+                $lowestNumber = $position->numberOfTypos;
+            }
+
+            // Shortcut
+            if ($lowestNumber === 0) {
+                return 0;
+            }
+        }
+
+        return $lowestNumber;
+    }
+
     public function getPositionAfter(int $referencePosition): ?Position
     {
         foreach ($this->positions as $position) {
@@ -36,16 +54,5 @@ final class TermMatch
         }
 
         return null;
-    }
-
-    public function hasExactMatch(): bool
-    {
-        foreach ($this->positions as $position) {
-            if ($position->isExactMatch) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

@@ -1233,6 +1233,7 @@ class SearchTest extends TestCase
             ->withSearchableAttributes(['content'])
             ->withSortableAttributes(['content'])
             ->withLanguages(['en'])
+            ->withRankingRules(['exactness']) // Only match on exactness to isolate this test case
         ;
 
         $loupe = $this->createLoupe($configuration);
@@ -1260,12 +1261,12 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The administrative assistant managed the files.',
-                    '_rankingScore' => 0.90889,
+                    '_rankingScore' => 1.0,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The administrator organized the new files efficiently.',
-                    '_rankingScore' => 0.84119,
+                    '_rankingScore' => 0.5,
                 ],
             ],
             'query' => 'administrative files',
@@ -2196,17 +2197,17 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.87531,
+                    '_rankingScore' => 0.92028,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.7349,
+                    '_rankingScore' => 0.77641,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.7349,
+                    '_rankingScore' => 0.77641,
                 ],
             ],
             'query' => 'life learning',
@@ -2229,7 +2230,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.87531,
+                    '_rankingScore' => 0.92028,
                 ],
             ],
             'query' => 'life learning',
@@ -2278,22 +2279,22 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'content' => 'Book title: life learning',
-                    '_rankingScore' => 0.82327,
+                    '_rankingScore' => 0.85094,
                 ],
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.69858,
+                    '_rankingScore' => 0.77121,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.64653,
+                    '_rankingScore' => 0.70187,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.64653,
+                    '_rankingScore' => 0.70187,
                 ],
             ],
             'query' => 'foobar life learning',
@@ -2352,7 +2353,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 3,
                     'title' => 'Learning to game',
-                    '_rankingScore' => 0.68509,
+                    '_rankingScore' => 0.76259,
                 ],
             ],
             'query' => 'game of life',
@@ -2380,12 +2381,12 @@ class SearchTest extends TestCase
                 [
                     'id' => 2,
                     'title' => 'Everlasting learning',
-                    '_rankingScore' => 0.9056,
+                    '_rankingScore' => 0.93964,
                 ],
                 [
                     'id' => 3,
                     'title' => 'Learning to game',
-                    '_rankingScore' => 0.6464,
+                    '_rankingScore' => 0.73785,
                 ],
             ],
             'query' => 'game of life',
@@ -2439,13 +2440,13 @@ class SearchTest extends TestCase
                     'id' => 2,
                     'title' => 'Lorem dolor sit amet',
                     'content' => 'Ipsum',
-                    '_rankingScore' => 0.82313,
+                    '_rankingScore' => 0.88691,
                 ],
                 [
                     'id' => 3,
                     'title' => 'Dolor',
                     'content' => 'Lorem sit amet',
-                    '_rankingScore' => 0.69621,
+                    '_rankingScore' => 0.75167,
                 ],
             ],
             'query' => 'lorem ipsum',

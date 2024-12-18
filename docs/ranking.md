@@ -2,10 +2,11 @@
 
 Loupe uses a multi-factor ranking system to determine the relevance of search results:
 
-1. Number of matched query terms
-2. Proximity of matched terms in the text
-3. Ranking of matched attributes
-4. Exactness of match
+1. Number of matched query terms (`words`)
+2. Number of typos (`typo`)
+3. Proximity of matched terms in the text (`proximity`)
+4. Ranking of matched attributes (`attribute`)
+5. Exactness of match (`exactness`)
 
 ## Best Practices
 
@@ -27,7 +28,12 @@ For example, when searching for "quick brown fox":
 - A document with only "quick" and "fox" would score `0.67`
 - A document with just "brown" would score `0.33`
 
-### 2. Proximity of Matched Terms
+### 2. Number of typos
+
+The fewer typos in all terms, the better the ranking. Loupe uses a decay factor of `0.1`. A perfect match receives
+a score of `1.0`.
+
+### 3. Proximity of Matched Terms
 
 Term proximity measures how close matching terms appear to each other in the document. Terms that are
 closer together receive higher scores. Adjacent terms receive a perfect proximity score of `1.0`. As
@@ -39,7 +45,7 @@ Example proximity scores:
 - "quick ... brown" (5 words apart) would score `0.6`
 - "quick ... ... brown" (10 words apart) would score `0.35`
 
-### 3. Attribute Ranking
+### 4. Attribute Ranking
 
 Some fields are more relevant for search results than others, e.g. the `title` field should usually
 be the most important attribute for search. The attribute ranking order reflects this by ranking results
@@ -59,7 +65,7 @@ $configuration = Configuration::create()
 
 Note: When using the default `['*']`, all attributes are weighted equally.
 
-### 4. Exactness Ranking
+### 5. Exactness Ranking
 
 Due to stemming, when searching e.g. for `learning`, Loupe also searches for `learn`. The Exactness ranking algorithm
 makes sure that if you search for `learning`, results containing exactly what you searched for will be ranked higher

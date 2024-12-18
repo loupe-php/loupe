@@ -222,12 +222,19 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.term');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
-        $cteSelectQb->addSelect(sprintf(
-            "CASE WHEN (SELECT term FROM %s WHERE id=%s.term) = '%s' THEN 1 ELSE 0 END AS exact_match",
-            IndexInfo::TABLE_NAME_TERMS,
-            $termsDocumentsAlias,
-            $token->getTerm(),
-        ));
+
+        // If neither, exactness nor typo is part of the ranking rules, we can omit calculating the info for better performance
+        if (\in_array('exactness', $this->engine->getConfiguration()->getRankingRules(), true) || \in_array('typo', $this->engine->getConfiguration()->getRankingRules(), true)) {
+            $cteSelectQb->addSelect(sprintf(
+                'loupe_levensthein((SELECT term FROM %s WHERE id=%s.term), %s, %s) AS typos',
+                IndexInfo::TABLE_NAME_TERMS,
+                $termsDocumentsAlias,
+                $this->getQueryBuilder()->createNamedParameter($token->getTerm()),
+                $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
+            ));
+        } else {
+            $cteSelectQb->addSelect('0 AS typos');
+        }
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
 
@@ -253,7 +260,7 @@ class Searcher
         $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
-        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position', 'exact_match'];
+        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position', 'typos'];
         $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
     }
 
