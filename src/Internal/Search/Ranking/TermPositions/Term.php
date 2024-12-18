@@ -14,6 +14,25 @@ class Term
     ) {
     }
 
+    public function getLowestNumberOfTypos(): int
+    {
+        $lowestNumber = PHP_INT_MAX;
+
+        foreach ($this->termMatches as $termMatch) {
+            $termLowestNumber = $termMatch->getLowestNumberOfTypos();
+            if ($termLowestNumber < $lowestNumber) {
+                $lowestNumber = $termLowestNumber;
+            }
+
+            // Shortcut
+            if ($lowestNumber === 0) {
+                return 0;
+            }
+        }
+
+        return $lowestNumber;
+    }
+
     /**
      * @return TermMatch[]
      */

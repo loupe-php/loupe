@@ -30,11 +30,11 @@ class Proximity extends AbstractRanker
 
                 // First element
                 if ($lastPosition === false) {
-                    $consecutivePositionsPerAttribute[$match->getAttribute()][] = $match->getFirstPosition();
+                    $consecutivePositionsPerAttribute[$match->getAttribute()][] = $match->getFirstPosition()->position;
                 } else {
                     $positionAfter = $match->getPositionAfter($lastPosition);
                     if ($positionAfter) {
-                        $consecutivePositionsPerAttribute[$match->getAttribute()][] = $positionAfter;
+                        $consecutivePositionsPerAttribute[$match->getAttribute()][] = $positionAfter->position;
                     }
                 }
             }

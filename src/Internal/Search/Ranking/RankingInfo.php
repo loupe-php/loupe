@@ -26,14 +26,9 @@ final class RankingInfo
      *
      * @param string $termPositions A string of ";" separated per term and "," separated for all the term positions within a document
      */
-    public static function fromQueryFunction(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): self
+    public static function fromQueryFunction(string $searchableAttributes, string $rankingRules, string $termPositions): self
     {
-        $info = new self(explode(':', $rankingRules), explode(':', $searchableAttributes), TermPositions::fromQueryFunction($termPositions));
-
-        // TODO: Who needs those?
-        $queryTokens = explode(':', $queryTokens);
-
-        return $info;
+        return new self(explode(':', $rankingRules), explode(':', $searchableAttributes), TermPositions::fromQueryFunction($termPositions));
     }
 
     /**

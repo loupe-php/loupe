@@ -13,7 +13,7 @@ Loupe…
 * …supports negative keyword and phrase search using `-` as modifier
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * …supports filtering (and ordering) on Geo distance
-* …orders relevance based on a number of factors such as number of matching terms as well as proximity
+* …orders relevance based on a number of factors such as number of matching terms, typos, proximity, word counts and exactness
 * …auto-detects languages
 * …supports stemming
 * …is very easy to use

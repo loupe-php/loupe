@@ -6,6 +6,7 @@ namespace Loupe\Loupe;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Psr\Log\LoggerInterface;
 
 final class Configuration
@@ -41,8 +42,10 @@ final class Configuration
      */
     private array $rankingRules = [
         'words',
+        'typo',
         'proximity',
         'attribute',
+        'exactness',
     ];
 
     /**
@@ -254,6 +257,19 @@ final class Configuration
      */
     public function withRankingRules(array $rankingRules): self
     {
+        if (!\count($rankingRules)) {
+            throw new InvalidConfigurationException('Ranking rules cannot be empty.');
+        }
+
+        foreach ($rankingRules as $v) {
+            if (!\is_string($v)) {
+                throw new InvalidConfigurationException('Ranking rules must be an array of strings.');
+            }
+            if (!\in_array($v, array_keys(Relevance::RANKERS), true)) {
+                throw new InvalidConfigurationException('Unknown ranking rule: ' . $v);
+            }
+        }
+
         $clone = clone $this;
         $clone->rankingRules = $rankingRules;
 
