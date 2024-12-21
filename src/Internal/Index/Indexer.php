@@ -384,6 +384,10 @@ class Indexer
 
     private function persistStateSet(): void
     {
+        if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+            return;
+        }
+
         /** @var StateSet $stateSet */
         $stateSet = $this->engine->getStateSetIndex()->getStateSet();
         $stateSet->persist();
