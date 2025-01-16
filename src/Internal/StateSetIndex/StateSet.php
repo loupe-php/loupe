@@ -80,11 +80,22 @@ class StateSet implements StateSetInterface
             return;
         }
 
-        $cache = '<?php return ';
-        $cache .= var_export($stateSet, true);
-        $cache .= ';';
+        // Call opcache_invalidate() no matter if it was enabled or not. It might have been enabled previously
+        // and disabled only now.
+        if (\function_exists('opcache_invalidate')) {
+            opcache_invalidate($cacheFile, true);
+        }
 
-        file_put_contents($cacheFile, $cache);
+        $lines = [];
+        $lines[] = '<?php';
+
+        if (!$this->engine->getConfiguration()->getTypoTolerance()->useOPcache()) {
+            $lines[] = "ini_set('opcache.enable', '0');";
+        }
+
+        $lines[] = 'return ' . var_export($stateSet, true) . ';';
+
+        file_put_contents($cacheFile, implode("\n", $lines));
     }
 
     private function getStateSetCacheFile(): ?string
@@ -102,6 +113,19 @@ class StateSet implements StateSetInterface
             return;
         }
 
+        if (!$this->engine->getConfiguration()->getTypoTolerance()->useOPcache()) {
+            $data = $this->loadFromStorage();
+        } else {
+            $data = $this->loadFromCacheFile();
+        }
+
+        $this->inMemoryStateSet = new InMemoryStateSet($data);
+        $this->initialized = true;
+    }
+
+    private function loadFromCacheFile(): array
+    {
+        $data = [];
         $cacheFile = $this->getStateSetCacheFile();
 
         if ($cacheFile === null) {
@@ -115,8 +139,7 @@ class StateSet implements StateSetInterface
             }
         }
 
-        $this->inMemoryStateSet = new InMemoryStateSet(\is_array($data) ? $data : []);
-        $this->initialized = true;
+        return $data;
     }
 
     /**

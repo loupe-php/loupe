@@ -26,6 +26,8 @@ final class TypoTolerance
         5 => 1,
     ];
 
+    private bool $useOPcache = false;
+
     public static function create(): self
     {
         return new self();
@@ -88,6 +90,11 @@ final class TypoTolerance
         return $this->isEnabledForPrefixSearch;
     }
 
+    public function useOPcache(): bool
+    {
+        return $this->useOPcache;
+    }
+
     public function withAlphabetSize(int $alhabetSize): self
     {
         $clone = clone $this;
@@ -136,6 +143,13 @@ final class TypoTolerance
         $clone = clone $this;
         $clone->typoThresholds = $typoThresholds;
 
+        return $clone;
+    }
+
+    public function withUseOPcache(bool $useOpcache): self
+    {
+        $clone = clone $this;
+        $clone->useOPcache = $useOpcache;
         return $clone;
     }
 }

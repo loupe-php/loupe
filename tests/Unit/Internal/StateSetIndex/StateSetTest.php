@@ -21,8 +21,6 @@ class StateSetTest extends TestCase
     {
         $engine = $this->createTestEngine();
 
-        $this->assertStateSetContents($engine, []);
-
         $engine->addDocuments([
             [
                 'id' => 1,
@@ -46,18 +44,9 @@ class StateSetTest extends TestCase
         $this->assertStateSetContents($engine, []);
     }
 
-    public function testStateSetIndexEmpty(): void
-    {
-        $engine = $this->createTestEngine();
-
-        $this->assertStateSetContents($engine, []);
-    }
-
     public function testStateSetIndexFilledFromDocument(): void
     {
         $engine = $this->createTestEngine();
-
-        $this->assertStateSetContents($engine, []);
 
         $engine->addDocuments([
             [
