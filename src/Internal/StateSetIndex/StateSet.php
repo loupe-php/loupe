@@ -123,6 +123,9 @@ class StateSet implements StateSetInterface
         $this->initialized = true;
     }
 
+    /**
+     * @return array<int, bool>
+     */
     private function loadFromCacheFile(): array
     {
         $data = [];
