@@ -135,35 +135,4 @@ $configuration = \Loupe\Loupe\Configuration::create()
 Note: Attributes you neither want to search or filter for are best kept **outside** of Loupe. Don't bother it with 
 data that doesn't need to be processed.
 
-## Enable the OPcache integration
-
-The State Set Index algorithm explained above requires the set of valid states to be stored persistently. The amount of
-states depends heavily on the configured alphabet size as well as index length and of course also the terms you are 
-indexing within your documents. Here's a ballpark number: Indexing both, the `movies_1000.json` with only 1000 movies or
-the `movies.json` with about 32k movies results in a state set of a bit over 50k states. These 50k states have to be 
-loaded into memory on every request which amounts to roughly 2.5 MB of required memory, so no big deal. However, 
-loading them from the SQLite database on every request would be quite a bit slower than loading it from a simple 
-cache file that contains the 50k states as a PHP array. Hence, Loupe dumps the states as `state_set.php` within its data
-directory. By default, it's exempt from OPcache by calling `ini_set('opcache.enable', '0');`. You can enable adding it
-to the OPCode cache to enhance performance:
-
-```php
-$typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
-    ->withUseOPcache(true)
-;
-$configuration = \Loupe\Loupe\Configuration::create()
-    ->withTypoTolerance($typoTolerance)
-;
-```
-
-The reason why this is disabled by default is the fact that 2.5 MB of RAM is a lot for a single file. If you have 
-many different Loupe indexes or something like a rolling cache (e.g. `/loupe-instances/<date>/...`) that creates a 
-lot of different paths to those `state_set.php` files, you can flood your OPcache pretty easily and quickly.
-Hence, this is an optional feature.
-
-Note: Also make sure `opcache_invalidate()` is enabled. Or in other words: It must not be listed in the 
-`disable_functions` directive of your `php.ini`. Otherwise, whenever you index a new document, Loupe won't be able to
-clear the file from the OPcache. This is not as bad if `opcache.validate_timestamps` is set to `1` but you should 
-check your settings anyway.
-
 [Paper]: https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf
