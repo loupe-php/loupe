@@ -80,11 +80,7 @@ class StateSet implements StateSetInterface
             return;
         }
 
-        $cache = '<?php return ';
-        $cache .= var_export($stateSet, true);
-        $cache .= ';';
-
-        file_put_contents($cacheFile, $cache);
+        file_put_contents($cacheFile, pack('N*', ...array_keys($stateSet)));
     }
 
     private function getStateSetCacheFile(): ?string
@@ -93,7 +89,7 @@ class StateSet implements StateSetInterface
             return null;
         }
 
-        return $this->engine->getDataDir() . '/state_set.php';
+        return $this->engine->getDataDir() . '/state_set.bin';
     }
 
     private function initialize(): void
@@ -111,11 +107,12 @@ class StateSet implements StateSetInterface
                 $data = $this->loadFromStorage();
                 $this->dumpStateSetCache($data);
             } else {
-                $data = require $cacheFile;
+                $data = (array) unpack('N*', (string) file_get_contents($cacheFile));
+                $data = array_combine($data, array_fill(0, \count($data), true));
             }
         }
 
-        $this->inMemoryStateSet = new InMemoryStateSet(\is_array($data) ? $data : []);
+        $this->inMemoryStateSet = new InMemoryStateSet($data);
         $this->initialized = true;
     }
 
