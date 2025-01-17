@@ -33,7 +33,7 @@ Performance depends on many factors but here are some ballpark numbers based on 
 [~32k movies fixture][MeiliSearch_Movies] provided by MeiliSearch.
 
 * **Indexing** will take a little over **90 seconds** (~350 documents per second)
-* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **120 ms**
+* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **100 ms**
 
 Note that anything above 50k documents is probably not a use case for Loupe. You can run your own benchmarks 
 using the scripts in the `bin/bench` folder: `index.php` for indexing and `search.php` for searching. 
