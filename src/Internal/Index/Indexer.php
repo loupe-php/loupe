@@ -60,11 +60,8 @@ class Indexer
 
                             $this->engine->getConnection()
                                 ->transactional(function () use ($document) {
-                                    // Delete the document first if it already exists to avoid orphaned data
-                                    $userId = (string) $document[$this->engine->getConfiguration()->getPrimaryKey()];
-                                    $this->deleteDocuments([$userId], reviseStorage: false);
-
-                                    $documentId = $this->indexDocument($document);
+                                    $documentId = $this->createDocument($document);
+                                    $this->removeDocumentData($documentId);
                                     $this->indexMultiAttributes($document, $documentId);
                                     $this->indexTerms($document, $documentId);
                                 });
@@ -83,8 +80,6 @@ class Indexer
                         }
                     }
 
-                    $this->persistStateSet();
-
                     // Update storage only once
                     $this->reviseStorage();
                 });
@@ -97,6 +92,20 @@ class Indexer
         }
 
         return new IndexResult($successfulCount, $documentExceptions);
+    }
+
+    public function deleteAllDocuments(): self
+    {
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            return $this;
+        }
+
+        $this->engine->getConnection()
+            ->executeStatement(sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
+
+        $this->reviseStorage();
+
+        return $this;
     }
 
     /**
@@ -126,41 +135,11 @@ class Indexer
         return $this;
     }
 
-    private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void
-    {
-        if ($value === null) {
-            return;
-        }
-
-        $valueColumn = (\is_float($value) || \is_bool($value)) ? 'numeric_value' : 'string_value';
-
-        $data = [
-            'attribute' => $attribute,
-            $valueColumn => $value,
-        ];
-
-        $attributeId = $this->engine->upsert(
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-            $data,
-            ['attribute', $valueColumn],
-            'id'
-        );
-
-        $this->engine->upsert(
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-            [
-                'attribute' => $attributeId,
-                'document' => $documentId,
-            ],
-            ['attribute', 'document']
-        );
-    }
-
     /**
      * @param array<string, mixed> $document
      * @return int The document ID
      */
-    private function indexDocument(array $document): int
+    private function createDocument(array $document): int
     {
         $data = [
             'user_id' => (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
@@ -205,6 +184,36 @@ class Indexer
             $data,
             ['user_id'],
             'id'
+        );
+    }
+
+    private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void
+    {
+        if ($value === null) {
+            return;
+        }
+
+        $valueColumn = (\is_float($value) || \is_bool($value)) ? 'numeric_value' : 'string_value';
+
+        $data = [
+            'attribute' => $attribute,
+            $valueColumn => $value,
+        ];
+
+        $attributeId = $this->engine->upsert(
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+            $data,
+            ['attribute', $valueColumn],
+            'id'
+        );
+
+        $this->engine->upsert(
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            [
+                'attribute' => $attributeId,
+                'document' => $documentId,
+            ],
+            ['attribute', 'document']
         );
     }
 
@@ -375,48 +384,132 @@ class Indexer
 
     private function persistStateSet(): void
     {
+        if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+            return;
+        }
+
         /** @var StateSet $stateSet */
         $stateSet = $this->engine->getStateSetIndex()->getStateSet();
         $stateSet->persist();
     }
 
-    private function removeOrphans(): void
+    private function removeDocumentData(int $documentId): void
     {
-        // Cleanup all terms of documents which no longer exist
-        $query = <<<'QUERY'
-            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
-           QUERY;
-
+        // Remove term relations of this document
         $query = sprintf(
-            $query,
+            'DELETE FROM %s WHERE document = %d',
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            $documentId
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // Remove multi-attribute relations of this document
+        $query = sprintf(
+            'DELETE FROM %s WHERE document = %d',
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            $documentId
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // The rest (prefixes, state set, etc) is handled by reviseStorage()
+    }
+
+    private function removeOrphanedDocuments(): void
+    {
+        // Clean up term-document relations of documents which no longer exist
+        $query = sprintf(
+            'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
         );
 
         $this->engine->getConnection()->executeStatement($query);
 
-        // Cleanup all multi attributes of documents which no longer exist
-        $query = <<<'QUERY'
-            DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)
-           QUERY;
-
+        // Clean up multi-attribute-document relations of documents which no longer exist
         $query = sprintf(
-            $query,
+            'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
         );
 
         $this->engine->getConnection()->executeStatement($query);
+    }
 
-        // Cleanup all terms that are not in terms_documents anymore
-        $query = <<<'QUERY'
-            DELETE FROM %s WHERE id NOT IN (SELECT term FROM %s)
-           QUERY;
-
+    private function removeOrphanedPrefixes(): void
+    {
+        // Clean up prefix-term relations of terms which no longer exist
         $query = sprintf(
-            $query,
+            'DELETE FROM %s WHERE term NOT IN (SELECT id FROM %s)',
+            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+            IndexInfo::TABLE_NAME_TERMS,
+        );
+
+        $this->engine->getConnection()->executeStatement($query);
+
+        // Clean up prefixes which no longer have any relations
+        $this->removeOrphansFromTermsTable(
+            IndexInfo::TABLE_NAME_PREFIXES,
+            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+            'prefix'
+        );
+    }
+
+    private function removeOrphanedTerms(): void
+    {
+        // Clean up terms which no longer have any relations
+        $this->removeOrphansFromTermsTable(
             IndexInfo::TABLE_NAME_TERMS,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            'term'
+        );
+    }
+
+    private function removeOrphans(): void
+    {
+        $this->removeOrphanedDocuments();
+        $this->removeOrphanedTerms();
+        $this->removeOrphanedPrefixes();
+    }
+
+    private function removeOrphansFromTermsTable(string $table, string $relationTable, string $column): void
+    {
+        // Iterate over all terms of documents which no longer exist
+        // and remove them from the state set index
+        $query = sprintf(
+            'SELECT %s FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
+            $column,
+            $table,
+            $column,
+            $relationTable,
+        );
+
+        $iterator = $this->engine->getConnection()->executeQuery($query)->iterateAssociative();
+
+        $stateSetIndex = $this->engine->getStateSetIndex();
+
+        $chunkSize = 1000;
+        $termsChunk = [];
+        foreach ($iterator as $row) {
+            $termsChunk[] = reset($row);
+
+            if (\count($termsChunk) >= $chunkSize) {
+                $stateSetIndex->removeFromIndex($termsChunk);
+                $termsChunk = [];
+            }
+        }
+
+        if (!empty($termsChunk)) {
+            $stateSetIndex->removeFromIndex($termsChunk);
+        }
+
+        // Remove all orphaned terms from the terms table
+        $query = sprintf(
+            'DELETE FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
+            $table,
+            $column,
+            $relationTable,
         );
 
         $this->engine->getConnection()->executeStatement($query);
@@ -425,5 +518,6 @@ class Indexer
     private function reviseStorage(): void
     {
         $this->removeOrphans();
+        $this->persistStateSet();
     }
 }

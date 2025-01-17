@@ -27,12 +27,15 @@ class Highlighter
         }
 
         $matches = [];
+        $stopWords = $this->engine->getConfiguration()->getStopWords();
+        $textTokens = $this->engine->getTokenizer()->tokenize($text);
 
-        foreach ($this->engine->getTokenizer()->tokenize($text)->all() as $textToken) {
+        foreach ($textTokens->all() as $textToken) {
             if ($this->matches($textToken, $queryTokens)) {
                 $matches[] = [
                     'start' => $textToken->getStartPosition(),
                     'length' => $textToken->getLength(),
+                    'stopword' => $textToken->isOneOf($stopWords),
                 ];
             }
         }
@@ -70,7 +73,7 @@ class Highlighter
     }
 
     /**
-     * @param array<array{start:int, length:int}> $matches
+     * @param array<array{start:int, length:int, stopword:bool}> $matches
      * @return array{starts: array<int>, ends: array<int>}
      */
     private function extractSpansFromMatches(array $matches): array
@@ -80,6 +83,8 @@ class Highlighter
             'ends' => [],
         ];
         $lastEnd = null;
+
+        $matches = $this->removeStopWordMatches($matches);
 
         foreach ($matches as $match) {
             $end = $match['start'] + $match['length'];
@@ -114,7 +119,7 @@ class Highlighter
                     }
                 } else {
                     foreach ($textToken->allTerms() as $textTerm) {
-                        if (Levenshtein::levenshtein($term, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                        if (Levenshtein::damerauLevenshtein($term, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
                             return true;
                         }
                     }
@@ -139,18 +144,55 @@ class Highlighter
         $prefix = implode('', \array_slice($chars, 0, $configuration->getMinTokenLengthForPrefixSearch()));
         $rest = \array_slice($chars, $configuration->getMinTokenLengthForPrefixSearch());
 
-        if (Levenshtein::levenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+        if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
             return true;
         }
 
         while ($rest !== []) {
             $prefix .= array_shift($rest);
 
-            if (Levenshtein::levenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+            if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * @param array<array{start:int, length:int, stopword:bool}> $matches
+     * @return array<array{start:int, length:int, stopword:bool}> $matches
+     */
+    private function removeStopWordMatches(array $matches): array
+    {
+        $maxCharDistance = 1;
+        $maxWordDistance = 1;
+
+        foreach ($matches as $i => $match) {
+            if (!$match['stopword']) {
+                continue;
+            }
+
+            $hasNonStopWordNeighbor = false;
+
+            for ($j = 1; $j <= $maxWordDistance; $j++) {
+                $prevMatch = $matches[$i - $j] ?? null;
+                $nextMatch = $matches[$i + $j] ?? null;
+
+                // Keep stopword matches between non-stopword matches of interest
+                $hasNonStopWordNeighbor = ($prevMatch && $prevMatch['stopword'] === false && ($prevMatch['start'] + $prevMatch['length']) >= $match['start'] - $maxCharDistance)
+                    || ($nextMatch && $nextMatch['stopword'] === false && $nextMatch['start'] <= $match['start'] + $match['length'] + $maxCharDistance);
+
+                if ($hasNonStopWordNeighbor) {
+                    break;
+                }
+            }
+
+            if (!$hasNonStopWordNeighbor) {
+                unset($matches[$i]);
+            }
+        }
+
+        return $matches;
     }
 }

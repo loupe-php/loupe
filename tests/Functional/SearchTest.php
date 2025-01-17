@@ -262,10 +262,12 @@ class SearchTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
+                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -296,10 +298,12 @@ class SearchTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
+                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -311,6 +315,53 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+        ];
+
+        yield 'Highlight with matches position of stopwords' => [
+            'her assassin',
+            ['title', 'overview'],
+            [],
+            true,
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
+                        '_matchesPosition' => [
+                            'overview' => [
+                                [
+                                    'start' => 3,
+                                    'length' => 8,
+                                    'stopword' => false,
+                                ],
+                                [
+                                    'start' => 23,
+                                    'length' => 3,
+                                    'stopword' => true,
+                                ],
+                                [
+                                    'start' => 79,
+                                    'length' => 13,
+                                    'stopword' => false,
+                                ],
+                                [
+                                    'start' => 124,
+                                    'length' => 3,
+                                    'stopword' => true,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'query' => 'her assassin',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['her'],
         ];
 
         yield 'Highlight with typo' => [
@@ -367,6 +418,7 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+            [],
             '<mark>',
             '</mark>',
         ];
@@ -425,6 +477,64 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+        ];
+
+        yield 'Highlight multiple matches across stop words' => [
+            'racing to a boxing match',
+            ['title', 'overview'],
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 6,
+                        'title' => 'Judgment Night',
+                        'overview' => 'While racing to a boxing match, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama',
+                        'genres' => ['Action', 'Thriller', 'Crime'],
+                        '_formatted' => [
+                            'id' => 6,
+                            'title' => 'Judgment Night',
+                            'overview' => 'While <em>racing to a boxing match</em>, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama',
+                            'genres' => ['Action', 'Thriller', 'Crime'],
+                        ],
+                    ],
+                ],
+                'query' => 'racing to a boxing match',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['of', 'the', 'an', 'but', 'to', 'a'],
+        ];
+
+        yield 'Highlight literal match including stopwords' => [
+            'Pirates of the Caribbean: The Curse of the Black Pearl',
+            ['title'],
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 22,
+                        'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
+                        'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
+                        'genres' => ['Adventure', 'Fantasy', 'Action'],
+                        '_formatted' => [
+                            'id' => 22,
+                            'title' => '<em>Pirates of the Caribbean</em>: <em>The Curse of the Black Pearl</em>',
+                            'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
+                            'genres' => ['Adventure', 'Fantasy', 'Action'],
+                        ],
+                    ],
+                ],
+                'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['of', 'the', 'an', 'but', 'to', 'a', 'back'],
         ];
 
         yield 'Highlight with match at the end' => [
@@ -507,6 +617,7 @@ class SearchTest extends TestCase
                                     [
                                         'start' => 0,
                                         'length' => 6,
+                                        'stopword' => false,
                                     ],
                                 ],
                             ],
@@ -528,6 +639,7 @@ class SearchTest extends TestCase
                                 0 => [
                                     'start' => 127,
                                     'length' => 6,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -989,6 +1101,43 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testDamerauLevensthein(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title'])
+        ;
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('convesre') // With Levenshtein this would be a total cost of 3, with Damerau-Levenshtein, just 2
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withAttributesToHighlight(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'title' => 'These are my Converse Chucks!',
+        ]);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 42,
+                    'title' => 'These are my Converse Chucks!',
+                    '_formatted' => [
+                        'id' => 42,
+                        'title' => 'These are my <em>Converse</em> Chucks!',
+                    ],
+                ],
+            ],
+            'query' => 'convesre',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
@@ -1075,6 +1224,56 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    public function testExactnessRelevanceScoring(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withSortableAttributes(['content'])
+            ->withLanguages(['en'])
+            ->withRankingRules(['exactness']) // Only match on exactness to isolate this test case
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'The administrative assistant managed the files.',
+            ],
+            [
+                'id' => 2,
+                'content' => 'The administrator organized the new files efficiently.',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('administrative files')
+            ->withAttributesToRetrieve(['id', 'content'])
+            ->withShowRankingScore(true)
+        ;
+
+        // Both documents would weigh exactly the same because both "administrative" and "administrator" get stemmed
+        // for "administr". Also, the terms are exactly the same distance apart. Hence, we test the exactness feature here.
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'content' => 'The administrative assistant managed the files.',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The administrator organized the new files efficiently.',
+                    '_rankingScore' => 0.5,
+                ],
+            ],
+            'query' => 'administrative files',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
         ]);
     }
 
@@ -1392,6 +1591,7 @@ class SearchTest extends TestCase
      * @param array<string> $searchableAttributes
      * @param array<string> $attributesToHighlight
      * @param array<mixed> $expectedResults
+     * @param array<string> $stopWords
      */
     #[DataProvider('highlightingProvider')]
     public function testHighlighting(
@@ -1400,6 +1600,7 @@ class SearchTest extends TestCase
         array $attributesToHighlight,
         bool $showMatchesPosition,
         array $expectedResults,
+        array $stopWords = [],
         string $highlightStartTag = '<em>',
         string $highlightEndTag = '</em>',
     ): void {
@@ -1407,6 +1608,7 @@ class SearchTest extends TestCase
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])
             ->withSortableAttributes(['title'])
+            ->withStopWords($stopWords)
         ;
 
         $loupe = $this->createLoupe($configuration);
@@ -1995,17 +2197,17 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.8496,
+                    '_rankingScore' => 0.92028,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.66667,
+                    '_rankingScore' => 0.77641,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.58027,
+                    '_rankingScore' => 0.77641,
                 ],
             ],
             'query' => 'life learning',
@@ -2028,7 +2230,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.8496,
+                    '_rankingScore' => 0.92028,
                 ],
             ],
             'query' => 'life learning',
@@ -2077,22 +2279,22 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'content' => 'Book title: life learning',
-                    '_rankingScore' => 0.71872,
+                    '_rankingScore' => 0.85094,
                 ],
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.64763,
+                    '_rankingScore' => 0.77121,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.51236,
+                    '_rankingScore' => 0.70187,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.51236,
+                    '_rankingScore' => 0.70187,
                 ],
             ],
             'query' => 'foobar life learning',
@@ -2100,6 +2302,228 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 4,
+        ]);
+    }
+
+    public function testRelevanceAndRankingScoreWithAttributeWeights(): void
+    {
+        $documents = [
+            [
+                'id' => 1,
+                'title' => 'Game of life',
+                'content' => 'A thing with everlasting learning',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Everlasting learning',
+                'content' => 'The unexamined game of life',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Learning to game',
+                'content' => 'What life taught me about learning',
+            ],
+        ];
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('game of life')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withShowRankingScore(true)
+        ;
+
+        $configurationWithoutAttributes = Configuration::create()
+            ->withSortableAttributes(['title', 'content'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithoutAttributes);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Game of life',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Everlasting learning',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Learning to game',
+                    '_rankingScore' => 0.76259,
+                ],
+            ],
+            'query' => 'game of life',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithAttributes = Configuration::create()
+            ->withSearchableAttributes(['title', 'content'])
+            ->withSortableAttributes(['title', 'content'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithAttributes);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Game of life',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Everlasting learning',
+                    '_rankingScore' => 0.93964,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Learning to game',
+                    '_rankingScore' => 0.73785,
+                ],
+            ],
+            'query' => 'game of life',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+    }
+
+    public function testRelevanceWithCustomRankingRules(): void
+    {
+        $documents = [
+            [
+                'id' => 1,
+                'title' => 'Lorem ipsum',
+                'content' => 'dolor sit amet',
+            ],
+            [
+                'id' => 2,
+                'title' => 'Lorem dolor sit amet',
+                'content' => 'Ipsum',
+            ],
+            [
+                'id' => 3,
+                'title' => 'Dolor',
+                'content' => 'Lorem sit amet',
+            ],
+        ];
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('lorem ipsum')
+            ->withShowRankingScore(true)
+        ;
+
+        $configurationWithDefaultRules = Configuration::create()
+            ->withSearchableAttributes(['title', 'content']);
+
+        $loupe = $this->createLoupe($configurationWithDefaultRules);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Lorem ipsum',
+                    'content' => 'dolor sit amet',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Lorem dolor sit amet',
+                    'content' => 'Ipsum',
+                    '_rankingScore' => 0.88691,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Dolor',
+                    'content' => 'Lorem sit amet',
+                    '_rankingScore' => 0.75167,
+                ],
+            ],
+            'query' => 'lorem ipsum',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithWordsOnly = Configuration::create()
+            ->withSearchableAttributes(['title', 'content'])
+            ->withRankingRules(['words']);
+
+        $loupe = $this->createLoupe($configurationWithWordsOnly);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Lorem ipsum',
+                    'content' => 'dolor sit amet',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Lorem dolor sit amet',
+                    'content' => 'Ipsum',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Dolor',
+                    'content' => 'Lorem sit amet',
+                    '_rankingScore' => 0.5,
+                ],
+            ],
+            'query' => 'lorem ipsum',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithAttributesOnly = Configuration::create()
+            ->withSearchableAttributes(['title', 'content'])
+            ->withRankingRules(['attribute']);
+
+        $loupe = $this->createLoupe($configurationWithAttributesOnly);
+        $loupe->addDocuments($documents);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Lorem ipsum',
+                    'content' => 'dolor sit amet',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'title' => 'Lorem dolor sit amet',
+                    'content' => 'Ipsum',
+                    '_rankingScore' => 0.8,
+                ],
+                [
+                    'id' => 3,
+                    'title' => 'Dolor',
+                    'content' => 'Lorem sit amet',
+                    '_rankingScore' => 0.8,
+                ],
+            ],
+            'query' => 'lorem ipsum',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
         ]);
     }
 
@@ -2318,6 +2742,72 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testStopWordSearch(): void
+    {
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young glaciologist')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc'])
+        ;
+
+        $configurationWithoutStopWords = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+
+        $loupe = $this->createLoupe($configurationWithoutStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Should return all movies with the term "young" (OR matching)
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+
+        $configurationWithStopWords = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withStopWords(['young'])
+        ;
+
+        $loupe = $this->createLoupe($configurationWithStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Should only return movies with the term "glaciologist" since "young" is a stop word
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<mixed> $expectedResults
      */
@@ -2527,18 +3017,22 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 4) - no match with threshold to 3' => [
+        yield 'Test no match with the default thresholds (Gukcleberry -> Huckleberry -> distance of 3) - match with threshold to 3 thanks to Damerau-Levenshtein' => [
             TypoTolerance::create()->withTypoThresholds([
                 8 => 3,
             ]),
             'Gukcleberry',
             [
-                'hits' => [],
+                'hits' => [[
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                    'lastname' => 'Finn',
+                ]],
                 'query' => 'Gukcleberry',
                 'hitsPerPage' => 20,
                 'page' => 1,
-                'totalPages' => 0,
-                'totalHits' => 0,
+                'totalPages' => 1,
+                'totalHits' => 1,
             ],
         ];
 

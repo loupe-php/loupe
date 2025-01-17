@@ -105,6 +105,9 @@ $configuration = \Loupe\Loupe\Configuration::create()
 ;
 ```
 
+Note: The paper works using the Levenshtein algorithm. Loupe includes adjustments built on top of that paper to support
+Damerau-Levenshtein.
+
 ## Limit the languages to detect
 
 You can read more about what the tokenizer does in the [respective docs](tokenizer.md) but basically, if you know 

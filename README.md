@@ -8,12 +8,12 @@
 Loupe…
 
 * …only requires PHP and SQLite, you don't need anything else - no containers, no nothing
-* …is typo-tolerant (based on the State Set Index Algorithm and Levenshtein)
+* …is typo-tolerant (based on the State Set Index Algorithm and Damerau-Levenshtein)
 * …supports phrase search using `"` quotation marks
 * …supports negative keyword and phrase search using `-` as modifier
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * …supports filtering (and ordering) on Geo distance
-* …orders relevance based on a number of factors such as number of matching terms as well as proximity
+* …orders relevance based on a number of factors such as number of matching terms, typos, proximity, word counts and exactness
 * …auto-detects languages
 * …supports stemming
 * …is very easy to use
@@ -29,16 +29,16 @@ Note that some implementation details (e.g. libraries used) referenced in this b
 
 ## Performance
 
-Performance depends on many factors but here are some ballpark numbers based on indexing the [~32k movies fixture by 
-MeiliSearch][MeiliSearch_Movies] and the test files in `bin` of this repository:
+Performance depends on many factors but here are some ballpark numbers based on indexing the 
+[~32k movies fixture][MeiliSearch_Movies] provided by MeiliSearch.
 
-* Indexing (`php bin/index_performance_test.php`) will take a little over 2min (~230 documents per second)
-* Querying (`php bin/search_performance_test.php`) for `Amakin Dkywalker` with typo tolerance enabled and ordered by 
-  relevance finishes in about `120 ms`
+* **Indexing** will take a little over **90 seconds** (~350 documents per second)
+* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **100 ms**
 
-Note that anything above 50k documents is probably not a use case for Loupe. Please, also read the
-[Performance](./docs/performance.md) chapter in the docs. You may report your own performance 
-measurements and more details in the [respective discussion][Performance_Topic].
+Note that anything above 50k documents is probably not a use case for Loupe. You can run your own benchmarks 
+using the scripts in the `bin/bench` folder: `index.php` for indexing and `search.php` for searching. 
+Please, also read the [Performance](./docs/performance.md) chapter in the docs. You may report your own performance 
+measurements and more details in the [respective discussion][Performance_Topic]. 
 
 ## Acknowledgement
 
@@ -55,20 +55,17 @@ I even took the liberty to copy some of their test data to feed Loupe for functi
 ## Installation
 
 1. Make sure you have `pdo_sqlite` available and your installed SQLite version is at least 3.16.0. This is when 
-   PRAGMA functions have been added without which no schema comparisons are possible. It is recommended you run at 
-   least version 3.35.0 which is when mathematical functions found its way into SQLite. Otherwise, Loupe has to 
-   polyfill those which will result in a little performance penalty.
+   PRAGMA functions have been added without which no schema comparisons are possible. For best performance it is of
+   course better to run a more recent version to benefit from improvements within SQLite.
 2. Run `composer require loupe/loupe`.
 
 ## Usage
 
+### Creating a client
+
+The first step is configuring and creating a client.
+
 ```php
-<?php
-
-namespace App;
-
-require_once 'vendor/autoload.php';
-
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\LoupeFactory;
@@ -82,13 +79,18 @@ $configuration = Configuration::create()
     ->withTypoTolerance(TypoTolerance::create()->withFirstCharTypoCountsDouble(false)) // can be further fine-tuned but is enabled by default
 ;
 
-$loupeFactory = new LoupeFactory();
+$loupe = (new LoupeFactory())->create('path/to/my_loupe_data_dir', $configuration);
+```
 
-$loupe = $loupeFactory->create('path/to/my_loupe_data_dir', $configuration);
+To create an in-memory search client:
 
-// or create in-memory search:
-$loupe = $loupeFactory->createInMemory($configuration);
+```php
+$loupe = (new LoupeFactory())->createInMemory($configuration);
+```
 
+### Adding documents
+
+```php
 $loupe->addDocuments([
     [
         'uuid' => 2,
@@ -110,8 +112,11 @@ $loupe->addDocuments([
         'age' => 18,
     ],
 ]);
+```
 
+### Performing search
 
+```php
 $searchParameters = SearchParameters::create()
     ->withQuery('Gucleberry')
     ->withAttributesToRetrieve(['uuid', 'firstname'])
@@ -121,29 +126,30 @@ $searchParameters = SearchParameters::create()
 
 $results = $loupe->search($searchParameters);
 
+foreach ($results->getHits() as $hit) {
+    echo $hit['title'] . PHP_EOL;
+}
+```
+
+The `$results` array contains a list of search hits and metadata about the query.
+
+```php
 print_r($results->toArray());
 
-/*
-Array
-(
-    [hits] => Array
-        (
-            [0] => Array
-                (
-                    [uuid] => 6
-                    [firstname] => Huckleberry
-                )
-
-        )
-
-    [query] => Gucleberry
-    [processingTimeMs] => 4
-    [hitsPerPage] => 20
-    [page] => 1
-    [totalPages] => 1
-    [totalHits] => 1
-)
-*/
+[
+    'hits' => [
+        [
+            'uuid' => 6,
+            'firstname' => 'Huckleberry'
+        ]
+    ],
+    'query' => 'Gucleberry',
+    'processingTimeMs' => 4,
+    'hitsPerPage' => 20,
+    'page' => 1,
+    'totalPages' => 1,
+    'totalHits' => 1
+]
 ```
 
 ## Docs
@@ -152,6 +158,7 @@ Array
 * [Configuration](./docs/configuration.md)
 * [Indexing](./docs/indexing.md)
 * [Searching](./docs/searching.md)
+* [Ranking](./docs/ranking.md)
 * [Tokenizer](./docs/tokenizer.md)
 * [Performance](./docs/performance.md)
 

@@ -6,13 +6,18 @@ namespace Loupe\Loupe;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Psr\Log\LoggerInterface;
 
 final class Configuration
 {
     public const ATTRIBUTE_NAME_RGXP = '[a-zA-Z\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*';
 
+    public const ATTRIBUTE_RANKING_ORDER_FACTOR = 0.8;
+
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
+
+    public const RANKING_RULES_ORDER_FACTOR = 0.7;
 
     /**
      * @var array<string>
@@ -35,12 +40,28 @@ final class Configuration
     /**
      * @var array<string>
      */
+    private array $rankingRules = [
+        'words',
+        'typo',
+        'proximity',
+        'attribute',
+        'exactness',
+    ];
+
+    /**
+     * @var array<string>
+     */
     private array $searchableAttributes = ['*'];
 
     /**
      * @var array<string>
      */
     private array $sortableAttributes = [];
+
+    /**
+     * @var array<string>
+     */
+    private array $stopWords = [];
 
     private TypoTolerance $typoTolerance;
 
@@ -87,6 +108,7 @@ final class Configuration
         $hash[] = json_encode($this->getSearchableAttributes());
         $hash[] = json_encode($this->getFilterableAttributes());
         $hash[] = json_encode($this->getSortableAttributes());
+        $hash[] = json_encode($this->getStopWords());
 
         $hash[] = $this->getTypoTolerance()->isDisabled() ? 'disabled' : 'enabled';
         $hash[] = $this->getTypoTolerance()->getAlphabetSize();
@@ -127,6 +149,14 @@ final class Configuration
     /**
      * @return array<string>
      */
+    public function getRankingRules(): array
+    {
+        return $this->rankingRules;
+    }
+
+    /**
+     * @return array<string>
+     */
     public function getSearchableAttributes(): array
     {
         return $this->searchableAttributes;
@@ -138,6 +168,14 @@ final class Configuration
     public function getSortableAttributes(): array
     {
         return $this->sortableAttributes;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getStopWords(): array
+    {
+        return $this->stopWords;
     }
 
     public function getTypoTolerance(): TypoTolerance
@@ -215,6 +253,30 @@ final class Configuration
     }
 
     /**
+     * @param array<string> $rankingRules
+     */
+    public function withRankingRules(array $rankingRules): self
+    {
+        if (!\count($rankingRules)) {
+            throw new InvalidConfigurationException('Ranking rules cannot be empty.');
+        }
+
+        foreach ($rankingRules as $v) {
+            if (!\is_string($v)) {
+                throw new InvalidConfigurationException('Ranking rules must be an array of strings.');
+            }
+            if (!\in_array($v, array_keys(Relevance::RANKERS), true)) {
+                throw new InvalidConfigurationException('Unknown ranking rule: ' . $v);
+            }
+        }
+
+        $clone = clone $this;
+        $clone->rankingRules = $rankingRules;
+
+        return $clone;
+    }
+
+    /**
      * @param array<string> $searchableAttributes
      */
     public function withSearchableAttributes(array $searchableAttributes): self
@@ -223,7 +285,8 @@ final class Configuration
             self::validateAttributeNames($searchableAttributes);
         }
 
-        sort($searchableAttributes);
+        // Do not sort searchable attributes as their order is relevant for ranking
+        // sort($searchableAttributes);
 
         $clone = clone $this;
         $clone->searchableAttributes = $searchableAttributes;
@@ -242,6 +305,19 @@ final class Configuration
 
         $clone = clone $this;
         $clone->sortableAttributes = $sortableAttributes;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $stopWords
+     */
+    public function withStopWords(array $stopWords): self
+    {
+        sort($stopWords);
+
+        $clone = clone $this;
+        $clone->stopWords = $stopWords;
 
         return $clone;
     }

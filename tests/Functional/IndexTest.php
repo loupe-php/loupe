@@ -10,13 +10,14 @@ use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\SearchParameters;
+use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Filesystem\Filesystem;
 
 class IndexTest extends TestCase
 {
     use FunctionalTestTrait;
+    use StorageFixturesTestTrait;
 
     public static function invalidSchemaChangesProvider(): \Generator
     {
@@ -223,6 +224,27 @@ class IndexTest extends TestCase
         ]);
     }
 
+    public function testDeleteAllDocuments(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withSortableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        foreach (range(11, 20) as $id) {
+            $this->assertNotNull($loupe->getDocument($id));
+        }
+
+        // Delete all documents and assert they're gone
+        $loupe->deleteAllDocuments();
+        foreach (range(11, 20) as $id) {
+            $this->assertNull($loupe->getDocument($id));
+        }
+    }
+
     public function testDeleteDocument(): void
     {
         $configuration = Configuration::create()
@@ -233,11 +255,36 @@ class IndexTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
 
-        $this->assertSame('Star Wars', $loupe->getDocument(11)['title'] ?? '');
+        $this->assertSame('Star Wars', $loupe->getDocument(11)['title'] ?? null);
+        $this->assertSame('Finding Nemo', $loupe->getDocument(12)['title'] ?? null);
 
         // Delete document and assert it's gone
         $loupe->deleteDocument(11);
+        $this->assertNull($loupe->getDocument(11)['title'] ?? null);
+
+        // Assert the other document is still there
+        $this->assertSame('Finding Nemo', $loupe->getDocument(12)['title'] ?? null);
+    }
+
+    public function testDeleteDocuments(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withSortableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $this->assertSame('Star Wars', $loupe->getDocument(11)['title'] ?? '');
+        $this->assertSame('Finding Nemo', $loupe->getDocument(12)['title'] ?? '');
+        $this->assertSame('Forrest Gump', $loupe->getDocument(13)['title'] ?? '');
+
+        // Delete documents and assert they're gone
+        $loupe->deleteDocuments([11, 12]);
         $this->assertNull($loupe->getDocument(11));
+        $this->assertNull($loupe->getDocument(12));
+        $this->assertSame('Forrest Gump', $loupe->getDocument(13)['title'] ?? '');
     }
 
     public function testDeleteDocumentWhenNotSetUpYet(): void
@@ -308,9 +355,7 @@ class IndexTest extends TestCase
 
     public function testReindex(): void
     {
-        $fs = new Filesystem();
-        $tmpDataDir = sys_get_temp_dir() . '/' . uniqid('lt');
-        $fs->mkdir($tmpDataDir);
+        $tmpDataDir = $this->createTemporaryDirectory();
 
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
@@ -332,8 +377,6 @@ class IndexTest extends TestCase
         $this->assertSame(1, $loupe->countDocuments());
 
         $this->assertTrue($loupe->needsReindex());
-
-        $fs->remove($tmpDataDir);
     }
 
     public function testReplacingTheSameDocumentWorks(): void

@@ -16,6 +16,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
+use Loupe\Loupe\Internal\StaticCache;
 
 final class LoupeFactory
 {
@@ -123,14 +124,16 @@ final class LoupeFactory
     private function optimizeSQLiteConnection(Connection $connection): void
     {
         $optimizations = [
-            // Increase page size to 8KB to reduce disk i/o
-            'PRAGMA page_size = 8192;',
+            // Incremental vacuum to keep the database size in check (vacuum to apply the changes)
+            'PRAGMA auto_vacuum = incremental; VACUUM;',
+            // Temporary disable WAL to allow setting page size
+            'PRAGMA journal_mode=DELETE;',
+            // Increase page size to 8KB to reduce disk i/o  (vacuum to apply the changes)
+            'PRAGMA page_size = 8192; VACUUM;',
+            // Now enable write-ahead logging to allow concurrent reads and writes
+            'PRAGMA journal_mode=WAL;',
             // Set cache size to 20MB to reduce disk i/o
             'PRAGMA cache_size = -20000;',
-            // Use write-ahead logging to allow concurrent reads and writes
-            'PRAGMA journal_mode=WAL;',
-            // Incremental vacuum to keep the database size in check
-            'PRAGMA auto_vacuum = incremental;',
             // Incremental vacuum to keep the database size in check
             'PRAGMA incremental_vacuum;',
             // Set mmap size to 32MB to avoid i/o for database reads
@@ -157,19 +160,42 @@ final class LoupeFactory
                 'callback' => [Levenshtein::class, 'maxLevenshtein'],
                 'numArgs' => 4,
             ],
+            'loupe_levensthein' => [
+                'callback' => [Levenshtein::class, 'damerauLevenshtein'],
+                'numArgs' => 3,
+            ],
             'loupe_geo_distance' => [
                 'callback' => [Geo::class, 'geoDistance'],
                 'numArgs' => 4,
             ],
             'loupe_relevance' => [
                 'callback' => [Relevance::class, 'fromQuery'],
-                'numArgs' => 2,
+                'numArgs' => 3,
             ],
         ];
 
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->createFunction($functionName, $function['callback'], $function['numArgs']);
+            $connection->getNativeConnection()->createFunction(
+                $functionName,
+                self::wrapSQLiteMethodForStaticCache($functionName, $function['callback']),
+                $function['numArgs']
+            );
         }
+    }
+
+    private static function wrapSQLiteMethodForStaticCache(string $prefix, callable $callback): \Closure
+    {
+        return function () use ($prefix, $callback) {
+            $args = \func_get_args();
+            $cacheKey = $prefix . ':' . implode('--', $args);
+            $cachedValue = StaticCache::get($cacheKey);
+
+            if ($cachedValue !== null) {
+                return $cachedValue;
+            }
+
+            return StaticCache::set($cacheKey, \call_user_func_array($callback, $args));
+        };
     }
 }

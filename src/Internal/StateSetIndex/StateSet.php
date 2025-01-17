@@ -32,6 +32,12 @@ class StateSet implements StateSetInterface
         return $this->inMemoryStateSet->all();
     }
 
+    public function clear(): void
+    {
+        $this->initialize();
+        $this->inMemoryStateSet = new InMemoryStateSet([]);
+    }
+
     public function has(int $state): bool
     {
         $this->initialize();
@@ -41,16 +47,26 @@ class StateSet implements StateSetInterface
     public function persist(): void
     {
         $this->initialize();
-
+        $this->engine->getConnection()->executeStatement('DELETE FROM ' . IndexInfo::TABLE_NAME_STATE_SET);
+        $this->engine->getConnection()->executeStatement('DELETE FROM sqlite_sequence WHERE name = ?', [IndexInfo::TABLE_NAME_STATE_SET]);
+        $values = [];
         foreach ($this->inMemoryStateSet->all() as $state) {
-            $this->engine->upsert(IndexInfo::TABLE_NAME_STATE_SET, [
-                'state' => $state,
-            ], ['state']);
+            $values[] = '(' . $state . ')';
+        }
+
+        if ($values !== []) {
+            $this->engine->getConnection()->executeStatement(sprintf('INSERT INTO ' . IndexInfo::TABLE_NAME_STATE_SET . ' (state) VALUES %s', implode(',', $values)));
         }
 
         $all = $this->inMemoryStateSet->all();
         $all = array_combine($this->inMemoryStateSet->all(), array_fill(0, \count($all), true));
         $this->dumpStateSetCache($all);
+    }
+
+    public function remove(int $state): void
+    {
+        $this->initialize();
+        $this->inMemoryStateSet->remove($state);
     }
 
     /**
@@ -64,11 +80,7 @@ class StateSet implements StateSetInterface
             return;
         }
 
-        $cache = '<?php return ';
-        $cache .= var_export($stateSet, true);
-        $cache .= ';';
-
-        file_put_contents($cacheFile, $cache);
+        file_put_contents($cacheFile, pack('N*', ...array_keys($stateSet)));
     }
 
     private function getStateSetCacheFile(): ?string
@@ -77,7 +89,7 @@ class StateSet implements StateSetInterface
             return null;
         }
 
-        return $this->engine->getDataDir() . '/state_set.php';
+        return $this->engine->getDataDir() . '/state_set.bin';
     }
 
     private function initialize(): void
@@ -95,12 +107,12 @@ class StateSet implements StateSetInterface
                 $data = $this->loadFromStorage();
                 $this->dumpStateSetCache($data);
             } else {
-                $data = require $cacheFile;
+                $data = (array) unpack('N*', (string) file_get_contents($cacheFile));
+                $data = array_combine($data, array_fill(0, \count($data), true));
             }
         }
 
-        $this->inMemoryStateSet = new InMemoryStateSet(\is_array($data) ? $data : []);
-
+        $this->inMemoryStateSet = new InMemoryStateSet($data);
         $this->initialized = true;
     }
 

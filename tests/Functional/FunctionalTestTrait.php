@@ -8,6 +8,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Loupe;
 use Loupe\Loupe\LoupeFactory;
 use Loupe\Loupe\SearchParameters;
+use Loupe\Loupe\Tests\Util;
 
 trait FunctionalTestTrait
 {
@@ -30,7 +31,7 @@ trait FunctionalTestTrait
             return;
         }
 
-        $contents = file_get_contents(__DIR__ . '/IndexData/' . $indexFixture . '.json');
+        $contents = file_get_contents(Util::fixturesPath('Data/' . $indexFixture . '.json'));
 
         if ($contents === false) {
             throw new \InvalidArgumentException(sprintf('Fixture "%s" does not exist.', $indexFixture));
@@ -46,6 +47,7 @@ trait FunctionalTestTrait
     {
         $results = $loupe->search($searchParameters)->toArray();
         unset($results['processingTimeMs']);
+        unset($loupe);
         $this->assertSame($expectedResults, $results);
     }
 }

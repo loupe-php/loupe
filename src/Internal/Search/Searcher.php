@@ -18,7 +18,6 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\Tokenizer\Phrase;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
@@ -34,6 +33,13 @@ class Searcher
     public const DISTANCE_ALIAS = '_distance';
 
     public const RELEVANCE_ALIAS = '_relevance';
+
+    /**
+     * If searching for a query that is super broad like "this is taking so long", way too many
+     * documents are going to match so we have to internally limit those matches to prevent
+     * "endless" search queries.
+     */
+    private const MAX_DOCUMENT_MATCHES = 1000;
 
     /**
      * @var array<string, array{cols: array<string>, sql: string}>
@@ -94,6 +100,7 @@ class Searcher
             ->createQueryBuilder();
 
         $tokens = $this->getTokens();
+        $tokensIncludingStopwords = $this->getTokensIncludingStopwords();
 
         $this->selectTotalHits();
         $this->selectDocuments();
@@ -127,7 +134,7 @@ class Searcher
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
-            $this->highlight($hit, $tokens);
+            $this->highlight($hit, $tokensIncludingStopwords);
 
             $hits[] = $hit;
         }
@@ -182,8 +189,21 @@ class Searcher
         }
 
         return $this->tokens = $this->engine->getTokenizer()
-            ->tokenize($this->searchParameters->getQuery(), $this->engine->getConfiguration()->getMaxQueryTokens())
-        ;
+            ->tokenize(
+                $this->searchParameters->getQuery(),
+                $this->engine->getConfiguration()->getMaxQueryTokens(),
+                $this->engine->getConfiguration()->getStopWords()
+            );
+    }
+
+    public function getTokensIncludingStopwords(): TokenCollection
+    {
+        return $this->tokens = $this->engine->getTokenizer()
+            ->tokenize(
+                $this->searchParameters->getQuery(),
+                $this->engine->getConfiguration()->getMaxQueryTokens(),
+                []
+            );
     }
 
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
@@ -202,6 +222,19 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.term');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
+
+        // If neither, exactness nor typo is part of the ranking rules, we can omit calculating the info for better performance
+        if (\in_array('exactness', $this->engine->getConfiguration()->getRankingRules(), true) || \in_array('typo', $this->engine->getConfiguration()->getRankingRules(), true)) {
+            $cteSelectQb->addSelect(sprintf(
+                'loupe_levensthein((SELECT term FROM %s WHERE id=%s.term), %s, %s) AS typos',
+                IndexInfo::TABLE_NAME_TERMS,
+                $termsDocumentsAlias,
+                $this->getQueryBuilder()->createNamedParameter($token->getTerm()),
+                $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
+            ));
+        } else {
+            $cteSelectQb->addSelect('0 AS typos');
+        }
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
 
@@ -224,9 +257,10 @@ class Searcher
         }
 
         $cteSelectQb->addOrderBy('position');
+        $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
-        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position'];
+        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position', 'typos'];
         $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
     }
 
@@ -499,7 +533,7 @@ class Searcher
             return implode(' ', $where);
         }
 
-        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance);
+        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance, 1);
 
         // No result possible, we add AND 1=0 to ensure no results
         if ($states === []) {

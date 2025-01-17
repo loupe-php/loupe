@@ -98,10 +98,11 @@ To make sure you properly escape the filter values, you can use `SearchParameter
 ## Sort
 
 By default, Loupe sorts your results based on relevance. Relevance is determined using a number of factors such as the
-number of matching terms but also the proximity (search for `pink floyd` will make sure documents that contain `pink floyd`
-will be ranked higher than `the pink pullover of Floyd`). The relevance attribute is reserved and is called `_relevance`.
-You can sort by your own attributes or by multiple ones and specify whether to sort ascending or descending:
+number of matching terms but also their proximity in the document. The relevance attribute is reserved and is
+called `_relevance`. See [Ranking](./ranking.md) for details about how relevance is calculated for each result
+and how you can influence the ranking from the configuration.
 
+You can sort by your own attributes or by multiple ones and specify whether to sort ascending or descending.
 Note that you can only sort [on attributes that you have defined to be sortable in the configuration][Config].
 
 ```php
@@ -219,6 +220,16 @@ $results = [
 ];
 ```
 
+## Stop words
+
+When configuring Loupe, you can define a list of stop words to be ignored by the engine when matching and
+ranking search results.
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withStopWords(['a', 'by', 'the']);
+```
+
 ## Caching
 
 Loupe does not ship with built-in caching, so you are free to choose the caching mechanism of your choice. However,
@@ -300,7 +311,7 @@ $results = [
 ```
 
 [Config]: configuration.md
-[Restaurant_Fixture]: ./../tests/Functional/IndexData/restaurants.json
+[Restaurant_Fixture]: ./../tests/Fixtures/Data/restaurants.json
 
 Additional to a query based on distance we can also search for locations inside a bounding box.
 In this example we have 4 documents and 3 with geo coordinates (New York, London, Vienna).
@@ -348,4 +359,4 @@ $results = [
 ```
 
 [Config]: configuration.md
-[Restaurant_Fixture]: ./../tests/Functional/IndexData/locations.json
+[Restaurant_Fixture]: ./../tests/Fixtures/Data/locations.json
