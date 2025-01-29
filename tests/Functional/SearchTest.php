@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -2793,6 +2794,25 @@ class SearchTest extends TestCase
         $this->indexFixture($loupe, 'movies');
 
         // Should only return movies with the term "glaciologist" since "young" is a stop word
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $loupe = $this->createLoupe($configurationWithStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Should not crash when sorting by relevance.
+        $searchParameters = $searchParameters->withSort([Searcher::RELEVANCE_ALIAS . ':desc']);
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
