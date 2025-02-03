@@ -40,12 +40,19 @@ class Relevance extends AbstractSorter
         $positionsPerDocument = [];
 
         foreach ($tokens as $token) {
+            $cteName = $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+            // Could be that the token is not being searched for, as it might be a stop word
+            if (!$searcher->hasCTE($cteName)) {
+                continue;
+            }
+
             // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
             // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
             // because it's just a ";" separated list.
             $positionsPerDocument[] = sprintf(
                 "SELECT (SELECT COALESCE(group_concat(DISTINCT position || ':' || attribute || ':' || typos), '0') FROM %s WHERE %s.id=document) AS %s",
-                $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token),
+                $cteName,
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 Searcher::RELEVANCE_ALIAS . '_per_term',
             );
