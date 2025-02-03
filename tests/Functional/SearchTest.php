@@ -6,7 +6,6 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -2811,8 +2810,8 @@ class SearchTest extends TestCase
         $loupe = $this->createLoupe($configurationWithStopWords);
         $this->indexFixture($loupe, 'movies');
 
-        // Should not crash when sorting by relevance.
-        $searchParameters = $searchParameters->withSort([Searcher::RELEVANCE_ALIAS . ':desc']);
+        // Test stop words are ignored for ordering by relevance
+        $searchParameters = $searchParameters->withSort(['_relevance:desc']);
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
