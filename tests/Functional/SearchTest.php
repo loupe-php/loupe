@@ -2806,6 +2806,25 @@ class SearchTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 1,
         ]);
+
+        $loupe = $this->createLoupe($configurationWithStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Test stop words are ignored for ordering by relevance
+        $searchParameters = $searchParameters->withSort(['_relevance:desc']);
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
     }
 
     /**

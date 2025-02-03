@@ -206,6 +206,11 @@ class Searcher
             );
     }
 
+    public function hasCTE(string $cteName): bool
+    {
+        return isset($this->CTEs[$cteName]);
+    }
+
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
     {
         // No term matches CTE -> no term document matches CTE
@@ -821,7 +826,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-
+        dump(implode(' ', $queryParts));
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
