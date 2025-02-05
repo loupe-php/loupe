@@ -18,7 +18,7 @@ use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\StaticCache;
 
-final class LoupeFactory
+final class LoupeFactory implements LoupeFactoryInterface
 {
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
