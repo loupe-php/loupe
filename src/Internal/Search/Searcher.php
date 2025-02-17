@@ -109,7 +109,7 @@ class Searcher
         $this->sortDocuments();
         $this->limitPagination();
 
-        $showAllAttributes = in_array('*', $this->searchParameters->getAttributesToRetrieve(), true);
+        $showAllAttributes = \in_array('*', $this->searchParameters->getAttributesToRetrieve(), true);
         $attributesToRetrieve = array_flip($this->searchParameters->getAttributesToRetrieve());
 
         $hits = [];
