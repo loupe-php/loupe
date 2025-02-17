@@ -1445,7 +1445,7 @@ class SearchTest extends TestCase
         ]);
 
         $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'name', 'location', '_geoDistance(location)'])
+            ->withAttributesToRetrieve(['*', '_geoDistance(location)']) // Test should also work with *
             ->withSort(['_geoPoint(location, 48.8561446,2.2978204):asc'])
         ;
 
@@ -1454,6 +1454,9 @@ class SearchTest extends TestCase
                 [
                     'id' => 2,
                     'name' => 'Bouillon Pigalle',
+                    'address' => '22 Bd de Clichy, 75018 Paris, France',
+                    'type' => 'french',
+                    'rating' => 8,
                     'location' => [
                         'lat' => 48.8826517,
                         'lng' => 2.3352748,
@@ -1463,6 +1466,9 @@ class SearchTest extends TestCase
                 [
                     'id' => 3,
                     'name' => 'Artico Gelateria Tradizionale',
+                    'address' => 'Via Dogana, 1, 20123 Milan, Italy',
+                    'type' => 'ice cream',
+                    'rating' => 10,
                     'location' => [
                         'lat' => 45.4632046,
                         'lng' => 9.1719421,
@@ -1472,6 +1478,9 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'name' => "Nàpiz' Milano",
+                    'address' => 'Viale Vittorio Veneto, 30, 20124, Milan, Italy',
+                    'type' => 'pizza',
+                    'rating' => 9,
                     'location' => [
                         'lat' => 45.4777599,
                         'lng' => 9.1967508,
@@ -1481,6 +1490,9 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'name' => 'Revire Brasas Bravas',
+                    'address' => 'Av. Corrientes 1124, C1043 Cdad. Autónoma de Buenos Aires, Argentina',
+                    'type' => 'steak',
+                    'rating' => 10,
                     'location' => [
                         'lat' => -34.6002321,
                         'lng' => -58.3823691,
