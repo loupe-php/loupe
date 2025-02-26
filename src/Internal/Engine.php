@@ -62,7 +62,7 @@ class Engine
         $this->highlighter = new Highlighter($this);
         $this->filterParser = new Parser();
         $this->sqliteVersion = match (true) {
-            \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(),
+            \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
             (($nativeConnection = $this->connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
             (($nativeConnection = $this->connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
         };
@@ -334,9 +334,7 @@ class Engine
             $parameters[] = $value;
         }
 
-        if ($set !== []) {
-            $query .= ' SET ' . implode(',', $set);
-        }
+        $query .= ' SET ' . implode(',', $set);
 
         $where = [];
         foreach ($uniqueIndexColumns as $uniqueIndexColumn) {

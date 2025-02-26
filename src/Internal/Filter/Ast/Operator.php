@@ -35,6 +35,14 @@ enum Operator: string
             $value = $value ? 'true' : 'false';
         }
 
+        if (\is_array($value)) {
+            if ($this === self::In || $this === self::NotIn) {
+                return $attribute . ' ' . $this->value . ' (' . implode(', ', $value) . ')';
+            }
+
+            throw new \InvalidArgumentException('Can oly work with arrays for IN() and NOT IN().');
+        }
+
         return match ($this) {
             self::Equals,
             self::NotEquals => $attribute . ' ' . $this->value . ' ' . $value,
@@ -48,7 +56,7 @@ enum Operator: string
                 ' AND ' .
                 self::NotEquals->buildSql($connection, $attribute, LoupeTypes::VALUE_NULL) .
                 ')',
-            self::In, self::NotIn => $attribute . ' ' . $this->value . ' (' . implode(', ', $value) . ')',
+            self::In, self::NotIn => throw new \InvalidArgumentException('Can only use IN() and NOT IN() with arrays.')
         };
     }
 
