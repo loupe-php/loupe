@@ -55,7 +55,7 @@ class Tokenizer
             $languageResult = $this->languageDetector->detect($value);
 
             // Store the best score per language
-            foreach ((array) $languageResult->scores as $lang => $score) {
+            foreach ((array) $languageResult->scores() as $lang => $score) {
                 if (isset($bestScoresPerLanguage[$lang])) {
                     $bestScoresPerLanguage[$lang] = max($bestScoresPerLanguage[$lang], $score);
                 } else {

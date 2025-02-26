@@ -77,7 +77,7 @@ final class LoupeFactory implements LoupeFactoryInterface
         }
 
         $sqliteVersion = match (true) {
-            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(),
+            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
             (($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
             (($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
         };

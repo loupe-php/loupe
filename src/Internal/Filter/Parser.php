@@ -243,7 +243,7 @@ class Parser
 
     private function handleGeoBoundingBox(Engine $engine): void
     {
-        $startPosition = ($this->lexer->lookahead?->position ?? 0) + 1;
+        $startPosition = ($this->lexer->lookahead->position ?? 0) + 1;
 
         $this->assertOpeningParenthesis($this->lexer->lookahead);
         $this->lexer->moveNext();

@@ -303,7 +303,7 @@ class TokenizerTest extends TestCase
     {
         $configuration = $configuration ?? Configuration::create();
         $languageDetector = new LanguageDetector();
-        $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
+        $languageDetector->enableTextCleanup(true); // Clean stuff like URLs, domains etc. to improve language detection
 
         if ($configuration->getLanguages() !== []) {
             $languageDetector->langSubset($configuration->getLanguages()); // Save subset

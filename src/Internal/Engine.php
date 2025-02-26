@@ -62,7 +62,7 @@ class Engine
         $this->highlighter = new Highlighter($this);
         $this->filterParser = new Parser();
         $this->sqliteVersion = match (true) {
-            \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(),
+            \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
             (($nativeConnection = $this->connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
             (($nativeConnection = $this->connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
         };
@@ -171,6 +171,7 @@ class Engine
         }
 
         $languages = $this->getConfiguration()->getLanguages();
+        $ngramsFile = null;
 
         if ($languages !== []) {
             // Load from data dir - this seems unnecessarily complicated, but we want to avoid calling new LanguageDetector()
@@ -178,24 +179,11 @@ class Engine
             // is used later on. So we want to optimize this for memory if we can.
             if ($this->getDataDir() !== null) {
                 $ngramsFile = $this->loadNGramsFile($languages);
-
-                if ($ngramsFile === null) {
-                    $languageDetector = new LanguageDetector($ngramsFile);
-                } else {
-                    // Something with generating the ngrams file did not work, use a dynamic subset
-                    $languageDetector = new LanguageDetector();
-                    $languageDetector->dynamicLangSubset($languages);
-                }
-            } else {
-                // No data dir, we cannot save anything, so we work with a dynamic subset
-                $languageDetector = new LanguageDetector();
-                $languageDetector->dynamicLangSubset($languages);
             }
-        } else {
-            $languageDetector = new LanguageDetector();
         }
 
-        $languageDetector->cleanText(true); // Clean stuff like URLs, domains etc. to improve language detection
+        $languageDetector = new LanguageDetector($ngramsFile);
+        $languageDetector->enableTextCleanup(true); // Clean stuff like URLs, domains etc. to improve language detection
 
         return $this->tokenizer = new Tokenizer($languageDetector);
     }
@@ -334,9 +322,7 @@ class Engine
             $parameters[] = $value;
         }
 
-        if ($set !== []) {
-            $query .= ' SET ' . implode(',', $set);
-        }
+        $query .= ' SET ' . implode(',', $set);
 
         $where = [];
         foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
@@ -391,7 +377,7 @@ class Engine
         };
 
         sort($languages);
-        $ngramsRefFile = $this->getDataDir() . '/ngrams_' . sha1(implode(' ', $languages)) . '.php';
+        $ngramsRefFile = $this->getDataDir() . '/ngrams_' . hash('sha256', implode(' ', $languages)) . '.php';
         if (!file_exists($ngramsRefFile)) {
             if (!$generateNgramsRefFile($ngramsRefFile, $languages)) {
                 return null;

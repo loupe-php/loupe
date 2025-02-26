@@ -614,7 +614,7 @@ class Searcher
     }
 
     /**
-     * @param array<string> $whereStatement
+     * @param array<string|float> $whereStatement
      */
     private function handleFilterAstNode(Node $node, array &$whereStatement): void
     {

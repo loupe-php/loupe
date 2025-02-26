@@ -52,7 +52,6 @@ class Sorting
 
             $sorter = null;
 
-            /** @var AbstractSorter $sorterClass */
             foreach (self::SORTERS as $sorterClass) {
                 if (!$sorterClass::supports($chunks[0], $engine)) {
                     continue;
