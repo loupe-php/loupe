@@ -26,7 +26,7 @@
         "doctrine/dbal": "^3.9 || ^4.0",
         "wamania/php-stemmer": "^3.0",
         "doctrine/lexer": "^2.0 || ^3.0",
-        "mjaschen/phpgeo": "^4.2",
+        "mjaschen/phpgeo": "^5.0 || ^6.0",
         "toflar/state-set-index": "^3.0",
         "psr/log": "^2.0 || ^3.0",
         "nitotm/efficient-language-detector": "^3.0"
