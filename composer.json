@@ -29,7 +29,7 @@
         "mjaschen/phpgeo": "^4.2",
         "toflar/state-set-index": "^3.0",
         "psr/log": "^2.0 || ^3.0",
-        "nitotm/efficient-language-detector": "^2.0"
+        "nitotm/efficient-language-detector": "^3.0"
     },
     "require-dev": {
         "symfony/var-dumper": "^6.2",
