@@ -746,6 +746,10 @@ class SearchTest extends TestCase
                     'id' => 3,
                     'name' => 'Jurassic Park',
                     'rating' => 4,
+                    'dates' => [
+                        1740787200,
+                        1743465600,
+                    ],
                 ],
             ],
         ];
@@ -757,11 +761,19 @@ class SearchTest extends TestCase
                     'id' => 2,
                     'name' => 'Indiana Jones',
                     'rating' => 3.5,
+                    'dates' => [
+                        1738368000,
+                        1738454400,
+                    ],
                 ],
                 [
                     'id' => 3,
                     'name' => 'Jurassic Park',
                     'rating' => 4,
+                    'dates' => [
+                        1740787200,
+                        1743465600,
+                    ],
                 ],
             ],
         ];
@@ -773,11 +785,17 @@ class SearchTest extends TestCase
                     'id' => 5,
                     'name' => 'Back to the future',
                     'rating' => 0,
+                    'dates' => [],
                 ],
                 [
                     'id' => 1,
                     'name' => 'Star Wars',
                     'rating' => 2.5,
+                    'dates' => [
+                        1735689600,
+                        1738368000,
+                        1740787200,
+                    ],
                 ],
             ],
         ];
@@ -789,16 +807,51 @@ class SearchTest extends TestCase
                     'id' => 5,
                     'name' => 'Back to the future',
                     'rating' => 0,
+                    'dates' => [],
                 ],
                 [
                     'id' => 2,
                     'name' => 'Indiana Jones',
                     'rating' => 3.5,
+                    'dates' => [
+                        1738368000,
+                        1738454400,
+                    ],
                 ],
                 [
                     'id' => 1,
                     'name' => 'Star Wars',
                     'rating' => 2.5,
+                    'dates' => [
+                        1735689600,
+                        1738368000,
+                        1740787200,
+                    ],
+                ],
+            ],
+        ];
+
+        yield [
+            'dates >= ' . (new \DateTimeImmutable('2025-02-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp() . ' AND dates <= ' . (new \DateTimeImmutable('2025-02-04 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                    'dates' => [
+                        1738368000,
+                        1738454400,
+                    ],
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                    'rating' => 2.5,
+                    'dates' => [
+                        1735689600,
+                        1738368000,
+                        1740787200,
+                    ],
                 ],
             ],
         ];
@@ -1690,7 +1743,7 @@ class SearchTest extends TestCase
         $configuration = Configuration::create();
 
         $configuration = $configuration
-            ->withFilterableAttributes(['rating'])
+            ->withFilterableAttributes(['rating', 'dates'])
             ->withSortableAttributes(['name'])
             ->withSearchableAttributes(['name'])
         ;
@@ -1702,31 +1755,46 @@ class SearchTest extends TestCase
                 'id' => 1,
                 'name' => 'Star Wars',
                 'rating' => 2.5,
+                'dates' => [
+                    (new \DateTimeImmutable('2025-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-02-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-03-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
             ],
             [
                 'id' => 2,
                 'name' => 'Indiana Jones',
                 'rating' => 3.5,
+                'dates' => [
+                    (new \DateTimeImmutable('2025-02-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-02-02 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
             ],
             [
                 'id' => 3,
                 'name' => 'Jurassic Park',
                 'rating' => 4,
+                'dates' => [
+                    (new \DateTimeImmutable('2025-03-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-04-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
             ],
             [
                 'id' => 4,
                 'name' => 'Interstellar',
                 'rating' => null,
+                'dates' => [],
             ],
             [
                 'id' => 5,
                 'name' => 'Back to the future',
                 'rating' => 0,
+                'dates' => [],
             ],
         ]);
 
         $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'name', 'rating'])
+            ->withAttributesToRetrieve(['id', 'name', 'rating', 'dates'])
             ->withFilter($filter)
             ->withSort(['name:asc'])
         ;
