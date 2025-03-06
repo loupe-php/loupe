@@ -97,6 +97,9 @@ class MultiAttribute extends AbstractSorter
         return true;
     }
 
+    /**
+     * @param array<string|float> $whereStatement
+     */
     private function handleFilterAstNode(Engine $engine, Node $node, string $column, array &$whereStatement): void
     {
         if ($node instanceof Group) {
