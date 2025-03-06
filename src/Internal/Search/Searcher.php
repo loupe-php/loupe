@@ -9,6 +9,7 @@ use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
 use Location\Bounds;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
 use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
@@ -47,6 +48,8 @@ class Searcher
      */
     private array $CTEs = [];
 
+    private Ast $filterAst;
+
     /**
      * @var array<string, bool>
      */
@@ -60,10 +63,11 @@ class Searcher
 
     public function __construct(
         private Engine $engine,
-        private Parser $filterParser,
+        Parser $filterParser,
         private SearchParameters $searchParameters
     ) {
         $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
+        $this->filterAst = $filterParser->getAst($this->searchParameters->getFilter(), $this->engine);
     }
 
     public function addGeoDistanceSelectToQueryBuilder(string $attribute, float $latitude, float $longitude): string
@@ -91,6 +95,26 @@ class Searcher
         $this->geoDistanceSelectsAdded[$alias] = true;
 
         return $alias;
+    }
+
+    public function addMultiAttributeFromAndJoinToQueryBuilder(QueryBuilder $queryBuilder, string $attributeName): void
+    {
+        $queryBuilder->from(
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
+        )
+            ->innerJoin(
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                sprintf(
+                    '%s.attribute=%s AND %s.id = %s.attribute',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $this->queryBuilder->createNamedParameter($attributeName),
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                )
+            );
     }
 
     public function fetchResult(): SearchResult
@@ -167,6 +191,11 @@ class Searcher
     public function getCTEs(): array
     {
         return $this->CTEs;
+    }
+
+    public function getFilterAst(): Ast
+    {
+        return $this->filterAst;
     }
 
     public function getQueryBuilder(): QueryBuilder
@@ -446,31 +475,9 @@ class Searcher
 
         $qb = $this->engine->getConnection()
             ->createQueryBuilder();
-        $qb
-            ->select($select)
-            ->from(
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
-            )
-            ->innerJoin(
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
-                    '%s.attribute=%s AND %s.id = %s.attribute',
-                    $this->engine->getIndexInfo()
-                        ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->queryBuilder->createNamedParameter($attribute),
-                    $this->engine->getIndexInfo()
-                        ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->engine->getIndexInfo()
-                        ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                )
-            )
-        ;
+        $qb->select($select);
+
+        $this->addMultiAttributeFromAndJoinToQueryBuilder($qb, $attribute);
 
         $qb->groupBy($select);
 
@@ -609,10 +616,9 @@ class Searcher
             return;
         }
 
-        $ast = $this->filterParser->getAst($this->searchParameters->getFilter(), $this->engine);
         $whereStatement = [];
 
-        $this->handleFilterAstNode($ast->getRoot(), $whereStatement);
+        $this->handleFilterAstNode($this->getFilterAst()->getRoot(), $whereStatement);
 
         $this->queryBuilder->andWhere(implode(' ', $whereStatement));
     }

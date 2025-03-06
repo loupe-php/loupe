@@ -68,13 +68,7 @@ class IndexInfo
                 continue;
             }
 
-            $loupeType = LoupeTypes::getTypeFromValue($attributeValue);
-
-            if (\in_array($attributeName, $sortableAttributes, true) && !LoupeTypes::isSingleType($loupeType)) {
-                throw InvalidConfigurationException::becauseAttributeNotSortable($attributeName);
-            }
-
-            $documentSchema[$attributeName] = $loupeType;
+            $documentSchema[$attributeName] = LoupeTypes::getTypeFromValue($attributeValue);
         }
 
         $this->updateDocumentSchema($documentSchema);

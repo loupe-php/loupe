@@ -2796,6 +2796,78 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testSortOnMultiAttributesWithMinAndMaxModifiers(): void
+    {
+        $configuration = Configuration::create();
+
+        $configuration = $configuration
+            ->withFilterableAttributes(['dates'])
+            ->withSortableAttributes(['dates'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Event A',
+                'dates' => [
+                    (new \DateTimeImmutable('2025-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-08 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-15 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-22 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
+            ],
+            [
+                'id' => 2,
+                'name' => 'Event B',
+                'dates' => [
+                    (new \DateTimeImmutable('2025-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-02 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-03 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-04 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-05 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-06 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-07 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-08 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-01-09 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
+            ],
+            [
+                'id' => 3,
+                'name' => 'Event C',
+                'dates' => [
+                    (new \DateTimeImmutable('2025-03-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-04-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'name'])
+            ->withFilter('dates >= ' . (new \DateTimeImmutable('2025-01-04 00:00:00', new \DateTimeZone('UTC')))->getTimestamp() . ' AND dates <= ' . (new \DateTimeImmutable('2025-01-09 00:00:00', new \DateTimeZone('UTC')))->getTimestamp())
+            ->withSort(['min(dates):asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
     /**
      * @param array<string> $sort
      * @param array<array<string,mixed>> $expectedHits
