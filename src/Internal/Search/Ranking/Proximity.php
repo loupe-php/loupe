@@ -87,6 +87,10 @@ class Proximity extends AbstractRanker
             }
         }
 
+        if ($proximityPerAttribute === []) {
+            return 1.0;
+        }
+
         // Otherwise we take the highest proximity of all attributes
         return max($proximityPerAttribute);
     }
