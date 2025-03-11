@@ -1799,7 +1799,6 @@ class SearchTest extends TestCase
                     (new \DateTimeImmutable('2025-04-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
                 ],
             ],
-            // TODO: this use case should not pass. Funnily enough it's not even returned in the results if appears at the end of the array.
             [
                 'id' => 6,
                 'name' => 'Gladiator',
