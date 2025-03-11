@@ -6,16 +6,21 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
-use Loupe\Loupe\Internal\Filter\Ast\Filter;
-use Loupe\Loupe\Internal\Filter\Ast\Group;
-use Loupe\Loupe\Internal\Filter\Ast\Node;
-use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 /**
  * Sorts based on a multi attribute (an array value). Currently supporting min() and max() aggregators.
+ *
+ * We have to apply the filters, also. Otherwise, imagine you have two documents with
+ * Document A: ['numbers' => [2, 3, 4, 5]]
+ * Document B: ['numbers' => [1, 3, 4, 5]]
+ *
+ * If you now sort for "min(numbers):asc" and also apply a filter with "numbers >= 2 AND numbers <= 4" (for which
+ * both match), you would get document B listed before document A. Because document B's number 1 is lower than document
+ * A's number 2. However, our filter said we're only interested in numbers between 2 and 4 so document A must be
+ * listed before document B as the other numbers are not even relevant for us (facets of the current search result).
  */
 class MultiAttribute extends AbstractSorter
 {
@@ -30,40 +35,8 @@ class MultiAttribute extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
-        $column = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . ($isFloatType ? 'numeric_value' : 'string_value');
-
-        // Build the subquery, SELECT our aggregate and joining the multi attributes on our attribute name.
-        $qb = $engine->getConnection()
-            ->createQueryBuilder();
-        $qb->select($this->aggregate->buildSql($column));
-        $searcher->addMultiAttributeFromAndJoinToQueryBuilder($qb, $this->attributeName);
-
-        // Now filter only the ones that belong to our document
-        $qb->andWhere(sprintf(
-            '%s.document=%s.id',
-            $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-            $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-        ));
-
-        // Now we have the correct attribute and correct document, but we now need to apply the filters, also.
-        // Otherwise, imagine you have two documents with
-        // Document A: ['numbers' => [2, 3, 4, 5]]
-        // Document B: ['numbers' => [1, 3, 4, 5]]
-        // if you now sort for "min(numbers):asc" and also apply a filter with "numbers >= 2 AND numbers <= 4" (for which
-        // both match), you would get document B listed before document A. Because document B's number 1 is lower than document
-        // A's number 2. However, our filter said we're only interested in numbers between 2 and 4 so document A must be
-        // listed before document B as the other numbers are not even relevant for us (facets of the current search result).
-        $ast = $searcher->getFilterAst();
-        $whereStatement = [];
-
-        foreach ($ast->getNodes() as $node) {
-            $this->handleFilterAstNode($engine, $node, $column, $whereStatement);
-        }
-
-        if ($whereStatement !== []) {
-            $qb->andWhere(implode(' ', $whereStatement));
-        }
+        $filterBuilder = new FilterBuilder($engine, $searcher, $searcher->getQueryBuilder());
+        $qb = $filterBuilder->buildForMultiAttribute($this->attributeName, $this->aggregate);
 
         $searcher->getQueryBuilder()->addOrderBy('(' . $qb->getSQL() . ')', $this->direction->getSQL());
     }
@@ -95,42 +68,6 @@ class MultiAttribute extends AbstractSorter
         }
 
         return true;
-    }
-
-    /**
-     * @param array<string|float> $whereStatement
-     */
-    private function handleFilterAstNode(Engine $engine, Node $node, string $column, array &$whereStatement): void
-    {
-        if ($node instanceof Group) {
-            $groupWhere = [];
-            foreach ($node->getChildren() as $child) {
-                $this->handleFilterAstNode($engine, $child, $column, $groupWhere);
-            }
-
-            if ($groupWhere !== []) {
-                $whereStatement[] = '(';
-                $whereStatement[] = implode(' ', $groupWhere);
-                $whereStatement[] = ')';
-            }
-        }
-
-        if ($node instanceof Filter) {
-            // Only consider the ones of our attribute
-            if ($node->attribute !== $this->attributeName) {
-                return;
-            }
-
-            $sql = $node->operator->isNegative() ?
-                $node->operator->opposite()->buildSql($engine->getConnection(), $column, $node->value) :
-                $node->operator->buildSql($engine->getConnection(), $column, $node->value);
-
-            $whereStatement[] = $sql;
-        }
-
-        if ($node instanceof Concatenator) {
-            $whereStatement[] = $node->getConcatenator();
-        }
     }
 
     /**

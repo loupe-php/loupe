@@ -1149,6 +1149,37 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
+    {
+        yield 'Test MIN aggregate' => [
+            'min(dates):asc',
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate' => [
+            'max(dates):asc',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+            ],
+        ];
+    }
+
     public function testComplexFilters(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
@@ -2796,7 +2827,11 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testSortOnMultiAttributesWithMinAndMaxModifiers(): void
+    /**
+     *@param array<array<string,mixed>> $expectedHits
+     */
+    #[DataProvider('sortOnMultiAttributesWithMinAndMaxModifiers')]
+    public function testSortOnMultiAttributesWithMinAndMaxModifiers(string $sort, array $expectedHits): void
     {
         $configuration = Configuration::create();
 
@@ -2811,60 +2846,33 @@ class SearchTest extends TestCase
             [
                 'id' => 1,
                 'name' => 'Event A',
-                'dates' => [
-                    (new \DateTimeImmutable('2025-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-08 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-15 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-22 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                ],
+                'dates' => [2, 3, 4, 5, 6],
             ],
             [
                 'id' => 2,
                 'name' => 'Event B',
-                'dates' => [
-                    (new \DateTimeImmutable('2025-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-02 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-03 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-04 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-05 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-06 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-07 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-08 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-01-09 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                ],
+                'dates' => [1, 3, 4, 5],
             ],
             [
                 'id' => 3,
                 'name' => 'Event C',
-                'dates' => [
-                    (new \DateTimeImmutable('2025-03-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                    (new \DateTimeImmutable('2025-04-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
-                ],
+                'dates' => [7, 8],
             ],
         ]);
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'name'])
-            ->withFilter('dates >= ' . (new \DateTimeImmutable('2025-01-04 00:00:00', new \DateTimeZone('UTC')))->getTimestamp() . ' AND dates <= ' . (new \DateTimeImmutable('2025-01-09 00:00:00', new \DateTimeZone('UTC')))->getTimestamp())
-            ->withSort(['min(dates):asc'])
+            ->withFilter('dates >= 2 AND dates <= 6')
+            ->withSort([$sort])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 2,
-                    'name' => 'Event B',
-                ],
-                [
-                    'id' => 1,
-                    'name' => 'Event A',
-                ],
-            ],
+            'hits' => $expectedHits,
             'query' => '',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 2,
+            'totalHits' => count($expectedHits),
         ]);
     }
 
