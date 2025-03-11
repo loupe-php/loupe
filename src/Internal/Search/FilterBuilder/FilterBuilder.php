@@ -197,7 +197,10 @@ class FilterBuilder
                         continue;
                     }
 
-                    $column = $this->getMultiAttributeColumnForAttribute($node->attribute);
+                    $isFloatType = LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($child->value));
+
+                    $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
+                        ($isFloatType ? 'numeric_value' : 'string_value');
 
                     $positiveMultiWheres[] = $child->operator->buildSql(
                         $this->engine->getConnection(),

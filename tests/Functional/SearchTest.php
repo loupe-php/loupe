@@ -1086,6 +1086,37 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
+    {
+        yield 'Test MIN aggregate' => [
+            'min(dates):asc',
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate' => [
+            'max(dates):asc',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+            ],
+        ];
+    }
+
     public static function sortWithNullAndNonExistingValueProvider(): \Generator
     {
         yield 'ASC' => [
@@ -1144,37 +1175,6 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'name' => 'Star Wars',
-                ],
-            ],
-        ];
-    }
-
-    public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
-    {
-        yield 'Test MIN aggregate' => [
-            'min(dates):asc',
-            [
-                [
-                    'id' => 1,
-                    'name' => 'Event A',
-                ],
-                [
-                    'id' => 2,
-                    'name' => 'Event B',
-                ],
-            ],
-        ];
-
-        yield 'Test MAX aggregate' => [
-            'max(dates):asc',
-            [
-                [
-                    'id' => 2,
-                    'name' => 'Event B',
-                ],
-                [
-                    'id' => 1,
-                    'name' => 'Event A',
                 ],
             ],
         ];
@@ -2872,7 +2872,7 @@ class SearchTest extends TestCase
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => count($expectedHits),
+            'totalHits' => \count($expectedHits),
         ]);
     }
 
