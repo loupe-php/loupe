@@ -14,6 +14,7 @@ use Loupe\Loupe\Internal\Filter\Ast\Filter;
 use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Ast\Group;
+use Loupe\Loupe\Internal\Filter\Ast\MultiAttributeFilter;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
@@ -435,12 +436,18 @@ class Searcher
         return implode(' ', $where);
     }
 
-    private function createSubQueryForMultiAttribute(Filter $node): string
+    /**
+     * @param array<string> $positiveMultiWheres
+     * @param array<string> $negativeMultiWheres
+     */
+    private function createSubQueryForMultiAttribute(string $attribute, array $positiveMultiWheres, array $negativeMultiWheres): string
     {
+        $select = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS) . '.document';
+
         $qb = $this->engine->getConnection()
             ->createQueryBuilder();
         $qb
-            ->select('document')
+            ->select($select)
             ->from(
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
                 $this->engine->getIndexInfo()
@@ -456,7 +463,7 @@ class Searcher
                     '%s.attribute=%s AND %s.id = %s.attribute',
                     $this->engine->getIndexInfo()
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->queryBuilder->createNamedParameter($node->attribute),
+                    $this->queryBuilder->createNamedParameter($attribute),
                     $this->engine->getIndexInfo()
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $this->engine->getIndexInfo()
@@ -465,16 +472,15 @@ class Searcher
             )
         ;
 
-        $isFloatType = LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($node->value));
+        $qb->groupBy($select);
 
-        $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
-            ($isFloatType ? 'numeric_value' : 'string_value');
+        if ($positiveMultiWheres !== []) {
+            $qb->andHaving(sprintf('COUNT(CASE WHEN %s THEN 1 ELSE NULL END) > 0', implode(' ', $positiveMultiWheres)));
+        }
 
-        $sql = $node->operator->isNegative() ?
-            $node->operator->opposite()->buildSql($this->engine->getConnection(), $column, $node->value) :
-            $node->operator->buildSql($this->engine->getConnection(), $column, $node->value);
-
-        $qb->andWhere($sql);
+        if ($negativeMultiWheres !== []) {
+            $qb->andHaving(sprintf('COUNT(CASE WHEN %s THEN 1 ELSE NULL END) = 0', implode(' ', $negativeMultiWheres)));
+        }
 
         return $qb->getSQL();
     }
@@ -606,9 +612,7 @@ class Searcher
         $ast = $this->filterParser->getAst($this->searchParameters->getFilter(), $this->engine);
         $whereStatement = [];
 
-        foreach ($ast->getNodes() as $node) {
-            $this->handleFilterAstNode($node, $whereStatement);
-        }
+        $this->handleFilterAstNode($ast->getRoot(), $whereStatement);
 
         $this->queryBuilder->andWhere(implode(' ', $whereStatement));
     }
@@ -634,21 +638,51 @@ class Searcher
             }
         }
 
+        if ($node instanceof MultiAttributeFilter) {
+            $positiveMultiWheres = [];
+            $negativeMultiWheres = [];
+            foreach ($node->getChildren() as $child) {
+                // Multi filterable attributes need special handling
+                if ($child instanceof Filter && \in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+                    $isFloatType = LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($child->value));
+
+                    $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
+                        ($isFloatType ? 'numeric_value' : 'string_value');
+
+                    $positiveMultiWheres[] = $child->operator->buildSql(
+                        $this->engine->getConnection(),
+                        $column,
+                        $child->value
+                    );
+
+                    // If the operator is negative, we have to add a second where. This is because if the users write
+                    // $loupe->withFilter("multiattribute NOT IN ('foo', 'bar')") they want NEITHER of the attribute
+                    // values to be part of the result set. But because we store multi attributes in a separate table,
+                    // we first have to ensure the document has at least one allowed value AND then ensure the document
+                    //does NOT have ANY forbidden value
+                    if ($child->operator->isNegative()) {
+                        $negativeMultiWheres[] = $child->operator->opposite()->buildSql(
+                            $this->engine->getConnection(),
+                            $column,
+                            $child->value
+                        );
+                    }
+                } else {
+                    $this->handleFilterAstNode($child, $positiveMultiWheres);
+                }
+            }
+
+            $whereStatement[] = $documentAlias . '.id IN (';
+            $whereStatement[] = $this->createSubQueryForMultiAttribute($node->attribute, $positiveMultiWheres, $negativeMultiWheres);
+            $whereStatement[] = ')';
+        }
+
         if ($node instanceof Filter) {
             $operator = $node->operator;
 
             // Not existing attributes need be handled as no match if positive and as match if negative
             if (!\in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
-            }
-
-            // Multi filterable attributes need a sub query
-            elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-                $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
-                $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
-                $whereStatement[] = ')';
-
-            // Single attributes are on the document itself
             } else {
                 $attribute = $node->attribute;
 

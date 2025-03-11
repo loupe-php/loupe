@@ -743,6 +743,16 @@ class SearchTest extends TestCase
             'rating > 3.5',
             [
                 [
+                    'id' => 6,
+                    'name' => 'Gladiator',
+                    'rating' => 5,
+                    'dates' => [
+                        1735689600,
+                        1767225600,
+                        1798761600,
+                    ],
+                ],
+                [
                     'id' => 3,
                     'name' => 'Jurassic Park',
                     'rating' => 4,
@@ -757,6 +767,16 @@ class SearchTest extends TestCase
         yield [
             'rating >= 3.5',
             [
+                [
+                    'id' => 6,
+                    'name' => 'Gladiator',
+                    'rating' => 5,
+                    'dates' => [
+                        1735689600,
+                        1767225600,
+                        1798761600,
+                    ],
+                ],
                 [
                     'id' => 2,
                     'name' => 'Indiana Jones',
@@ -1777,6 +1797,16 @@ class SearchTest extends TestCase
                 'dates' => [
                     (new \DateTimeImmutable('2025-03-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
                     (new \DateTimeImmutable('2025-04-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
+            ],
+            [
+                'id' => 6,
+                'name' => 'Gladiator',
+                'rating' => 5,
+                'dates' => [
+                    (new \DateTimeImmutable('2025-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2026-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2027-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
                 ],
             ],
             [

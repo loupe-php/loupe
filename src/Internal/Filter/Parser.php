@@ -7,12 +7,14 @@ namespace Loupe\Loupe\Internal\Filter;
 use Doctrine\Common\Lexer\Token;
 use Loupe\Loupe\Exception\FilterFormatException;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Filter\Ast\AbstractGroup;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
 use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Ast\Group;
+use Loupe\Loupe\Internal\Filter\Ast\MultiAttributeFilter;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Ast\Operator;
 use Loupe\Loupe\Internal\LoupeTypes;
@@ -84,6 +86,12 @@ class Parser
             if ($this->lexer->token?->isA(Lexer::T_CLOSE_PARENTHESIS)) {
                 $activeGroup = $this->groups->isEmpty() ? null : $this->groups->pop();
 
+                // Close a potentially previously opened multi attribute group too
+                if ($activeGroup instanceof MultiAttributeFilter) {
+                    $this->addNode($activeGroup);
+                    $activeGroup = $this->groups->isEmpty() ? null : $this->groups->pop();
+                }
+
                 if ($activeGroup instanceof Group) {
                     $this->addNode($activeGroup);
                 } else {
@@ -92,7 +100,14 @@ class Parser
             }
         }
 
-        if (!$this->groups->isEmpty()) {
+        $activeGroup = $this->getActiveGroup();
+
+        if ($activeGroup instanceof MultiAttributeFilter) {
+            $activeGroup = $this->groups->pop();
+            $this->addNode($activeGroup);
+        }
+
+        if ($activeGroup !== null && !$activeGroup instanceof MultiAttributeFilter) {
             $this->syntaxError('a closing parenthesis');
         }
 
@@ -102,13 +117,13 @@ class Parser
     private function addNode(Node $node): self
     {
         // Ignore empty groups
-        if ($node instanceof Group && $node->isEmpty()) {
+        if ($node instanceof AbstractGroup && $node->isEmpty()) {
             return $this;
         }
 
-        $activeGroup = $this->groups->isEmpty() ? null : $this->groups->top();
+        $activeGroup = $this->getActiveGroup();
 
-        if ($activeGroup instanceof Group) {
+        if ($activeGroup instanceof AbstractGroup) {
             $activeGroup->addChild($node);
             return $this;
         }
@@ -182,6 +197,11 @@ class Parser
         }
     }
 
+    private function getActiveGroup(): null|AbstractGroup
+    {
+        return $this->groups->isEmpty() ? null : $this->groups->top();
+    }
+
     private function getTokenValueBasedOnType(): float|string|bool
     {
         $value = $this->lexer->token?->value;
@@ -204,6 +224,15 @@ class Parser
         $attributeName = (string) $this->lexer->token?->value;
 
         $this->validateFilterableAttribute($engine, $attributeName);
+
+        if (\in_array($attributeName, $engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+            $activeGroup = $this->getActiveGroup();
+
+            // Start a new multi attribute filter group if not already opened. Validated it is already here.
+            if (!$activeGroup instanceof MultiAttributeFilter) {
+                $this->groups->push(new MultiAttributeFilter($attributeName));
+            }
+        }
 
         $this->assertOperator($this->lexer->lookahead);
         $this->lexer->moveNext();
@@ -390,6 +419,12 @@ class Parser
         $allowedAttributeNames = $engine->getConfiguration()->getFilterableAttributes();
         if (!\in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
+        }
+
+        $activeGroup = $this->getActiveGroup();
+
+        if ($activeGroup instanceof MultiAttributeFilter && $activeGroup->attribute !== $attributeName) {
+            $this->syntaxError(sprintf('identical multi attributes within same group,"%s" and "%s" given.', $activeGroup->attribute, $attributeName));
         }
     }
 }
