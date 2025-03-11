@@ -18,12 +18,14 @@ class Ast
         return $this;
     }
 
-    /**
-     * @return array<Node>
-     */
-    public function getNodes(): array
+    public function getRoot(): Group
     {
-        return $this->nodes;
+        // Do not unnecessarily nest groups if the root node is already a group
+        if (\count($this->nodes) === 1 && $this->nodes[0] instanceof Group) {
+            return $this->nodes[0];
+        }
+
+        return new Group($this->nodes);
     }
 
     /**

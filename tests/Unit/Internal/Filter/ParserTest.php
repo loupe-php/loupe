@@ -8,6 +8,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\FilterFormatException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
+use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -22,8 +23,13 @@ class ParserTest extends TestCase
             [
                 [
                     'attribute' => 'genres',
-                    'operator' => '=',
-                    'value' => 'Drama',
+                    'children' => [
+                        [
+                            'attribute' => 'genres',
+                            'operator' => '=',
+                            'value' => 'Drama',
+                        ],
+                    ],
                 ],
             ],
         ];
@@ -66,8 +72,13 @@ class ParserTest extends TestCase
             [
                 [
                     'attribute' => 'genres',
-                    'operator' => '!=',
-                    'value' => 'Drama',
+                    'children' => [
+                        [
+                            'attribute' => 'genres',
+                            'operator' => '!=',
+                            'value' => 'Drama',
+                        ],
+                    ],
                 ],
             ],
         ];
@@ -191,11 +202,16 @@ class ParserTest extends TestCase
             [
                 [
                     'attribute' => 'genres',
-                    'operator' => 'IN',
-                    'value' => [
-                        'Drama',
-                        'Action',
-                        'Documentary',
+                    'children' => [
+                        [
+                            'attribute' => 'genres',
+                            'operator' => 'IN',
+                            'value' => [
+                                'Drama',
+                                'Action',
+                                'Documentary',
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -207,23 +223,29 @@ class ParserTest extends TestCase
                 [
                     [
                         'attribute' => 'genres',
-                        'operator' => 'IN',
-                        'value' => [
-                            'Drama',
-                            'Action',
-                        ],
-                    ],
-                    ['OR'],
-                    [
-                        'attribute' => 'genres',
-                        'operator' => 'IN',
-                        'value' => [
-                            'Documentary',
+                        'children' => [
+                            [
+                                'attribute' => 'genres',
+                                'operator' => 'IN',
+                                'value' => [
+                                    'Drama',
+                                    'Action',
+                                ],
+                            ],
+                            ['OR'],
+                            [
+                                'attribute' => 'genres',
+                                'operator' => 'IN',
+                                'value' => [
+                                    'Documentary',
+                                ],
+                            ],
                         ],
                     ],
                 ],
 
             ],
+
         ];
 
         yield 'Basic NOT IN filter' => [
@@ -231,11 +253,16 @@ class ParserTest extends TestCase
             [
                 [
                     'attribute' => 'genres',
-                    'operator' => 'NOT IN',
-                    'value' => [
-                        'Drama',
-                        'Action',
-                        'Documentary',
+                    'children' => [
+                        [
+                            'attribute' => 'genres',
+                            'operator' => 'NOT IN',
+                            'value' => [
+                                'Drama',
+                                'Action',
+                                'Documentary',
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -246,14 +273,19 @@ class ParserTest extends TestCase
             [
                 [
                     'attribute' => 'genres',
-                    'operator' => '>',
-                    'value' => 42.0,
-                ],
-                ['AND'],
-                [
-                    'attribute' => 'genres',
-                    'operator' => '<',
-                    'value' => 50.0,
+                    'children' => [
+                        [
+                            'attribute' => 'genres',
+                            'operator' => '>',
+                            'value' => 42.0,
+                        ],
+                        ['AND'],
+                        [
+                            'attribute' => 'genres',
+                            'operator' => '<',
+                            'value' => 50.0,
+                        ],
+                    ],
                 ],
             ],
         ];
@@ -264,21 +296,27 @@ class ParserTest extends TestCase
                 [
                     [
                         'attribute' => 'genres',
-                        'operator' => '>',
-                        'value' => 42.0,
+                        'children' => [
+                            [
+                                'attribute' => 'genres',
+                                'operator' => '>',
+                                'value' => 42.0,
+                            ],
+                            ['AND'],
+                            [
+                                'attribute' => 'genres',
+                                'operator' => '<',
+                                'value' => 50.0,
+                            ],
+                            ['OR'],
+                            [
+                                'attribute' => 'genres',
+                                'operator' => '=',
+                                'value' => LoupeTypes::VALUE_NULL,
+                            ],
+                        ],
                     ],
-                    ['AND'],
-                    [
-                        'attribute' => 'genres',
-                        'operator' => '<',
-                        'value' => 50.0,
-                    ],
-                    ['OR'],
-                    [
-                        'attribute' => 'genres',
-                        'operator' => '=',
-                        'value' => LoupeTypes::VALUE_NULL,
-                    ],
+
                 ],
                 ['OR'],
                 [
@@ -293,27 +331,42 @@ class ParserTest extends TestCase
             "(((genres > 42 AND genres < 50 OR (genres IS NULL)) OR foobar = 'test'))",
             [
                 [
-
                     [
                         [
                             [
                                 'attribute' => 'genres',
-                                'operator' => '>',
-                                'value' => 42.0,
-                            ],
-                            ['AND'],
-                            [
-                                'attribute' => 'genres',
-                                'operator' => '<',
-                                'value' => 50.0,
-                            ],
-                            ['OR'],
-                            [
-                                [
-                                    'attribute' => 'genres',
-                                    'operator' => '=',
-                                    'value' => LoupeTypes::VALUE_NULL,
-                                ],
+                                'children' =>
+                                    [
+                                        [
+                                            'attribute' => 'genres',
+                                            'operator' => '>',
+                                            'value' => 42.0,
+                                        ],
+                                        [
+                                            'AND',
+                                        ],
+                                        [
+                                            'attribute' => 'genres',
+                                            'operator' => '<',
+                                            'value' => 50.0,
+                                        ],
+                                        [
+                                            'OR',
+                                        ],
+                                        [
+                                            [
+                                                'attribute' => 'genres',
+                                                'children' =>
+                                                    [
+                                                        [
+                                                            'attribute' => 'genres',
+                                                            'operator' => '=',
+                                                            'value' => ':l:n',
+                                                        ],
+                                                    ],
+                                            ],
+                                        ],
+                                    ],
                             ],
                         ],
                         ['OR'],
@@ -341,8 +394,8 @@ class ParserTest extends TestCase
         ];
 
         yield 'Cannot close a non-opened group' => [
-            'genres > 42 ) foobar < 60)',
-            "Col 12: Error: Expected an opened group statement, got ')'",
+            'attribute > 42 ) foobar < 60)',
+            "Col 15: Error: Expected an opened group statement, got ')'",
         ];
 
         yield 'Missed closing the group' => [
@@ -444,6 +497,11 @@ class ParserTest extends TestCase
             'genres IS NOT foobar',
             'Col 10: Error: Expected "NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is, got \'NOT\'',
         ];
+
+        yield 'Mixed multi attributes' => [
+            "genres > 42 AND genres < 50 OR foobar = 'test'",
+            'Col 31: Error: Expected identical multi attributes within same group,"genres" and "foobar" given.',
+        ];
     }
 
     public function testGeoDistanceNotFilterable(): void
@@ -463,7 +521,7 @@ class ParserTest extends TestCase
         $this->expectExceptionMessage($expectedMessage);
 
         $parser = new Parser();
-        $engine = $this->mockEngine(['location', 'gender', 'attribute', 'genres', 'foobar']);
+        $engine = $this->mockEngine(['location', 'gender', 'attribute', 'genres', 'foobar'], ['genres']);
         $parser->getAst($filter, $engine);
     }
 
@@ -484,15 +542,16 @@ class ParserTest extends TestCase
     public function testValidFilter(string $filter, array $expectedAst): void
     {
         $parser = new Parser();
-        $engine = $this->mockEngine(['location', 'genres', 'age', 'foobar']);
+        $engine = $this->mockEngine(['location', 'genres', 'age', 'foobar'], ['genres']);
 
         $this->assertSame($expectedAst, $parser->getAst($filter, $engine)->toArray());
     }
 
     /**
      * @param array<string> $filterableAttributes
+     * @param array<string> $multiAttributes
      */
-    private function mockEngine(array $filterableAttributes): Engine
+    private function mockEngine(array $filterableAttributes, array $multiAttributes = []): Engine
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes($filterableAttributes)
@@ -502,6 +561,18 @@ class ParserTest extends TestCase
             ->method('getConfiguration')
             ->willReturn($configuration)
         ;
+
+        if ($multiAttributes !== []) {
+            $indexInfo = $this->createMock(IndexInfo::class);
+            $indexInfo
+                ->method('getMultiFilterableAttributes')
+                ->willReturn($multiAttributes)
+            ;
+            $engine
+                ->method('getIndexInfo')
+                ->willReturn($indexInfo)
+            ;
+        }
 
         return $engine;
     }
