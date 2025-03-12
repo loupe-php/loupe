@@ -1088,8 +1088,65 @@ class SearchTest extends TestCase
 
     public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
     {
-        yield 'Test MIN aggregate' => [
+        yield 'Test MIN aggregate without filters (ASC)' => [
             'min(dates):asc',
+            '',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+            ],
+        ];
+        yield 'Test MIN aggregate without filters (DESC)' => [
+            'min(dates):desc',
+            '',
+            [
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate without filters (ASC)' => [
+            'max(dates):asc',
+            '',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+            ],
+        ];
+
+        yield 'Test MIN aggregate with filters (ASC)' => [
+            'min(dates):asc',
+            'dates >= 2 AND dates <= 6',
             [
                 [
                     'id' => 1,
@@ -1102,8 +1159,9 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Test MAX aggregate' => [
-            'max(dates):asc',
+        yield 'Test MIN aggregate with filters (DESC)' => [
+            'min(dates):desc',
+            'dates >= 2 AND dates <= 6',
             [
                 [
                     'id' => 2,
@@ -1112,6 +1170,36 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'name' => 'Event A',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate with filters (ASC)' => [
+            'max(dates):asc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate with filters (DESC)' => [
+            'max(dates):desc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
                 ],
             ],
         ];
@@ -2831,7 +2919,7 @@ class SearchTest extends TestCase
      *@param array<array<string,mixed>> $expectedHits
      */
     #[DataProvider('sortOnMultiAttributesWithMinAndMaxModifiers')]
-    public function testSortOnMultiAttributesWithMinAndMaxModifiers(string $sort, array $expectedHits): void
+    public function testSortOnMultiAttributesWithMinAndMaxModifiers(string $sort, string $filter, array $expectedHits): void
     {
         $configuration = Configuration::create();
 
@@ -2862,7 +2950,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'name'])
-            ->withFilter('dates >= 2 AND dates <= 6')
+            ->withFilter($filter)
             ->withSort([$sort])
         ;
 

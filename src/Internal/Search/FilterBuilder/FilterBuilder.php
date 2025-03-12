@@ -59,6 +59,10 @@ class FilterBuilder
         $whereStatement = [];
         $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $whereStatement);
 
+        if ($whereStatement === []) {
+            return $qb;
+        }
+
         $qb->andWhere(implode(' ', $whereStatement));
 
         return $qb;
