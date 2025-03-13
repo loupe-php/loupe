@@ -8,11 +8,6 @@ use Loupe\Loupe\Configuration;
 
 class InvalidConfigurationException extends \InvalidArgumentException implements LoupeExceptionInterface
 {
-    public static function becauseAttributeNotSortable(string $attributeName): self
-    {
-        return new self(sprintf('Cannot sort on this type of attribute value for attribute "%s".', $attributeName));
-    }
-
     public static function becauseCouldNotCreateDataDir(string $folder): self
     {
         return new self(

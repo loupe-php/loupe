@@ -1086,6 +1086,125 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
+    {
+        yield 'Test MIN aggregate without filters (ASC)' => [
+            'min(dates):asc',
+            '',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+            ],
+        ];
+        yield 'Test MIN aggregate without filters (DESC)' => [
+            'min(dates):desc',
+            '',
+            [
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate without filters (ASC)' => [
+            'max(dates):asc',
+            '',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+            ],
+        ];
+
+        yield 'Test MIN aggregate with filters (ASC)' => [
+            'min(dates):asc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+
+        yield 'Test MIN aggregate with filters (DESC)' => [
+            'min(dates):desc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate with filters (ASC)' => [
+            'max(dates):asc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate with filters (DESC)' => [
+            'max(dates):desc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+    }
+
     public static function sortWithNullAndNonExistingValueProvider(): \Generator
     {
         yield 'ASC' => [
@@ -2793,6 +2912,55 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 7,
+        ]);
+    }
+
+    /**
+     *@param array<array<string,mixed>> $expectedHits
+     */
+    #[DataProvider('sortOnMultiAttributesWithMinAndMaxModifiers')]
+    public function testSortOnMultiAttributesWithMinAndMaxModifiers(string $sort, string $filter, array $expectedHits): void
+    {
+        $configuration = Configuration::create();
+
+        $configuration = $configuration
+            ->withFilterableAttributes(['dates'])
+            ->withSortableAttributes(['dates'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Event A',
+                'dates' => [2, 3, 4, 5, 6],
+            ],
+            [
+                'id' => 2,
+                'name' => 'Event B',
+                'dates' => [1, 3, 4, 5],
+            ],
+            [
+                'id' => 3,
+                'name' => 'Event C',
+                'dates' => [7, 8],
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'name'])
+            ->withFilter($filter)
+            ->withSort([$sort])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
         ]);
     }
 
