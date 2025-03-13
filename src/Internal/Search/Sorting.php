@@ -9,12 +9,13 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Search\Sorting\AbstractSorter;
 use Loupe\Loupe\Internal\Search\Sorting\Direction;
 use Loupe\Loupe\Internal\Search\Sorting\GeoPoint;
+use Loupe\Loupe\Internal\Search\Sorting\MultiAttribute;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
-use Loupe\Loupe\Internal\Search\Sorting\Simple;
+use Loupe\Loupe\Internal\Search\Sorting\SingleAttribute;
 
 class Sorting
 {
-    private const SORTERS = [Relevance::class, Simple::class, GeoPoint::class];
+    private const SORTERS = [Relevance::class, MultiAttribute::class, SingleAttribute::class, GeoPoint::class];
 
     /**
      * @param array<AbstractSorter> $sorters
@@ -52,7 +53,6 @@ class Sorting
 
             $sorter = null;
 
-            /** @var AbstractSorter $sorterClass */
             foreach (self::SORTERS as $sorterClass) {
                 if (!$sorterClass::supports($chunks[0], $engine)) {
                     continue;

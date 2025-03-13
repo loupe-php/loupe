@@ -195,6 +195,15 @@ class LoupeTypes
         ], true);
     }
 
+    public static function isMultiType(string $type): bool
+    {
+        return \in_array($type, [
+            self::TYPE_ARRAY_EMPTY,
+            self::TYPE_ARRAY_NUMBER,
+            self::TYPE_STRING,
+        ], true);
+    }
+
     public static function isSingleType(string $type): bool
     {
         // The Geo type is not exactly a single type, but it has to be treated as such

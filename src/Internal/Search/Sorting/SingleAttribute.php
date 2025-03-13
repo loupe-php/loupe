@@ -8,7 +8,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Searcher;
 
-class Simple extends AbstractSorter
+class SingleAttribute extends AbstractSorter
 {
     public function __construct(
         private string $attributeName,
