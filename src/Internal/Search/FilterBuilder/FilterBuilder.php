@@ -12,7 +12,6 @@ use Loupe\Loupe\Internal\Filter\Ast\Filter;
 use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Ast\Group;
-use Loupe\Loupe\Internal\Filter\Ast\MultiAttributeFilter;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
@@ -47,7 +46,22 @@ class FilterBuilder
         // Build the subquery, SELECT our aggregate and joining the multi attributes on our attribute name.
         $qb = $this->engine->getConnection()->createQueryBuilder();
         $qb->select($aggregate->buildSql($column));
-        $this->addMultiAttributeFromAndJoinToQueryBuilder($qb, $attribute);
+        $qb->from(
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
+        )
+            ->innerJoin(
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                sprintf(
+                    '%s.attribute=%s AND %s.id = %s.attribute',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $this->globalQueryBuilder->createNamedParameter($attribute),
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                )
+            );
 
         // Now filter only the ones that belong to our document
         $qb->andWhere(sprintf(
@@ -68,24 +82,42 @@ class FilterBuilder
         return $qb;
     }
 
-    private function addMultiAttributeFromAndJoinToQueryBuilder(QueryBuilder $queryBuilder, string $attributeName): void
+    private function buildWherePartForNegativeMultiAttributeFilter(Filter $filter, string $column): string
     {
-        $queryBuilder->from(
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
-        )
+        $madAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, (string) $this->searcher->getFilterAst()->getIdForNode($filter));
+        $maAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES, (string) $this->searcher->getFilterAst()->getIdForNode($filter));
+
+        $whereStatement = sprintf(
+            '%s.attribute = %s AND %s.%s',
+            $maAlias,
+            $this->globalQueryBuilder->createNamedParameter($filter->attribute),
+            $maAlias,
+            $filter->operator->opposite()->buildSql(
+                $this->engine->getConnection(),
+                $column,
+                $filter->value
+            )
+        );
+
+        $qb = $this->engine->getConnection()->createQueryBuilder();
+        $qb
+            ->select('1')
+            ->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $madAlias)
             ->innerJoin(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                $madAlias,
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                $maAlias,
                 sprintf(
-                    '%s.attribute=%s AND %s.id = %s.attribute',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->globalQueryBuilder->createNamedParameter($attributeName),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                    '%s.attribute = %s.id',
+                    $madAlias,
+                    $maAlias,
                 )
-            );
+            )
+            ->andWhere(sprintf('%s.document = d.id', $madAlias))
+            ->andWhere($whereStatement)
+        ;
+
+        return sprintf('NOT EXISTS (%s)', $qb->getSQL());
     }
 
     /**
@@ -126,39 +158,6 @@ class FilterBuilder
         return $whereStatement;
     }
 
-    /**
-     * @param array<string|float> $positiveMultiWheres
-     * @param array<string|float> $negativeMultiWheres
-     */
-    private function createSubQueryForMultiAttribute(string $attribute, array $positiveMultiWheres, array $negativeMultiWheres): string
-    {
-        $tableAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS);
-
-        if ($this->multiAttributeName) {
-            $select = $tableAlias . '.attribute';
-        } else {
-            $select = $tableAlias . '.document';
-        }
-
-        $qb = $this->engine->getConnection()
-            ->createQueryBuilder();
-        $qb->select($select);
-
-        $this->addMultiAttributeFromAndJoinToQueryBuilder($qb, $attribute);
-
-        $qb->groupBy($select);
-
-        if ($positiveMultiWheres !== []) {
-            $qb->andHaving(sprintf('COUNT(CASE WHEN %s THEN 1 ELSE NULL END) > 0', implode(' ', $positiveMultiWheres)));
-        }
-
-        if ($negativeMultiWheres !== []) {
-            $qb->andHaving(sprintf('COUNT(CASE WHEN %s THEN 1 ELSE NULL END) = 0', implode(' ', $negativeMultiWheres)));
-        }
-
-        return $qb->getSQL();
-    }
-
     private function getMultiAttributeColumnForAttribute(string $attribute): string
     {
         $isFloatType = LoupeTypes::isFloatType($this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute));
@@ -185,61 +184,6 @@ class FilterBuilder
             }
         }
 
-        if ($node instanceof MultiAttributeFilter) {
-            // Ignore if not in question
-            if ($this->multiAttributeName && $this->multiAttributeName !== $node->attribute) {
-                return;
-            }
-
-            $positiveMultiWheres = [];
-            $negativeMultiWheres = [];
-            foreach ($node->getChildren() as $child) {
-                // Multi filterable attributes need special handling
-                if ($child instanceof Filter && \in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-                    // Ignore if not in question
-                    if ($this->multiAttributeName && $this->multiAttributeName !== $node->attribute) {
-                        continue;
-                    }
-
-                    $isFloatType = LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($child->value));
-
-                    $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
-                        ($isFloatType ? 'numeric_value' : 'string_value');
-
-                    $positiveMultiWheres[] = $child->operator->buildSql(
-                        $this->engine->getConnection(),
-                        $column,
-                        $child->value
-                    );
-
-                    // If the operator is negative, we have to add a second where. This is because if the users write
-                    // $loupe->withFilter("multiattribute NOT IN ('foo', 'bar')") they want NEITHER of the attribute
-                    // values to be part of the result set. But because we store multi attributes in a separate table,
-                    // we first have to ensure the document has at least one allowed value AND then ensure the document
-                    //does NOT have ANY forbidden value
-                    if ($child->operator->isNegative()) {
-                        $negativeMultiWheres[] = $child->operator->opposite()->buildSql(
-                            $this->engine->getConnection(),
-                            $column,
-                            $child->value
-                        );
-                    }
-                } else {
-                    $this->handleFilterAstNode($child, $positiveMultiWheres);
-                }
-            }
-
-            if ($this->multiAttributeName) {
-                $multiAttributeAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES);
-                $whereStatement[] = $multiAttributeAlias . '.id IN (';
-            } else {
-                $whereStatement[] = $documentAlias . '.id IN (';
-            }
-
-            $whereStatement[] = $this->createSubQueryForMultiAttribute($node->attribute, $positiveMultiWheres, $negativeMultiWheres);
-            $whereStatement[] = ')';
-        }
-
         if ($node instanceof Filter) {
             // Ignore if not in question
             if ($this->multiAttributeName && $this->multiAttributeName !== $node->attribute) {
@@ -251,7 +195,32 @@ class FilterBuilder
             // Not existing attributes need be handled as no match if positive and as match if negative
             if (!\in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
+            } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+                // Multi attribute
+                $this->searcher->addJoinForMultiAttributes();
+
+                $column = (LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($node->value)) ? 'numeric_value' : 'string_value');
+
+                $whereStatement[] = '(';
+
+                if ($node->operator->isNegative()) {
+                    $whereStatement[] = $this->buildWherePartForNegativeMultiAttributeFilter($node, $column);
+                } else {
+                    $whereStatement[] = sprintf(
+                        '%s.attribute = %s AND %s',
+                        $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                        $this->globalQueryBuilder->createNamedParameter($node->attribute),
+                        $node->operator->buildSql(
+                            $this->engine->getConnection(),
+                            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . $column,
+                            $node->value
+                        )
+                    );
+                }
+
+                $whereStatement[] = ')';
             } else {
+                // Single attribute
                 $attribute = $node->attribute;
 
                 if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {

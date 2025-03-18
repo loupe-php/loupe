@@ -144,7 +144,7 @@ class IndexInfo
         }
     }
 
-    public function getAliasForTable(string $table): string
+    public function getAliasForTable(string $table, string $suffix = ''): string
     {
         return match ($table) {
             self::TABLE_NAME_DOCUMENTS => 'd',
@@ -156,7 +156,7 @@ class IndexInfo
             self::TABLE_NAME_PREFIXES => 'p',
             self::TABLE_NAME_PREFIXES_TERMS => 'tp',
             default => throw new \LogicException(sprintf('Forgot to define an alias for %s.', $table))
-        };
+        } . $suffix;
     }
 
     public function getConfigHash(): string

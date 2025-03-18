@@ -60,7 +60,7 @@ class Engine
         );
         $this->indexer = new Indexer($this);
         $this->highlighter = new Highlighter($this);
-        $this->filterParser = new Parser();
+        $this->filterParser = new Parser($this);
         $this->sqliteVersion = match (true) {
             \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
             (($nativeConnection = $this->connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],

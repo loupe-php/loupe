@@ -7,14 +7,12 @@ namespace Loupe\Loupe\Internal\Filter;
 use Doctrine\Common\Lexer\Token;
 use Loupe\Loupe\Exception\FilterFormatException;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Filter\Ast\AbstractGroup;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
 use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Ast\Group;
-use Loupe\Loupe\Internal\Filter\Ast\MultiAttributeFilter;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Filter\Ast\Operator;
 use Loupe\Loupe\Internal\LoupeTypes;
@@ -27,13 +25,14 @@ class Parser
 
     private Lexer $lexer;
 
-    public function __construct(?Lexer $lexer = null)
-    {
-        $this->lexer = $lexer ?? new Lexer();
+    public function __construct(
+        private Engine $engine
+    ) {
+        $this->lexer = new Lexer();
         $this->groups = new \SplStack();
     }
 
-    public function getAst(string $string, Engine $engine): Ast
+    public function getAst(string $string): Ast
     {
         $this->lexer->setInput($string);
         $this->ast = new Ast();
@@ -61,17 +60,17 @@ class Parser
             $start = false;
 
             if ($this->lexer->token?->type === Lexer::T_GEO_RADIUS) {
-                $this->handleGeoRadius($engine);
+                $this->handleGeoRadius();
                 continue;
             }
 
             if ($this->lexer->token?->type === Lexer::T_GEO_BOUNDING_BOX) {
-                $this->handleGeoBoundingBox($engine);
+                $this->handleGeoBoundingBox();
                 continue;
             }
 
             if ($this->lexer->token?->type === Lexer::T_ATTRIBUTE_NAME) {
-                $this->handleAttribute($engine);
+                $this->handleAttribute();
                 continue;
             }
 
@@ -86,12 +85,6 @@ class Parser
             if ($this->lexer->token?->isA(Lexer::T_CLOSE_PARENTHESIS)) {
                 $activeGroup = $this->groups->isEmpty() ? null : $this->groups->pop();
 
-                // Close a potentially previously opened multi attribute group too
-                if ($activeGroup instanceof MultiAttributeFilter) {
-                    $this->addNode($activeGroup);
-                    $activeGroup = $this->groups->isEmpty() ? null : $this->groups->pop();
-                }
-
                 if ($activeGroup instanceof Group) {
                     $this->addNode($activeGroup);
                 } else {
@@ -100,14 +93,7 @@ class Parser
             }
         }
 
-        $activeGroup = $this->getActiveGroup();
-
-        if ($activeGroup instanceof MultiAttributeFilter) {
-            $activeGroup = $this->groups->pop();
-            $this->addNode($activeGroup);
-        }
-
-        if ($activeGroup !== null && !$activeGroup instanceof MultiAttributeFilter) {
+        if (!$this->groups->isEmpty()) {
             $this->syntaxError('a closing parenthesis');
         }
 
@@ -117,13 +103,13 @@ class Parser
     private function addNode(Node $node): self
     {
         // Ignore empty groups
-        if ($node instanceof AbstractGroup && $node->isEmpty()) {
+        if ($node instanceof Group && $node->isEmpty()) {
             return $this;
         }
 
-        $activeGroup = $this->getActiveGroup();
+        $activeGroup = $this->groups->isEmpty() ? null : $this->groups->top();
 
-        if ($activeGroup instanceof AbstractGroup) {
+        if ($activeGroup instanceof Group) {
             $activeGroup->addChild($node);
             return $this;
         }
@@ -197,11 +183,6 @@ class Parser
         }
     }
 
-    private function getActiveGroup(): null|AbstractGroup
-    {
-        return $this->groups->isEmpty() ? null : $this->groups->top();
-    }
-
     private function getTokenValueBasedOnType(): float|string|bool
     {
         $value = $this->lexer->token?->value;
@@ -219,27 +200,18 @@ class Parser
         };
     }
 
-    private function handleAttribute(Engine $engine): void
+    private function handleAttribute(): void
     {
         $attributeName = (string) $this->lexer->token?->value;
 
-        $this->validateFilterableAttribute($engine, $attributeName);
-
-        if (\in_array($attributeName, $engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-            $activeGroup = $this->getActiveGroup();
-
-            // Start a new multi attribute filter group if not already opened. Validated it is already here.
-            if (!$activeGroup instanceof MultiAttributeFilter) {
-                $this->groups->push(new MultiAttributeFilter($attributeName));
-            }
-        }
+        $this->validateFilterableAttribute($attributeName);
 
         $this->assertOperator($this->lexer->lookahead);
         $this->lexer->moveNext();
         $operator = (string) $this->lexer->token?->value;
 
         if ($this->lexer->token?->type === Lexer::T_IS) {
-            $this->handleIs($attributeName, $engine);
+            $this->handleIs($attributeName);
             return;
         }
 
@@ -270,7 +242,7 @@ class Parser
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $this->getTokenValueBasedOnType()));
     }
 
-    private function handleGeoBoundingBox(Engine $engine): void
+    private function handleGeoBoundingBox(): void
     {
         $startPosition = ($this->lexer->lookahead->position ?? 0) + 1;
 
@@ -280,7 +252,7 @@ class Parser
 
         $attributeName = (string) $this->lexer->token?->value;
 
-        $this->validateFilterableAttribute($engine, $attributeName);
+        $this->validateFilterableAttribute($attributeName);
 
         $this->lexer->moveNext();
         $this->lexer->moveNext();
@@ -316,7 +288,7 @@ class Parser
         $this->lexer->moveNext();
     }
 
-    private function handleGeoRadius(Engine $engine): void
+    private function handleGeoRadius(): void
     {
         $this->assertOpeningParenthesis($this->lexer->lookahead);
         $this->lexer->moveNext();
@@ -324,7 +296,7 @@ class Parser
 
         $attributeName = (string) $this->lexer->token?->value;
 
-        $this->validateFilterableAttribute($engine, $attributeName);
+        $this->validateFilterableAttribute($attributeName);
 
         $this->lexer->moveNext();
         $this->lexer->moveNext();
@@ -374,7 +346,7 @@ class Parser
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
     }
 
-    private function handleIs(mixed $attributeName, Engine $engine): void
+    private function handleIs(mixed $attributeName): void
     {
         if ($this->lexer->lookahead?->type === Lexer::T_NULL) {
             $this->addNode(new Filter($attributeName, Operator::Equals, LoupeTypes::VALUE_NULL));
@@ -414,17 +386,11 @@ class Parser
         throw new FilterFormatException($message);
     }
 
-    private function validateFilterableAttribute(Engine $engine, string $attributeName): void
+    private function validateFilterableAttribute(string $attributeName): void
     {
-        $allowedAttributeNames = $engine->getConfiguration()->getFilterableAttributes();
+        $allowedAttributeNames = $this->engine->getConfiguration()->getFilterableAttributes();
         if (!\in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
-        }
-
-        $activeGroup = $this->getActiveGroup();
-
-        if ($activeGroup instanceof MultiAttributeFilter && $activeGroup->attribute !== $attributeName) {
-            $this->syntaxError(sprintf('identical multi attributes within same group,"%s" and "%s" given.', $activeGroup->attribute, $attributeName));
         }
     }
 }
