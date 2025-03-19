@@ -53,7 +53,6 @@ class IndexInfo
     {
         $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
         $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
-        $sortableAttributes = $this->engine->getConfiguration()->getSortableAttributes();
 
         if (!\array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);

@@ -222,12 +222,17 @@ class Parser
         }
 
         if ($this->lexer->token?->type === Lexer::T_NOT) {
-            if ($this->lexer->lookahead?->type !== Lexer::T_IN) {
-                $this->syntaxError('must be followed by IN ()', $this->lexer->lookahead);
+            if (!\in_array($this->lexer->lookahead?->type, [Lexer::T_IN, Lexer::T_BETWEEN], true)) {
+                $this->syntaxError('NOT must be followed by IN () or BETWEEN', $this->lexer->lookahead);
             }
 
             $this->lexer->moveNext();
             $operator .= ' ' . $this->lexer->token?->value;
+        }
+
+        if ($this->lexer->token?->type === Lexer::T_BETWEEN) {
+            $this->handleBetween($attributeName, $operator);
+            return;
         }
 
         if ($this->lexer->token?->type === Lexer::T_IN) {
@@ -240,6 +245,21 @@ class Parser
         $this->lexer->moveNext();
 
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $this->getTokenValueBasedOnType()));
+    }
+
+    private function handleBetween(string $attributeName, string $operator): void
+    {
+        $values = [];
+        $this->assertFloat($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $values[] = $this->getTokenValueBasedOnType();
+        $this->assertTokenTypes($this->lexer->lookahead, [Lexer::T_AND], "'AND'");
+        $this->lexer->moveNext();
+        $this->assertFloat($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $values[] = $this->getTokenValueBasedOnType();
+
+        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
     }
 
     private function handleGeoBoundingBox(): void

@@ -13,6 +13,8 @@ class Lexer extends AbstractLexer
 
     public const T_ATTRIBUTE_NAME = 100;
 
+    public const T_BETWEEN = 21;
+
     public const T_CLOSE_PARENTHESIS = 6;
 
     public const T_COMMA = 8;
@@ -112,6 +114,9 @@ class Lexer extends AbstractLexer
 
             case $value === '-':
                 return self::T_MINUS;
+
+            case $value === 'BETWEEN':
+                return self::T_BETWEEN;
 
             case $value === '_geoRadius':
                 return self::T_GEO_RADIUS;

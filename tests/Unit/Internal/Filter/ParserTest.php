@@ -83,6 +83,28 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Basic BETWEEN filter' => [
+            'age BETWEEN 18 AND 42',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => 'BETWEEN',
+                    'value' => [18.0, 42.0],
+                ],
+            ],
+        ];
+
+        yield 'Basic NOT BETWEEN filter' => [
+            'age NOT BETWEEN 18 AND 42',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => 'NOT BETWEEN',
+                    'value' => [18.0, 42.0],
+                ],
+            ],
+        ];
+
         yield 'IS NULL filter' => [
             'age IS NULL',
             [
@@ -259,7 +281,7 @@ class ParserTest extends TestCase
         ];
 
         yield 'Combined filters with groups' => [
-            "(genres > 42 AND genres < 50 OR genres IS NULL) OR foobar = 'test'",
+            "(genres > 42 AND genres < 50 OR genres IS NULL) AND age BETWEEN 18 AND 20 OR foobar = 'test'",
             [
                 [
                     [
@@ -279,6 +301,12 @@ class ParserTest extends TestCase
                         'operator' => '=',
                         'value' => LoupeTypes::VALUE_NULL,
                     ],
+                ],
+                ['AND'],
+                [
+                    'attribute' => 'age',
+                    'operator' => 'BETWEEN',
+                    'value' => [18.0, 20.0],
                 ],
                 ['OR'],
                 [
@@ -432,7 +460,7 @@ class ParserTest extends TestCase
 
         yield 'NOT not before IN' => [
             'genres NOT 42',
-            "Col 11: Error: Expected must be followed by IN (), got '42'",
+            "Col 11: Error: Expected NOT must be followed by IN () or BETWEEN, got '42'",
         ];
 
         yield 'IS with nonsense' => [
@@ -443,6 +471,16 @@ class ParserTest extends TestCase
         yield 'IS NOT with nonsense' => [
             'genres IS NOT foobar',
             'Col 10: Error: Expected "NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is, got \'NOT\'',
+        ];
+
+        yield 'BETWEEN with strings' => [
+            "age BETWEEN 'one' AND 'two'",
+            'Col 12: Error: Expected valid float value, got \'one\'',
+        ];
+
+        yield 'BETWEEN with OR' => [
+            'age BETWEEN 18 OR 42',
+            "Col 15: Error: Expected 'AND', got 'OR'",
         ];
     }
 
@@ -461,7 +499,7 @@ class ParserTest extends TestCase
         $this->expectException(FilterFormatException::class);
         $this->expectExceptionMessage($expectedMessage);
 
-        $parser = new Parser($this->mockEngine(['location', 'gender', 'attribute', 'genres', 'foobar']));
+        $parser = new Parser($this->mockEngine(['location', 'gender', 'attribute', 'genres', 'foobar', 'age']));
         $parser->getAst($filter);
     }
 

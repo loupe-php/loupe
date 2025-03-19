@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
 use Loupe\Loupe\Internal\Search\Searcher;
@@ -35,10 +36,27 @@ class MultiAttribute extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        $filterBuilder = new FilterBuilder($engine, $searcher, $searcher->getQueryBuilder());
-        $qb = $filterBuilder->buildForMultiAttribute($this->attributeName, $this->aggregate);
+        $searcher->addJoinForMultiAttributes();
+        $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
 
-        $searcher->getQueryBuilder()->addOrderBy('(' . $qb->getSQL() . ')', $this->direction->getSQL());
+        $filterBuilder = new FilterBuilder($engine, $searcher, $searcher->getQueryBuilder());
+        $havingStatements = $filterBuilder->buildForMultiAttribute($this->attributeName);
+        $additionalCondition = '';
+
+        if ($havingStatements !== []) {
+            $additionalCondition = ' AND (' . implode(' ', $havingStatements) . ')';
+        }
+
+        $sort = $this->aggregate->buildSql(sprintf(
+            'CASE WHEN %s.attribute = %s%s THEN %s.%s ELSE NULL END',
+            $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+            $searcher->getQueryBuilder()->createNamedParameter($this->attributeName),
+            $additionalCondition,
+            $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+            $isFloatType ? 'numeric_value' : 'string_value'
+        ));
+
+        $searcher->getQueryBuilder()->addOrderBy($sort, $this->direction->getSQL());
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self
