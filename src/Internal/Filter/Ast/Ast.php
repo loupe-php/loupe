@@ -7,6 +7,11 @@ namespace Loupe\Loupe\Internal\Filter\Ast;
 class Ast
 {
     /**
+     * @var array<int, int>
+     */
+    private array $ids = [];
+
+    /**
      * @var array<Node>
      */
     private array $nodes = [];
@@ -16,6 +21,17 @@ class Ast
         $this->nodes[] = $node;
 
         return $this;
+    }
+
+    public function getIdForNode(Node $node): int
+    {
+        $objectId = spl_object_id($node);
+
+        if (!isset($this->ids[$objectId])) {
+            $this->ids[$objectId] = \count($this->ids);
+        }
+
+        return $this->ids[$objectId];
     }
 
     public function getRoot(): Group
