@@ -16,7 +16,6 @@ use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\Searcher;
-use Loupe\Loupe\Internal\Search\Sorting\Aggregate;
 
 class FilterBuilder
 {
@@ -31,93 +30,24 @@ class FilterBuilder
 
     public function buildForDocument(): QueryBuilder
     {
-        $whereStatement = [];
+        $havingStatement = [];
 
-        $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $whereStatement);
+        $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $havingStatement);
 
-        return $this->globalQueryBuilder->andWhere(implode(' ', $whereStatement));
+        return $this->globalQueryBuilder->andHaving(implode(' ', $havingStatement));
     }
 
-    public function buildForMultiAttribute(string $attribute, Aggregate $aggregate): QueryBuilder
+    /**
+     * @return array<float|string>
+     */
+    public function buildForMultiAttribute(string $attribute): array
     {
         $this->multiAttributeName = $attribute;
-        $column = $this->getMultiAttributeColumnForAttribute($attribute);
 
-        // Build the subquery, SELECT our aggregate and joining the multi attributes on our attribute name.
-        $qb = $this->engine->getConnection()->createQueryBuilder();
-        $qb->select($aggregate->buildSql($column));
-        $qb->from(
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
-        )
-            ->innerJoin(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
-                    '%s.attribute=%s AND %s.id = %s.attribute',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->globalQueryBuilder->createNamedParameter($attribute),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                )
-            );
+        $havingStatement = [];
+        $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $havingStatement);
 
-        // Now filter only the ones that belong to our document
-        $qb->andWhere(sprintf(
-            '%s.document=%s.id',
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-        ));
-
-        $whereStatement = [];
-        $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $whereStatement);
-
-        if ($whereStatement === []) {
-            return $qb;
-        }
-
-        $qb->andWhere(implode(' ', $whereStatement));
-
-        return $qb;
-    }
-
-    private function buildWherePartForNegativeMultiAttributeFilter(Filter $filter, string $column): string
-    {
-        $madAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, (string) $this->searcher->getFilterAst()->getIdForNode($filter));
-        $maAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES, (string) $this->searcher->getFilterAst()->getIdForNode($filter));
-
-        $whereStatement = sprintf(
-            '%s.attribute = %s AND %s.%s',
-            $maAlias,
-            $this->globalQueryBuilder->createNamedParameter($filter->attribute),
-            $maAlias,
-            $filter->operator->opposite()->buildSql(
-                $this->engine->getConnection(),
-                $column,
-                $filter->value
-            )
-        );
-
-        $qb = $this->engine->getConnection()->createQueryBuilder();
-        $qb
-            ->select('1')
-            ->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $madAlias)
-            ->innerJoin(
-                $madAlias,
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $maAlias,
-                sprintf(
-                    '%s.attribute = %s.id',
-                    $madAlias,
-                    $maAlias,
-                )
-            )
-            ->andWhere(sprintf('%s.document = d.id', $madAlias))
-            ->andWhere($whereStatement)
-        ;
-
-        return sprintf('NOT EXISTS (%s)', $qb->getSQL());
+        return $havingStatement;
     }
 
     /**
@@ -158,16 +88,10 @@ class FilterBuilder
         return $whereStatement;
     }
 
-    private function getMultiAttributeColumnForAttribute(string $attribute): string
-    {
-        $isFloatType = LoupeTypes::isFloatType($this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute));
-        return $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . ($isFloatType ? 'numeric_value' : 'string_value');
-    }
-
     /**
-     * @param array<string|float> $whereStatement
+     * @param array<string|float> $havingStatement
      */
-    private function handleFilterAstNode(Node $node, array &$whereStatement): void
+    private function handleFilterAstNode(Node $node, array &$havingStatement): void
     {
         $documentAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
 
@@ -178,9 +102,9 @@ class FilterBuilder
             }
 
             if ($groupWhere !== []) {
-                $whereStatement[] = '(';
-                $whereStatement[] = implode(' ', $groupWhere);
-                $whereStatement[] = ')';
+                $havingStatement[] = '(';
+                $havingStatement[] = implode(' ', $groupWhere);
+                $havingStatement[] = ')';
             }
         }
 
@@ -194,31 +118,42 @@ class FilterBuilder
 
             // Not existing attributes need be handled as no match if positive and as match if negative
             if (!\in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $whereStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
+                $havingStatement[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
             } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 // Multi attribute
                 $this->searcher->addJoinForMultiAttributes();
-
                 $column = (LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($node->value)) ? 'numeric_value' : 'string_value');
-
-                $whereStatement[] = '(';
+                $withSum = $this->multiAttributeName === null;
 
                 if ($node->operator->isNegative()) {
-                    $whereStatement[] = $this->buildWherePartForNegativeMultiAttributeFilter($node, $column);
+                    $havingStatement[] = sprintf(
+                        $withSum ? 'SUM(CASE WHEN %s THEN 1 ELSE 0 END) = 0' : 'CASE WHEN %s THEN 1 ELSE 0 END',
+                        sprintf(
+                            '%s.attribute = %s AND %s',
+                            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                            $this->globalQueryBuilder->createNamedParameter($node->attribute),
+                            $node->operator->opposite()->buildSql(
+                                $this->engine->getConnection(),
+                                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . $column,
+                                $node->value
+                            )
+                        )
+                    );
                 } else {
-                    $whereStatement[] = sprintf(
-                        '%s.attribute = %s AND %s',
-                        $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                        $this->globalQueryBuilder->createNamedParameter($node->attribute),
-                        $node->operator->buildSql(
-                            $this->engine->getConnection(),
-                            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . $column,
-                            $node->value
+                    $havingStatement[] = sprintf(
+                        $withSum ? 'SUM(CASE WHEN %s THEN 1 ELSE 0 END) > 0' : 'CASE WHEN %s THEN 1 ELSE 0 END',
+                        sprintf(
+                            '%s.attribute = %s AND %s',
+                            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                            $this->globalQueryBuilder->createNamedParameter($node->attribute),
+                            $node->operator->buildSql(
+                                $this->engine->getConnection(),
+                                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . $column,
+                                $node->value
+                            )
                         )
                     );
                 }
-
-                $whereStatement[] = ')';
             } else {
                 // Single attribute
                 $attribute = $node->attribute;
@@ -227,7 +162,7 @@ class FilterBuilder
                     $attribute = 'user_id';
                 }
 
-                $whereStatement[] = $operator->buildSql(
+                $havingStatement[] = $operator->buildSql(
                     $this->engine->getConnection(),
                     $documentAlias . '.' . $attribute,
                     $node->value
@@ -238,7 +173,7 @@ class FilterBuilder
         if ($node instanceof GeoDistance) {
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $whereStatement[] = '1 = 0';
+                $havingStatement[] = '1 = 0';
                 return;
             }
 
@@ -246,7 +181,7 @@ class FilterBuilder
             $distanceSelectAlias = $this->searcher->addGeoDistanceSelectToQueryBuilder($node->attributeName, $node->lat, $node->lng);
 
             // Start a group
-            $whereStatement[] = '(';
+            $havingStatement[] = '(';
 
             // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
             // the actual distance is compared. This can use indexes.
@@ -255,40 +190,40 @@ class FilterBuilder
             // locations we shouldn't.
             $bounds = $node->getBbox();
 
-            $whereStatement = [...$whereStatement, ...$this->createGeoBoundingBoxWhereStatement($documentAlias, $node, $bounds)];
+            $havingStatement = [...$havingStatement, ...$this->createGeoBoundingBoxWhereStatement($documentAlias, $node, $bounds)];
 
             // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
             // but not within the radius (which is a circle).
-            $whereStatement[] = 'AND';
-            $whereStatement[] = $distanceSelectAlias;
-            $whereStatement[] = '<=';
-            $whereStatement[] = $node->distance;
+            $havingStatement[] = 'AND';
+            $havingStatement[] = $distanceSelectAlias;
+            $havingStatement[] = '<=';
+            $havingStatement[] = $node->distance;
 
             // End group
-            $whereStatement[] = ')';
+            $havingStatement[] = ')';
         }
 
         if ($node instanceof GeoBoundingBox) {
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $whereStatement[] = '1 = 0';
+                $havingStatement[] = '1 = 0';
                 return;
             }
 
             // Start a group GeoDistance BBOX
-            $whereStatement[] = '(';
+            $havingStatement[] = '(';
 
             // Same like above for
             $bounds = $node->getBbox();
 
-            $whereStatement = [...$whereStatement, ...$this->createGeoBoundingBoxWhereStatement($documentAlias, $node, $bounds)];
+            $havingStatement = [...$havingStatement, ...$this->createGeoBoundingBoxWhereStatement($documentAlias, $node, $bounds)];
 
             // End group
-            $whereStatement[] = ')';
+            $havingStatement[] = ')';
         }
 
         if ($node instanceof Concatenator) {
-            $whereStatement[] = $node->getConcatenator();
+            $havingStatement[] = $node->getConcatenator();
         }
     }
 }

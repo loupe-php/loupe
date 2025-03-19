@@ -122,6 +122,16 @@ class SearchTest extends TestCase
 
     public static function equalFilterProvider(): \Generator
     {
+        yield '= on multiple attribute match multiple' => [
+            "departments = 'Backoffice' AND departments = 'Development'",
+            [
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
         yield '= on multiple attribute' => [
             "departments = 'Backoffice'",
             [
@@ -735,9 +745,19 @@ class SearchTest extends TestCase
                 ],
             ],
         ];
+
+        yield 'Combining multiple IN() statements' => [
+            "departments IN ('Development') AND colors IN ('Red')",
+            [
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
     }
 
-    public static function lowerAndGreaterThanFilters(): \Generator
+    public static function lowerAndGreaterThanAndBetweenFilters(): \Generator
     {
         yield [
             'rating > 3.5',
@@ -852,7 +872,7 @@ class SearchTest extends TestCase
         ];
 
         yield [
-            'dates >= ' . (new \DateTimeImmutable('2025-02-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp() . ' AND dates <= ' . (new \DateTimeImmutable('2025-02-04 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+            'dates BETWEEN ' . (new \DateTimeImmutable('2025-02-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp() . ' AND ' . (new \DateTimeImmutable('2025-02-04 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
             [
                 [
                     'id' => 2,
@@ -1876,8 +1896,8 @@ class SearchTest extends TestCase
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
-    #[DataProvider('lowerAndGreaterThanFilters')]
-    public function testLowerAndGreaterThanFilters(string $filter, array $expectedHits): void
+    #[DataProvider('lowerAndGreaterThanAndBetweenFilters')]
+    public function testLowerAndGreaterAndBetweenThanFilters(string $filter, array $expectedHits): void
     {
         $configuration = Configuration::create();
 
@@ -3360,7 +3380,7 @@ class SearchTest extends TestCase
         }
 
         $configuration = $configuration
-            ->withFilterableAttributes(['departments', 'gender', 'isActive'])
+            ->withFilterableAttributes(['departments', 'gender', 'isActive', 'colors'])
             ->withSortableAttributes(['firstname'])
             ->withSearchableAttributes(['firstname', 'lastname'])
         ;

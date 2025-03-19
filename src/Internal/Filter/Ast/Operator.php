@@ -9,12 +9,14 @@ use Loupe\Loupe\Internal\LoupeTypes;
 
 enum Operator: string
 {
+    case Between = 'BETWEEN';
     case Equals = '=';
     case GreaterThan = '>';
     case GreaterThanOrEquals = '>=';
     case In = 'IN';
     case LowerThan = '<';
     case LowerThanOrEquals = '<=';
+    case NotBetween = 'NOT BETWEEN';
     case NotEquals = '!=';
     case NotIn = 'NOT IN';
 
@@ -40,6 +42,10 @@ enum Operator: string
                 return $attribute . ' ' . $this->value . ' (' . implode(', ', $value) . ')';
             }
 
+            if ($this === self::Between || $this === self::NotBetween) {
+                return $attribute . ' ' . $this->value . ' ' . $value[0] . ' AND ' . $value[1];
+            }
+
             throw new \InvalidArgumentException('Can oly work with arrays for IN() and NOT IN().');
         }
 
@@ -56,7 +62,10 @@ enum Operator: string
                 ' AND ' .
                 self::NotEquals->buildSql($connection, $attribute, LoupeTypes::VALUE_NULL) .
                 ')',
-            self::In, self::NotIn => throw new \InvalidArgumentException('Can only use IN() and NOT IN() with arrays.')
+            self::Between,
+            self::NotBetween,
+            self::In,
+            self::NotIn => throw new \InvalidArgumentException('Can only use IN(), NOT IN(), BETWEEN and NOT BETWEEN with arrays.')
         };
     }
 
@@ -71,6 +80,8 @@ enum Operator: string
             '<=' => self::LowerThanOrEquals,
             'IN' => self::In,
             'NOT IN' => self::NotIn,
+            'BETWEEN' => self::Between,
+            'NOT BETWEEN' => self::NotBetween,
             default => throw new \InvalidArgumentException('Invalid operator given.')
         };
     }
@@ -83,8 +94,10 @@ enum Operator: string
             self::GreaterThanOrEquals,
             self::LowerThan,
             self::LowerThanOrEquals,
+            self::Between,
             self::In => false,
             self::NotIn,
+            self::NotBetween,
             self::NotEquals => true,
         };
     }
@@ -100,6 +113,8 @@ enum Operator: string
             self::LowerThanOrEquals => self::GreaterThan,
             self::In => self::NotIn,
             self::NotIn => self::In,
+            self::Between => self::NotBetween,
+            self::NotBetween => self::Between,
         };
     }
 
