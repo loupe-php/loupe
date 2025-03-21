@@ -216,6 +216,16 @@ class Engine
     }
 
     /**
+     * Returns the approx. size in bytes
+     */
+    public function size(): int
+    {
+        return (int) $this->connection
+            ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
+            ->fetchOne();
+    }
+
+    /**
      * Use native UPSERT if supported and fall back to a regular SELECT and INSERT INTO if not.
      * We do not use the Doctrine query builder in this method as the method  is heavily used and the query builder
      * will slow down performance considerably.

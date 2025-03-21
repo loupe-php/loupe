@@ -94,4 +94,10 @@ final class Loupe
         StaticCache::enterContext($this);
         return $this->engine->search($parameters);
     }
+
+    public function size(): int
+    {
+        StaticCache::enterContext($this);
+        return $this->engine->size();
+    }
 }
