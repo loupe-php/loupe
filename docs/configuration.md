@@ -32,6 +32,19 @@ $configuration = \Loupe\Loupe\Configuration::create()
 Note that the order of searchable attributes has an influence on the [relevance ranking](./ranking.md) of search
 results: attributes listed earlier carry more weight than attributes listed later.
 
+## Displayed attributes
+
+By default, Loupe lists all the attributes of your documents in a search result.
+If a field attribute is not in the displayed attribute list, the field won't be added to the returned documents.
+This can be useful if you e.g. need an attribute only for filtering, but you're never interested in the value itself when
+receiving the document. Internally, Loupe can thus also optimize the storage.
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withDisplayedAttributes(['firstname', 'lastname'])
+;
+```
+
 ## Filterable attributes
 
 By default, no attribute can be filtered on in Loupe. Any attribute you want to filter for, needs to be defined as 

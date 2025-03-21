@@ -22,6 +22,11 @@ final class Configuration
     /**
      * @var array<string>
      */
+    private array $displayedAttributes = ['*'];
+
+    /**
+     * @var array<string>
+     */
     private array $filterableAttributes = [];
 
     /**
@@ -73,6 +78,14 @@ final class Configuration
     public static function create(): self
     {
         return new self();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getDisplayedAttributes(): array
+    {
+        return $this->displayedAttributes;
     }
 
     /**
@@ -190,6 +203,21 @@ final class Configuration
         ) {
             throw InvalidConfigurationException::becauseInvalidAttributeName($name);
         }
+    }
+
+    /**
+     * @param array<string> $displayedAttributes
+     */
+    public function withDisplayedAttributes(array $displayedAttributes): self
+    {
+        if (['*'] !== $displayedAttributes) {
+            self::validateAttributeNames($displayedAttributes);
+        }
+
+        $clone = clone $this;
+        $clone->displayedAttributes = $displayedAttributes;
+
+        return $clone;
     }
 
     /**
