@@ -61,4 +61,19 @@ class DocumentHandlingTest extends TestCase
         $document = $loupe->getDocument('not_existing_identifier');
         $this->assertNull($document);
     }
+
+    public function testSize(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname']);
+
+        $loupe = $this->createLoupe($configuration);
+        $sizeBefore = $loupe->size();
+        $this->assertGreaterThan(0, $sizeBefore);
+
+        $this->indexFixture($loupe, 'departments');
+
+        $this->assertGreaterThan($sizeBefore, $loupe->size());
+    }
 }
