@@ -1350,6 +1350,37 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testDisplayedAttributes(): void
+    {
+        $configuration = Configuration::create()
+            ->withDisplayedAttributes(['id', 'title'])
+        ;
+        $loupe = $this->setupLoupeWithMoviesFixture($configuration);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('four')
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 5,
+                    'title' => 'Four Rooms',
+                ],
+                [
+                    'id' => 6,
+                    'title' => 'Judgment Night',
+                ],
+            ],
+            'query' => 'four',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
