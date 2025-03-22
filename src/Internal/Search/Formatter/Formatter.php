@@ -2,28 +2,28 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Internal\Search\Highlighter;
+namespace Loupe\Loupe\Internal\Search\Formatter;
 
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
-class Highlighter
+class Formatter
 {
     public function __construct(
         private Engine $engine
     ) {
     }
 
-    public function highlight(
+    public function format(
         string $text,
         TokenCollection $queryTokens,
         string $startTag = '<em>',
         string $endTag = '</em>',
-    ): HighlightResult {
+    ): FormatterResult {
         if ($text === '') {
-            return new HighlightResult($text, []);
+            return new FormatterResult($text, []);
         }
 
         $matches = [];
@@ -41,7 +41,7 @@ class Highlighter
         }
 
         if ($matches === []) {
-            return new HighlightResult($text, []);
+            return new FormatterResult($text, []);
         }
 
         // Sort matches by start
@@ -69,7 +69,7 @@ class Highlighter
             $highlightedText .= $endTag;
         }
 
-        return new HighlightResult($highlightedText, $matches);
+        return new FormatterResult($highlightedText, $matches);
     }
 
     /**

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Internal\Search\Highlighter;
+namespace Loupe\Loupe\Internal\Search\Formatter;
 
-class HighlightResult
+class FormatterResult
 {
     /**
      * @param array<int, array{start: int, length: int, stopword: bool}> $matches

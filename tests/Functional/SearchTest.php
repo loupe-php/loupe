@@ -253,7 +253,7 @@ class SearchTest extends TestCase
         ];
     }
 
-    public static function highlightingProvider(): \Generator
+    public static function formattingProvider(): \Generator
     {
         yield 'Highlight with matches position only' => [
             'assassin',
@@ -1848,8 +1848,8 @@ class SearchTest extends TestCase
      * @param array<mixed> $expectedResults
      * @param array<string> $stopWords
      */
-    #[DataProvider('highlightingProvider')]
-    public function testHighlighting(
+    #[DataProvider('formattingProvider')]
+    public function testFormatting(
         string $query,
         array $searchableAttributes,
         array $attributesToHighlight,
@@ -2328,7 +2328,7 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testPrefixSearchAndHighlightingWithTypoSearchEnabled(): void
+    public function testPrefixSearchAndFormattingWithTypoSearchEnabled(): void
     {
         $typoTolerance = TypoTolerance::create()->withEnabledForPrefixSearch(true);
         $configuration = Configuration::create()->withTypoTolerance($typoTolerance);

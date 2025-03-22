@@ -164,7 +164,7 @@ class Searcher
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
-            $this->highlight($hit, $tokensIncludingStopwords);
+            $this->formatHit($hit, $tokensIncludingStopwords);
 
             $hits[] = $hit;
         }
@@ -563,24 +563,30 @@ class Searcher
     /**
      * @param array<mixed> $hit
      */
-    private function highlight(array &$hit, TokenCollection $tokenCollection): void
+    private function formatHit(array &$hit, TokenCollection $tokenCollection): void
     {
-        if ($this->searchParameters->getAttributesToHighlight() === [] && !$this->searchParameters->showMatchesPosition()) {
+        $attributesToCrop = $this->searchParameters->getAttributesToCrop();
+        $attributesToHighlight = $this->searchParameters->getAttributesToHighlight();
+        $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
+
+        $requiresFormatting = count($attributesToHighlight) > 0 ||
+            count($attributesToCrop) > 0 ||
+            $this->searchParameters->showMatchesPosition();
+
+        if (! $requiresFormatting) {
             return;
         }
 
         $formatted = $hit;
         $matchesPosition = [];
 
-        $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes() ?
-            array_keys($hit) :
-            $this->engine->getConfiguration()->getSearchableAttributes();
+        if ($searchableAttributes === ['*']) {
+            $searchableAttributes = array_keys($hit);
+        }
 
-        $highlightAllAttributes = ['*'] === $this->searchParameters->getAttributesToHighlight();
-        $attributesToHighlight = $highlightAllAttributes ?
-            $searchableAttributes :
-            $this->searchParameters->getAttributesToHighlight()
-        ;
+        if ($attributesToHighlight === ['*']) {
+            $attributesToHighlight = $searchableAttributes;
+        }
 
         $highlightStartTag = $this->searchParameters->getHighlightStartTag();
         $highlightEndTag = $this->searchParameters->getHighlightEndTag();
@@ -593,8 +599,8 @@ class Searcher
 
             if (\is_array($formatted[$attribute])) {
                 foreach ($formatted[$attribute] as $key => $formattedEntry) {
-                    $highlightResult = $this->engine->getHighlighter()
-                        ->highlight(
+                    $formatResult = $this->engine->getFormatter()
+                        ->format(
                             $formattedEntry,
                             $tokenCollection,
                             $highlightStartTag,
@@ -602,16 +608,16 @@ class Searcher
                         );
 
                     if (\in_array($attribute, $attributesToHighlight, true)) {
-                        $formatted[$attribute][$key] = $highlightResult->getHighlightedText();
+                        $formatted[$attribute][$key] = $formatResult->getFormattedText();
                     }
 
-                    if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
-                        $matchesPosition[$attribute][$key] = $highlightResult->getMatches();
+                    if ($this->searchParameters->showMatchesPosition() && $formatResult->getMatches() !== []) {
+                        $matchesPosition[$attribute][$key] = $formatResult->getMatches();
                     }
                 }
             } else {
-                $highlightResult = $this->engine->getHighlighter()
-                    ->highlight(
+                $formatResult = $this->engine->getFormatter()
+                    ->format(
                         (string) $formatted[$attribute],
                         $tokenCollection,
                         $highlightStartTag,
@@ -619,11 +625,11 @@ class Searcher
                     );
 
                 if (\in_array($attribute, $attributesToHighlight, true)) {
-                    $formatted[$attribute] = $highlightResult->getHighlightedText();
+                    $formatted[$attribute] = $formatResult->getFormattedText();
                 }
 
-                if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
-                    $matchesPosition[$attribute] = $highlightResult->getMatches();
+                if ($this->searchParameters->showMatchesPosition() && $formatResult->getMatches() !== []) {
+                    $matchesPosition[$attribute] = $formatResult->getMatches();
                 }
             }
         }
