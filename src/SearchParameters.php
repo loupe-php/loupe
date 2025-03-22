@@ -104,6 +104,17 @@ final class SearchParameters
         return $this->attributesToSearchOn;
     }
 
+
+    public function getCropLength(): int
+    {
+        return $this->cropLength;
+    }
+
+    public function getCropMarker(): string
+    {
+        return $this->cropMarker;
+    }
+
     public function getFilter(): string
     {
         return $this->filter;
@@ -118,7 +129,8 @@ final class SearchParameters
 
         $hash[] = json_encode($this->getAttributesToCrop());
         $hash[] = json_encode($this->getAttributesToHighlight());
-        $hash[] = json_encode($this->getHighlightStartTag());
+        $hash[] = json_encode($this->getCropLength());
+        $hash[] = json_encode($this->getCropMarker());
         $hash[] = json_encode($this->getHighlightEndTag());
         $hash[] = json_encode($this->getAttributesToRetrieve());
         $hash[] = json_encode($this->getAttributesToSearchOn());
