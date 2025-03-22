@@ -17,11 +17,19 @@ class Formatter
     }
 
     public function format(
+        string $attribute,
         string $text,
         TokenCollection $queryTokens,
-        string $startTag = '<em>',
-        string $endTag = '</em>',
-    ): FormatterResult {
+        FormatterOptions $options
+    ): ResultFormatter {
+        return new FormatterResult(
+            $this,
+            $attribute,
+            $text,
+            $text,
+            $queryTokens,
+            $options
+        );
         if ($text === '') {
             return new FormatterResult($text, []);
         }
@@ -49,6 +57,55 @@ class Formatter
             return $a['start'] <=> $b['start'];
         });
 
+        $formattedText = $text;
+
+        // if ($crop) {
+        //     $formattedText = $this->crop($formattedText, $matches, $cropLength, $cropMarker);
+        // }
+
+        if ($highlight) {
+            $formattedText = $this->highlight($formattedText, $matches, $highlightStartTag, $highlightEndTag);
+        }
+
+        return new FormatterResult($formattedText, $matches);
+    }
+
+    public function getMatches(
+        string $text,
+        TokenCollection $queryTokens
+    ): array {
+        if ($text === '') {
+            return [];
+        }
+
+        $matches = [];
+        $stopWords = $this->engine->getConfiguration()->getStopWords();
+        $textTokens = $this->engine->getTokenizer()->tokenize($text);
+
+        foreach ($textTokens->all() as $textToken) {
+            if ($this->matches($textToken, $queryTokens)) {
+                $matches[] = [
+                    'start' => $textToken->getStartPosition(),
+                    'length' => $textToken->getLength(),
+                    'stopword' => $textToken->isOneOf($stopWords),
+                ];
+            }
+        }
+
+        // Sort matches by start
+        uasort($matches, function (array $a, array $b) {
+            return $a['start'] <=> $b['start'];
+        });
+
+        return $matches;
+    }
+
+    private function highlight(
+        string $text,
+        array $matches,
+        string $startTag = '<em>',
+        string $endTag = '</em>'
+    ): string {
         $pos = 0;
         $highlightedText = '';
         $spans = $this->extractSpansFromMatches($matches);
@@ -69,7 +126,7 @@ class Formatter
             $highlightedText .= $endTag;
         }
 
-        return new FormatterResult($highlightedText, $matches);
+        return $highlightedText;
     }
 
     /**
