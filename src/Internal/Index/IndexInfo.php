@@ -53,7 +53,6 @@ class IndexInfo
     {
         $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
         $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
-        $sortableAttributes = $this->engine->getConfiguration()->getSortableAttributes();
 
         if (!\array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
@@ -68,13 +67,7 @@ class IndexInfo
                 continue;
             }
 
-            $loupeType = LoupeTypes::getTypeFromValue($attributeValue);
-
-            if (\in_array($attributeName, $sortableAttributes, true) && !LoupeTypes::isSingleType($loupeType)) {
-                throw InvalidConfigurationException::becauseAttributeNotSortable($attributeName);
-            }
-
-            $documentSchema[$attributeName] = $loupeType;
+            $documentSchema[$attributeName] = LoupeTypes::getTypeFromValue($attributeValue);
         }
 
         $this->updateDocumentSchema($documentSchema);
@@ -150,7 +143,7 @@ class IndexInfo
         }
     }
 
-    public function getAliasForTable(string $table): string
+    public function getAliasForTable(string $table, string $suffix = ''): string
     {
         return match ($table) {
             self::TABLE_NAME_DOCUMENTS => 'd',
@@ -162,7 +155,7 @@ class IndexInfo
             self::TABLE_NAME_PREFIXES => 'p',
             self::TABLE_NAME_PREFIXES_TERMS => 'tp',
             default => throw new \LogicException(sprintf('Forgot to define an alias for %s.', $table))
-        };
+        } . $suffix;
     }
 
     public function getConfigHash(): string

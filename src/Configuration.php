@@ -6,6 +6,7 @@ namespace Loupe\Loupe;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Psr\Log\LoggerInterface;
 
 final class Configuration
@@ -17,6 +18,11 @@ final class Configuration
     public const MAX_ATTRIBUTE_NAME_LENGTH = 64;
 
     public const RANKING_RULES_ORDER_FACTOR = 0.7;
+
+    /**
+     * @var array<string>
+     */
+    private array $displayedAttributes = ['*'];
 
     /**
      * @var array<string>
@@ -41,8 +47,10 @@ final class Configuration
      */
     private array $rankingRules = [
         'words',
+        'typo',
         'proximity',
         'attribute',
+        'exactness',
     ];
 
     /**
@@ -70,6 +78,14 @@ final class Configuration
     public static function create(): self
     {
         return new self();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getDisplayedAttributes(): array
+    {
+        return $this->displayedAttributes;
     }
 
     /**
@@ -190,6 +206,21 @@ final class Configuration
     }
 
     /**
+     * @param array<string> $displayedAttributes
+     */
+    public function withDisplayedAttributes(array $displayedAttributes): self
+    {
+        if (['*'] !== $displayedAttributes) {
+            self::validateAttributeNames($displayedAttributes);
+        }
+
+        $clone = clone $this;
+        $clone->displayedAttributes = $displayedAttributes;
+
+        return $clone;
+    }
+
+    /**
      * @param array<string> $filterableAttributes
      */
     public function withFilterableAttributes(array $filterableAttributes): self
@@ -254,6 +285,19 @@ final class Configuration
      */
     public function withRankingRules(array $rankingRules): self
     {
+        if (!\count($rankingRules)) {
+            throw new InvalidConfigurationException('Ranking rules cannot be empty.');
+        }
+
+        foreach ($rankingRules as $v) {
+            if (!\is_string($v)) {
+                throw new InvalidConfigurationException('Ranking rules must be an array of strings.');
+            }
+            if (!\in_array($v, array_keys(Relevance::RANKERS), true)) {
+                throw new InvalidConfigurationException('Unknown ranking rule: ' . $v);
+            }
+        }
+
         $clone = clone $this;
         $clone->rankingRules = $rankingRules;
 

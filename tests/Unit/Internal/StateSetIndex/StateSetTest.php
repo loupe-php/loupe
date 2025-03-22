@@ -197,8 +197,9 @@ class StateSetTest extends TestCase
         $all = $set->all();
         sort($all);
 
-        $dump = require $engine->getDataDir() . '/state_set.php';
-        $dump = array_keys($dump);
+        $dump = (string) file_get_contents($engine->getDataDir() . '/state_set.bin');
+        $dump = (array) unpack('N*', $dump);
+        $dump = array_combine($dump, array_fill(0, \count($dump), true));
         sort($dump);
 
         $this->assertEquals($expected, $all);

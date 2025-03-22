@@ -82,6 +82,8 @@ following operators:
 * `IS NOT NULL` (takes no value)
 * `IS EMPTY` (takes no value, empty values are `''` and `[]`)
 * `IS NOT EMPTY` (takes no value, empty values are `''` and `[]`)
+* `BETWEEN <float> AND <float>`
+* `NOT BETWEEN <float> AND <float>`
 
 Note that you can only filter [on attributes that you have defined to be filerable in the configuration][Config].
 
@@ -90,10 +92,31 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withFilter("(departments = 'Backoffice' OR departments = 'Project Management') AND age > 17")
 ;
 ```
-
 Loupe can even filter on geo distance! See geo search section for more information.
 
 To make sure you properly escape the filter values, you can use `SearchParameters::escapeFilterValue()`.
+
+### Filtering on array attributes
+
+Note the difference of filter handling when working with array attributes (or as Loupe calls them, multi attributes).
+Imagine the following documents:
+
+```json
+[
+    {
+        "id": 13,
+        "ratings": [2, 3, 4]
+    },
+    {
+        "id": 42,
+        "ratings": [1, 5]
+    }
+]
+```
+
+If you filter for `ratings >= 2 AND ratings <= 4`, you will get **both** documents. That is because `ratings` is a multi
+attribute and all of its values are evaluated individually. If you want both conditions to apply, use the `BETWEEN` 
+operator: `ratings BETWEEN 2 AND 4`.
 
 ## Sort
 
@@ -129,6 +152,44 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withRankingScoreThreshold(0.8)
 ;
 ```
+
+### Sorting on array attributes
+
+Sometimes you want to sort by an array attribute, in which case, you need to use an aggregate function. Let's say you
+have two documents with an array of numbers:
+
+```php
+[
+    ['id' => 1, ['numbers' => [2, 3, 4, 5]]],
+    ['id' => 2, ['numbers' => [1, 3, 4, 5]]],
+]
+```
+
+In order to be able to properly sort by those, you need to tell Loupe which one of those to use. Let's say you want
+to sort by the lowest of them:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withSort(['min(numbers):asc'])
+;
+```
+
+Also note that Loupe will apply filters as well. So in case you used the sorting in combination with the filter like so:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withFilter('numbers >= 2 AND numbers <= 4')
+    ->withSort(['min(numbers):asc'])
+;
+```
+
+Loupe will return document ID 1 before document ID 2 even though document ID 2 has the lowest number `1` as attribute value.
+But as you are not interested in these values according to your filter, Loupe will order accordingly.
+
+Currently, you can use the following aggregate functions:
+
+* `min(<attribute>)`
+* `max(<attribute>)`
 
 ## Pagination
 

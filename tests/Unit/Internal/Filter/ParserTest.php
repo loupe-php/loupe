@@ -83,6 +83,28 @@ class ParserTest extends TestCase
             ],
         ];
 
+        yield 'Basic BETWEEN filter' => [
+            'age BETWEEN 18 AND 42',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => 'BETWEEN',
+                    'value' => [18.0, 42.0],
+                ],
+            ],
+        ];
+
+        yield 'Basic NOT BETWEEN filter' => [
+            'age NOT BETWEEN 18 AND 42',
+            [
+                [
+                    'attribute' => 'age',
+                    'operator' => 'NOT BETWEEN',
+                    'value' => [18.0, 42.0],
+                ],
+            ],
+        ];
+
         yield 'IS NULL filter' => [
             'age IS NULL',
             [
@@ -259,7 +281,7 @@ class ParserTest extends TestCase
         ];
 
         yield 'Combined filters with groups' => [
-            "(genres > 42 AND genres < 50 OR genres IS NULL) OR foobar = 'test'",
+            "(genres > 42 AND genres < 50 OR genres IS NULL) AND age BETWEEN 18 AND 20 OR foobar = 'test'",
             [
                 [
                     [
@@ -279,6 +301,12 @@ class ParserTest extends TestCase
                         'operator' => '=',
                         'value' => LoupeTypes::VALUE_NULL,
                     ],
+                ],
+                ['AND'],
+                [
+                    'attribute' => 'age',
+                    'operator' => 'BETWEEN',
+                    'value' => [18.0, 20.0],
                 ],
                 ['OR'],
                 [
@@ -432,7 +460,7 @@ class ParserTest extends TestCase
 
         yield 'NOT not before IN' => [
             'genres NOT 42',
-            "Col 11: Error: Expected must be followed by IN (), got '42'",
+            "Col 11: Error: Expected NOT must be followed by IN () or BETWEEN, got '42'",
         ];
 
         yield 'IS with nonsense' => [
@@ -444,6 +472,16 @@ class ParserTest extends TestCase
             'genres IS NOT foobar',
             'Col 10: Error: Expected "NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is, got \'NOT\'',
         ];
+
+        yield 'BETWEEN with strings' => [
+            "age BETWEEN 'one' AND 'two'",
+            'Col 12: Error: Expected valid float value, got \'one\'',
+        ];
+
+        yield 'BETWEEN with OR' => [
+            'age BETWEEN 18 OR 42',
+            "Col 15: Error: Expected 'AND', got 'OR'",
+        ];
     }
 
     public function testGeoDistanceNotFilterable(): void
@@ -451,9 +489,8 @@ class ParserTest extends TestCase
         $this->expectException(FilterFormatException::class);
         $this->expectExceptionMessage("Col 11: Error: Expected filterable attribute, got 'location'");
 
-        $parser = new Parser();
-        $engine = $this->mockEngine(['gender']);
-        $parser->getAst('_geoRadius(location, 45.472735, 9.184019, 2000)', $engine);
+        $parser = new Parser($this->mockEngine(['gender']));
+        $parser->getAst('_geoRadius(location, 45.472735, 9.184019, 2000)');
     }
 
     #[DataProvider('invalidFilterProvider')]
@@ -462,9 +499,8 @@ class ParserTest extends TestCase
         $this->expectException(FilterFormatException::class);
         $this->expectExceptionMessage($expectedMessage);
 
-        $parser = new Parser();
-        $engine = $this->mockEngine(['location', 'gender', 'attribute', 'genres', 'foobar']);
-        $parser->getAst($filter, $engine);
+        $parser = new Parser($this->mockEngine(['location', 'gender', 'attribute', 'genres', 'foobar', 'age']));
+        $parser->getAst($filter);
     }
 
     public function testNonFilterableAttribute(): void
@@ -472,9 +508,8 @@ class ParserTest extends TestCase
         $this->expectException(FilterFormatException::class);
         $this->expectExceptionMessage("Col 0: Error: Expected filterable attribute, got 'genres'");
 
-        $parser = new Parser();
-        $engine = $this->mockEngine(['gender']);
-        $parser->getAst('genres > 42.67', $engine);
+        $parser = new Parser($this->mockEngine(['gender']));
+        $parser->getAst('genres > 42.67');
     }
 
     /**
@@ -483,10 +518,8 @@ class ParserTest extends TestCase
     #[DataProvider('filterProvider')]
     public function testValidFilter(string $filter, array $expectedAst): void
     {
-        $parser = new Parser();
-        $engine = $this->mockEngine(['location', 'genres', 'age', 'foobar']);
-
-        $this->assertSame($expectedAst, $parser->getAst($filter, $engine)->toArray());
+        $parser = new Parser($this->mockEngine(['location', 'genres', 'age', 'foobar']));
+        $this->assertSame($expectedAst, $parser->getAst($filter)->toArray());
     }
 
     /**

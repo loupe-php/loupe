@@ -8,17 +8,22 @@ use Loupe\Loupe\Configuration;
 
 class AttributeWeight extends AbstractRanker
 {
-    public static function calculate(array &$searchableAttributes, array &$queryTokens, array &$termPositions): float
+    public static function calculate(RankingInfo $rankingInfo): float
     {
-        $weights = static::calculateIntrinsicAttributeWeights($searchableAttributes);
+        $weights = static::calculateIntrinsicAttributeWeights($rankingInfo->getSearchableAttributes());
 
         // Group weights by term, making sure to go with the higher weight if multiple attributes are matched
         // So if `title` (1.0) and `summary` (0.8) are matched, the weight of `title` should be used
         $weightsPerTerm = [];
-        foreach ($termPositions as $index => $term) {
-            foreach ($term as [, $attribute]) {
-                if ($attribute && isset($weights[$attribute])) {
-                    $weightsPerTerm[$index] = max($weightsPerTerm[$index] ?? 0, $weights[$attribute]);
+
+        foreach ($rankingInfo->getTermPositions()->getTerms() as $index => $term) {
+            if (!$term->hasMatches()) {
+                continue;
+            }
+
+            foreach ($term->getMatches() as $match) {
+                if (isset($weights[$match->getAttribute()])) {
+                    $weightsPerTerm[$index] = max($weightsPerTerm[$index] ?? 0, $weights[$match->getAttribute()]);
                 }
             }
         }

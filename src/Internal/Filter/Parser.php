@@ -25,13 +25,14 @@ class Parser
 
     private Lexer $lexer;
 
-    public function __construct(?Lexer $lexer = null)
-    {
-        $this->lexer = $lexer ?? new Lexer();
+    public function __construct(
+        private Engine $engine
+    ) {
+        $this->lexer = new Lexer();
         $this->groups = new \SplStack();
     }
 
-    public function getAst(string $string, Engine $engine): Ast
+    public function getAst(string $string): Ast
     {
         $this->lexer->setInput($string);
         $this->ast = new Ast();
@@ -59,17 +60,17 @@ class Parser
             $start = false;
 
             if ($this->lexer->token?->type === Lexer::T_GEO_RADIUS) {
-                $this->handleGeoRadius($engine);
+                $this->handleGeoRadius();
                 continue;
             }
 
             if ($this->lexer->token?->type === Lexer::T_GEO_BOUNDING_BOX) {
-                $this->handleGeoBoundingBox($engine);
+                $this->handleGeoBoundingBox();
                 continue;
             }
 
             if ($this->lexer->token?->type === Lexer::T_ATTRIBUTE_NAME) {
-                $this->handleAttribute($engine);
+                $this->handleAttribute();
                 continue;
             }
 
@@ -199,18 +200,18 @@ class Parser
         };
     }
 
-    private function handleAttribute(Engine $engine): void
+    private function handleAttribute(): void
     {
         $attributeName = (string) $this->lexer->token?->value;
 
-        $this->validateFilterableAttribute($engine, $attributeName);
+        $this->validateFilterableAttribute($attributeName);
 
         $this->assertOperator($this->lexer->lookahead);
         $this->lexer->moveNext();
         $operator = (string) $this->lexer->token?->value;
 
         if ($this->lexer->token?->type === Lexer::T_IS) {
-            $this->handleIs($attributeName, $engine);
+            $this->handleIs($attributeName);
             return;
         }
 
@@ -221,12 +222,17 @@ class Parser
         }
 
         if ($this->lexer->token?->type === Lexer::T_NOT) {
-            if ($this->lexer->lookahead?->type !== Lexer::T_IN) {
-                $this->syntaxError('must be followed by IN ()', $this->lexer->lookahead);
+            if (!\in_array($this->lexer->lookahead?->type, [Lexer::T_IN, Lexer::T_BETWEEN], true)) {
+                $this->syntaxError('NOT must be followed by IN () or BETWEEN', $this->lexer->lookahead);
             }
 
             $this->lexer->moveNext();
             $operator .= ' ' . $this->lexer->token?->value;
+        }
+
+        if ($this->lexer->token?->type === Lexer::T_BETWEEN) {
+            $this->handleBetween($attributeName, $operator);
+            return;
         }
 
         if ($this->lexer->token?->type === Lexer::T_IN) {
@@ -241,9 +247,24 @@ class Parser
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $this->getTokenValueBasedOnType()));
     }
 
-    private function handleGeoBoundingBox(Engine $engine): void
+    private function handleBetween(string $attributeName, string $operator): void
     {
-        $startPosition = ($this->lexer->lookahead?->position ?? 0) + 1;
+        $values = [];
+        $this->assertFloat($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $values[] = $this->getTokenValueBasedOnType();
+        $this->assertTokenTypes($this->lexer->lookahead, [Lexer::T_AND], "'AND'");
+        $this->lexer->moveNext();
+        $this->assertFloat($this->lexer->lookahead);
+        $this->lexer->moveNext();
+        $values[] = $this->getTokenValueBasedOnType();
+
+        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
+    }
+
+    private function handleGeoBoundingBox(): void
+    {
+        $startPosition = ($this->lexer->lookahead->position ?? 0) + 1;
 
         $this->assertOpeningParenthesis($this->lexer->lookahead);
         $this->lexer->moveNext();
@@ -251,7 +272,7 @@ class Parser
 
         $attributeName = (string) $this->lexer->token?->value;
 
-        $this->validateFilterableAttribute($engine, $attributeName);
+        $this->validateFilterableAttribute($attributeName);
 
         $this->lexer->moveNext();
         $this->lexer->moveNext();
@@ -287,7 +308,7 @@ class Parser
         $this->lexer->moveNext();
     }
 
-    private function handleGeoRadius(Engine $engine): void
+    private function handleGeoRadius(): void
     {
         $this->assertOpeningParenthesis($this->lexer->lookahead);
         $this->lexer->moveNext();
@@ -295,7 +316,7 @@ class Parser
 
         $attributeName = (string) $this->lexer->token?->value;
 
-        $this->validateFilterableAttribute($engine, $attributeName);
+        $this->validateFilterableAttribute($attributeName);
 
         $this->lexer->moveNext();
         $this->lexer->moveNext();
@@ -345,7 +366,7 @@ class Parser
         $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
     }
 
-    private function handleIs(mixed $attributeName, Engine $engine): void
+    private function handleIs(mixed $attributeName): void
     {
         if ($this->lexer->lookahead?->type === Lexer::T_NULL) {
             $this->addNode(new Filter($attributeName, Operator::Equals, LoupeTypes::VALUE_NULL));
@@ -370,7 +391,7 @@ class Parser
         $this->syntaxError('"NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is', $this->lexer->lookahead);
     }
 
-    private function syntaxError(string $expected = '', Token $token = null): void
+    private function syntaxError(string $expected = '', ?Token $token = null): void
     {
         if ($token === null) {
             $token = $this->lexer->token;
@@ -385,9 +406,9 @@ class Parser
         throw new FilterFormatException($message);
     }
 
-    private function validateFilterableAttribute(Engine $engine, string $attributeName): void
+    private function validateFilterableAttribute(string $attributeName): void
     {
-        $allowedAttributeNames = $engine->getConfiguration()->getFilterableAttributes();
+        $allowedAttributeNames = $this->engine->getConfiguration()->getFilterableAttributes();
         if (!\in_array($attributeName, $allowedAttributeNames, true)) {
             $this->syntaxError('filterable attribute');
         }

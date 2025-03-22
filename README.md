@@ -13,7 +13,7 @@ Loupe…
 * …supports negative keyword and phrase search using `-` as modifier
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * …supports filtering (and ordering) on Geo distance
-* …orders relevance based on a number of factors such as number of matching terms as well as proximity
+* …orders relevance based on a number of factors such as number of matching terms, typos, proximity, word counts and exactness
 * …auto-detects languages
 * …supports stemming
 * …is very easy to use
@@ -33,7 +33,7 @@ Performance depends on many factors but here are some ballpark numbers based on 
 [~32k movies fixture][MeiliSearch_Movies] provided by MeiliSearch.
 
 * **Indexing** will take a little over **90 seconds** (~350 documents per second)
-* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **120 ms**
+* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **100 ms**
 
 Note that anything above 50k documents is probably not a use case for Loupe. You can run your own benchmarks 
 using the scripts in the `bin/bench` folder: `index.php` for indexing and `search.php` for searching. 
@@ -55,9 +55,8 @@ I even took the liberty to copy some of their test data to feed Loupe for functi
 ## Installation
 
 1. Make sure you have `pdo_sqlite` available and your installed SQLite version is at least 3.16.0. This is when 
-   PRAGMA functions have been added without which no schema comparisons are possible. It is recommended you run at 
-   least version 3.35.0 which is when mathematical functions found its way into SQLite. Otherwise, Loupe has to 
-   polyfill those which will result in a little performance penalty.
+   PRAGMA functions have been added without which no schema comparisons are possible. For best performance it is of
+   course better to run a more recent version to benefit from improvements within SQLite.
 2. Run `composer require loupe/loupe`.
 
 ## Usage

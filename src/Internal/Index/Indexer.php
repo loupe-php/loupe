@@ -141,9 +141,15 @@ class Indexer
      */
     private function createDocument(array $document): int
     {
+        if ($this->engine->getConfiguration()->getDisplayedAttributes() !== ['*']) {
+            $documentData = array_intersect_key($document, array_flip($this->engine->getConfiguration()->getDisplayedAttributes()));
+        } else {
+            $documentData = $document;
+        }
+
         $data = [
             'user_id' => (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
-            'document' => Util::encodeJson($document),
+            'document' => Util::encodeJson($documentData),
         ];
 
         foreach ($this->engine->getIndexInfo()->getSingleFilterableAndSortableAttributes() as $attribute) {
@@ -384,6 +390,10 @@ class Indexer
 
     private function persistStateSet(): void
     {
+        if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+            return;
+        }
+
         /** @var StateSet $stateSet */
         $stateSet = $this->engine->getStateSetIndex()->getStateSet();
         $stateSet->persist();

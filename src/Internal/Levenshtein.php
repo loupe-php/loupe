@@ -8,7 +8,7 @@ use Toflar\StateSetIndex\DamerauLevenshtein;
 
 class Levenshtein
 {
-    public static function damerauLevenshtein(string $string1, string $string2, bool $firstCharTypoCountsDouble): int
+    public static function damerauLevenshtein(string $string1, string $string2, bool|int $firstCharTypoCountsDouble): int
     {
         $distance = DamerauLevenshtein::distance($string1, $string2);
 

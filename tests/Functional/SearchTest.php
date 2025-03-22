@@ -123,6 +123,16 @@ class SearchTest extends TestCase
 
     public static function equalFilterProvider(): \Generator
     {
+        yield '= on multiple attribute match multiple' => [
+            "departments = 'Backoffice' AND departments = 'Development'",
+            [
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
+
         yield '= on multiple attribute' => [
             "departments = 'Backoffice'",
             [
@@ -263,10 +273,12 @@ class SearchTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
+                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -297,10 +309,12 @@ class SearchTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
+                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -312,6 +326,53 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+        ];
+
+        yield 'Highlight with matches position of stopwords' => [
+            'her assassin',
+            ['title', 'overview'],
+            [],
+            true,
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
+                        '_matchesPosition' => [
+                            'overview' => [
+                                [
+                                    'start' => 3,
+                                    'length' => 8,
+                                    'stopword' => false,
+                                ],
+                                [
+                                    'start' => 23,
+                                    'length' => 3,
+                                    'stopword' => true,
+                                ],
+                                [
+                                    'start' => 79,
+                                    'length' => 13,
+                                    'stopword' => false,
+                                ],
+                                [
+                                    'start' => 124,
+                                    'length' => 3,
+                                    'stopword' => true,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'query' => 'her assassin',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['her'],
         ];
 
         yield 'Highlight with typo' => [
@@ -368,6 +429,7 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+            [],
             '<mark>',
             '</mark>',
         ];
@@ -426,6 +488,64 @@ class SearchTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+        ];
+
+        yield 'Highlight multiple matches across stop words' => [
+            'racing to a boxing match',
+            ['title', 'overview'],
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 6,
+                        'title' => 'Judgment Night',
+                        'overview' => 'While racing to a boxing match, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama',
+                        'genres' => ['Action', 'Thriller', 'Crime'],
+                        '_formatted' => [
+                            'id' => 6,
+                            'title' => 'Judgment Night',
+                            'overview' => 'While <em>racing to a boxing match</em>, Frank, Mike, John and Rey get more than they bargained for. A wrong turn lands them directly in the path of Fallon, a vicious, wise-cracking drug lord. After accidentally witnessing Fallon murder a disloyal henchman, the four become his unwilling prey in a savage game of cat & mouse as they are mercilessly stalked through the urban jungle in this taut suspense drama',
+                            'genres' => ['Action', 'Thriller', 'Crime'],
+                        ],
+                    ],
+                ],
+                'query' => 'racing to a boxing match',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['of', 'the', 'an', 'but', 'to', 'a'],
+        ];
+
+        yield 'Highlight literal match including stopwords' => [
+            'Pirates of the Caribbean: The Curse of the Black Pearl',
+            ['title'],
+            ['title', 'overview'],
+            false,
+            [
+                'hits' => [
+                    [
+                        'id' => 22,
+                        'title' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
+                        'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
+                        'genres' => ['Adventure', 'Fantasy', 'Action'],
+                        '_formatted' => [
+                            'id' => 22,
+                            'title' => '<em>Pirates of the Caribbean</em>: <em>The Curse of the Black Pearl</em>',
+                            'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
+                            'genres' => ['Adventure', 'Fantasy', 'Action'],
+                        ],
+                    ],
+                ],
+                'query' => 'Pirates of the Caribbean: The Curse of the Black Pearl',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+            ['of', 'the', 'an', 'but', 'to', 'a', 'back'],
         ];
 
         yield 'Highlight with match at the end' => [
@@ -508,6 +628,7 @@ class SearchTest extends TestCase
                                     [
                                         'start' => 0,
                                         'length' => 6,
+                                        'stopword' => false,
                                     ],
                                 ],
                             ],
@@ -529,6 +650,7 @@ class SearchTest extends TestCase
                                 0 => [
                                     'start' => 127,
                                     'length' => 6,
+                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -624,17 +746,41 @@ class SearchTest extends TestCase
                 ],
             ],
         ];
+
+        yield 'Combining multiple IN() statements' => [
+            "departments IN ('Development') AND colors IN ('Red')",
+            [
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+        ];
     }
 
-    public static function lowerAndGreaterThanFilters(): \Generator
+    public static function lowerAndGreaterThanAndBetweenFilters(): \Generator
     {
         yield [
             'rating > 3.5',
             [
                 [
+                    'id' => 6,
+                    'name' => 'Gladiator',
+                    'rating' => 5,
+                    'dates' => [
+                        1735689600,
+                        1767225600,
+                        1798761600,
+                    ],
+                ],
+                [
                     'id' => 3,
                     'name' => 'Jurassic Park',
                     'rating' => 4,
+                    'dates' => [
+                        1740787200,
+                        1743465600,
+                    ],
                 ],
             ],
         ];
@@ -643,14 +789,32 @@ class SearchTest extends TestCase
             'rating >= 3.5',
             [
                 [
+                    'id' => 6,
+                    'name' => 'Gladiator',
+                    'rating' => 5,
+                    'dates' => [
+                        1735689600,
+                        1767225600,
+                        1798761600,
+                    ],
+                ],
+                [
                     'id' => 2,
                     'name' => 'Indiana Jones',
                     'rating' => 3.5,
+                    'dates' => [
+                        1738368000,
+                        1738454400,
+                    ],
                 ],
                 [
                     'id' => 3,
                     'name' => 'Jurassic Park',
                     'rating' => 4,
+                    'dates' => [
+                        1740787200,
+                        1743465600,
+                    ],
                 ],
             ],
         ];
@@ -662,11 +826,17 @@ class SearchTest extends TestCase
                     'id' => 5,
                     'name' => 'Back to the future',
                     'rating' => 0,
+                    'dates' => [],
                 ],
                 [
                     'id' => 1,
                     'name' => 'Star Wars',
                     'rating' => 2.5,
+                    'dates' => [
+                        1735689600,
+                        1738368000,
+                        1740787200,
+                    ],
                 ],
             ],
         ];
@@ -678,16 +848,51 @@ class SearchTest extends TestCase
                     'id' => 5,
                     'name' => 'Back to the future',
                     'rating' => 0,
+                    'dates' => [],
                 ],
                 [
                     'id' => 2,
                     'name' => 'Indiana Jones',
                     'rating' => 3.5,
+                    'dates' => [
+                        1738368000,
+                        1738454400,
+                    ],
                 ],
                 [
                     'id' => 1,
                     'name' => 'Star Wars',
                     'rating' => 2.5,
+                    'dates' => [
+                        1735689600,
+                        1738368000,
+                        1740787200,
+                    ],
+                ],
+            ],
+        ];
+
+        yield [
+            'dates BETWEEN ' . (new \DateTimeImmutable('2025-02-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp() . ' AND ' . (new \DateTimeImmutable('2025-02-04 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                    'dates' => [
+                        1738368000,
+                        1738454400,
+                    ],
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Star Wars',
+                    'rating' => 2.5,
+                    'dates' => [
+                        1735689600,
+                        1738368000,
+                        1740787200,
+                    ],
                 ],
             ],
         ];
@@ -902,6 +1107,125 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
+    {
+        yield 'Test MIN aggregate without filters (ASC)' => [
+            'min(dates):asc',
+            '',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+            ],
+        ];
+        yield 'Test MIN aggregate without filters (DESC)' => [
+            'min(dates):desc',
+            '',
+            [
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate without filters (ASC)' => [
+            'max(dates):asc',
+            '',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Event C',
+                ],
+            ],
+        ];
+
+        yield 'Test MIN aggregate with filters (ASC)' => [
+            'min(dates):asc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+
+        yield 'Test MIN aggregate with filters (DESC)' => [
+            'min(dates):desc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate with filters (ASC)' => [
+            'max(dates):asc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate with filters (DESC)' => [
+            'max(dates):desc',
+            'dates >= 2 AND dates <= 6',
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+    }
+
     public static function sortWithNullAndNonExistingValueProvider(): \Generator
     {
         yield 'ASC' => [
@@ -1027,6 +1351,37 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testDisplayedAttributes(): void
+    {
+        $configuration = Configuration::create()
+            ->withDisplayedAttributes(['id', 'title'])
+        ;
+        $loupe = $this->setupLoupeWithMoviesFixture($configuration);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('four')
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 5,
+                    'title' => 'Four Rooms',
+                ],
+                [
+                    'id' => 6,
+                    'title' => 'Judgment Night',
+                ],
+            ],
+            'query' => 'four',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
@@ -1113,6 +1468,56 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    public function testExactnessRelevanceScoring(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withSortableAttributes(['content'])
+            ->withLanguages(['en'])
+            ->withRankingRules(['exactness']) // Only match on exactness to isolate this test case
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'The administrative assistant managed the files.',
+            ],
+            [
+                'id' => 2,
+                'content' => 'The administrator organized the new files efficiently.',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('administrative files')
+            ->withAttributesToRetrieve(['id', 'content'])
+            ->withShowRankingScore(true)
+        ;
+
+        // Both documents would weigh exactly the same because both "administrative" and "administrator" get stemmed
+        // for "administr". Also, the terms are exactly the same distance apart. Hence, we test the exactness feature here.
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'content' => 'The administrative assistant managed the files.',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => 2,
+                    'content' => 'The administrator organized the new files efficiently.',
+                    '_rankingScore' => 0.5,
+                ],
+            ],
+            'query' => 'administrative files',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
         ]);
     }
 
@@ -1284,7 +1689,7 @@ class SearchTest extends TestCase
         ]);
 
         $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'name', 'location', '_geoDistance(location)'])
+            ->withAttributesToRetrieve(['*', '_geoDistance(location)']) // Test should also work with *
             ->withSort(['_geoPoint(location, 48.8561446,2.2978204):asc'])
         ;
 
@@ -1293,6 +1698,9 @@ class SearchTest extends TestCase
                 [
                     'id' => 2,
                     'name' => 'Bouillon Pigalle',
+                    'address' => '22 Bd de Clichy, 75018 Paris, France',
+                    'type' => 'french',
+                    'rating' => 8,
                     'location' => [
                         'lat' => 48.8826517,
                         'lng' => 2.3352748,
@@ -1302,6 +1710,9 @@ class SearchTest extends TestCase
                 [
                     'id' => 3,
                     'name' => 'Artico Gelateria Tradizionale',
+                    'address' => 'Via Dogana, 1, 20123 Milan, Italy',
+                    'type' => 'ice cream',
+                    'rating' => 10,
                     'location' => [
                         'lat' => 45.4632046,
                         'lng' => 9.1719421,
@@ -1311,6 +1722,9 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'name' => "Nàpiz' Milano",
+                    'address' => 'Viale Vittorio Veneto, 30, 20124, Milan, Italy',
+                    'type' => 'pizza',
+                    'rating' => 9,
                     'location' => [
                         'lat' => 45.4777599,
                         'lng' => 9.1967508,
@@ -1320,6 +1734,9 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'name' => 'Revire Brasas Bravas',
+                    'address' => 'Av. Corrientes 1124, C1043 Cdad. Autónoma de Buenos Aires, Argentina',
+                    'type' => 'steak',
+                    'rating' => 10,
                     'location' => [
                         'lat' => -34.6002321,
                         'lng' => -58.3823691,
@@ -1430,6 +1847,7 @@ class SearchTest extends TestCase
      * @param array<string> $searchableAttributes
      * @param array<string> $attributesToHighlight
      * @param array<mixed> $expectedResults
+     * @param array<string> $stopWords
      */
     #[DataProvider('highlightingProvider')]
     public function testHighlighting(
@@ -1438,6 +1856,7 @@ class SearchTest extends TestCase
         array $attributesToHighlight,
         bool $showMatchesPosition,
         array $expectedResults,
+        array $stopWords = [],
         string $highlightStartTag = '<em>',
         string $highlightEndTag = '</em>',
     ): void {
@@ -1445,6 +1864,7 @@ class SearchTest extends TestCase
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])
             ->withSortableAttributes(['title'])
+            ->withStopWords($stopWords)
         ;
 
         $loupe = $this->createLoupe($configuration);
@@ -1508,13 +1928,13 @@ class SearchTest extends TestCase
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
-    #[DataProvider('lowerAndGreaterThanFilters')]
-    public function testLowerAndGreaterThanFilters(string $filter, array $expectedHits): void
+    #[DataProvider('lowerAndGreaterThanAndBetweenFilters')]
+    public function testLowerAndGreaterAndBetweenThanFilters(string $filter, array $expectedHits): void
     {
         $configuration = Configuration::create();
 
         $configuration = $configuration
-            ->withFilterableAttributes(['rating'])
+            ->withFilterableAttributes(['rating', 'dates'])
             ->withSortableAttributes(['name'])
             ->withSearchableAttributes(['name'])
         ;
@@ -1526,31 +1946,56 @@ class SearchTest extends TestCase
                 'id' => 1,
                 'name' => 'Star Wars',
                 'rating' => 2.5,
+                'dates' => [
+                    (new \DateTimeImmutable('2025-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-02-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-03-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
             ],
             [
                 'id' => 2,
                 'name' => 'Indiana Jones',
                 'rating' => 3.5,
+                'dates' => [
+                    (new \DateTimeImmutable('2025-02-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-02-02 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
             ],
             [
                 'id' => 3,
                 'name' => 'Jurassic Park',
                 'rating' => 4,
+                'dates' => [
+                    (new \DateTimeImmutable('2025-03-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2025-04-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
+            ],
+            [
+                'id' => 6,
+                'name' => 'Gladiator',
+                'rating' => 5,
+                'dates' => [
+                    (new \DateTimeImmutable('2025-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2026-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                    (new \DateTimeImmutable('2027-01-01 00:00:00', new \DateTimeZone('UTC')))->getTimestamp(),
+                ],
             ],
             [
                 'id' => 4,
                 'name' => 'Interstellar',
                 'rating' => null,
+                'dates' => [],
             ],
             [
                 'id' => 5,
                 'name' => 'Back to the future',
                 'rating' => 0,
+                'dates' => [],
             ],
         ]);
 
         $searchParameters = SearchParameters::create()
-            ->withAttributesToRetrieve(['id', 'name', 'rating'])
+            ->withAttributesToRetrieve(['id', 'name', 'rating', 'dates'])
             ->withFilter($filter)
             ->withSort(['name:asc'])
         ;
@@ -2033,17 +2478,17 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.85578,
+                    '_rankingScore' => 0.92028,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.77169,
+                    '_rankingScore' => 0.77641,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.68885,
+                    '_rankingScore' => 0.77641,
                 ],
             ],
             'query' => 'life learning',
@@ -2066,7 +2511,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.85578,
+                    '_rankingScore' => 0.92028,
                 ],
             ],
             'query' => 'life learning',
@@ -2115,22 +2560,22 @@ class SearchTest extends TestCase
                 [
                     'id' => 4,
                     'content' => 'Book title: life learning',
-                    '_rankingScore' => 0.79116,
+                    '_rankingScore' => 0.85094,
                 ],
                 [
                     'id' => 1,
                     'content' => 'The game of life is a game of everlasting learning',
-                    '_rankingScore' => 0.723,
+                    '_rankingScore' => 0.77121,
                 ],
                 [
                     'id' => 2,
                     'content' => 'The unexamined life is not worth living. Life is life.',
-                    '_rankingScore' => 0.65416,
+                    '_rankingScore' => 0.70187,
                 ],
                 [
                     'id' => 3,
                     'content' => 'Never stop learning',
-                    '_rankingScore' => 0.65416,
+                    '_rankingScore' => 0.70187,
                 ],
             ],
             'query' => 'foobar life learning',
@@ -2189,7 +2634,7 @@ class SearchTest extends TestCase
                 [
                     'id' => 3,
                     'title' => 'Learning to game',
-                    '_rankingScore' => 0.84779,
+                    '_rankingScore' => 0.76259,
                 ],
             ],
             'query' => 'game of life',
@@ -2217,12 +2662,12 @@ class SearchTest extends TestCase
                 [
                     'id' => 2,
                     'title' => 'Everlasting learning',
-                    '_rankingScore' => 0.89081,
+                    '_rankingScore' => 0.93964,
                 ],
                 [
                     'id' => 3,
                     'title' => 'Learning to game',
-                    '_rankingScore' => 0.80304,
+                    '_rankingScore' => 0.73785,
                 ],
             ],
             'query' => 'game of life',
@@ -2276,13 +2721,13 @@ class SearchTest extends TestCase
                     'id' => 2,
                     'title' => 'Lorem dolor sit amet',
                     'content' => 'Ipsum',
-                    '_rankingScore' => 0.95525,
+                    '_rankingScore' => 0.88691,
                 ],
                 [
                     'id' => 3,
                     'title' => 'Dolor',
                     'content' => 'Lorem sit amet',
-                    '_rankingScore' => 0.72694,
+                    '_rankingScore' => 0.75167,
                 ],
             ],
             'query' => 'lorem ipsum',
@@ -2593,6 +3038,55 @@ class SearchTest extends TestCase
     }
 
     /**
+     *@param array<array<string,mixed>> $expectedHits
+     */
+    #[DataProvider('sortOnMultiAttributesWithMinAndMaxModifiers')]
+    public function testSortOnMultiAttributesWithMinAndMaxModifiers(string $sort, string $filter, array $expectedHits): void
+    {
+        $configuration = Configuration::create();
+
+        $configuration = $configuration
+            ->withFilterableAttributes(['dates'])
+            ->withSortableAttributes(['dates'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Event A',
+                'dates' => [2, 3, 4, 5, 6],
+            ],
+            [
+                'id' => 2,
+                'name' => 'Event B',
+                'dates' => [1, 3, 4, 5],
+            ],
+            [
+                'id' => 3,
+                'name' => 'Event C',
+                'dates' => [7, 8],
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'name'])
+            ->withFilter($filter)
+            ->withSort([$sort])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => $expectedHits,
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    /**
      * @param array<string> $sort
      * @param array<array<string,mixed>> $expectedHits
      */
@@ -2699,6 +3193,25 @@ class SearchTest extends TestCase
         $this->indexFixture($loupe, 'movies');
 
         // Should only return movies with the term "glaciologist" since "young" is a stop word
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young glaciologist',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $loupe = $this->createLoupe($configurationWithStopWords);
+        $this->indexFixture($loupe, 'movies');
+
+        // Test stop words are ignored for ordering by relevance
+        $searchParameters = $searchParameters->withSort(['_relevance:desc']);
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
@@ -2969,7 +3482,7 @@ class SearchTest extends TestCase
         }
 
         $configuration = $configuration
-            ->withFilterableAttributes(['departments', 'gender', 'isActive'])
+            ->withFilterableAttributes(['departments', 'gender', 'isActive', 'colors'])
             ->withSortableAttributes(['firstname'])
             ->withSearchableAttributes(['firstname', 'lastname'])
         ;

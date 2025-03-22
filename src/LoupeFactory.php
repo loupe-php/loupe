@@ -18,7 +18,7 @@ use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\StaticCache;
 
-final class LoupeFactory
+final class LoupeFactory implements LoupeFactoryInterface
 {
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
@@ -77,7 +77,7 @@ final class LoupeFactory
         }
 
         $sqliteVersion = match (true) {
-            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(),
+            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
             (($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
             (($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
         };
@@ -160,13 +160,17 @@ final class LoupeFactory
                 'callback' => [Levenshtein::class, 'maxLevenshtein'],
                 'numArgs' => 4,
             ],
+            'loupe_levensthein' => [
+                'callback' => [Levenshtein::class, 'damerauLevenshtein'],
+                'numArgs' => 3,
+            ],
             'loupe_geo_distance' => [
                 'callback' => [Geo::class, 'geoDistance'],
                 'numArgs' => 4,
             ],
             'loupe_relevance' => [
                 'callback' => [Relevance::class, 'fromQuery'],
-                'numArgs' => 4,
+                'numArgs' => 3,
             ],
         ];
 

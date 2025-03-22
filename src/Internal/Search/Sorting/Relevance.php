@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
+use Loupe\Loupe\Internal\Search\Ranking\Exactness;
 use Loupe\Loupe\Internal\Search\Ranking\Proximity;
+use Loupe\Loupe\Internal\Search\Ranking\RankingInfo;
+use Loupe\Loupe\Internal\Search\Ranking\TypoCount;
 use Loupe\Loupe\Internal\Search\Ranking\WordCount;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 class Relevance extends AbstractSorter
 {
-    private const RANKERS = [
+    public const RANKERS = [
         'words' => WordCount::class,
-        // 'typo' => TypoCount::class, // Not implemented yet
+        'typo' => TypoCount::class,
         'proximity' => Proximity::class,
         'attribute' => AttributeWeight::class,
-        // 'exactness' => Exactness::class, // Not implemented yet
+        'exactness' => Exactness::class,
     ];
 
     public function __construct(
@@ -38,37 +40,34 @@ class Relevance extends AbstractSorter
         $positionsPerDocument = [];
 
         foreach ($tokens as $token) {
+            $cteName = $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+            // Could be that the token is not being searched for, as it might be a stop word
+            if (!$searcher->hasCTE($cteName)) {
+                continue;
+            }
+
             // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
             // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
             // because it's just a ";" separated list.
             $positionsPerDocument[] = sprintf(
-                "SELECT (SELECT COALESCE(group_concat(DISTINCT position || ':' || attribute), '0') FROM %s WHERE %s.id=document) AS %s",
-                $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token),
+                "SELECT (SELECT COALESCE(group_concat(DISTINCT position || ':' || attribute || ':' || typos), '0') FROM %s WHERE %s.id=document) AS %s",
+                $cteName,
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 Searcher::RELEVANCE_ALIAS . '_per_term',
             );
         }
-
-        // Positive weights to determine word count
-        $allTerms = $searcher->getTokens()->allTerms();
-        $negatedTerms = $searcher->getTokens()->allNegatedTerms();
-        $positiveTerms = array_diff($allTerms, $negatedTerms);
-
-        // Check ranking rules at beginning to throw early
-        $rankingRules = $engine->getConfiguration()->getRankingRules();
-        self::checkRules($rankingRules);
 
         // Searchable attributes to determine attribute weight
         $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
 
         $select = sprintf(
             "loupe_relevance(
-                '%s', '%s', '%s',
+                '%s', '%s',
                 (SELECT group_concat(%s, ';') FROM (%s))
             ) AS %s",
             implode(':', $searchableAttributes),
-            implode(':', $rankingRules),
-            implode(':', $positiveTerms),
+            implode(':', $engine->getConfiguration()->getRankingRules()),
             Searcher::RELEVANCE_ALIAS . '_per_term',
             implode(' UNION ALL ', $positionsPerDocument),
             Searcher::RELEVANCE_ALIAS,
@@ -96,23 +95,17 @@ class Relevance extends AbstractSorter
      *
      * @param string $termPositions A string of ";" separated per term and "," separated for all the term positions within a document
      */
-    public static function fromQuery(string $searchableAttributes, string $rankingRules, string $queryTokens, string $termPositions): float
+    public static function fromQuery(string $searchableAttributes, string $rankingRules, string $termPositions): float
     {
-        $searchableAttributes = explode(':', $searchableAttributes);
-
-        $rankingRules = explode(':', $rankingRules);
-        $rankers = static::getRankers($rankingRules);
-
-        ray('----', $queryTokens, $termPositions);
-
-        $queryTokens = explode(':', $queryTokens);
-        $termPositions = static::parseTermPositions($termPositions);
+        $rankingInfo = RankingInfo::fromQueryFunction($searchableAttributes, $rankingRules, $termPositions);
+        $rankers = static::getRankers($rankingInfo->getRankingRules());
+        ray('----', $rankingInfo->getTermPositions());
 
         $weights = [];
         $totalWeight = 0;
         foreach ($rankers as [$class, $weight]) {
-            $weights[] = $class::calculate($searchableAttributes, $queryTokens, $termPositions) * $weight;
-            ray($class, $class::calculate($searchableAttributes, $queryTokens, $termPositions), $weight);
+            $weights[] = $class::calculate($rankingInfo) * $weight;
+            ray($class, $class::calculate($rankingInfo) * $weight);
             $totalWeight += $weight;
         }
 
@@ -133,25 +126,6 @@ class Relevance extends AbstractSorter
 
     /**
      * @param array<string> $rules
-     */
-    protected static function checkRules(array $rules): void
-    {
-        if (!\count($rules)) {
-            throw new InvalidConfigurationException('Ranking rules cannot be empty.');
-        }
-
-        foreach ($rules as $v) {
-            if (!\is_string($v)) {
-                throw new InvalidConfigurationException('Ranking rules must be an array of strings.');
-            }
-            if (!\in_array($v, array_keys(self::RANKERS), true)) {
-                throw new InvalidConfigurationException('Unknown ranking rule: ' . $v);
-            }
-        }
-    }
-
-    /**
-     * @param array<string> $rules
      * @return array<array{string, float}>
      */
     protected static function getRankers(array $rules): array
@@ -164,27 +138,6 @@ class Relevance extends AbstractSorter
             },
             $rules,
             range(0, \count($rules) - 1)
-        );
-    }
-
-    /**
-     * Parse an intermediate string representation of term positions and matches attributes
-     *
-     * "3:title,8:title,10:title;0;4:summary" -> [[3, "title"], [8, "title"], [10, "title"]], [[0, null]], [[4, "summary"]]
-     *
-     * @return array<int, array<int, array{int, string|null}>>
-     */
-    protected static function parseTermPositions(string $positionsInDocumentPerTerm): array
-    {
-        return array_map(
-            fn ($term) => array_map(
-                fn ($position) => [
-                    (int) explode(':', "{$position}:")[0],
-                    explode(':', "{$position}:")[1] ?: null,
-                ],
-                explode(',', $term)
-            ),
-            explode(';', $positionsInDocumentPerTerm)
         );
     }
 }

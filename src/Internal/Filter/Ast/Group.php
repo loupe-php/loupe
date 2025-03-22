@@ -7,9 +7,12 @@ namespace Loupe\Loupe\Internal\Filter\Ast;
 class Group extends Node
 {
     /**
-     * @var array<Node>
+     * @param array<Node> $children
      */
-    private array $children = [];
+    public function __construct(
+        private array $children = []
+    ) {
+    }
 
     public function addChild(Node $node): self
     {
