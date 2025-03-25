@@ -45,15 +45,10 @@ class FilterBuilder
 
         // Build the subquery, SELECT our aggregate and joining the multi attributes on our attribute name.
         $qb = $this->engine->getConnection()->createQueryBuilder();
-        $qb->select($aggregate->buildSql($column));
+        $qb->addSelect($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS) . '.document AS document_id');
+        $qb->addSelect($aggregate->buildSql($column) . ' AS sort_order');
         $this->addMultiAttributeFromAndJoinToQueryBuilder($qb, $attribute);
-
-        // Now filter only the ones that belong to our document
-        $qb->andWhere(sprintf(
-            '%s.document=%s.id',
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-        ));
+        $qb->groupBy('document_id');
 
         $whereStatement = [];
         $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $whereStatement);

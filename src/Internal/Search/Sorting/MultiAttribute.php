@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
 use Loupe\Loupe\Internal\Search\Searcher;
@@ -38,7 +39,22 @@ class MultiAttribute extends AbstractSorter
         $filterBuilder = new FilterBuilder($engine, $searcher, $searcher->getQueryBuilder());
         $qb = $filterBuilder->buildForMultiAttribute($this->attributeName, $this->aggregate);
 
-        $searcher->getQueryBuilder()->addOrderBy('(' . $qb->getSQL() . ')', $this->direction->getSQL());
+        $cteName = 'order_' . $this->attributeName;
+        $searcher->addCTE($cteName, ['document_id', 'sort_order'], $qb->getSQL());
+
+        $searcher->getQueryBuilder()
+            ->innerJoin(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                $cteName,
+                $cteName,
+                sprintf(
+                    '%s.id = %s.document_id',
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    $cteName
+                )
+            );
+
+        $searcher->getQueryBuilder()->addOrderBy($cteName . '.sort_order', $this->direction->getSQL());
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self
