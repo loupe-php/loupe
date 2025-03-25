@@ -47,8 +47,6 @@ class Searcher
      */
     private array $geoDistanceSelectsAdded = [];
 
-    private bool $multiAttributeJoinAdded = false;
-
     private QueryBuilder $queryBuilder;
 
     private Sorting $sorting;
@@ -64,6 +62,9 @@ class Searcher
         $this->filterAst = $filterParser->getAst($this->searchParameters->getFilter());
     }
 
+    /**
+     * @param array<string> $cols
+     */
     public function addCTE(string $cteName, array $cols, string $sql): void
     {
         $this->CTEs[$cteName]['cols'] = $cols;
