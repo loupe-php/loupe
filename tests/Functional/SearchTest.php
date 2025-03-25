@@ -2826,13 +2826,13 @@ class SearchTest extends TestCase
 
         foreach (range(1, 2000) as $id) {
             $documents[] = [
-                'id' => $id,
+                'id' => str_pad((string) $id, 4, '0', STR_PAD_LEFT),
                 'content' => 'dog',
             ];
         }
 
         $documents[] = [
-            'id' => 9999,
+            'id' => '9999',
             'content' => 'dog house',
         ];
 
@@ -2848,24 +2848,24 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 9999,
+                    'id' => '9999',
                     'content' => 'dog house',
                     '_rankingScore' => 1.0,
                 ],
                 [
-                    'id' => 1,
+                    'id' => '0001',
                     'content' => 'dog',
-                    '_rankingScore' => 0.77169,
+                    '_rankingScore' => 0.77641,
                 ],
                 [
-                    'id' => 2,
+                    'id' => '0002',
                     'content' => 'dog',
-                    '_rankingScore' => 0.77169,
+                    '_rankingScore' => 0.77641,
                 ],
                 [
-                    'id' => 3,
+                    'id' => '0003',
                     'content' => 'dog',
-                    '_rankingScore' => 0.77169,
+                    '_rankingScore' => 0.77641,
                 ],
             ],
             'query' => 'dog house',
