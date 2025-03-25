@@ -47,8 +47,6 @@ class Searcher
      */
     private array $geoDistanceSelectsAdded = [];
 
-    private bool $multiAttributeJoinAdded = false;
-
     private QueryBuilder $queryBuilder;
 
     private Sorting $sorting;
@@ -62,6 +60,15 @@ class Searcher
     ) {
         $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
         $this->filterAst = $filterParser->getAst($this->searchParameters->getFilter());
+    }
+
+    /**
+     * @param array<string> $cols
+     */
+    public function addCTE(string $cteName, array $cols, string $sql): void
+    {
+        $this->CTEs[$cteName]['cols'] = $cols;
+        $this->CTEs[$cteName]['sql'] = $sql;
     }
 
     public function addGeoDistanceSelectToQueryBuilder(string $attribute, float $latitude, float $longitude): string
@@ -89,37 +96,6 @@ class Searcher
         $this->geoDistanceSelectsAdded[$alias] = true;
 
         return $alias;
-    }
-
-    public function addJoinForMultiAttributes(): void
-    {
-        if ($this->multiAttributeJoinAdded) {
-            return;
-        }
-
-        $this->queryBuilder
-            ->innerJoin(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                sprintf(
-                    '%s.id = %s.document',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                )
-            )
-            ->innerJoin(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
-                    '%s.attribute = %s.id',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                )
-            );
-
-        $this->multiAttributeJoinAdded = true;
     }
 
     public function fetchResult(): SearchResult

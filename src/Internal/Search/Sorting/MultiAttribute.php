@@ -36,27 +36,25 @@ class MultiAttribute extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        $searcher->addJoinForMultiAttributes();
-        $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
-
         $filterBuilder = new FilterBuilder($engine, $searcher, $searcher->getQueryBuilder());
-        $havingStatements = $filterBuilder->buildForMultiAttribute($this->attributeName);
-        $additionalCondition = '';
+        $qb = $filterBuilder->buildForMultiAttribute($this->attributeName, $this->aggregate);
 
-        if ($havingStatements !== []) {
-            $additionalCondition = ' AND (' . implode(' ', $havingStatements) . ')';
-        }
+        $cteName = 'order_' . $this->attributeName;
+        $searcher->addCTE($cteName, ['document_id', 'sort_order'], $qb->getSQL());
 
-        $sort = $this->aggregate->buildSql(sprintf(
-            'CASE WHEN %s.attribute = %s%s THEN %s.%s ELSE NULL END',
-            $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-            $searcher->getQueryBuilder()->createNamedParameter($this->attributeName),
-            $additionalCondition,
-            $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-            $isFloatType ? 'numeric_value' : 'string_value'
-        ));
+        $searcher->getQueryBuilder()
+            ->innerJoin(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                $cteName,
+                $cteName,
+                sprintf(
+                    '%s.id = %s.document_id',
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    $cteName
+                )
+            );
 
-        $searcher->getQueryBuilder()->addOrderBy($sort, $this->direction->getSQL());
+        $searcher->getQueryBuilder()->addOrderBy($cteName . '.sort_order', $this->direction->getSQL());
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self
