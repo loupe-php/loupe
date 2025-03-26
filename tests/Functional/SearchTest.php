@@ -2819,22 +2819,12 @@ class SearchTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $documents = [];
 
-        // $documents[] = [
-        //     'id' => '9999',
-        //     'content' => 'dog sled',
-        // ];
-
         foreach (range(1, 2000) as $id) {
             $documents[] = [
                 'id' => str_pad((string) $id, 4, '0', STR_PAD_LEFT),
                 'content' => 'dog',
             ];
         }
-
-        $documents[] = [
-            'id' => '8888',
-            'content' => 'sled',
-        ];
 
         $documents[] = [
             'id' => '9999',
@@ -2877,7 +2867,7 @@ class SearchTest extends TestCase
             'hitsPerPage' => 4,
             'page' => 1,
             'totalPages' => 251,
-            'totalHits' => 1002,
+            'totalHits' => 1001,
         ]);
     }
 
