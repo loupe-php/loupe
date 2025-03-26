@@ -275,19 +275,22 @@ class Searcher
         $this->CTEs['_cte_all_term_matches']['sql'] = $cteSelectQb->getSQL();
     }
 
-    private function addAllRelevantDocumentsCTE(TokenCollection $tokenCollection): void
+    private function addTermDocumentsCTE(Token $token): void
     {
-        if ($tokenCollection->empty()) {
+        // No term matches CTE -> no term documents CTE
+        $termMatchesCTE = $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token);
+
+        if (!isset($this->CTEs[$termMatchesCTE])) {
             return;
         }
 
-        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
-        $cteSelectQb->addSelect('DISTINCT td.document');
-
         $termsDocumentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS);
 
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->addSelect('DISTINCT ' . $termsDocumentsAlias . '.document');
+
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
-        $cteSelectQb->where(sprintf('%s.term IN (SELECT id FROM _cte_all_term_matches)', $termsDocumentsAlias));
+        $cteSelectQb->where(sprintf('%s.term IN (SELECT id FROM %s)', $termsDocumentsAlias, $termMatchesCTE));
 
         if (['*'] !== $this->searchParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(sprintf(
@@ -296,10 +299,22 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES * $tokenCollection->count());
+        $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
 
-        $this->CTEs['_cte_all_relevant_documents']['cols'] = ['document'];
-        $this->CTEs['_cte_all_relevant_documents']['sql'] = $cteSelectQb->getSQL();
+        $cteName = '_cte_term_documents_' . $token->getId();
+        $this->CTEs[$cteName]['cols'] = ['document'];
+        $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
+    }
+
+    private function addTermDocumentsCTEs(TokenCollection $tokenCollection): void
+    {
+        if ($tokenCollection->empty()) {
+            return;
+        }
+
+        foreach ($tokenCollection->all() as $token) {
+            $this->addTermDocumentsCTE($token);
+        }
     }
 
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
@@ -333,7 +348,23 @@ class Searcher
         }
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
-        $cteSelectQb->where(sprintf('%s.document IN (SELECT document FROM _cte_all_relevant_documents)', $termsDocumentsAlias));
+
+        // Get documents that match any of our terms
+        $documentConditions = [];
+        foreach ($this->getTokens()->all() as $t) {
+            $cteName = '_cte_term_documents_' . $t->getId();
+            if (!$this->hasCTE($cteName)) {
+                continue;
+            }
+            $documentConditions[] = sprintf('%s.document IN (SELECT document FROM %s)', $termsDocumentsAlias, $cteName);
+        }
+
+        if ($documentConditions === []) {
+            return;
+        }
+
+        $cteSelectQb->where('(' . implode(' OR ', $documentConditions) . ')');
+        $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $termMatchesCTE));
 
         if (['*'] !== $this->searchParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(sprintf(
@@ -342,9 +373,7 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)));
-
-        // Ensure phrase positions if any (token itself must be part of the phrase and the previous token must also be of that same phrase)
+        // Ensure phrase positions if any
         if ($token->isPartOfPhrase() && $previousPhraseToken) {
             $cteSelectQb->andWhere(sprintf(
                 '%s.position = (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
@@ -354,7 +383,6 @@ class Searcher
         }
 
         $cteSelectQb->addOrderBy('position');
-        $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
         $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position', 'typos'];
@@ -733,8 +761,7 @@ class Searcher
     private function searchDocuments(TokenCollection $tokenCollection): void
     {
         $this->addTermMatchesCTEs($tokenCollection);
-        $this->addAllTermMatchesCTE($tokenCollection);
-        $this->addAllRelevantDocumentsCTE($tokenCollection);
+        $this->addTermDocumentsCTEs($tokenCollection);
         $this->addTermDocumentMatchesCTEs($tokenCollection);
 
         $positiveConditions = [];

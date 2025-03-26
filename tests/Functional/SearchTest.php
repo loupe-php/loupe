@@ -2876,7 +2876,7 @@ class SearchTest extends TestCase
             'query' => 'dog sled',
             'hitsPerPage' => 4,
             'page' => 1,
-            'totalPages' => 500,
+            'totalPages' => 251,
             'totalHits' => 1002,
         ]);
     }
