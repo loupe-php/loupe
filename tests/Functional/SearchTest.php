@@ -1166,7 +1166,7 @@ class SearchTest extends TestCase
 
         yield 'Test MIN aggregate with filters (ASC)' => [
             'min(dates):asc',
-            'dates >= 2 AND dates <= 6',
+            'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
                     'id' => 1,
@@ -1181,7 +1181,7 @@ class SearchTest extends TestCase
 
         yield 'Test MIN aggregate with filters (DESC)' => [
             'min(dates):desc',
-            'dates >= 2 AND dates <= 6',
+            'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
                     'id' => 2,
@@ -1196,7 +1196,7 @@ class SearchTest extends TestCase
 
         yield 'Test MAX aggregate with filters (ASC)' => [
             'max(dates):asc',
-            'dates >= 2 AND dates <= 6',
+            'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
                     'id' => 2,
@@ -1211,7 +1211,7 @@ class SearchTest extends TestCase
 
         yield 'Test MAX aggregate with filters (DESC)' => [
             'max(dates):desc',
-            'dates >= 2 AND dates <= 6',
+            'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
                     'id' => 1,
@@ -2944,8 +2944,8 @@ class SearchTest extends TestCase
         $configuration = Configuration::create();
 
         $configuration = $configuration
-            ->withFilterableAttributes(['dates'])
-            ->withSortableAttributes(['dates'])
+            ->withFilterableAttributes(['dates', 'ratings'])
+            ->withSortableAttributes(['dates', 'ratings'])
         ;
 
         $loupe = $this->createLoupe($configuration);
@@ -2955,16 +2955,19 @@ class SearchTest extends TestCase
                 'id' => 1,
                 'name' => 'Event A',
                 'dates' => [2, 3, 4, 5, 6],
+                'ratings' => [2, 3, 4, 5, 6],
             ],
             [
                 'id' => 2,
                 'name' => 'Event B',
                 'dates' => [1, 3, 4, 5],
+                'ratings' => [1, 3, 4, 5],
             ],
             [
                 'id' => 3,
                 'name' => 'Event C',
                 'dates' => [7, 8],
+                'ratings' => [7, 8],
             ],
         ]);
 
