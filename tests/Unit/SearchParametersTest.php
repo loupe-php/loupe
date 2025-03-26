@@ -27,4 +27,13 @@ class SearchParametersTest extends TestCase
 
         SearchParameters::create()->withHitsPerPage(2000);
     }
+
+    public function testMaxHitsPerTerm(): void
+    {
+        $searchParameters = SearchParameters::create();
+        $this->assertSame(1000, $searchParameters->getMaxHitsPerTerm());
+
+        $searchParameters = $searchParameters->withMaxHitsPerTerm(500);
+        $this->assertSame(500, $searchParameters->getMaxHitsPerTerm());
+    }
 }

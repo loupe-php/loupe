@@ -33,6 +33,8 @@ final class SearchParameters
 
     private int $hitsPerPage = 20;
 
+    private int $maxHitsPerTerm = 1000;
+
     private int $page = 1;
 
     private string $query = '';
@@ -128,6 +130,11 @@ final class SearchParameters
         return $this->hitsPerPage;
     }
 
+    public function getMaxHitsPerTerm(): int
+    {
+        return $this->maxHitsPerTerm;
+    }
+
     public function getPage(): int
     {
         return $this->page;
@@ -221,6 +228,14 @@ final class SearchParameters
 
         $clone = clone $this;
         $clone->hitsPerPage = $hitsPerPage;
+
+        return $clone;
+    }
+
+    public function withMaxHitsPerTerm(int $maxHitsPerTerm): self
+    {
+        $clone = clone $this;
+        $clone->maxHitsPerTerm = $maxHitsPerTerm;
 
         return $clone;
     }
