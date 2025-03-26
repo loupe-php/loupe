@@ -564,14 +564,17 @@ class Searcher
     /**
      * @param array<mixed> $hit
      */
-    private function formatHit(array &$hit, TokenCollection $tokenCollection): void
+    private function formatHit(array &$hit, TokenCollection $tokens): void
     {
         $options = new FormatterOptions($this->engine, $this->searchParameters, array_keys($hit));
-        if (! $options->requiresFormatting() && ! $options->showMatchesPosition()) {
+        $requiresFormatting = $options->requiresFormatting();
+        $showMatchesPosition = $options->showMatchesPosition();
+
+        if (! $requiresFormatting && ! $showMatchesPosition) {
             return;
         }
 
-        $formatted = [];
+        $formatted = $hit;
         $matchesPosition = [];
 
         $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
@@ -585,37 +588,37 @@ class Searcher
             if (\is_array($hit[$attribute])) {
                 foreach ($hit[$attribute] as $key => $rawValue) {
                     $formatterResult = $this->engine->getFormatter()
-                        ->format($attribute, $rawValue, $tokenCollection, $options);
+                        ->format($attribute, $rawValue, $tokens, $options);
 
-                    if ($formattedText = $formatterResult->getFormattedText()) {
-                        $formatted[$attribute] = $formatted[$attribute] ?? [];
-                        $formatted[$attribute][$key] = $formattedText;
+                    if ($showMatchesPosition && ($matches = $formatterResult->getMatches())) {
+                        $matchesPosition[$attribute][$key] = $matches;
                     }
 
-                    if ($matches = $formatterResult->getMatches()) {
-                        $matchesPosition[$attribute][$key] = $matches;
+                    if ($requiresFormatting && ($formattedText = $formatterResult->getFormattedText())) {
+                        $formatted[$attribute] ??= [];
+                        $formatted[$attribute][$key] = $formattedText;
                     }
                 }
             } else {
                 $rawValue = (string) $hit[$attribute];
                 $formatterResult = $this->engine->getFormatter()
-                    ->format($attribute, $rawValue, $tokenCollection, $options);
+                    ->format($attribute, $rawValue, $tokens, $options);
 
-                if ($formattedText = $formatterResult->getFormattedText()) {
-                    $formatted[$attribute] = $formattedText;
+                if ($showMatchesPosition && ($matches = $formatterResult->getMatches())) {
+                    $matchesPosition[$attribute] = $matches;
                 }
 
-                if ($matches = $formatterResult->getMatches()) {
-                    $matchesPosition[$attribute] = $matches;
+                if ($requiresFormatting && ($formattedText = $formatterResult->getFormattedText())) {
+                    $formatted[$attribute] = $formattedText;
                 }
             }
         }
 
-        if ($formatted !== []) {
+        if ($requiresFormatting) {
             $hit['_formatted'] = $formatted;
         }
 
-        if ($matchesPosition !== []) {
+        if ($showMatchesPosition) {
             $hit['_matchesPosition'] = $matchesPosition;
         }
     }

@@ -18,7 +18,7 @@ class FormatterOptions
         private SearchParameters $searchParameters,
         array $resultAttributes
     ) {
-        $this->searchableAttributes === ['*'] === $this->engine->getConfiguration()->getSearchableAttributes()
+        $this->searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes()
             ? $resultAttributes
             : $this->engine->getConfiguration()->getSearchableAttributes();
 
@@ -32,7 +32,7 @@ class FormatterOptions
     }
 
     public function requiresFormatting(): bool {
-        return $this->getAttributesToCrop() !== [] && $this->getAttributesToHighlight() !== [];
+        return count($this->getAttributesToCrop()) > 0 || count($this->getAttributesToHighlight()) > 0;
     }
 
     public function shouldCropAttribute(string $attribute): bool {
@@ -65,5 +65,13 @@ class FormatterOptions
 
     public function getHighlightEndTag(): string {
         return $this->searchParameters->getHighlightEndTag();
+    }
+
+    public function getCropLength(): int {
+        return $this->searchParameters->getCropLength();
+    }
+
+    public function getCropMarker(): string {
+        return $this->searchParameters->getCropMarker();
     }
 }
