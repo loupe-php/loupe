@@ -566,9 +566,13 @@ class Searcher
      */
     private function formatHit(array &$hit, TokenCollection $tokens): void
     {
+        $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes()
+            ? array_keys($hit)
+            : $this->engine->getConfiguration()->getSearchableAttributes();
+
         $options = new FormatterOptions($this->engine, $this->searchParameters, array_keys($hit));
         $requiresFormatting = $options->requiresFormatting();
-        $showMatchesPosition = $options->showMatchesPosition();
+        $showMatchesPosition = $this->searchParameters->showMatchesPosition();
 
         if (! $requiresFormatting && ! $showMatchesPosition) {
             return;
@@ -576,8 +580,6 @@ class Searcher
 
         $formatted = $hit;
         $matchesPosition = [];
-
-        $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
 
         foreach ($searchableAttributes as $attribute) {
             // Do not include any attribute not required by the result (limited by attributesToRetrieve)

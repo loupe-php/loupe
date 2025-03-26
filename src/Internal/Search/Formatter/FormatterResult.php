@@ -22,7 +22,7 @@ class FormatterResult
         private Engine $engine,
         private string $attribute,
         private string $text,
-        private TokenCollection $terms,
+        private TokenCollection $queryTokens,
         private FormatterOptions $options
     ) {
     }
@@ -39,7 +39,7 @@ class FormatterResult
      */
     public function getMatches(): array
     {
-        $this->matches ??= $this->calculateMatches($this->text, $this->terms);
+        $this->matches ??= $this->calculateMatches();
 
         return $this->matches;
     }
@@ -54,7 +54,7 @@ class FormatterResult
         $textTokens = $this->engine->getTokenizer()->tokenize($this->text);
 
         foreach ($textTokens->all() as $textToken) {
-            if ($this->tokenMatchesTerm($textToken)) {
+            if ($this->queryMatchesToken($textToken)) {
                 $matches[] = [
                     'start' => $textToken->getStartPosition(),
                     'length' => $textToken->getLength(),
@@ -71,14 +71,12 @@ class FormatterResult
 
     private function formatText(): ?string {
         $matches = $this->getMatches();
-        if ($matches === []) {
+
+        if (empty($matches)) {
             return $this->text;
         }
 
         $formattedText = $this->text;
-
-        ray($this->attribute, $this->text, $this->options->shouldHighlightAttribute($this->attribute), $this->options->shouldCropAttribute($this->attribute));
-
 
         if ($this->options->shouldHighlightAttribute($this->attribute)) {
             $formattedText = $this->highlight($formattedText);
@@ -127,22 +125,22 @@ class FormatterResult
         return $highlightedText;
     }
 
-    private function tokenMatchesTerm(Token $textToken): bool
+    private function queryMatchesToken(Token $textToken): bool
     {
         $configuration = $this->engine->getConfiguration();
         $firstCharTypoCountsDouble = $configuration->getTypoTolerance()->firstCharTypoCountsDouble();
 
-        foreach ($this->terms->all() as $queryToken) {
-            foreach ($queryToken->allTerms() as $term) {
-                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($term);
+        foreach ($this->queryTokens->all() as $queryToken) {
+            foreach ($queryToken->allTerms() as $queryTerm) {
+                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($queryTerm);
 
                 if ($levenshteinDistance === 0) {
-                    if (\in_array($term, $textToken->allTerms(), true)) {
+                    if (\in_array($queryTerm, $textToken->allTerms(), true)) {
                         return true;
                     }
                 } else {
                     foreach ($textToken->allTerms() as $textTerm) {
-                        if (Levenshtein::damerauLevenshtein($term, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                        if (Levenshtein::damerauLevenshtein($queryTerm, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
                             return true;
                         }
                     }
@@ -150,7 +148,7 @@ class FormatterResult
             }
         }
 
-        $lastToken = $this->terms->last();
+        $lastToken = $this->queryTokens->last();
 
         if ($lastToken === null) {
             return false;
