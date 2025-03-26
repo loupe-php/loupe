@@ -11,12 +11,12 @@ use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
 class FormatterResult
 {
+    private ?string $formattedText = null;
+
     /**
      * @var array<int, array{start: int, length: int, stopword: bool}>
      */
     private ?array $matches = null;
-
-    private ?string $formattedText = null;
 
     public function __construct(
         private Engine $engine,
@@ -44,7 +44,11 @@ class FormatterResult
         return $this->matches;
     }
 
-    private function calculateMatches(): array {
+    /**
+     * @return array<int, array{start: int, length: int, stopword: bool}>
+     */
+    private function calculateMatches(): array
+    {
         if ($this->text === '') {
             return [];
         }
@@ -69,7 +73,49 @@ class FormatterResult
         return $matches;
     }
 
-    private function formatText(): ?string {
+    private function crop(string $text): string
+    {
+        // $matches = $this->getMatches();
+        // $cropLength = $this->options->getCropLength();
+        // $cropMarker = $this->options->getCropMarker();
+
+        return $text;
+    }
+
+    /**
+     * @param array<array{start:int, length:int, stopword:bool}> $matches
+     * @return array{starts: array<int>, ends: array<int>}
+     */
+    private function extractSpansFromMatches(array $matches): array
+    {
+        $spans = [
+            'starts' => [],
+            'ends' => [],
+        ];
+        $lastEnd = null;
+
+        $matches = $this->removeStopWordMatches($matches);
+
+        foreach ($matches as $match) {
+            $end = $match['start'] + $match['length'];
+
+            // Merge matches that are exactly after one another
+            if ($lastEnd === $match['start'] - 1) {
+                $highestEnd = max($spans['ends']);
+                unset($spans['ends'][array_search($highestEnd, $spans['ends'], true)]);
+            } else {
+                $spans['starts'][] = $match['start'];
+            }
+
+            $spans['ends'][] = $end;
+            $lastEnd = $end;
+        }
+
+        return $spans;
+    }
+
+    private function formatText(): string
+    {
         $matches = $this->getMatches();
 
         if (empty($matches)) {
@@ -89,15 +135,8 @@ class FormatterResult
         return $formattedText;
     }
 
-    private function crop(string $text): string {
-        $matches = $this->getMatches();
-        $cropLength = $this->options->getCropLength();
-        $cropMarker = $this->options->getCropMarker();
-
-        return $text;
-    }
-
-    private function highlight(string $text): string {
+    private function highlight(string $text): string
+    {
         $matches = $this->getMatches();
         $startTag = $this->options->getHighlightStartTag();
         $endTag = $this->options->getHighlightEndTag();
@@ -178,38 +217,6 @@ class FormatterResult
         }
 
         return false;
-    }
-
-    /**
-     * @param array<array{start:int, length:int, stopword:bool}> $matches
-     * @return array{starts: array<int>, ends: array<int>}
-     */
-    private function extractSpansFromMatches(array $matches): array
-    {
-        $spans = [
-            'starts' => [],
-            'ends' => [],
-        ];
-        $lastEnd = null;
-
-        $matches = $this->removeStopWordMatches($matches);
-
-        foreach ($matches as $match) {
-            $end = $match['start'] + $match['length'];
-
-            // Merge matches that are exactly after one another
-            if ($lastEnd === $match['start'] - 1) {
-                $highestEnd = max($spans['ends']);
-                unset($spans['ends'][array_search($highestEnd, $spans['ends'], true)]);
-            } else {
-                $spans['starts'][] = $match['start'];
-            }
-
-            $spans['ends'][] = $end;
-            $lastEnd = $end;
-        }
-
-        return $spans;
     }
 
     /**

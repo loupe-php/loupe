@@ -1565,6 +1565,44 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<string> $searchableAttributes
+     * @param array<string> $attributesToHighlight
+     * @param array<mixed> $expectedResults
+     * @param array<string> $stopWords
+     */
+    #[DataProvider('formattingProvider')]
+    public function testFormatting(
+        string $query,
+        array $searchableAttributes,
+        array $attributesToHighlight,
+        bool $showMatchesPosition,
+        array $expectedResults,
+        array $stopWords = [],
+        string $highlightStartTag = '<em>',
+        string $highlightEndTag = '</em>',
+    ): void {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes($searchableAttributes)
+            ->withFilterableAttributes(['genres'])
+            ->withSortableAttributes(['title'])
+            ->withStopWords($stopWords)
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery($query)
+            ->withAttributesToHighlight($attributesToHighlight, $highlightStartTag, $highlightEndTag)
+            ->withShowMatchesPosition($showMatchesPosition)
+            ->withAttributesToRetrieve(['id', 'title', 'overview', 'genres'])
+            ->withSort(['title:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
+    }
+
     public function testGeoBoundingBox(): void
     {
         $configuration = Configuration::create()
@@ -1840,44 +1878,6 @@ class SearchTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 2,
         ]);
-    }
-
-    /**
-     * @param array<string> $searchableAttributes
-     * @param array<string> $attributesToHighlight
-     * @param array<mixed> $expectedResults
-     * @param array<string> $stopWords
-     */
-    #[DataProvider('formattingProvider')]
-    public function testFormatting(
-        string $query,
-        array $searchableAttributes,
-        array $attributesToHighlight,
-        bool $showMatchesPosition,
-        array $expectedResults,
-        array $stopWords = [],
-        string $highlightStartTag = '<em>',
-        string $highlightEndTag = '</em>',
-    ): void {
-        $configuration = Configuration::create()
-            ->withSearchableAttributes($searchableAttributes)
-            ->withFilterableAttributes(['genres'])
-            ->withSortableAttributes(['title'])
-            ->withStopWords($stopWords)
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
-
-        $searchParameters = SearchParameters::create()
-            ->withQuery($query)
-            ->withAttributesToHighlight($attributesToHighlight, $highlightStartTag, $highlightEndTag)
-            ->withShowMatchesPosition($showMatchesPosition)
-            ->withAttributesToRetrieve(['id', 'title', 'overview', 'genres'])
-            ->withSort(['title:asc'])
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
     }
 
     public function testIgnoresTooLongQuery(): void

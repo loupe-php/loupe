@@ -570,11 +570,11 @@ class Searcher
             ? array_keys($hit)
             : $this->engine->getConfiguration()->getSearchableAttributes();
 
-        $options = new FormatterOptions($this->engine, $this->searchParameters, array_keys($hit));
+        $options = new FormatterOptions($this->searchParameters, $searchableAttributes);
         $requiresFormatting = $options->requiresFormatting();
         $showMatchesPosition = $this->searchParameters->showMatchesPosition();
 
-        if (! $requiresFormatting && ! $showMatchesPosition) {
+        if (!$requiresFormatting && !$showMatchesPosition) {
             return;
         }
 
@@ -592,13 +592,13 @@ class Searcher
                     $formatterResult = $this->engine->getFormatter()
                         ->format($attribute, $rawValue, $tokens, $options);
 
-                    if ($showMatchesPosition && ($matches = $formatterResult->getMatches())) {
-                        $matchesPosition[$attribute][$key] = $matches;
+                    if ($showMatchesPosition && \count($formatterResult->getMatches()) > 0) {
+                        $matchesPosition[$attribute][$key] = $formatterResult->getMatches();
                     }
 
-                    if ($requiresFormatting && ($formattedText = $formatterResult->getFormattedText())) {
+                    if ($requiresFormatting) {
                         $formatted[$attribute] ??= [];
-                        $formatted[$attribute][$key] = $formattedText;
+                        $formatted[$attribute][$key] = $formatterResult->getFormattedText();
                     }
                 }
             } else {
@@ -606,12 +606,12 @@ class Searcher
                 $formatterResult = $this->engine->getFormatter()
                     ->format($attribute, $rawValue, $tokens, $options);
 
-                if ($showMatchesPosition && ($matches = $formatterResult->getMatches())) {
-                    $matchesPosition[$attribute] = $matches;
+                if ($showMatchesPosition && \count($formatterResult->getMatches()) > 0) {
+                    $matchesPosition[$attribute] = $formatterResult->getMatches();
                 }
 
-                if ($requiresFormatting && ($formattedText = $formatterResult->getFormattedText())) {
-                    $formatted[$attribute] = $formattedText;
+                if ($requiresFormatting) {
+                    $formatted[$attribute] = $formatterResult->getFormattedText();
                 }
             }
         }

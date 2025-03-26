@@ -30,10 +30,9 @@ final class SearchParameters
      */
     private array $attributesToSearchOn = ['*'];
 
+    private int $cropLength = 10;
 
     private string $cropMarker = '≥';
-
-    private int $cropLength = 10;
 
     private string $filter = '';
 
@@ -103,7 +102,6 @@ final class SearchParameters
     {
         return $this->attributesToSearchOn;
     }
-
 
     public function getCropLength(): int
     {
