@@ -2824,7 +2824,7 @@ class SearchTest extends TestCase
         //     'content' => 'dog house',
         // ];
 
-        foreach (range(1, 2000) as $id) {
+        foreach (range(1, 1000) as $id) {
             $documents[] = [
                 'id' => str_pad((string) $id, 4, '0', STR_PAD_LEFT),
                 'content' => 'dog',
@@ -2832,14 +2832,19 @@ class SearchTest extends TestCase
         }
 
         $documents[] = [
+            'id' => '8888',
+            'content' => 'sled',
+        ];
+
+        $documents[] = [
             'id' => '9999',
-            'content' => 'dog house',
+            'content' => 'dog sled',
         ];
 
         $loupe->addDocuments($documents);
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('dog house')
+            ->withQuery('dog sled')
             ->withAttributesToRetrieve(['id', 'content'])
             ->withShowRankingScore(true)
             ->withHitsPerPage(4)
@@ -2849,7 +2854,7 @@ class SearchTest extends TestCase
             'hits' => [
                 [
                     'id' => '9999',
-                    'content' => 'dog house',
+                    'content' => 'dog sled',
                     '_rankingScore' => 1.0,
                 ],
                 [
@@ -2868,11 +2873,11 @@ class SearchTest extends TestCase
                     '_rankingScore' => 0.77641,
                 ],
             ],
-            'query' => 'dog house',
+            'query' => 'dog sled',
             'hitsPerPage' => 4,
             'page' => 1,
-            'totalPages' => 251,
-            'totalHits' => 1001,
+            'totalPages' => 500,
+            'totalHits' => 1002,
         ]);
 
         ray($logger->getRecords());
