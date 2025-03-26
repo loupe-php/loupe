@@ -2879,8 +2879,6 @@ class SearchTest extends TestCase
             'totalPages' => 500,
             'totalHits' => 1002,
         ]);
-
-        ray($logger->getRecords());
     }
 
     public function testSearchingForNumericArrayType(): void

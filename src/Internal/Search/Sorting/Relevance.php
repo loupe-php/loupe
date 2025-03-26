@@ -99,17 +99,13 @@ class Relevance extends AbstractSorter
     {
         $rankingInfo = RankingInfo::fromQueryFunction($searchableAttributes, $rankingRules, $termPositions);
         $rankers = static::getRankers($rankingInfo->getRankingRules());
-        ray('----', $rankingInfo->getTermPositions());
 
         $weights = [];
         $totalWeight = 0;
         foreach ($rankers as [$class, $weight]) {
             $weights[] = $class::calculate($rankingInfo) * $weight;
-            ray($class, $class::calculate($rankingInfo) * $weight);
             $totalWeight += $weight;
         }
-
-        ray(array_sum($weights) / $totalWeight);
 
         return array_sum($weights) / $totalWeight;
     }
