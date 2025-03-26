@@ -2820,11 +2820,11 @@ class SearchTest extends TestCase
         $documents = [];
 
         // $documents[] = [
-        //     'id' => 8888,
-        //     'content' => 'dog house',
+        //     'id' => '9999',
+        //     'content' => 'dog sled',
         // ];
 
-        foreach (range(1, 1000) as $id) {
+        foreach (range(1, 2000) as $id) {
             $documents[] = [
                 'id' => str_pad((string) $id, 4, '0', STR_PAD_LEFT),
                 'content' => 'dog',
