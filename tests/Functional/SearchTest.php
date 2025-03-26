@@ -2812,9 +2812,7 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
-            ->withTypoTolerance(TypoTolerance::create()->disable())
-            ->withLogger($logger = new InMemoryLogger)
-        ;
+            ->withTypoTolerance(TypoTolerance::create()->disable());
 
         $loupe = $this->createLoupe($configuration);
         $documents = [];
