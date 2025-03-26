@@ -26,24 +26,24 @@ class PaginationTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 2,
-                    'title' => 'Ariel',
-                ],
-                [
-                    'id' => 5,
-                    'title' => 'Four Rooms',
-                ],
-                [
-                    'id' => 6,
-                    'title' => 'Judgment Night',
-                ],
-                [
                     'id' => 11,
                     'title' => 'Star Wars',
                 ],
                 [
                     'id' => 12,
                     'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 13,
+                    'title' => 'Forrest Gump',
+                ],
+                [
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
                 ],
             ],
             'query' => 'and',
@@ -67,8 +67,8 @@ class PaginationTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 2,
-                    'title' => 'Ariel',
+                    'id' => 11,
+                    'title' => 'Star Wars',
                 ],
             ],
             'query' => 'and',
@@ -92,8 +92,8 @@ class PaginationTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 2,
-                    'title' => 'Ariel',
+                    'id' => 15,
+                    'title' => 'Citizen Kane',
                 ],
             ],
             'query' => 'and or',
