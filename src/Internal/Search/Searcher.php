@@ -24,6 +24,8 @@ class Searcher
 
     public const CTE_TERM_MATCHES_PREFIX = '_cte_term_matches_';
 
+    public const CTE_MATCHES = 'matches';
+
     public const DISTANCE_ALIAS = '_distance';
 
     public const RELEVANCE_ALIAS = '_relevance';
@@ -36,11 +38,13 @@ class Searcher
     private const MAX_DOCUMENT_MATCHES = 1000;
 
     /**
-     * @var array<string, array{cols: array<string>, sql: string}>
+     * @var array<string, Cte>
      */
     private array $CTEs = [];
 
-    private Ast $filterAst;
+    private Ast $filterAst; // TODO: Am I still needed?
+
+    private FilterBuilder $filterBuilder;
 
     /**
      * @var array<string, bool>
@@ -60,15 +64,13 @@ class Searcher
     ) {
         $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
         $this->filterAst = $filterParser->getAst($this->searchParameters->getFilter());
+        $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
+        $this->filterBuilder = new FilterBuilder($this->engine, $this);
     }
 
-    /**
-     * @param array<string> $cols
-     */
-    public function addCTE(string $cteName, array $cols, string $sql): void
+    public function addCTE(string $cteName, Cte $cte): void
     {
-        $this->CTEs[$cteName]['cols'] = $cols;
-        $this->CTEs[$cteName]['sql'] = $sql;
+        $this->CTEs[$cteName] = $cte;
     }
 
     public function addGeoDistanceSelectToQueryBuilder(string $attribute, float $latitude, float $longitude): string
@@ -102,16 +104,14 @@ class Searcher
     {
         $start = (int) floor(microtime(true) * 1000);
 
-        $this->queryBuilder = $this->engine->getConnection()
-            ->createQueryBuilder();
-
         $tokens = $this->getTokens();
         $tokensIncludingStopwords = $this->getTokensIncludingStopwords();
 
-        $this->selectTotalHits();
+        // Now it's time to add our CTEs
         $this->selectDocuments();
-        $this->filterDocuments();
-        $this->searchDocuments($tokens);
+        $this->searchDocuments($tokens); // First, add the search term CTEs
+        $this->filterDocuments($tokens); // Then filter the documents (requires the search term CTEs)
+        $this->selectTotalHits();
         $this->sortDocuments();
         $this->limitPagination();
 
@@ -167,11 +167,16 @@ class Searcher
     }
 
     /**
-     * @return array<string, array{cols: array<string>, sql: string}>
+     * @return array<string, Cte>
      */
     public function getCTEs(): array
     {
         return $this->CTEs;
+    }
+
+    public function getCTE(string $name): ?Cte
+    {
+        return $this->CTEs[$name] ?? null;
     }
 
     public function getFilterAst(): Ast
@@ -227,7 +232,7 @@ class Searcher
         // No term matches CTE -> no term document matches CTE
         $termMatchesCTE = $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token);
 
-        if (!isset($this->CTEs[$termMatchesCTE])) {
+        if (!$this->hasCTE($termMatchesCTE)) {
             return;
         }
 
@@ -276,8 +281,11 @@ class Searcher
         $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
-        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position', 'typos'];
-        $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
+
+        $this->addCTE($cteName, new Cte(
+            ['document', 'term', 'attribute', 'position', 'typos'],
+            $cteSelectQb
+        ));
     }
 
     private function addTermDocumentMatchesCTEs(TokenCollection $tokenCollection): void
@@ -326,9 +334,10 @@ class Searcher
         }
 
         $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
-
-        $this->CTEs[$this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)]['cols'] = ['id'];
-        $this->CTEs[$this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)]['sql'] = $cteSelectQb->getSQL();
+        $this->addCTE(
+            $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token),
+            new Cte(['id'], $cteSelectQb)
+        );
     }
 
     private function addTermMatchesCTEs(TokenCollection $tokenCollection): void
@@ -412,7 +421,7 @@ class Searcher
     {
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
-        if (!isset($this->CTEs[$cteName])) {
+        if (!$this->hasCTE($cteName)) {
             return null;
         }
 
@@ -526,14 +535,68 @@ class Searcher
         return implode(' ', $where);
     }
 
-    private function filterDocuments(): void
+    private function filterDocuments(TokenCollection $tokenCollection): void
     {
-        if ($this->searchParameters->getFilter() === '') {
-            return;
+        $qb = $this->engine->getConnection()->createQueryBuilder();
+        $qb
+            ->select(
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document',
+            )
+            ->from(
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+            )
+        ;
+
+        // First, let's filter the documents themselves
+        $this->filterBuilder->filter($qb);
+
+        // Now apply the terms filters
+        $this->addTermsToFilter($tokenCollection, $qb);
+
+        $qb->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id');
+
+        $this->addCTE(self::CTE_MATCHES, new Cte(['document_id', 'document'], $qb));
+    }
+
+    private function addTermsToFilter(TokenCollection $tokenCollection, QueryBuilder $queryBuilder): void
+    {
+        $positiveConditions = [];
+        $negativeConditions = [];
+
+        foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
+            $statements = [];
+            foreach ($tokenOrPhrase->getTokens() as $token) {
+                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
+            }
+
+            if (\count(array_filter($statements))) {
+                if ($tokenOrPhrase->isNegated()) {
+                    $negativeConditions[] = $statements;
+                } else {
+                    $positiveConditions[] = $statements;
+                }
+            }
         }
 
-        $filterBuilder = new FilterBuilder($this->engine, $this, $this->queryBuilder);
-        $filterBuilder->buildForDocument();
+        $where = implode(' OR ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $positiveConditions
+        ));
+
+        if ($where !== '') {
+            $queryBuilder->andWhere('(' . $where . ')');
+        }
+
+        $whereNot = implode(' AND ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $negativeConditions
+        ));
+
+        if ($whereNot !== '') {
+            $queryBuilder->andWhere('(' . $whereNot . ')');
+        }
     }
 
     /**
@@ -627,12 +690,12 @@ class Searcher
 
         if ($this->CTEs !== []) {
             $queryParts[] = 'WITH';
-            foreach ($this->CTEs as $name => $config) {
+            foreach ($this->CTEs as $name => $cte) {
                 $queryParts[] = sprintf(
                     '%s (%s) AS (%s)',
                     $name,
-                    implode(',', $config['cols']),
-                    $config['sql']
+                    implode(',', $cte->getColumnAliasList()),
+                    $cte->getQueryBuilder()->getSQL()
                 );
                 $queryParts[] = ',';
             }
@@ -641,7 +704,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-
+        dump(implode(' ', $queryParts), $this->queryBuilder->getParameters());
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
@@ -653,53 +716,13 @@ class Searcher
     {
         $this->addTermMatchesCTEs($tokenCollection);
         $this->addTermDocumentMatchesCTEs($tokenCollection);
-        $positiveConditions = [];
-        $negativeConditions = [];
-
-        foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
-            $statements = [];
-            foreach ($tokenOrPhrase->getTokens() as $token) {
-                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
-            }
-
-            if (\count(array_filter($statements))) {
-                if ($tokenOrPhrase->isNegated()) {
-                    $negativeConditions[] = $statements;
-                } else {
-                    $positiveConditions[] = $statements;
-                }
-            }
-        }
-
-        $where = implode(' OR ', array_map(
-            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
-            $positiveConditions
-        ));
-
-        if ($where !== '') {
-            $this->queryBuilder->andWhere('(' . $where . ')');
-        }
-
-        $whereNot = implode(' AND ', array_map(
-            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
-            $negativeConditions
-        ));
-
-        if ($whereNot !== '') {
-            $this->queryBuilder->andWhere('(' . $whereNot . ')');
-        }
     }
 
     private function selectDocuments(): void
     {
         $this->queryBuilder
-            ->addSelect($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document')
-            ->from(
-                IndexInfo::TABLE_NAME_DOCUMENTS,
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
-            )
-            ->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document')
+            ->addSelect(self::CTE_MATCHES . '.document')
+            ->from(self::CTE_MATCHES)
         ;
     }
 

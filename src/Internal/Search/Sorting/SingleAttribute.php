@@ -29,9 +29,13 @@ class SingleAttribute extends AbstractSorter
             $attribute = 'user_id';
         }
 
-        $attribute = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute;
+        $cte = $searcher->getCTE(Searcher::CTE_MATCHES);
+        $cte->addSelectWithCteAlias(
+            $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute,
+            $attribute
+        );
 
-        $this->addOrderBy($searcher, $engine, $attribute, $this->direction);
+        $this->addOrderBy($searcher, $engine, Searcher::CTE_MATCHES . '.' . $attribute, $this->direction);
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self

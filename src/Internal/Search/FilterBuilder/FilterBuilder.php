@@ -22,20 +22,28 @@ class FilterBuilder
 {
     private ?string $multiAttributeName = null;
 
+    private QueryBuilder $globalQueryBuilder;
+
+
     public function __construct(
         private Engine $engine,
         private Searcher $searcher,
-        private QueryBuilder $globalQueryBuilder
     ) {
+        $this->globalQueryBuilder = $this->searcher->getQueryBuilder();
     }
 
-    public function buildForDocument(): QueryBuilder
+
+    public function filter(QueryBuilder $qb): void
     {
         $whereStatement = [];
 
         $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $whereStatement);
 
-        return $this->globalQueryBuilder->andWhere(implode(' ', $whereStatement));
+        if ([] === $whereStatement) {
+            return;
+        }
+
+        $qb->andWhere(implode('', $whereStatement));
     }
 
     public function buildForMultiAttribute(string $attribute, Aggregate $aggregate): QueryBuilder

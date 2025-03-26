@@ -7,6 +7,7 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
 use Loupe\Loupe\Internal\Search\Ranking\Exactness;
 use Loupe\Loupe\Internal\Search\Ranking\Proximity;
@@ -17,6 +18,8 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 class Relevance extends AbstractSorter
 {
+    private const CTE_NAME = 'relevances_per_document';
+
     public const RANKERS = [
         'words' => WordCount::class,
         'typo' => TypoCount::class,
@@ -37,7 +40,7 @@ class Relevance extends AbstractSorter
             return;
         }
 
-        $positionsPerDocument = [];
+        $unions = [];
 
         foreach ($tokens as $token) {
             $cteName = $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
@@ -47,29 +50,37 @@ class Relevance extends AbstractSorter
                 continue;
             }
 
+            $unions[] = 'SELECT * FROM ' . $cteName;
+        }
+
+        // CTE for all documents
+        $qb = $engine->getConnection()->createQueryBuilder()
+            ->addSelect('document')
             // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
             // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
             // because it's just a ";" separated list.
-            $positionsPerDocument[] = sprintf(
-                "SELECT (SELECT COALESCE(group_concat(DISTINCT position || ':' || attribute || ':' || typos), '0') FROM %s WHERE %s.id=document) AS %s",
-                $cteName,
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                Searcher::RELEVANCE_ALIAS . '_per_term',
-            );
-        }
+            ->addSelect("COALESCE(group_concat(DISTINCT position || ':' || attribute || ':' || typos), '0') AS relevance_per_term")
+            ->from('(' . implode(' UNION ALL ', $unions) . ')')
+            ->groupBy('document');
+
+        $searcher->addCTE(self::CTE_NAME, new Cte(['document', 'relevance_per_term'], $qb));
+
+        // Join the CTE
+        $searcher->getQueryBuilder()->join(
+            Searcher::CTE_MATCHES,
+            self::CTE_NAME,
+            self::CTE_NAME,
+            sprintf('%s.document = %s.document_id', self::CTE_NAME, Searcher::CTE_MATCHES)
+        );
 
         // Searchable attributes to determine attribute weight
         $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
 
         $select = sprintf(
-            "loupe_relevance(
-                '%s', '%s',
-                (SELECT group_concat(%s, ';') FROM (%s))
-            ) AS %s",
+            "loupe_relevance('%s', '%s', %s) AS %s",
             implode(':', $searchableAttributes),
             implode(':', $engine->getConfiguration()->getRankingRules()),
-            Searcher::RELEVANCE_ALIAS . '_per_term',
-            implode(' UNION ALL ', $positionsPerDocument),
+            self::CTE_NAME . '.relevance_per_term',
             Searcher::RELEVANCE_ALIAS,
         );
 
@@ -106,7 +117,7 @@ class Relevance extends AbstractSorter
             $weights[] = $class::calculate($rankingInfo) * $weight;
             $totalWeight += $weight;
         }
-
+        dump($termPositions, array_sum($weights) / $totalWeight, $rankingInfo);
         return array_sum($weights) / $totalWeight;
     }
 
