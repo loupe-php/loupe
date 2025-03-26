@@ -2,36 +2,63 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Internal\Search\Highlighter;
+namespace Loupe\Loupe\Internal\Search\Formatter;
 
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
-class Highlighter
+class FormatterResult
 {
+    private ?string $formattedText = null;
+
+    /**
+     * @var array<int, array{start: int, length: int, stopword: bool}>
+     */
+    private ?array $matches = null;
+
     public function __construct(
-        private Engine $engine
+        private Engine $engine,
+        private string $attribute,
+        private string $text,
+        private TokenCollection $queryTokens,
+        private FormatterOptions $options
     ) {
     }
 
-    public function highlight(
-        string $text,
-        TokenCollection $queryTokens,
-        string $startTag = '<em>',
-        string $endTag = '</em>',
-    ): HighlightResult {
-        if ($text === '') {
-            return new HighlightResult($text, []);
+    public function getFormattedText(): ?string
+    {
+        $this->formattedText ??= $this->formatText();
+
+        return $this->formattedText;
+    }
+
+    /**
+     * @return array<int, array{start: int, length: int, stopword: bool}>
+     */
+    public function getMatches(): array
+    {
+        $this->matches ??= $this->calculateMatches();
+
+        return $this->matches;
+    }
+
+    /**
+     * @return array<int, array{start: int, length: int, stopword: bool}>
+     */
+    private function calculateMatches(): array
+    {
+        if ($this->text === '') {
+            return [];
         }
 
         $matches = [];
         $stopWords = $this->engine->getConfiguration()->getStopWords();
-        $textTokens = $this->engine->getTokenizer()->tokenize($text);
+        $textTokens = $this->engine->getTokenizer()->tokenize($this->text);
 
         foreach ($textTokens->all() as $textToken) {
-            if ($this->matches($textToken, $queryTokens)) {
+            if ($this->queryMatchesToken($textToken)) {
                 $matches[] = [
                     'start' => $textToken->getStartPosition(),
                     'length' => $textToken->getLength(),
@@ -40,36 +67,19 @@ class Highlighter
             }
         }
 
-        if ($matches === []) {
-            return new HighlightResult($text, []);
-        }
-
         // Sort matches by start
-        uasort($matches, function (array $a, array $b) {
-            return $a['start'] <=> $b['start'];
-        });
+        uasort($matches, fn (array $a, array $b) => $a['start'] <=> $b['start']);
 
-        $pos = 0;
-        $highlightedText = '';
-        $spans = $this->extractSpansFromMatches($matches);
+        return $matches;
+    }
 
-        foreach (mb_str_split($text, 1, 'UTF-8') as $pos => $char) {
-            if (\in_array($pos, $spans['starts'], true)) {
-                $highlightedText .= $startTag;
-            }
-            if (\in_array($pos, $spans['ends'], true)) {
-                $highlightedText .= $endTag;
-            }
+    private function crop(string $text): string
+    {
+        // $matches = $this->getMatches();
+        // $cropLength = $this->options->getCropLength();
+        // $cropMarker = $this->options->getCropMarker();
 
-            $highlightedText .= $char;
-        }
-
-        // Match at the end of the $text
-        if (\in_array($pos + 1, $spans['ends'], true)) {
-            $highlightedText .= $endTag;
-        }
-
-        return new HighlightResult($highlightedText, $matches);
+        return $text;
     }
 
     /**
@@ -104,22 +114,72 @@ class Highlighter
         return $spans;
     }
 
-    private function matches(Token $textToken, TokenCollection $queryTokens): bool
+    private function formatText(): string
+    {
+        $matches = $this->getMatches();
+
+        if (empty($matches)) {
+            return $this->text;
+        }
+
+        $formattedText = $this->text;
+
+        if ($this->options->shouldHighlightAttribute($this->attribute)) {
+            $formattedText = $this->highlight($formattedText);
+        }
+
+        if ($this->options->shouldCropAttribute($this->attribute)) {
+            $formattedText = $this->crop($formattedText);
+        }
+
+        return $formattedText;
+    }
+
+    private function highlight(string $text): string
+    {
+        $matches = $this->getMatches();
+        $startTag = $this->options->getHighlightStartTag();
+        $endTag = $this->options->getHighlightEndTag();
+
+        $pos = 0;
+        $highlightedText = '';
+        $spans = $this->extractSpansFromMatches($matches);
+
+        foreach (mb_str_split($text, 1, 'UTF-8') as $pos => $char) {
+            if (\in_array($pos, $spans['starts'], true)) {
+                $highlightedText .= $startTag;
+            }
+            if (\in_array($pos, $spans['ends'], true)) {
+                $highlightedText .= $endTag;
+            }
+
+            $highlightedText .= $char;
+        }
+
+        // Match at the end of the $text
+        if (\in_array($pos + 1, $spans['ends'], true)) {
+            $highlightedText .= $endTag;
+        }
+
+        return $highlightedText;
+    }
+
+    private function queryMatchesToken(Token $textToken): bool
     {
         $configuration = $this->engine->getConfiguration();
         $firstCharTypoCountsDouble = $configuration->getTypoTolerance()->firstCharTypoCountsDouble();
 
-        foreach ($queryTokens->all() as $queryToken) {
-            foreach ($queryToken->allTerms() as $term) {
-                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($term);
+        foreach ($this->queryTokens->all() as $queryToken) {
+            foreach ($queryToken->allTerms() as $queryTerm) {
+                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($queryTerm);
 
                 if ($levenshteinDistance === 0) {
-                    if (\in_array($term, $textToken->allTerms(), true)) {
+                    if (\in_array($queryTerm, $textToken->allTerms(), true)) {
                         return true;
                     }
                 } else {
                     foreach ($textToken->allTerms() as $textTerm) {
-                        if (Levenshtein::damerauLevenshtein($term, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                        if (Levenshtein::damerauLevenshtein($queryTerm, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
                             return true;
                         }
                     }
@@ -127,7 +187,7 @@ class Highlighter
             }
         }
 
-        $lastToken = $queryTokens->last();
+        $lastToken = $this->queryTokens->last();
 
         if ($lastToken === null) {
             return false;
