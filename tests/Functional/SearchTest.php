@@ -255,7 +255,7 @@ class SearchTest extends TestCase
 
     public static function formattingProvider(): \Generator
     {
-        yield 'Highlight with matches position only' => [
+        yield 'Formatting with matches position only' => [
             'assassin',
             ['title', 'overview'],
             [],
@@ -291,7 +291,7 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Highlight with all searchable fields' => [
+        yield 'Formatting with all searchable fields but no highlightable attributes' => [
             'assassin',
             ['*'],
             [],
@@ -327,7 +327,7 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Highlight with matches position of stopwords' => [
+        yield 'Formatting with matches position of stopwords' => [
             'her assassin',
             ['title', 'overview'],
             [],
