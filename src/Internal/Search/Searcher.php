@@ -20,11 +20,11 @@ use Loupe\Loupe\SearchResult;
 
 class Searcher
 {
+    public const CTE_MATCHES = 'matches';
+
     public const CTE_TERM_DOCUMENT_MATCHES_PREFIX = '_cte_term_document_matches_';
 
     public const CTE_TERM_MATCHES_PREFIX = '_cte_term_matches_';
-
-    public const CTE_MATCHES = 'matches';
 
     public const DISTANCE_ALIAS = '_distance';
 
@@ -160,6 +160,11 @@ class Searcher
         );
     }
 
+    public function getCTE(string $name): ?Cte
+    {
+        return $this->CTEs[$name] ?? null;
+    }
+
     public function getCTENameForToken(string $prefix, Token $token): string
     {
         // For debugging: return $prefix . $token->getId() . '_' .  $token->getTerm();
@@ -172,11 +177,6 @@ class Searcher
     public function getCTEs(): array
     {
         return $this->CTEs;
-    }
-
-    public function getCTE(string $name): ?Cte
-    {
-        return $this->CTEs[$name] ?? null;
     }
 
     public function getFilterAst(): Ast
@@ -348,6 +348,45 @@ class Searcher
 
         foreach ($tokenCollection->all() as $token) {
             $this->addTermMatchesCTE($token, $token === $tokenCollection->last());
+        }
+    }
+
+    private function addTermsToFilter(TokenCollection $tokenCollection, QueryBuilder $queryBuilder): void
+    {
+        $positiveConditions = [];
+        $negativeConditions = [];
+
+        foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
+            $statements = [];
+            foreach ($tokenOrPhrase->getTokens() as $token) {
+                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
+            }
+
+            if (\count(array_filter($statements))) {
+                if ($tokenOrPhrase->isNegated()) {
+                    $negativeConditions[] = $statements;
+                } else {
+                    $positiveConditions[] = $statements;
+                }
+            }
+        }
+
+        $where = implode(' OR ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $positiveConditions
+        ));
+
+        if ($where !== '') {
+            $queryBuilder->andWhere('(' . $where . ')');
+        }
+
+        $whereNot = implode(' AND ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $negativeConditions
+        ));
+
+        if ($whereNot !== '') {
+            $queryBuilder->andWhere('(' . $whereNot . ')');
         }
     }
 
@@ -558,45 +597,6 @@ class Searcher
         $qb->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id');
 
         $this->addCTE(self::CTE_MATCHES, new Cte(['document_id', 'document'], $qb));
-    }
-
-    private function addTermsToFilter(TokenCollection $tokenCollection, QueryBuilder $queryBuilder): void
-    {
-        $positiveConditions = [];
-        $negativeConditions = [];
-
-        foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
-            $statements = [];
-            foreach ($tokenOrPhrase->getTokens() as $token) {
-                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
-            }
-
-            if (\count(array_filter($statements))) {
-                if ($tokenOrPhrase->isNegated()) {
-                    $negativeConditions[] = $statements;
-                } else {
-                    $positiveConditions[] = $statements;
-                }
-            }
-        }
-
-        $where = implode(' OR ', array_map(
-            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
-            $positiveConditions
-        ));
-
-        if ($where !== '') {
-            $queryBuilder->andWhere('(' . $where . ')');
-        }
-
-        $whereNot = implode(' AND ', array_map(
-            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
-            $negativeConditions
-        ));
-
-        if ($whereNot !== '') {
-            $queryBuilder->andWhere('(' . $whereNot . ')');
-        }
     }
 
     /**

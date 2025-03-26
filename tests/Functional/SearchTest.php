@@ -2948,7 +2948,7 @@ class SearchTest extends TestCase
             ->withSortableAttributes(['dates', 'ratings'])
         ;
 
-        $loupe = $this->createLoupe($configuration);
+        $loupe = $this->createLoupe($configuration, __DIR__);
 
         $loupe->addDocuments([
             [
@@ -3059,7 +3059,7 @@ class SearchTest extends TestCase
 
         $loupe = $this->createLoupe($configurationWithoutStopWords, __DIR__);
         $this->indexFixture($loupe, 'movies');
-/*
+
         // Should return all movies with the term "young" (OR matching)
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -3110,7 +3110,7 @@ class SearchTest extends TestCase
 
         $loupe = $this->createLoupe($configurationWithStopWords);
         $this->indexFixture($loupe, 'movies');
-*/
+
         // Test stop words are ignored for ordering by relevance
         $searchParameters = $searchParameters->withSort(['_relevance:desc']);
         $this->searchAndAssertResults($loupe, $searchParameters, [

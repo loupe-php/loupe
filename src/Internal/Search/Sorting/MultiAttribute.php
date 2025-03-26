@@ -8,6 +8,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
 use Loupe\Loupe\Internal\Search\Searcher;
 
@@ -36,21 +37,56 @@ class MultiAttribute extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        $filterBuilder = new FilterBuilder($engine, $searcher, $searcher->getQueryBuilder());
-        $qb = $filterBuilder->buildForMultiAttribute($this->attributeName, $this->aggregate);
+        $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
+        $column = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . ($isFloatType ? 'numeric_value' : 'string_value');
+
+        $qb = $engine->getConnection()->createQueryBuilder();
+        $qb
+            ->addSelect(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS) . '.document AS document_id',
+                $this->aggregate->buildSql($column) . 'AS sort_order'
+            )
+            ->from(
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
+            )
+            ->innerJoin(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                sprintf(
+                    '%s.attribute=%s AND %s.id = %s.attribute',
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $searcher->getQueryBuilder()->createNamedParameter($this->attributeName),
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                )
+            )
+            ->innerJoin(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                Searcher::CTE_MATCHES,
+                Searcher::CTE_MATCHES,
+                sprintf('%s.document_id = %s.document',
+                    Searcher::CTE_MATCHES,
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS
+                    )
+                )
+            )
+            ->groupBy('document_id');
+        ;
 
         $cteName = 'order_' . $this->attributeName;
-        $searcher->addCTE($cteName, ['document_id', 'sort_order'], $qb->getSQL());
+        $searcher->addCTE($cteName, new Cte(['document_id', 'sort_order'], $qb));
 
         $searcher->getQueryBuilder()
             ->innerJoin(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                Searcher::CTE_MATCHES,
                 $cteName,
                 $cteName,
                 sprintf(
-                    '%s.id = %s.document_id',
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $cteName
+                    '%s.document_id = %s.document_id',
+                    $cteName,
+                    Searcher::CTE_MATCHES
                 )
             );
 
