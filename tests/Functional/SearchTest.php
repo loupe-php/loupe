@@ -6,7 +6,6 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;

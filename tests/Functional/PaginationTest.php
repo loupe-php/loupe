@@ -54,31 +54,6 @@ class PaginationTest extends TestCase
         ]);
     }
 
-    public function testPaginationWithOneHitPerPage(): void
-    {
-        $loupe = $this->setupLoupeWithMoviesFixture();
-
-        $searchParameters = SearchParameters::create()
-            ->withQuery('and')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withHitsPerPage(1)
-        ;
-
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 11,
-                    'title' => 'Star Wars',
-                ],
-            ],
-            'query' => 'and',
-            'hitsPerPage' => 1,
-            'page' => 1,
-            'totalPages' => 14,
-            'totalHits' => 14,
-        ]);
-    }
-
     public function testPaginationWithMultipleTerms(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
@@ -97,6 +72,31 @@ class PaginationTest extends TestCase
                 ],
             ],
             'query' => 'and or',
+            'hitsPerPage' => 1,
+            'page' => 1,
+            'totalPages' => 14,
+            'totalHits' => 14,
+        ]);
+    }
+
+    public function testPaginationWithOneHitPerPage(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('and')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withHitsPerPage(1)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
+                ],
+            ],
+            'query' => 'and',
             'hitsPerPage' => 1,
             'page' => 1,
             'totalPages' => 14,
