@@ -246,35 +246,6 @@ class Searcher
         return isset($this->CTEs[$cteName]);
     }
 
-    private function addAllTermMatchesCTE(TokenCollection $tokenCollection): void
-    {
-        if ($tokenCollection->empty()) {
-            return;
-        }
-
-        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
-        $cteSelectQb->addSelect('id');
-
-        $unions = [];
-        foreach ($tokenCollection->all() as $token) {
-            $cteName = $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token);
-            if (!$this->hasCTE($cteName)) {
-                continue;
-            }
-            $unions[] = sprintf('SELECT id FROM %s', $cteName);
-        }
-
-        if ($unions === []) {
-            return;
-        }
-
-        $cteSelectQb->from('(' . implode(' UNION ALL ', $unions) . ')', 'all_terms');
-        $cteSelectQb->groupBy('id');
-
-        $this->CTEs['_cte_all_term_matches']['cols'] = ['id'];
-        $this->CTEs['_cte_all_term_matches']['sql'] = $cteSelectQb->getSQL();
-    }
-
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
     {
         // No term matches CTE -> no term document matches CTE
