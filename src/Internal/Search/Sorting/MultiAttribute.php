@@ -74,7 +74,6 @@ class MultiAttribute extends AbstractSorter
             )
             ->groupBy('document_id');
 
-
         $cteName = 'order_' . $this->attributeName;
         $this->addAndOrderByCte($searcher, $engine, $this->direction, $cteName, $qb);
     }

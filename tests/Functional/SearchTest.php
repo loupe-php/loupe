@@ -2948,7 +2948,7 @@ class SearchTest extends TestCase
             ->withSortableAttributes(['dates', 'ratings'])
         ;
 
-        $loupe = $this->createLoupe($configuration, __DIR__);
+        $loupe = $this->createLoupe($configuration);
 
         $loupe->addDocuments([
             [
@@ -3057,7 +3057,7 @@ class SearchTest extends TestCase
             ->withTypoTolerance(TypoTolerance::create()->disable())
         ;
 
-        $loupe = $this->createLoupe($configurationWithoutStopWords, __DIR__);
+        $loupe = $this->createLoupe($configurationWithoutStopWords);
         $this->indexFixture($loupe, 'movies');
 
         // Should return all movies with the term "young" (OR matching)

@@ -45,7 +45,6 @@ class GeoPoint extends AbstractSorter
             )
             ->groupBy($cteName . '.document_id');
 
-
         $this->addAndOrderByCte($searcher, $engine, $this->direction, 'order_' . $this->attributeName, $qb);
     }
 

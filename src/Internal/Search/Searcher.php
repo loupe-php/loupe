@@ -14,7 +14,6 @@ use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
-use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
@@ -93,33 +92,12 @@ class Searcher
                 )
             )
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentAlias)
-        ;
-
-        $whereStatement = [];
-
-        // Prevent nullable
-        $nullTerm = $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL);
-        $whereStatement[] = $documentAlias . '.' . $attribute . '_geo_lat';
-        $whereStatement[] = '!=';
-        $whereStatement[] = $nullTerm;
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $documentAlias . '.' . $attribute . '_geo_lng';
-        $whereStatement[] = '!=';
-        $whereStatement[] = $nullTerm;
-
-        if ($bounds !== null) {
-            $whereStatement[] = 'AND';
-
             // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
             // the actual distance is compared. This can use indexes.
             // We use floor() and ceil() respectively to ensure we get matches as the BearingSpherical calculation of the
             // BBOX may not be as precise so when searching for the e.g. 3rd decimal floating point, we might exclude
             // locations we shouldn't.
-            $whereStatement = array_merge($whereStatement, $this->createGeoBoundingBoxWhereStatement($attribute, $bounds));
-        }
-
-        $qb
-            ->andWhere(implode(' ', $whereStatement))
+            ->andWhere(implode(' ', $this->filterBuilder->createGeoBoundingBoxWhereStatement($attribute, $bounds)))
             ->groupBy($documentAlias . '.id')
         ;
 
@@ -454,33 +432,6 @@ class Searcher
     }
 
     /**
-     * @return array<string|float>
-     */
-    private function createGeoBoundingBoxWhereStatement(string $attributeName, Bounds $bounds): array
-    {
-        $documentAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
-        $whereStatement = [];
-
-        // Longitude
-        $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lng';
-        $whereStatement[] = 'BETWEEN';
-        $whereStatement[] = $bounds->getWest();
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $bounds->getEast();
-
-        $whereStatement[] = 'AND';
-
-        // Latitude
-        $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lat';
-        $whereStatement[] = 'BETWEEN';
-        $whereStatement[] = $bounds->getSouth();
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $bounds->getNorth();
-
-        return $whereStatement;
-    }
-
-    /**
      * @param array<int> $states
      */
     private function createStatesMatchWhere(array $states, string $table, string $term, int $levenshteinDistance, string $termColumnName): string
@@ -679,7 +630,6 @@ class Searcher
         /*foreach ($froms as $from) {
             $qbMatches->union($from);
         }*/
-
 
         // $qb->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id');
 

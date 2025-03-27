@@ -102,6 +102,11 @@ enum Operator: string
         };
     }
 
+    public function isPositive(): bool
+    {
+        return !$this->isNegative();
+    }
+
     public function opposite(): self
     {
         return match ($this) {
