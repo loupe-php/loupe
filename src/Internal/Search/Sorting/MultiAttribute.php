@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Sorting;
 
+use Doctrine\DBAL\Query\QueryBuilder;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
@@ -36,43 +37,19 @@ class MultiAttribute extends AbstractSorter
     public function apply(Searcher $searcher, Engine $engine): void
     {
         $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
-        $column = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . ($isFloatType ? 'numeric_value' : 'string_value');
+        $column = ($isFloatType ? 'numeric_value' : 'string_value');
 
-        $qb = $engine->getConnection()->createQueryBuilder();
-        $qb
-            ->addSelect(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS) . '.document AS document_id',
-                $this->aggregate->buildSql($column) . 'AS sort_order'
-            )
-            ->from(
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
-            )
-            ->innerJoin(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
-                    '%s.attribute=%s AND %s.id = %s.attribute',
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $searcher->getQueryBuilder()->createNamedParameter($this->attributeName),
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                )
-            )
-            ->innerJoin(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                Searcher::CTE_MATCHES,
-                Searcher::CTE_MATCHES,
-                sprintf(
-                    '%s.document_id = %s.document',
-                    Searcher::CTE_MATCHES,
-                    $engine->getIndexInfo()->getAliasForTable(
-                        IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS
-                    )
-                )
-            )
-            ->groupBy('document_id');
+        $multiFilterCte = $searcher->addAllMultiFiltersCte($this->attributeName);
+
+        // There are filters for this attribute, we have to apply those filters to our multi attribute
+        if ($multiFilterCte !== null) {
+            $qb = $this->createQueryBuilderForFilterCte($engine, $searcher, $column, $multiFilterCte);
+        } else {
+            // Otherwise we join with the general matches
+            $qb = $this->createQueryBuilderWithoutFilterCte($engine, $searcher, $column);
+        }
+
+        $qb->groupBy('document_id');
 
         $cteName = 'order_' . $this->attributeName;
         $this->addAndOrderByCte($searcher, $engine, $this->direction, $cteName, $qb);
@@ -105,6 +82,56 @@ class MultiAttribute extends AbstractSorter
         }
 
         return true;
+    }
+
+    private function createQueryBuilderForFilterCte(Engine $engine, Searcher $searcher, string $column, string $cteName): QueryBuilder
+    {
+        $qb = $engine->getConnection()->createQueryBuilder();
+        $qb
+            ->addSelect(
+                sprintf('%s.document_id AS document_id', $cteName),
+                sprintf('%s AS sort_order', $this->aggregate->buildSql($cteName . '.' . $column)),
+            )
+            ->from($cteName);
+
+        return $qb;
+    }
+
+    private function createQueryBuilderWithoutFilterCte(Engine $engine, Searcher $searcher, string $column): QueryBuilder
+    {
+        return $engine->getConnection()->createQueryBuilder()
+            ->addSelect(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS) . '.document AS document_id',
+                $this->aggregate->buildSql($column) . 'AS sort_order'
+            )
+            ->from(
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
+            )
+            ->innerJoin(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                sprintf(
+                    '%s.attribute=%s AND %s.id = %s.attribute',
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $searcher->getQueryBuilder()->createNamedParameter($this->attributeName),
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                )
+            )
+            ->innerJoin(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                Searcher::CTE_MATCHES,
+                Searcher::CTE_MATCHES,
+                sprintf(
+                    '%s.document_id = %s.document',
+                    Searcher::CTE_MATCHES,
+                    $engine->getIndexInfo()->getAliasForTable(
+                        IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS
+                    )
+                )
+            );
     }
 
     /**

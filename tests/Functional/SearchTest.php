@@ -1199,12 +1199,12 @@ class SearchTest extends TestCase
             'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
-                    'id' => 2,
-                    'name' => 'Event B',
-                ],
-                [
                     'id' => 1,
                     'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
                 ],
             ],
         ];
@@ -1214,12 +1214,12 @@ class SearchTest extends TestCase
             'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
-                    'id' => 1,
-                    'name' => 'Event A',
-                ],
-                [
                     'id' => 2,
                     'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
                 ],
             ],
         ];

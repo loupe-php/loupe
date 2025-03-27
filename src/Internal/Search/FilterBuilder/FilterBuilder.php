@@ -20,6 +20,10 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 class FilterBuilder
 {
+    private const CTE_MULTI_ATTRIBUTE = 'fmnode';
+
+    private const CTE_REGULAR = 'fnode';
+
     private QueryBuilder $globalQueryBuilder;
 
     public function __construct(
@@ -87,10 +91,37 @@ class FilterBuilder
         return $whereStatement;
     }
 
+    /**
+     * @return array<string>
+     */
+    public function getFilterCTEsForMultiAttribute(string $attribute): array
+    {
+        $ctes = [];
+        foreach (array_keys($this->searcher->getCTEs()) as $name) {
+            if (str_starts_with($name, $this->getMultiAttributeCTEPrefix($attribute))) {
+                $ctes[] = $name;
+            }
+        }
+
+        return $ctes;
+    }
+
+    /**
+     * @param array<string> $additionalAliases
+     */
     private function addCTEForNode(Node $node, QueryBuilder $qb, array $additionalAliases = []): string
     {
+        if ($node instanceof Filter && \in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+            $cteName = sprintf(
+                '%s%s',
+                $this->getMultiAttributeCTEPrefix($node->attribute),
+                $this->searcher->getFilterAst()->getIdForNode($node)
+            );
+        } else {
+            $cteName = sprintf('%s_%s', self::CTE_REGULAR, $this->searcher->getFilterAst()->getIdForNode($node));
+        }
+
         $columnAliases = array_merge(['document_id', 'document'], $additionalAliases); // always must start with document_id and document
-        $cteName = 'filtered_node_' . $this->searcher->getFilterAst()->getIdForNode($node);
         $this->searcher->addCTE($cteName, new Cte($columnAliases, $qb));
 
         return $cteName;
@@ -161,6 +192,11 @@ class FilterBuilder
         return $qb->getSQL();
     }
 
+    private function getMultiAttributeCTEPrefix(string $attribute): string
+    {
+        return sprintf('%s_%s_', self::CTE_MULTI_ATTRIBUTE, $attribute);
+    }
+
     /**
      * @param array<string|float> $froms
      */
@@ -186,14 +222,21 @@ class FilterBuilder
 
             // Not existing attributes need be handled as no match if positive and as match if negative
             if (!\in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $froms[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
+                if ($operator->isNegative()) {
+                    // If the operator is negative, it means all documents match
+                    $froms[] = 'SELECT id AS document_id, document FROM documents';
+                } else {
+                    // Otherwise, no document matches
+                    $froms[] = 'SELECT document_id, document FROM (SELECT NULL AS document_id, NULL AS document) WHERE 1 = 0';
+                }
             } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $qb = $this->engine->getConnection()->createQueryBuilder();
                 $qb->select(
                     sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
                     sprintf('%s.document', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
                     sprintf('%s.attribute', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES)),
-                    sprintf('%s.numeric_value', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES))
+                    sprintf('%s.numeric_value', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES)),
+                    sprintf('%s.string_value', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES))
                 );
                 $qb->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS));
                 $qb->innerJoin(
@@ -236,7 +279,7 @@ class FilterBuilder
 
                 $qb->groupBy($documentAlias . '.id');
 
-                $cteName = $this->addCTEForNode($node, $qb, ['attribute', 'numeric_value']);
+                $cteName = $this->addCTEForNode($node, $qb, ['attribute', 'numeric_value', 'string_value']);
                 $froms[] = 'SELECT document_id, document FROM ' . $cteName;
             } else {
                 // Single attribute
@@ -258,7 +301,8 @@ class FilterBuilder
         if ($node instanceof GeoDistance) {
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $froms[] = '1 = 0';
+                $froms[] = 'SELECT document_id, document FROM (SELECT NULL AS document_id, NULL AS document) WHERE 1 = 0';
+
                 return;
             }
 
@@ -299,7 +343,7 @@ class FilterBuilder
         if ($node instanceof GeoBoundingBox) {
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $froms[] = '1 = 0';
+                $froms[] = 'SELECT document_id, document FROM (SELECT NULL AS document_id, NULL AS document) WHERE 1 = 0';
                 return;
             }
 

@@ -11,7 +11,6 @@ use Location\Bounds;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
-use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
@@ -23,7 +22,9 @@ use Loupe\Loupe\SearchResult;
 
 class Searcher
 {
-    public const CTE_MATCHES = 'matches';
+    public const CTE_ALL_MULTI_FILTERS_PREFIX = '_cte_mf_all_';
+
+    public const CTE_MATCHES = '_cte_matches';
 
     public const CTE_TERM_DOCUMENT_MATCHES_PREFIX = '_cte_term_document_matches_';
 
@@ -64,6 +65,38 @@ class Searcher
         $this->filterAst = $filterParser->getAst($this->searchParameters->getFilter());
         $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
         $this->filterBuilder = new FilterBuilder($this->engine, $this);
+    }
+
+    /**
+     * This creates a UNION ALL CTE for all the filter CTEs that were added
+     * for a specific attribute. So if you e.g. searched for "multi IN ('foobar') OR multi IN('baz')", it will
+     * UNION those two filter CTEs in order to find all matching rows.
+     */
+    public function addAllMultiFiltersCte(string $attribute): ?string
+    {
+        $cteName = self::CTE_ALL_MULTI_FILTERS_PREFIX . $attribute;
+
+        if ($this->hasCTE($cteName)) {
+            return $cteName;
+        }
+
+        $unions = [];
+
+        foreach ($this->filterBuilder->getFilterCTEsForMultiAttribute($attribute) as $name) {
+            $unions[] = sprintf('SELECT document_id, attribute, numeric_value, string_value FROM %s', $name);
+        }
+
+        if ($unions === []) {
+            return null;
+        }
+
+        $qb = $this->engine->getConnection()->createQueryBuilder();
+        $qb->select('document_id', 'attribute', 'numeric_value', 'string_value');
+        $qb->from('(' . implode(' UNION ', $unions) . ')');
+
+        $this->addCTE($cteName, new Cte(['document_id', 'attribute', 'numeric_value', 'string_value'], $qb));
+
+        return $cteName;
     }
 
     public function addCTE(string $cteName, Cte $cte): void
@@ -134,11 +167,6 @@ class Searcher
                 if (str_starts_with($k, self::DISTANCE_ALIAS)) {
                     $document['_geoDistance(' . str_replace(self::DISTANCE_ALIAS . '_', '', $k) . ')'] = (int) round((float) $v);
                 }
-            }
-
-            // TODO: WHAT IS THIS?
-            if (\array_key_exists(self::DISTANCE_ALIAS, $result)) {
-                // $document['_geoDistance'] = (int) round($result[self::DISTANCE_ALIAS]);
             }
 
             $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
@@ -627,6 +655,7 @@ class Searcher
         if (\count($froms) === 1) {
             $qbMatches->from($froms[0]);
         }
+        // TODO: This needs to be fixed
         /*foreach ($froms as $from) {
             $qbMatches->union($from);
         }*/
@@ -741,7 +770,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-        dump(implode(' ', $queryParts), $this->queryBuilder->getParameters());
+
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
