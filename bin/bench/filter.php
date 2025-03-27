@@ -10,6 +10,7 @@ $debug = isset($options['d']) || isset($options['debug']);
 $startTime = microtime(true);
 
 $searchParameters = SearchParameters::create()
+    ->withQuery('aircarft')
     ->withFilter("release_date < 1127433600 AND genres IN ('Drama', 'Western')")
     ->withSort(['release_date:desc'])
 ;
