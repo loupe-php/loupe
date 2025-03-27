@@ -7,6 +7,7 @@ namespace Loupe\Loupe\Internal\Search\FilterBuilder;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Location\Bounds;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
 use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
@@ -29,6 +30,7 @@ class FilterBuilder
     public function __construct(
         private Engine $engine,
         private Searcher $searcher,
+        private Ast $filterAst,
     ) {
         $this->globalQueryBuilder = $this->searcher->getQueryBuilder();
     }
@@ -37,7 +39,7 @@ class FilterBuilder
     {
         $froms = [];
 
-        $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $froms);
+        $this->handleFilterAstNode($this->filterAst->getRoot(), $froms);
 
         return implode(' ', $froms);
     }
@@ -109,10 +111,10 @@ class FilterBuilder
             $cteName = sprintf(
                 '%s%s',
                 $this->getMultiAttributeCTEPrefix($node->attribute),
-                $this->searcher->getFilterAst()->getIdForNode($node)
+                $this->filterAst->getIdForNode($node)
             );
         } else {
-            $cteName = sprintf('%s_%s', self::CTE_REGULAR, $this->searcher->getFilterAst()->getIdForNode($node));
+            $cteName = sprintf('%s_%s', self::CTE_REGULAR, $this->filterAst->getIdForNode($node));
         }
 
         $columnAliases = array_merge(['document_id', 'document'], $additionalAliases); // always must start with document_id and document

@@ -10,7 +10,6 @@ use Doctrine\DBAL\Result;
 use Location\Bounds;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
@@ -46,8 +45,6 @@ class Searcher
      */
     private array $CTEs = [];
 
-    private Ast $filterAst; // TODO: Am I still needed?
-
     private FilterBuilder $filterBuilder;
 
     private QueryBuilder $queryBuilder;
@@ -62,9 +59,8 @@ class Searcher
         private SearchParameters $searchParameters
     ) {
         $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
-        $this->filterAst = $filterParser->getAst($this->searchParameters->getFilter());
         $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
-        $this->filterBuilder = new FilterBuilder($this->engine, $this);
+        $this->filterBuilder = new FilterBuilder($this->engine, $this, $filterParser->getAst($this->searchParameters->getFilter()));
     }
 
     /**
@@ -213,11 +209,6 @@ class Searcher
     public function getCTEs(): array
     {
         return $this->CTEs;
-    }
-
-    public function getFilterAst(): Ast
-    {
-        return $this->filterAst;
     }
 
     public function getQueryBuilder(): QueryBuilder
