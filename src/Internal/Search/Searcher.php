@@ -22,6 +22,8 @@ class Searcher
 {
     public const CTE_TERM_DOCUMENT_MATCHES_PREFIX = '_cte_term_document_matches_';
 
+    public const CTE_TERM_DOCUMENTS_PREFIX = '_cte_term_documents_';
+
     public const CTE_TERM_MATCHES_PREFIX = '_cte_term_matches_';
 
     public const DISTANCE_ALIAS = '_distance';
@@ -251,7 +253,7 @@ class Searcher
         // No term matches CTE -> no term document matches CTE
         $termMatchesCTE = $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token);
 
-        if (!isset($this->CTEs[$termMatchesCTE])) {
+        if (!$this->hasCTE($termMatchesCTE)) {
             return;
         }
 
@@ -280,8 +282,8 @@ class Searcher
 
         // Get documents that match any of our terms
         $documentConditions = [];
-        foreach ($this->getTokens()->all() as $t) {
-            $cteName = '_cte_term_documents_' . $t->getId();
+        foreach ($this->getTokens()->all() as $otherToken) {
+            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
             if (!$this->hasCTE($cteName)) {
                 continue;
             }
@@ -336,7 +338,7 @@ class Searcher
         // No term matches CTE -> no term documents CTE
         $termMatchesCTE = $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token);
 
-        if (!isset($this->CTEs[$termMatchesCTE])) {
+        if (!$this->hasCTE($termMatchesCTE)) {
             return;
         }
 
@@ -357,7 +359,7 @@ class Searcher
 
         $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
 
-        $cteName = '_cte_term_documents_' . $token->getId();
+        $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $token);
         $this->CTEs[$cteName]['cols'] = ['document'];
         $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
     }
@@ -407,8 +409,9 @@ class Searcher
 
         $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
 
-        $this->CTEs[$this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)]['cols'] = ['id'];
-        $this->CTEs[$this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)]['sql'] = $cteSelectQb->getSQL();
+        $cteName = $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token);
+        $this->CTEs[$cteName]['cols'] = ['id'];
+        $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
     }
 
     private function addTermMatchesCTEs(TokenCollection $tokenCollection): void
@@ -492,7 +495,7 @@ class Searcher
     {
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
-        if (!isset($this->CTEs[$cteName])) {
+        if (!$this->hasCTE($cteName)) {
             return null;
         }
 
