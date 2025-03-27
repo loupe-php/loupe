@@ -39,13 +39,7 @@ class FilterBuilder
 
         $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $froms);
 
-        $from = implode(' ', $froms);
-
-        if ($from === '') {
-            return $from;
-        }
-
-        return '(' . $from . ')';
+        return implode(' ', $froms);
     }
 
     /**

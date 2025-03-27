@@ -2387,6 +2387,32 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testQueryCombinedWithFilter(): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Aelxander')
+            ->withFilter("colors IN ('Blue')")
+            ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [[
+                'id' => 3,
+                'firstname' => 'Alexander',
+                'lastname' => 'Abendroth',
+            ],
+            ],
+            'query' => 'Aelxander',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testRankingWithLotsOfMatches(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();

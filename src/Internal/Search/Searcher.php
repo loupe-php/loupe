@@ -92,7 +92,7 @@ class Searcher
 
         $qb = $this->engine->getConnection()->createQueryBuilder();
         $qb->select('document_id', 'attribute', 'numeric_value', 'string_value');
-        $qb->from('(' . implode(' UNION ', $unions) . ')');
+        $qb->from('(' . implode(' UNION ALL ', $unions) . ')');
 
         $this->addCTE($cteName, new Cte(['document_id', 'attribute', 'numeric_value', 'string_value'], $qb));
 
@@ -439,7 +439,7 @@ class Searcher
             $qb->andWhere('(' . $whereNot . ')');
         }
 
-        return '(' . $qb->getSQL() . ')';
+        return $qb->getSQL();
     }
 
     private function createAnalyzedQuery(TokenCollection $tokens): string
@@ -653,14 +653,12 @@ class Searcher
         }
 
         if (\count($froms) === 1) {
-            $qbMatches->from($froms[0]);
+            $qbMatches->from('(' . $froms[0] . ')');
+        } else {
+            $qbMatches->from('(' . implode(' INTERSECT ', $froms) . ')');
         }
-        // TODO: This needs to be fixed
-        /*foreach ($froms as $from) {
-            $qbMatches->union($from);
-        }*/
 
-        // $qb->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id');
+        $qbMatches->groupBy('document_id');
 
         $this->addCTE(self::CTE_MATCHES, new Cte(['document_id', 'document'], $qbMatches));
     }
@@ -770,7 +768,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-
+        //dd(implode(' ', $queryParts), $this->queryBuilder->getParameters());
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
