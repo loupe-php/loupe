@@ -3376,7 +3376,7 @@ class SearchTest extends TestCase
         ];
     }
 
-    private function setupLoupeWithDepartmentsFixture(Configuration $configuration = null): Loupe
+    private function setupLoupeWithDepartmentsFixture(Configuration $configuration = null, string $dataDir = ''): Loupe
     {
         if ($configuration === null) {
             $configuration = Configuration::create();
@@ -3388,7 +3388,7 @@ class SearchTest extends TestCase
             ->withSearchableAttributes(['firstname', 'lastname'])
         ;
 
-        $loupe = $this->createLoupe($configuration);
+        $loupe = $this->createLoupe($configuration, $dataDir);
         $this->indexFixture($loupe, 'departments');
 
         return $loupe;

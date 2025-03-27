@@ -20,6 +20,11 @@ class Concatenator extends Node
         });
     }
 
+    public function getConcatenator(): string
+    {
+        return $this->concatenator;
+    }
+
     public function getSetOperator(): string
     {
         return match ($this->concatenator) {
@@ -27,11 +32,6 @@ class Concatenator extends Node
             'OR' => 'UNION',
             default => throw new \InvalidArgumentException('Invalid concatenator.')
         };
-    }
-
-    public function getConcatenator(): string
-    {
-        return $this->concatenator;
     }
 
     public function toArray(): array

@@ -24,11 +24,29 @@ class GeoPoint extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        $distanceSelectAlias = $searcher->addGeoDistanceSelectToQueryBuilder($this->attributeName, $this->lat, $this->lng);
+        $cteName = $searcher->addGeoDistanceCte($this->attributeName, $this->lat, $this->lng);
 
-        // No need to use the abstract addOrderBy() here because the relevance alias cannot be of our internal null or empty
-        // value
-        $searcher->getQueryBuilder()->addOrderBy($distanceSelectAlias, $this->direction->getSQL());
+        $qb = $engine->getConnection()->createQueryBuilder();
+        $qb
+            ->addSelect(
+                $cteName . '.document_id AS document_id',
+                $cteName . '.distance AS sort_order'
+            )
+            ->from($cteName)
+            ->innerJoin(
+                $cteName,
+                Searcher::CTE_MATCHES,
+                Searcher::CTE_MATCHES,
+                sprintf(
+                    '%s.document_id = %s.document_id',
+                    Searcher::CTE_MATCHES,
+                    $cteName
+                )
+            )
+            ->groupBy($cteName . '.document_id');
+
+
+        $this->addAndOrderByCte($searcher, $engine, $this->direction, 'order_' . $this->attributeName, $qb);
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self

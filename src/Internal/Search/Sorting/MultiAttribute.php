@@ -8,8 +8,6 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\Search\Cte;
-use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 /**
@@ -66,31 +64,19 @@ class MultiAttribute extends AbstractSorter
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                 Searcher::CTE_MATCHES,
                 Searcher::CTE_MATCHES,
-                sprintf('%s.document_id = %s.document',
+                sprintf(
+                    '%s.document_id = %s.document',
                     Searcher::CTE_MATCHES,
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS
+                    $engine->getIndexInfo()->getAliasForTable(
+                        IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS
                     )
                 )
             )
             ->groupBy('document_id');
-        ;
+
 
         $cteName = 'order_' . $this->attributeName;
-        $searcher->addCTE($cteName, new Cte(['document_id', 'sort_order'], $qb));
-
-        $searcher->getQueryBuilder()
-            ->innerJoin(
-                Searcher::CTE_MATCHES,
-                $cteName,
-                $cteName,
-                sprintf(
-                    '%s.document_id = %s.document_id',
-                    $cteName,
-                    Searcher::CTE_MATCHES
-                )
-            );
-
-        $searcher->getQueryBuilder()->addOrderBy($cteName . '.sort_order', $this->direction->getSQL());
+        $this->addAndOrderByCte($searcher, $engine, $this->direction, $cteName, $qb);
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self

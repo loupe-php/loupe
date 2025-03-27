@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Search\FilterBuilder;
 
 use Doctrine\DBAL\Query\QueryBuilder;
-use Location\Bounds;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
-use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Ast\Group;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
@@ -17,7 +15,6 @@ use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Searcher;
-use Loupe\Loupe\Internal\Search\Sorting\Aggregate;
 
 class FilterBuilder
 {
@@ -36,45 +33,51 @@ class FilterBuilder
 
         $this->handleFilterAstNode($this->searcher->getFilterAst()->getRoot(), $froms);
 
-        return implode(' ', $froms);
+        $from = implode(' ', $froms);
+
+        if ($from === '') {
+            return $from;
+        }
+
+        return '(' . $from . ')';
     }
 
-    /**
-     * @return array<string|float>
-     */
-    private function createGeoBoundingBoxWhereStatement(string $documentAlias, GeoBoundingBox|GeoDistance $node, Bounds $bounds): array
+    private function addCTEForNode(Node $node, QueryBuilder $qb, array $additionalAliases = []): string
     {
-        $whereStatement = [];
+        $columnAliases = array_merge(['document_id', 'document'], $additionalAliases); // always must start with document_id and document
+        $cteName = 'filtered_node_' . $this->searcher->getFilterAst()->getIdForNode($node);
+        $this->searcher->addCTE($cteName, new Cte($columnAliases, $qb));
 
-        // Prevent nullable
-        $nullTerm = $this->globalQueryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL);
-        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-        $whereStatement[] = '!=';
-        $whereStatement[] = $nullTerm;
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-        $whereStatement[] = '!=';
-        $whereStatement[] = $nullTerm;
+        return $cteName;
+    }
 
-        $whereStatement[] = 'AND';
+    private function addCTEForSingleAttribute(Node $node, string $where): string
+    {
+        $qb = $this->engine->getConnection()->createQueryBuilder()
+            ->select(
+                sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
+                sprintf('%s.document AS document', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
+            )
+            ->from(
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+            )
+            ->where($where);
 
-        // Longitude
-        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lng';
-        $whereStatement[] = 'BETWEEN';
-        $whereStatement[] = $bounds->getWest();
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $bounds->getEast();
+        return $this->addCTEForNode($node, $qb);
+    }
 
-        $whereStatement[] = 'AND';
-
-        // Latitude
-        $whereStatement[] = $documentAlias . '.' . $node->attributeName . '_geo_lat';
-        $whereStatement[] = 'BETWEEN';
-        $whereStatement[] = $bounds->getSouth();
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $bounds->getNorth();
-
-        return $whereStatement;
+    private function createQueryBuilderForSingleAttribute(): QueryBuilder
+    {
+        return $this->engine->getConnection()->createQueryBuilder()
+            ->select(
+                sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
+                sprintf('%s.document AS document', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
+            )
+            ->from(
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+            );
     }
 
     /**
@@ -91,7 +94,7 @@ class FilterBuilder
             }
 
             if ($groupFroms !== []) {
-                $froms[] = '(';
+                $froms[] = 'SELECT document_id, document FROM (';
                 $froms[] = implode(' ', $groupFroms);
                 $froms[] = ')';
             }
@@ -105,7 +108,7 @@ class FilterBuilder
                 $froms[] = $operator->isNegative() ? '1 = 1' : '1 = 0';
             } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $qb = $this->engine->getConnection()->createQueryBuilder();
-                $qb->select('d.id AS document_id', 'd.document', 'ma.attribute', 'ma.numeric_value');// TODO
+                $qb->select('d.id AS document_id', 'd.document', 'ma.attribute', 'ma.numeric_value'); // TODO
                 $qb->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS));
                 $qb->innerJoin(
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
@@ -119,16 +122,16 @@ class FilterBuilder
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                     )
                 )
-                ->innerJoin(
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                    IndexInfo::TABLE_NAME_DOCUMENTS,
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    sprintf(
-                        '%s.id = %s.document',
-                        $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    ->innerJoin(
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                    )
-                );
+                        IndexInfo::TABLE_NAME_DOCUMENTS,
+                        $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                        sprintf(
+                            '%s.id = %s.document',
+                            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                        )
+                    );
 
                 $isFloatType = LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($node->value));
 
@@ -141,12 +144,8 @@ class FilterBuilder
 
                 $qb->andWhere($sql);
 
-                $cteName = $this->addCTEForNode($node, $qb, ['attribute', 'numeric_value']); // TODO
-                $froms[] = 'SELECT * FROM ' . $cteName;
-/*
-                $whereStatement[] = sprintf($documentAlias . '.id %s (', $operator->isNegative() ? 'NOT IN' : 'IN');
-                $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
-                $whereStatement[] = ')';*/
+                $cteName = $this->addCTEForNode($node, $qb, ['attribute', 'numeric_value']);
+                $froms[] = 'SELECT document_id, document FROM ' . $cteName;
             } else {
                 // Single attribute
                 $attribute = $node->attribute;
@@ -155,28 +154,12 @@ class FilterBuilder
                     $attribute = 'user_id';
                 }
 
-                $qb = $this->engine->getConnection()->createQueryBuilder();
-                $qb->select('id AS document_id', 'document');
-                $qb->from('documents'); // TODO
-                $qb->where($operator->buildSql(
+                $cteName = $this->addCTEForSingleAttribute($node, $operator->buildSql(
                     $this->engine->getConnection(),
                     $documentAlias . '.' . $attribute,
                     $node->value
                 ));
-
-                $cteName = $this->addCTEForNode($node, $qb);
-                $froms[] = 'SELECT * FROM ' . $cteName;
-
-                /*
-                                SELECT id AS document_id, document
-                  FROM documents
-                  WHERE age > 42
-
-                                $whereStatement[] = $operator->buildSql(
-                                    $this->engine->getConnection(),
-                                    $documentAlias . '.' . $attribute,
-                                    $node->value
-                                );*/
+                $froms[] = 'SELECT document_id, document FROM ' . $cteName; // TODO: move in method as well?
             }
         }
 
@@ -187,33 +170,41 @@ class FilterBuilder
                 return;
             }
 
-            // Add the distance to the select query, so it's also part of the result
-            $distanceSelectAlias = $this->searcher->addGeoDistanceSelectToQueryBuilder($node->attributeName, $node->lat, $node->lng);
+            // Add the distance CTE
+            $distanceCte = $this->searcher->addGeoDistanceCte(
+                $node->attributeName,
+                $node->lat,
+                $node->lng,
+                $node->getBbox()
+            );
 
-            // Start a group
-            $froms[] = '(';
+            $qb = $this->createQueryBuilderForSingleAttribute();
+            $qb->innerJoin(
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                $distanceCte,
+                $distanceCte,
+                sprintf(
+                    '%s.document_id = %s.id',
+                    $distanceCte,
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                )
+            );
 
-            // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
-            // the actual distance is compared. This can use indexes.
-            // We use floor() and ceil() respectively to ensure we get matches as the BearingSpherical calculation of the
-            // BBOX may not be as precise so when searching for the e.g. 3rd decimal floating point, we might exclude
-            // locations we shouldn't.
-            $bounds = $node->getBbox();
-
-            $froms = [...$froms, ...$this->createGeoBoundingBoxWhereStatement($documentAlias, $node, $bounds)];
+            $where = [];
 
             // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
             // but not within the radius (which is a circle).
-            $froms[] = 'AND';
-            $froms[] = $distanceSelectAlias;
-            $froms[] = '<=';
-            $froms[] = $node->distance;
+            $where[] = $distanceCte . '.distance';
+            $where[] = '<=';
+            $where[] = $node->distance;
 
-            // End group
-            $froms[] = ')';
+            $qb->andWhere(implode(' ', $where));
+
+            $cteName = $this->addCTEForNode($node, $qb);
+            $froms[] = 'SELECT document_id, document FROM ' . $cteName;
         }
 
-        if ($node instanceof GeoBoundingBox) {
+        if ($node instanceof GeoBoundigBox) {
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 $froms[] = '1 = 0';
@@ -235,14 +226,5 @@ class FilterBuilder
         if ($node instanceof Concatenator) {
             $froms[] = $node->getSetOperator();
         }
-    }
-
-    private function addCTEForNode(Node $node, QueryBuilder $qb, array $additionalAliases = []): string
-    {
-        $columnAliases = array_merge(['document_id', 'document'], $additionalAliases); // always must start with document_id and document
-        $cteName = 'filtered_node_' . $this->searcher->getFilterAst()->getIdForNode($node);
-        $this->searcher->addCTE($cteName, new Cte($columnAliases, $qb));
-
-        return $cteName;
     }
 }

@@ -6,12 +6,15 @@ namespace Loupe\Loupe\Internal\Search;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
-use Doctrine\DBAL\Query\UnionType;
 use Doctrine\DBAL\Result;
+use Location\Bounds;
+use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
+use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
@@ -47,11 +50,6 @@ class Searcher
 
     private FilterBuilder $filterBuilder;
 
-    /**
-     * @var array<string, bool>
-     */
-    private array $geoDistanceSelectsAdded = [];
-
     private QueryBuilder $queryBuilder;
 
     private Sorting $sorting;
@@ -74,31 +72,60 @@ class Searcher
         $this->CTEs[$cteName] = $cte;
     }
 
-    public function addGeoDistanceSelectToQueryBuilder(string $attribute, float $latitude, float $longitude): string
+    public function addGeoDistanceCte(string $attribute, float $latitude, float $longitude, ?Bounds $bounds = null): string
     {
-        $alias = self::DISTANCE_ALIAS . '_' . $attribute;
+        $cteName = self::DISTANCE_ALIAS . '_' . $attribute;
 
-        // Do not add multiple times for performance reasons
-        if (isset($this->geoDistanceSelectsAdded[$alias])) {
-            return $alias;
+        if ($this->hasCTE($cteName)) {
+            return $cteName;
         }
 
-        $documentAlias = $this->engine->getIndexInfo()
-            ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $documentAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $qb = $this->engine->getConnection()->createQueryBuilder()
+            ->select($documentAlias . '.id AS document_id')
+            ->addSelect(
+                sprintf(
+                    'loupe_geo_distance(%f, %f, %s, %s) AS distance',
+                    $latitude,
+                    $longitude,
+                    $documentAlias . '.' . $attribute . '_geo_lat',
+                    $documentAlias . '.' . $attribute . '_geo_lng',
+                )
+            )
+            ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentAlias)
+        ;
 
-        // Add the distance to the select query, so it's also part of the result
-        $this->getQueryBuilder()->addSelect(sprintf(
-            'loupe_geo_distance(%f, %f, %s, %s) AS %s',
-            $latitude,
-            $longitude,
-            $documentAlias . '.' . $attribute . '_geo_lat',
-            $documentAlias . '.' . $attribute . '_geo_lng',
-            self::DISTANCE_ALIAS . '_' . $attribute
-        ));
+        $whereStatement = [];
 
-        $this->geoDistanceSelectsAdded[$alias] = true;
+        // Prevent nullable
+        $nullTerm = $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL);
+        $whereStatement[] = $documentAlias . '.' . $attribute . '_geo_lat';
+        $whereStatement[] = '!=';
+        $whereStatement[] = $nullTerm;
+        $whereStatement[] = 'AND';
+        $whereStatement[] = $documentAlias . '.' . $attribute . '_geo_lng';
+        $whereStatement[] = '!=';
+        $whereStatement[] = $nullTerm;
 
-        return $alias;
+        if ($bounds !== null) {
+            $whereStatement[] = 'AND';
+
+            // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
+            // the actual distance is compared. This can use indexes.
+            // We use floor() and ceil() respectively to ensure we get matches as the BearingSpherical calculation of the
+            // BBOX may not be as precise so when searching for the e.g. 3rd decimal floating point, we might exclude
+            // locations we shouldn't.
+            $whereStatement = array_merge($whereStatement, $this->createGeoBoundingBoxWhereStatement($attribute, $bounds));
+        }
+
+        $qb
+            ->andWhere(implode(' ', $whereStatement))
+            ->groupBy($documentAlias . '.id')
+        ;
+
+        $this->addCTE($cteName, new Cte(['document_id', 'distance'], $qb));
+
+        return $cteName;
     }
 
     public function fetchResult(): SearchResult
@@ -114,6 +141,7 @@ class Searcher
         $this->filterDocuments($tokens); // Then filter the documents (requires the search term CTEs)
         $this->selectTotalHits();
         $this->sortDocuments();
+        $this->selectDistance();
         $this->limitPagination();
 
         $showAllAttributes = \in_array('*', $this->searchParameters->getAttributesToRetrieve(), true);
@@ -130,8 +158,9 @@ class Searcher
                 }
             }
 
+            // TODO: WHAT IS THIS?
             if (\array_key_exists(self::DISTANCE_ALIAS, $result)) {
-                $document['_geoDistance'] = (int) round($result[self::DISTANCE_ALIAS]);
+                // $document['_geoDistance'] = (int) round($result[self::DISTANCE_ALIAS]);
             }
 
             $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
@@ -354,7 +383,20 @@ class Searcher
 
     private function buildTokenFrom(TokenCollection $tokenCollection): string
     {
-        return ''; // TODO
+        if ($tokenCollection->empty()) {
+            return '';
+        }
+
+        $qb = $this->engine->getConnection()->createQueryBuilder()
+            ->select(
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id AS document_id',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document AS document'
+            )
+            ->from(
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+            );
+
         $positiveConditions = [];
         $negativeConditions = [];
 
@@ -379,7 +421,7 @@ class Searcher
         ));
 
         if ($where !== '') {
-            $queryBuilder->andWhere('(' . $where . ')');
+            $qb->andWhere('(' . $where . ')');
         }
 
         $whereNot = implode(' AND ', array_map(
@@ -388,8 +430,10 @@ class Searcher
         ));
 
         if ($whereNot !== '') {
-            $queryBuilder->andWhere('(' . $whereNot . ')');
+            $qb->andWhere('(' . $whereNot . ')');
         }
+
+        return '(' . $qb->getSQL() . ')';
     }
 
     private function createAnalyzedQuery(TokenCollection $tokens): string
@@ -407,6 +451,33 @@ class Searcher
         }
 
         return $query;
+    }
+
+    /**
+     * @return array<string|float>
+     */
+    private function createGeoBoundingBoxWhereStatement(string $attributeName, Bounds $bounds): array
+    {
+        $documentAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $whereStatement = [];
+
+        // Longitude
+        $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lng';
+        $whereStatement[] = 'BETWEEN';
+        $whereStatement[] = $bounds->getWest();
+        $whereStatement[] = 'AND';
+        $whereStatement[] = $bounds->getEast();
+
+        $whereStatement[] = 'AND';
+
+        // Latitude
+        $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lat';
+        $whereStatement[] = 'BETWEEN';
+        $whereStatement[] = $bounds->getSouth();
+        $whereStatement[] = 'AND';
+        $whereStatement[] = $bounds->getNorth();
+
+        return $whereStatement;
     }
 
     /**
@@ -583,35 +654,34 @@ class Searcher
         $qbMatches->select('document_id', 'document');
 
         // User filters
-        $qbFilters = $this->engine->getConnection()->createQueryBuilder();
-        $qbFilters->select('*');
-        $from = $this->filterBuilder->buildFrom();
-
-        if ('' !== $from) {
-            $froms[] = $from;
-        }
+        $froms[] = $this->filterBuilder->buildFrom();
 
         // User query
-        $from = $this->buildTokenFrom($tokenCollection);
+        $froms[] = $this->buildTokenFrom($tokenCollection);
 
-        if ('' !== $from) {
-            $froms[] = $from;
+        // Drop empty froms
+        $froms = array_values(array_filter($froms));
+
+        // Not filtered by either filters or user query, fetch everything
+        if ($froms === []) {
+            $froms[] = sprintf(
+                '(SELECT %s.id AS document_id, %s.document AS document FROM %s %s)',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+            );
         }
 
-        if ([] === $froms) {
-            $froms[] = 'SELECT document_id, document FROM documents'; // TODO;
-            throw new \LogicException('fixme');
-        }
-
-        if (1 === count($froms)) {
+        if (\count($froms) === 1) {
             $qbMatches->from($froms[0]);
-        } else {
-            /*foreach ($froms as $from) {
-                $qbMatches->union($from);
-            }*/
         }
+        /*foreach ($froms as $from) {
+            $qbMatches->union($from);
+        }*/
 
-       // $qb->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id');
+
+        // $qb->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id');
 
         $this->addCTE(self::CTE_MATCHES, new Cte(['document_id', 'document'], $qbMatches));
     }
@@ -733,6 +803,33 @@ class Searcher
     {
         $this->addTermMatchesCTEs($tokenCollection);
         $this->addTermDocumentMatchesCTEs($tokenCollection);
+    }
+
+    private function selectDistance(): void
+    {
+        foreach ($this->searchParameters->getAttributesToRetrieve() as $attribute) {
+            if (str_starts_with($attribute, '_geoDistance(')) {
+                $attribute = (string) preg_replace('/^_geoDistance\((' . Configuration::ATTRIBUTE_NAME_RGXP . ')\)$/', '$1', $attribute);
+                $cteName = self::DISTANCE_ALIAS . '_' . $attribute;
+
+                if (!$this->hasCTE($cteName)) {
+                    continue;
+                }
+
+                $this->queryBuilder->addSelect($cteName . '.distance AS ' . self::DISTANCE_ALIAS . '_' . $attribute);
+                $this->queryBuilder
+                    ->innerJoin(
+                        self::CTE_MATCHES,
+                        $cteName,
+                        $cteName,
+                        sprintf(
+                            '%s.document_id = %s.document_id',
+                            $cteName,
+                            self::CTE_MATCHES
+                        )
+                    );
+            }
+        }
     }
 
     private function selectDocuments(): void
