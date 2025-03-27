@@ -238,6 +238,12 @@ class FilterBuilder
         }
 
         if ($node instanceof GeoDistance) {
+            // Ignore if not in question
+            if ($this->multiAttributeName && $this->multiAttributeName !== $node->attributeName) {
+                $whereStatement[] = '1=1'; // TODO: this is wrong
+                return;
+            }
+
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 $whereStatement[] = '1 = 0';
@@ -271,6 +277,12 @@ class FilterBuilder
         }
 
         if ($node instanceof GeoBoundingBox) {
+            // Ignore if not in question
+            if ($this->multiAttributeName && $this->multiAttributeName !== $node->attributeName) {
+                $whereStatement[] = '1=1'; // TODO: this is wrong
+                return;
+            }
+
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 $whereStatement[] = '1 = 0';
