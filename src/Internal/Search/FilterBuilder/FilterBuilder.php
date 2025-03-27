@@ -201,6 +201,7 @@ class FilterBuilder
         if ($node instanceof Filter) {
             // Ignore if not in question
             if ($this->multiAttributeName && $this->multiAttributeName !== $node->attribute) {
+                $whereStatement[] = '1=1'; // TODO: this is wrong
                 return;
             }
 
