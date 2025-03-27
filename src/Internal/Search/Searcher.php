@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Search;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
+use Doctrine\DBAL\Query\UnionType;
 use Doctrine\DBAL\Result;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
@@ -351,8 +352,9 @@ class Searcher
         }
     }
 
-    private function addTermsToFilter(TokenCollection $tokenCollection, QueryBuilder $queryBuilder): void
+    private function buildTokenFrom(TokenCollection $tokenCollection): string
     {
+        return ''; // TODO
         $positiveConditions = [];
         $negativeConditions = [];
 
@@ -576,27 +578,42 @@ class Searcher
 
     private function filterDocuments(TokenCollection $tokenCollection): void
     {
-        $qb = $this->engine->getConnection()->createQueryBuilder();
-        $qb
-            ->select(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id',
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document',
-            )
-            ->from(
-                IndexInfo::TABLE_NAME_DOCUMENTS,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
-            )
-        ;
+        $froms = [];
+        $qbMatches = $this->engine->getConnection()->createQueryBuilder();
+        $qbMatches->select('document_id', 'document');
 
-        // First, let's filter the documents themselves
-        $this->filterBuilder->filter($qb);
+        // User filters
+        $qbFilters = $this->engine->getConnection()->createQueryBuilder();
+        $qbFilters->select('*');
+        $from = $this->filterBuilder->buildFrom();
 
-        // Now apply the terms filters
-        $this->addTermsToFilter($tokenCollection, $qb);
+        if ('' !== $from) {
+            $froms[] = $from;
+        }
 
-        $qb->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id');
+        // User query
+        $from = $this->buildTokenFrom($tokenCollection);
 
-        $this->addCTE(self::CTE_MATCHES, new Cte(['document_id', 'document'], $qb));
+        if ('' !== $from) {
+            $froms[] = $from;
+        }
+
+        if ([] === $froms) {
+            $froms[] = 'SELECT document_id, document FROM documents'; // TODO;
+            throw new \LogicException('fixme');
+        }
+
+        if (1 === count($froms)) {
+            $qbMatches->from($froms[0]);
+        } else {
+            /*foreach ($froms as $from) {
+                $qbMatches->union($from);
+            }*/
+        }
+
+       // $qb->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id');
+
+        $this->addCTE(self::CTE_MATCHES, new Cte(['document_id', 'document'], $qbMatches));
     }
 
     /**
