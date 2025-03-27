@@ -1223,6 +1223,17 @@ class SearchTest extends TestCase
                 ],
             ],
         ];
+
+        yield 'Test aggregate with combined filters' => [
+            'max(dates):desc',
+            '(dates BETWEEN 2 AND 6 OR ratings BETWEEN 2 AND 6) AND price > 25',
+            [
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
     }
 
     public static function sortWithNullAndNonExistingValueProvider(): \Generator
@@ -2944,7 +2955,7 @@ class SearchTest extends TestCase
         $configuration = Configuration::create();
 
         $configuration = $configuration
-            ->withFilterableAttributes(['dates', 'ratings'])
+            ->withFilterableAttributes(['dates', 'ratings', 'price'])
             ->withSortableAttributes(['dates', 'ratings'])
         ;
 
@@ -2956,18 +2967,21 @@ class SearchTest extends TestCase
                 'name' => 'Event A',
                 'dates' => [2, 3, 4, 5, 6],
                 'ratings' => [2, 3, 4, 5, 6],
+                'price' => 20,
             ],
             [
                 'id' => 2,
                 'name' => 'Event B',
                 'dates' => [1, 3, 4, 5],
                 'ratings' => [1, 3, 4, 5],
+                'price' => 30,
             ],
             [
                 'id' => 3,
                 'name' => 'Event C',
                 'dates' => [7, 8],
                 'ratings' => [7, 8],
+                'price' => 40,
             ],
         ]);
 
