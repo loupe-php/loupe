@@ -1166,7 +1166,7 @@ class SearchTest extends TestCase
 
         yield 'Test MIN aggregate with filters (ASC)' => [
             'min(dates):asc',
-            'dates >= 2 AND dates <= 6',
+            'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
                     'id' => 1,
@@ -1181,7 +1181,7 @@ class SearchTest extends TestCase
 
         yield 'Test MIN aggregate with filters (DESC)' => [
             'min(dates):desc',
-            'dates >= 2 AND dates <= 6',
+            'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
                     'id' => 2,
@@ -1196,7 +1196,22 @@ class SearchTest extends TestCase
 
         yield 'Test MAX aggregate with filters (ASC)' => [
             'max(dates):asc',
-            'dates >= 2 AND dates <= 6',
+            'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
+            [
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
+                ],
+            ],
+        ];
+
+        yield 'Test MAX aggregate with filters (DESC)' => [
+            'max(dates):desc',
+            'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
                     'id' => 2,
@@ -1209,14 +1224,10 @@ class SearchTest extends TestCase
             ],
         ];
 
-        yield 'Test MAX aggregate with filters (DESC)' => [
+        yield 'Test aggregate with combined filters' => [
             'max(dates):desc',
-            'dates >= 2 AND dates <= 6',
+            '(dates BETWEEN 2 AND 6 OR ratings BETWEEN 2 AND 6) AND price > 25',
             [
-                [
-                    'id' => 1,
-                    'name' => 'Event A',
-                ],
                 [
                     'id' => 2,
                     'name' => 'Event B',
@@ -2407,6 +2418,32 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testQueryCombinedWithFilter(): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Aelxander')
+            ->withFilter("colors IN ('Blue')")
+            ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [[
+                'id' => 3,
+                'firstname' => 'Alexander',
+                'lastname' => 'Abendroth',
+            ],
+            ],
+            'query' => 'Aelxander',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testRankingWithLotsOfMatches(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
@@ -2975,8 +3012,8 @@ class SearchTest extends TestCase
         $configuration = Configuration::create();
 
         $configuration = $configuration
-            ->withFilterableAttributes(['dates'])
-            ->withSortableAttributes(['dates'])
+            ->withFilterableAttributes(['dates', 'ratings', 'price'])
+            ->withSortableAttributes(['dates', 'ratings'])
         ;
 
         $loupe = $this->createLoupe($configuration);
@@ -2986,16 +3023,22 @@ class SearchTest extends TestCase
                 'id' => 1,
                 'name' => 'Event A',
                 'dates' => [2, 3, 4, 5, 6],
+                'ratings' => [2, 3, 4, 5, 6],
+                'price' => 20,
             ],
             [
                 'id' => 2,
                 'name' => 'Event B',
                 'dates' => [1, 3, 4, 5],
+                'ratings' => [1, 3, 4, 5],
+                'price' => 30,
             ],
             [
                 'id' => 3,
                 'name' => 'Event C',
                 'dates' => [7, 8],
+                'ratings' => [7, 8],
+                'price' => 40,
             ],
         ]);
 
@@ -3404,7 +3447,7 @@ class SearchTest extends TestCase
         ];
     }
 
-    private function setupLoupeWithDepartmentsFixture(Configuration $configuration = null): Loupe
+    private function setupLoupeWithDepartmentsFixture(Configuration $configuration = null, string $dataDir = ''): Loupe
     {
         if ($configuration === null) {
             $configuration = Configuration::create();
@@ -3416,7 +3459,7 @@ class SearchTest extends TestCase
             ->withSearchableAttributes(['firstname', 'lastname'])
         ;
 
-        $loupe = $this->createLoupe($configuration);
+        $loupe = $this->createLoupe($configuration, $dataDir);
         $this->indexFixture($loupe, 'departments');
 
         return $loupe;

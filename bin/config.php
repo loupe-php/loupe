@@ -19,6 +19,8 @@ if (!file_exists($movies)) {
 // fast search results, do not index irrelevant stuff.
 $configuration = Configuration::create()
     ->withSearchableAttributes(['title', 'overview'])
+    ->withFilterableAttributes(['release_date', 'genres'])
+    ->withSortableAttributes(['release_date'])
     ->withLanguages(['en'])
 ;
 
