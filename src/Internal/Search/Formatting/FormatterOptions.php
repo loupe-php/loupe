@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Internal\Search\Formatter;
+namespace Loupe\Loupe\Internal\Search\Formatting;
 
 use Loupe\Loupe\SearchParameters;
 
@@ -56,32 +56,16 @@ class FormatterOptions
 
     public function requiresFormatting(): bool
     {
-        return \count($this->getAttributesToCrop()) > 0 || \count($this->getAttributesToHighlight()) > 0;
+        return \count($this->attributesToCrop) > 0 || \count($this->attributesToHighlight) > 0;
     }
 
     public function shouldCropAttribute(string $attribute): bool
     {
-        return \in_array($attribute, $this->getAttributesToCrop(), true);
+        return \in_array($attribute, $this->attributesToCrop, true);
     }
 
     public function shouldHighlightAttribute(string $attribute): bool
     {
-        return \in_array($attribute, $this->getAttributesToHighlight(), true);
-    }
-
-    /**
-     * @return array<string>
-     */
-    private function getAttributesToCrop(): array
-    {
-        return $this->attributesToCrop;
-    }
-
-    /**
-     * @return array<string>
-     */
-    private function getAttributesToHighlight(): array
-    {
-        return $this->attributesToHighlight;
+        return \in_array($attribute, $this->attributesToHighlight, true);
     }
 }

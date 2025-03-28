@@ -12,7 +12,7 @@ use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
-use Loupe\Loupe\Internal\Search\Formatter\FormatterOptions;
+use Loupe\Loupe\Internal\Search\Formatting\FormatterOptions;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
@@ -587,24 +587,24 @@ class Searcher
                 continue;
             }
 
-            if (\is_array($hit[$attribute])) {
-                foreach ($hit[$attribute] as $key => $rawValue) {
+            if (\is_array($formatted[$attribute])) {
+                foreach ($formatted[$attribute] as $key => $value) {
                     $formatterResult = $this->engine->getFormatter()
-                        ->format($attribute, $rawValue, $tokens, $options);
+                        ->format($attribute, (string) $value, $tokens, $options);
 
                     if ($showMatchesPosition && \count($formatterResult->getMatches()) > 0) {
+                        $matchesPosition[$attribute] ??= [];
                         $matchesPosition[$attribute][$key] = $formatterResult->getMatches();
                     }
 
                     if ($requiresFormatting) {
-                        $formatted[$attribute] ??= [];
                         $formatted[$attribute][$key] = $formatterResult->getFormattedText();
                     }
                 }
             } else {
-                $rawValue = (string) $hit[$attribute];
+                $value = $formatted[$attribute];
                 $formatterResult = $this->engine->getFormatter()
-                    ->format($attribute, $rawValue, $tokens, $options);
+                    ->format($attribute, (string) $value, $tokens, $options);
 
                 if ($showMatchesPosition && \count($formatterResult->getMatches()) > 0) {
                     $matchesPosition[$attribute] = $formatterResult->getMatches();

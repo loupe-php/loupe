@@ -12,7 +12,7 @@ use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
-use Loupe\Loupe\Internal\Search\Formatter\Formatter;
+use Loupe\Loupe\Internal\Search\Formatting\Formatter;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
