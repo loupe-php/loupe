@@ -12,10 +12,12 @@ class Highlighter implements AbstractTransformer
     }
 
     /**
-     * Highlight the matches in the text.
+     * Transform the text and matches according to the transformer's rules.
+     * Each transformer may modify both the text and the matched spans.
+     * The spans should be adjusted if the text is modified in a way that affects match positions.
      *
-     * @param array{starts: array<int>, ends: array<int>} $spans
-     * @return array{0: string, 1: array{starts: array<int>, ends: array<int>}}
+     * @param array<array{start:int, end:int}> $spans
+     * @return array{0: string, 1: array<array{start:int, end:int}>}
      */
     public function transform(string $text, array $spans): array
     {
@@ -27,23 +29,21 @@ class Highlighter implements AbstractTransformer
         $endTag = $this->options->getHighlightEndTag();
 
         $result = '';
-        $pos = 0;
+        $previousEnd = 0;
 
-        foreach (mb_str_split($text, 1, 'UTF-8') as $pos => $char) {
-            if (\in_array($pos, $spans['starts'], true)) {
-                $result .= $startTag;
-            }
-            if (\in_array($pos, $spans['ends'], true)) {
-                $result .= $endTag;
-            }
-
-            $result .= $char;
-        }
-
-        // Match at the end of the $text
-        if (\in_array($pos + 1, $spans['ends'], true)) {
+        foreach ($spans as $span) {
+            // Insert start tag before span
+            $result .= mb_substr($text, $previousEnd, $span['start'] - $previousEnd, 'UTF-8');
+            $result .= $startTag;
+            // Insert span text
+            $result .= mb_substr($text, $span['start'], $span['end'] - $span['start'], 'UTF-8');
+            // Insert end tag after span
             $result .= $endTag;
+            $previousEnd = $span['end'];
         }
+
+        // Add remaining text after last span
+        $result .= mb_substr($text, $previousEnd, null, 'UTF-8');
 
         return [$result, $spans];
     }

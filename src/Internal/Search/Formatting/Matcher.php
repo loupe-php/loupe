@@ -47,31 +47,28 @@ class Matcher
 
     /**
      * @param array<array{start:int, length:int, stopword:bool}> $matches
-     * @return array{starts: array<int>, ends: array<int>}
+     * @return array<array{start:int, end:int}>
      */
     public function mergeMatchesIntoSpans(array $matches): array
     {
-        $spans = [
-            'starts' => [],
-            'ends' => [],
-        ];
-
-        $previousEnd = null;
-
         $matches = $this->removeStopWordMatches($matches);
+
+        $spans = [];
+        $previousEnd = null;
 
         foreach ($matches as $match) {
             $end = $match['start'] + $match['length'];
 
             // Merge matches that are exactly after one another
             if ($previousEnd === $match['start'] - 1) {
-                $highestEnd = max($spans['ends']);
-                unset($spans['ends'][array_search($highestEnd, $spans['ends'], true)]);
+                $spans[count($spans) - 1]['end'] = $end;
             } else {
-                $spans['starts'][] = $match['start'];
+                $spans[] = [
+                    'start' => $match['start'],
+                    'end' => $end
+                ];
             }
 
-            $spans['ends'][] = $end;
             $previousEnd = $end;
         }
 
