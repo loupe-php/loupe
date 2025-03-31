@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Internal\Search\Highlighter;
+namespace Loupe\Loupe\Internal\Search\Formatting;
 
-class HighlightResult
+class FormatterResult
 {
     /**
      * @param array<int, array{start: int, length: int, stopword: bool}> $matches
      */
     public function __construct(
-        private string $highlightedText,
+        private string $formattedText,
         private array $matches
     ) {
     }
 
-    public function getHighlightedText(): string
+    public function getFormattedText(): string
     {
-        return $this->highlightedText;
+        return $this->formattedText;
     }
 
     /**

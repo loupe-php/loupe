@@ -2,28 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Internal\Search\Highlighter;
+namespace Loupe\Loupe\Internal\Search\Formatting;
 
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
-class Highlighter
+class Matcher
 {
     public function __construct(
         private Engine $engine
     ) {
     }
 
-    public function highlight(
-        string $text,
-        TokenCollection $queryTokens,
-        string $startTag = '<em>',
-        string $endTag = '</em>',
-    ): HighlightResult {
+    /**
+     * @return array<int, array{start: int, length: int, stopword: bool}>
+     */
+    public function calculateMatches(string $text, TokenCollection $queryTokens): array
+    {
         if ($text === '') {
-            return new HighlightResult($text, []);
+            return [];
         }
 
         $matches = [];
@@ -31,7 +30,7 @@ class Highlighter
         $textTokens = $this->engine->getTokenizer()->tokenize($text);
 
         foreach ($textTokens->all() as $textToken) {
-            if ($this->matches($textToken, $queryTokens)) {
+            if ($this->isMatch($textToken, $queryTokens)) {
                 $matches[] = [
                     'start' => $textToken->getStartPosition(),
                     'length' => $textToken->getLength(),
@@ -40,86 +39,58 @@ class Highlighter
             }
         }
 
-        if ($matches === []) {
-            return new HighlightResult($text, []);
-        }
-
         // Sort matches by start
-        uasort($matches, function (array $a, array $b) {
-            return $a['start'] <=> $b['start'];
-        });
+        uasort($matches, fn (array $a, array $b) => $a['start'] <=> $b['start']);
 
-        $pos = 0;
-        $highlightedText = '';
-        $spans = $this->extractSpansFromMatches($matches);
-
-        foreach (mb_str_split($text, 1, 'UTF-8') as $pos => $char) {
-            if (\in_array($pos, $spans['starts'], true)) {
-                $highlightedText .= $startTag;
-            }
-            if (\in_array($pos, $spans['ends'], true)) {
-                $highlightedText .= $endTag;
-            }
-
-            $highlightedText .= $char;
-        }
-
-        // Match at the end of the $text
-        if (\in_array($pos + 1, $spans['ends'], true)) {
-            $highlightedText .= $endTag;
-        }
-
-        return new HighlightResult($highlightedText, $matches);
+        return $matches;
     }
 
     /**
      * @param array<array{start:int, length:int, stopword:bool}> $matches
-     * @return array{starts: array<int>, ends: array<int>}
+     * @return array<array{start:int, end:int}>
      */
-    private function extractSpansFromMatches(array $matches): array
+    public function mergeMatchesIntoSpans(array $matches): array
     {
-        $spans = [
-            'starts' => [],
-            'ends' => [],
-        ];
-        $lastEnd = null;
-
         $matches = $this->removeStopWordMatches($matches);
+
+        $spans = [];
+        $previousEnd = null;
 
         foreach ($matches as $match) {
             $end = $match['start'] + $match['length'];
 
             // Merge matches that are exactly after one another
-            if ($lastEnd === $match['start'] - 1) {
-                $highestEnd = max($spans['ends']);
-                unset($spans['ends'][array_search($highestEnd, $spans['ends'], true)]);
+            if ($previousEnd === $match['start'] - 1) {
+                $spans[count($spans) - 1]['end'] = $end;
             } else {
-                $spans['starts'][] = $match['start'];
+                $spans[] = [
+                    'start' => $match['start'],
+                    'end' => $end
+                ];
             }
 
-            $spans['ends'][] = $end;
-            $lastEnd = $end;
+            $previousEnd = $end;
         }
 
         return $spans;
     }
 
-    private function matches(Token $textToken, TokenCollection $queryTokens): bool
+    private function isMatch(Token $textToken, TokenCollection $queryTokens): bool
     {
         $configuration = $this->engine->getConfiguration();
         $firstCharTypoCountsDouble = $configuration->getTypoTolerance()->firstCharTypoCountsDouble();
 
         foreach ($queryTokens->all() as $queryToken) {
-            foreach ($queryToken->allTerms() as $term) {
-                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($term);
+            foreach ($queryToken->allTerms() as $queryTerm) {
+                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($queryTerm);
 
                 if ($levenshteinDistance === 0) {
-                    if (\in_array($term, $textToken->allTerms(), true)) {
+                    if (\in_array($queryTerm, $textToken->allTerms(), true)) {
                         return true;
                     }
                 } else {
                     foreach ($textToken->allTerms() as $textTerm) {
-                        if (Levenshtein::damerauLevenshtein($term, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                        if (Levenshtein::damerauLevenshtein($queryTerm, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
                             return true;
                         }
                     }
