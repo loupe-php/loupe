@@ -6,8 +6,8 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Doctrine\DBAL\Query\QueryBuilder;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Filter\Ast\FilterValue;
 use Loupe\Loupe\Internal\Filter\Ast\Operator;
-use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Searcher;
 
@@ -25,7 +25,7 @@ abstract class AbstractSorter
             return;
         }
 
-        $searcher->addCTE($cteName, new Cte(['document_id', 'sort_order'], $queryBuilder));
+        $searcher->addCTE(new Cte($cteName, ['document_id', 'sort_order'], $queryBuilder));
 
         $searcher->getQueryBuilder()
             ->innerJoin(
@@ -47,7 +47,7 @@ abstract class AbstractSorter
             Operator::Equals->buildSql(
                 $engine->getConnection(),
                 $alias,
-                LoupeTypes::VALUE_NULL
+                FilterValue::createNull()
             ),
             $direction->opposite()->getSQL()
         );
@@ -56,7 +56,7 @@ abstract class AbstractSorter
             Operator::Equals->buildSql(
                 $engine->getConnection(),
                 $alias,
-                LoupeTypes::VALUE_EMPTY
+                FilterValue::createEmpty()
             ),
             $direction->opposite()->getSQL()
         );

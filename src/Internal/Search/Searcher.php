@@ -43,7 +43,12 @@ class Searcher
     /**
      * @var array<string, Cte>
      */
-    private array $CTEs = [];
+    private array $ctesByName = [];
+
+    /**
+     * @var array<string, array<string, Cte>>
+     */
+    private array $ctesByTag = [];
 
     private FilterBuilder $filterBuilder;
 
@@ -78,8 +83,8 @@ class Searcher
 
         $unions = [];
 
-        foreach ($this->filterBuilder->getFilterCTEsForMultiAttribute($attribute) as $name) {
-            $unions[] = sprintf('SELECT document_id, attribute, numeric_value, string_value FROM %s', $name);
+        foreach ($this->getCtesByTag('attribute:' . $attribute) as $cte) {
+            $unions[] = sprintf('SELECT document_id, attribute, numeric_value, string_value FROM %s', $cte->getName());
         }
 
         if ($unions === []) {
@@ -90,14 +95,18 @@ class Searcher
         $qb->select('document_id', 'attribute', 'numeric_value', 'string_value');
         $qb->from('(' . implode(' UNION ALL ', $unions) . ')');
 
-        $this->addCTE($cteName, new Cte(['document_id', 'attribute', 'numeric_value', 'string_value'], $qb));
+        $this->addCTE(new Cte($cteName, ['document_id', 'attribute', 'numeric_value', 'string_value'], $qb));
 
         return $cteName;
     }
 
-    public function addCTE(string $cteName, Cte $cte): void
+    public function addCTE(Cte $cte): void
     {
-        $this->CTEs[$cteName] = $cte;
+        $this->ctesByName[$cte->getName()] = $cte;
+
+        foreach ($cte->getTags() as $tag) {
+            $this->ctesByTag[$tag][$cte->getName()] = $cte;
+        }
     }
 
     public function addGeoDistanceCte(string $attribute, float $latitude, float $longitude, ?Bounds $bounds = null): string
@@ -130,7 +139,7 @@ class Searcher
             ->groupBy($documentAlias . '.id')
         ;
 
-        $this->addCTE($cteName, new Cte(['document_id', 'distance'], $qb));
+        $this->addCTE(new Cte($cteName, ['document_id', 'distance'], $qb));
 
         return $cteName;
     }
@@ -194,7 +203,7 @@ class Searcher
 
     public function getCTE(string $name): ?Cte
     {
-        return $this->CTEs[$name] ?? null;
+        return $this->ctesByName[$name] ?? null;
     }
 
     public function getCTENameForToken(string $prefix, Token $token): string
@@ -206,9 +215,17 @@ class Searcher
     /**
      * @return array<string, Cte>
      */
-    public function getCTEs(): array
+    public function getCtesByName(): array
     {
-        return $this->CTEs;
+        return $this->ctesByName;
+    }
+
+    /**
+     * @return array<string, Cte>
+     */
+    public function getCtesByTag(string $tag): array
+    {
+        return $this->ctesByTag[$tag] ?? [];
     }
 
     public function getQueryBuilder(): QueryBuilder
@@ -251,7 +268,7 @@ class Searcher
 
     public function hasCTE(string $cteName): bool
     {
-        return isset($this->CTEs[$cteName]);
+        return isset($this->ctesByName[$cteName]);
     }
 
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
@@ -309,7 +326,8 @@ class Searcher
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
-        $this->addCTE($cteName, new Cte(
+        $this->addCTE(new Cte(
+            $cteName,
             ['document', 'term', 'attribute', 'position', 'typos'],
             $cteSelectQb
         ));
@@ -361,10 +379,7 @@ class Searcher
         }
 
         $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
-        $this->addCTE(
-            $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token),
-            new Cte(['id'], $cteSelectQb)
-        );
+        $this->addCTE(new Cte($this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token), ['id'], $cteSelectQb));
     }
 
     private function addTermMatchesCTEs(TokenCollection $tokenCollection): void
@@ -651,7 +666,7 @@ class Searcher
 
         $qbMatches->groupBy('document_id');
 
-        $this->addCTE(self::CTE_MATCHES, new Cte(['document_id', 'document'], $qbMatches));
+        $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id', 'document'], $qbMatches));
     }
 
     /**
@@ -743,9 +758,9 @@ class Searcher
     {
         $queryParts = [];
 
-        if ($this->CTEs !== []) {
+        if ($this->ctesByName !== []) {
             $queryParts[] = 'WITH';
-            foreach ($this->CTEs as $name => $cte) {
+            foreach ($this->ctesByName as $name => $cte) {
                 $queryParts[] = sprintf(
                     '%s (%s) AS (%s)',
                     $name,

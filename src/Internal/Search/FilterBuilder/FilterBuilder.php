@@ -21,9 +21,7 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 class FilterBuilder
 {
-    private const CTE_MULTI_ATTRIBUTE = 'fmnode';
-
-    private const CTE_REGULAR = 'fnode';
+    private const CTE_PREFIX = 'cte_fnode_';
 
     private QueryBuilder $globalQueryBuilder;
 
@@ -88,37 +86,21 @@ class FilterBuilder
     }
 
     /**
-     * @return array<string>
-     */
-    public function getFilterCTEsForMultiAttribute(string $attribute): array
-    {
-        $ctes = [];
-        foreach (array_keys($this->searcher->getCTEs()) as $name) {
-            if (str_starts_with($name, $this->getMultiAttributeCTEPrefix($attribute))) {
-                $ctes[] = $name;
-            }
-        }
-
-        return $ctes;
-    }
-
-    /**
      * @param array<string> $additionalAliases
      */
     private function addCTEForNode(Node $node, QueryBuilder $qb, array $additionalAliases = []): string
     {
-        if ($node instanceof Filter && \in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
-            $cteName = sprintf(
-                '%s%s',
-                $this->getMultiAttributeCTEPrefix($node->attribute),
-                $this->filterAst->getIdForNode($node)
-            );
+        $columnAliases = array_merge(['document_id', 'document'], $additionalAliases); // always must start with document_id and document
+        $tags = [];
+
+        if ($node instanceof Filter) {
+            $cteName = self::CTE_PREFIX . $node->getShortHash();
+            $tags[] = 'attribute:' . $node->attribute;
         } else {
-            $cteName = sprintf('%s_%s', self::CTE_REGULAR, $this->filterAst->getIdForNode($node));
+            $cteName = self::CTE_PREFIX . $this->filterAst->getIdForNode($node);
         }
 
-        $columnAliases = array_merge(['document_id', 'document'], $additionalAliases); // always must start with document_id and document
-        $this->searcher->addCTE($cteName, new Cte($columnAliases, $qb));
+        $this->searcher->addCTE(new Cte($cteName, $columnAliases, $qb, $tags));
 
         return $cteName;
     }
@@ -174,10 +156,8 @@ class FilterBuilder
             )
         ;
 
-        $isFloatType = LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($node->value));
-
         $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
-            ($isFloatType ? 'numeric_value' : 'string_value');
+            $node->value->getMultiAttributeColumn();
 
         $sql = $node->operator->isNegative() ?
             $node->operator->opposite()->buildSql($this->engine->getConnection(), $column, $node->value) :
@@ -186,11 +166,6 @@ class FilterBuilder
         $qb->andWhere($sql);
 
         return $qb->getSQL();
-    }
-
-    private function getMultiAttributeCTEPrefix(string $attribute): string
-    {
-        return sprintf('%s_%s_', self::CTE_MULTI_ATTRIBUTE, $attribute);
     }
 
     /**
@@ -258,10 +233,8 @@ class FilterBuilder
                         )
                     );
 
-                $isFloatType = LoupeTypes::isFloatType(LoupeTypes::getTypeFromValue($node->value));
-
                 $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
-                    ($isFloatType ? 'numeric_value' : 'string_value');
+                    $node->value->getMultiAttributeColumn();
 
                 // If the multi attribute operator is positive, we can inline the query, otherwise, we need a subquery
                 if ($node->operator->isPositive()) {

@@ -69,7 +69,7 @@ class Relevance extends AbstractSorter
                 )
                 ->groupBy(Searcher::CTE_MATCHES . '.document_id');
 
-            $searcher->addCTE($termRelevanceCTE, new Cte(['document_id', 'relevance_per_term'], $qb));
+            $searcher->addCTE(new Cte($termRelevanceCTE, ['document_id', 'relevance_per_term'], $qb));
 
             $ctes[] = $termRelevanceCTE;
             $relevances[] = $termRelevanceCTE . '.relevance_per_term';
@@ -91,7 +91,7 @@ class Relevance extends AbstractSorter
             $qb->leftJoin(Searcher::CTE_MATCHES, $cte, $cte, sprintf('%s.document_id = %s.document_id', $cte, Searcher::CTE_MATCHES));
         }
 
-        $searcher->addCTE(self::CTE_NAME, new Cte(['document_id', 'relevance_per_term'], $qb));
+        $searcher->addCTE(new Cte(self::CTE_NAME, ['document_id', 'relevance_per_term'], $qb));
 
         // Join the CTE
         $searcher->getQueryBuilder()->join(

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Filter\Ast;
 
 use Doctrine\DBAL\Connection;
-use Loupe\Loupe\Internal\LoupeTypes;
 
 enum Operator: string
 {
@@ -20,11 +19,10 @@ enum Operator: string
     case NotEquals = '!=';
     case NotIn = 'NOT IN';
 
-    /**
-     * @param float|string|bool|array<mixed> $value
-     */
-    public function buildSql(Connection $connection, string $attribute, float|string|bool|array $value): string
+    public function buildSql(Connection $connection, string $attribute, FilterValue $value): string
     {
+        $value = $value->getValue();
+
         if (\is_array($value)) {
             foreach ($value as &$v) {
                 $this->quote($connection, $v);
@@ -60,7 +58,7 @@ enum Operator: string
                 $this->value . ' ' .
                 $value .
                 ' AND ' .
-                self::NotEquals->buildSql($connection, $attribute, LoupeTypes::VALUE_NULL) .
+                self::NotEquals->buildSql($connection, $attribute, FilterValue::createNull()) .
                 ')',
             self::Between,
             self::NotBetween,
