@@ -218,5 +218,17 @@ $configuration = \Loupe\Loupe\Configuration::create()
 print_r($logger->getRecords());
 ```
 
+## Serializing and reconstructing configuration
+
+If you need to serialize the configuration of Loupe e.g. to allow configuration using a DSN, you can use the `toString()` and `fromString()` helpers accordingly:
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create();
+
+$serialized = $configuration->toString();
+$reconstructed = \Loupe\Loupe\Configuration::fromString($serialized);
+```
+
+Note that this does not work for instances such as the "logger".
 
 [Paper]: https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf
