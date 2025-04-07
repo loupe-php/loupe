@@ -29,9 +29,33 @@ class SingleAttribute extends AbstractSorter
             $attribute = 'user_id';
         }
 
-        $attribute = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute;
+        $qb = $engine->getConnection()->createQueryBuilder();
+        $qb
+            ->select(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id AS document_id',
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute . ' AS sort_order'
+            )
+            ->from(
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+            )
+            ->innerJoin(
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                Searcher::CTE_MATCHES,
+                Searcher::CTE_MATCHES,
+                sprintf(
+                    '%s.document_id = %s.id',
+                    Searcher::CTE_MATCHES,
+                    $engine->getIndexInfo()->getAliasForTable(
+                        IndexInfo::TABLE_NAME_DOCUMENTS
+                    )
+                )
+            )
+            ->groupBy('document_id');
 
-        $this->addOrderBy($searcher, $engine, $attribute, $this->direction);
+        $cteName = 'order_' . $this->attributeName;
+
+        $this->addAndOrderByCte($searcher, $engine, $this->direction, $cteName, $qb);
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self

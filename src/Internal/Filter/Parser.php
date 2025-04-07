@@ -10,6 +10,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
+use Loupe\Loupe\Internal\Filter\Ast\FilterValue;
 use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
 use Loupe\Loupe\Internal\Filter\Ast\GeoDistance;
 use Loupe\Loupe\Internal\Filter\Ast\Group;
@@ -244,7 +245,7 @@ class Parser
 
         $this->lexer->moveNext();
 
-        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $this->getTokenValueBasedOnType()));
+        $this->addNode(new Filter($attributeName, Operator::fromString($operator), new FilterValue($this->getTokenValueBasedOnType())));
     }
 
     private function handleBetween(string $attributeName, string $operator): void
@@ -259,7 +260,7 @@ class Parser
         $this->lexer->moveNext();
         $values[] = $this->getTokenValueBasedOnType();
 
-        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
+        $this->addNode(new Filter($attributeName, Operator::fromString($operator), new FilterValue($values)));
     }
 
     private function handleGeoBoundingBox(): void
@@ -363,28 +364,28 @@ class Parser
             $this->lexer->moveNext();
         }
 
-        $this->addNode(new Filter($attributeName, Operator::fromString($operator), $values));
+        $this->addNode(new Filter($attributeName, Operator::fromString($operator), new FilterValue($values)));
     }
 
     private function handleIs(mixed $attributeName): void
     {
         if ($this->lexer->lookahead?->type === Lexer::T_NULL) {
-            $this->addNode(new Filter($attributeName, Operator::Equals, LoupeTypes::VALUE_NULL));
+            $this->addNode(new Filter($attributeName, Operator::Equals, FilterValue::createNull()));
             return;
         }
 
         if ($this->lexer->lookahead?->type === Lexer::T_EMPTY) {
-            $this->addNode(new Filter($attributeName, Operator::Equals, LoupeTypes::VALUE_EMPTY));
+            $this->addNode(new Filter($attributeName, Operator::Equals, FilterValue::createEmpty()));
             return;
         }
 
         if ($this->lexer->lookahead?->type === Lexer::T_NOT && $this->lexer->glimpse()?->type === Lexer::T_NULL) {
-            $this->addNode(new Filter($attributeName, Operator::NotEquals, LoupeTypes::VALUE_NULL));
+            $this->addNode(new Filter($attributeName, Operator::NotEquals, FilterValue::createNull()));
             return;
         }
 
         if ($this->lexer->lookahead?->type === Lexer::T_NOT && $this->lexer->glimpse()?->type === Lexer::T_EMPTY) {
-            $this->addNode(new Filter($attributeName, Operator::NotEquals, LoupeTypes::VALUE_EMPTY));
+            $this->addNode(new Filter($attributeName, Operator::NotEquals, FilterValue::createEmpty()));
             return;
         }
 

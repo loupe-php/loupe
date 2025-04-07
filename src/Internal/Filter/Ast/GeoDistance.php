@@ -8,7 +8,7 @@ use Location\Bearing\BearingSpherical;
 use Location\Bounds;
 use Location\Coordinate;
 
-class GeoDistance extends Node
+class GeoDistance extends Node implements AttributeFilterInterface
 {
     public function __construct(
         public string $attributeName,
@@ -16,6 +16,11 @@ class GeoDistance extends Node
         public float $lng,
         public float $distance
     ) {
+    }
+
+    public function getAttribute(): string
+    {
+        return $this->attributeName;
     }
 
     /**
@@ -79,6 +84,11 @@ class GeoDistance extends Node
             new Coordinate($north->getLat(), $west->getLng()),
             new Coordinate($south->getLat(), $east->getLng()),
         );
+    }
+
+    public function getShortHash(): string
+    {
+        return substr(hash('sha256', (string) json_encode($this->toArray())), 0, 8);
     }
 
     public function toArray(): array
