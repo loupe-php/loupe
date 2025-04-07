@@ -38,6 +38,14 @@ class FilterBuilder
     {
         $froms = [];
 
+        /**
+         * TODO: This could be optimized.
+         * Right now, the filter "multi_attribute = 'foo' AND single_attribute >= 42" is converted to
+         * "<cte_1> INTERSECT <cte_2>" for simplicity. It has to remain like this when there are different multi
+         * attributes in the same filter group or the query is an disjunctive query (OR/UNION). However, in the example above
+         * (1 multi attribute, or only single attributes and conjunctive (AND)), the CTE could be inlined to one CTE
+         * only which should speed up the filtering.
+         */
         $this->handleFilterAstNode($this->filterAst->getRoot(), $froms);
 
         return implode(' ', $froms);
