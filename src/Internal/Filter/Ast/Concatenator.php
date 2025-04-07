@@ -34,6 +34,11 @@ class Concatenator extends Node
         };
     }
 
+    public function isConjunctive(): bool
+    {
+        return $this->concatenator === 'AND';
+    }
+
     public function toArray(): array
     {
         return [$this->getConcatenator()];

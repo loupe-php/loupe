@@ -8,6 +8,7 @@ use Doctrine\DBAL\Query\QueryBuilder;
 use Location\Bounds;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
+use Loupe\Loupe\Internal\Filter\Ast\AttributeFilterInterface;
 use Loupe\Loupe\Internal\Filter\Ast\Concatenator;
 use Loupe\Loupe\Internal\Filter\Ast\Filter;
 use Loupe\Loupe\Internal\Filter\Ast\GeoBoundingBox;
@@ -93,9 +94,9 @@ class FilterBuilder
         $columnAliases = array_merge(['document_id', 'document'], $additionalAliases); // always must start with document_id and document
         $tags = [];
 
-        if ($node instanceof Filter) {
+        if ($node instanceof AttributeFilterInterface) {
             $cteName = self::CTE_PREFIX . $node->getShortHash();
-            $tags[] = 'attribute:' . $node->attribute;
+            $tags[] = 'attribute:' . $node->getAttribute();
         } else {
             $cteName = self::CTE_PREFIX . $this->filterAst->getIdForNode($node);
         }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Filter\Ast;
 
-class Filter extends Node
+class Filter extends Node implements AttributeFilterInterface
 {
     public function __construct(
         public string $attribute,
@@ -13,9 +13,14 @@ class Filter extends Node
     ) {
     }
 
+    public function getAttribute(): string
+    {
+        return $this->attribute;
+    }
+
     public function getShortHash(): string
     {
-        return substr(hash('sha256', json_encode($this->toArray())), 0, 8);
+        return substr(hash('sha256', (string) json_encode($this->toArray())), 0, 8);
     }
 
     public function toArray(): array

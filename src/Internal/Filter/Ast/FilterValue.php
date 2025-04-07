@@ -9,15 +9,15 @@ use Loupe\Loupe\Internal\LoupeTypes;
 class FilterValue
 {
     /**
-     * @param float|string|bool|array<string|int> $value
+     * @param float|string|bool|array<int, string|float|bool> $value
      */
     public function __construct(
         private float|string|bool|array $value
     ) {
         if (\is_array($this->value)) {
             foreach ($this->value as $value) {
-                if (!\is_string($value) && !\is_float($value)) {
-                    throw new \InvalidArgumentException('Array values must be either of type string or float');
+                if (!\is_string($value) && !\is_float($value) && !\is_bool($value)) {
+                    throw new \InvalidArgumentException('Array values must be either of type string, float or boolean');
                 }
             }
 
@@ -41,7 +41,7 @@ class FilterValue
     }
 
     /**
-     * @return float|string|bool|array<string|int> $value
+     * @return float|string|bool|array<int, string|float|bool>
      */
     public function getValue(): float|string|bool|array
     {
