@@ -102,7 +102,7 @@ class MultiAttribute extends AbstractSorter
         return $engine->getConnection()->createQueryBuilder()
             ->addSelect(
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS) . '.document AS document_id',
-                $this->aggregate->buildSql($column) . 'AS sort_order'
+                $this->aggregate->buildSql($column) . ' AS sort_order'
             )
             ->from(
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,

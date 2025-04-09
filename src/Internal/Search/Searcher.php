@@ -401,8 +401,7 @@ class Searcher
 
         $qb = $this->engine->getConnection()->createQueryBuilder()
             ->select(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id AS document_id',
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document AS document'
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id AS document_id'
             )
             ->from(
                 IndexInfo::TABLE_NAME_DOCUMENTS,
@@ -636,7 +635,7 @@ class Searcher
     {
         $froms = [];
         $qbMatches = $this->engine->getConnection()->createQueryBuilder();
-        $qbMatches->select('document_id', 'document');
+        $qbMatches->select('document_id');
 
         // User filters
         $froms[] = $this->filterBuilder->buildFrom();
@@ -650,8 +649,7 @@ class Searcher
         // Not filtered by either filters or user query, fetch everything
         if ($froms === []) {
             $froms[] = sprintf(
-                '(SELECT %s.id AS document_id, %s.document AS document FROM %s %s)',
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                '(SELECT %s.id AS document_id FROM %s %s)',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 IndexInfo::TABLE_NAME_DOCUMENTS,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
@@ -666,7 +664,7 @@ class Searcher
 
         $qbMatches->groupBy('document_id');
 
-        $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id', 'document'], $qbMatches));
+        $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id'], $qbMatches));
     }
 
     /**
@@ -817,10 +815,20 @@ class Searcher
 
     private function selectDocuments(): void
     {
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
         $this->queryBuilder
-            ->addSelect(self::CTE_MATCHES . '.document')
-            ->from(self::CTE_MATCHES)
-        ;
+            ->addSelect($documentsAlias . '.document')
+            ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
+            ->innerJoin(
+                $documentsAlias,
+                self::CTE_MATCHES,
+                self::CTE_MATCHES,
+                sprintf(
+                    '%s.id = %s.document_id',
+                    $documentsAlias,
+                    self::CTE_MATCHES
+                )
+            );
     }
 
     private function selectTotalHits(): void

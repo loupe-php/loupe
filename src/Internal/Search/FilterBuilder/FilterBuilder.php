@@ -99,7 +99,7 @@ class FilterBuilder
      */
     private function addCTEForNode(Node $node, QueryBuilder $qb, array $additionalAliases = []): string
     {
-        $columnAliases = array_merge(['document_id', 'document'], $additionalAliases); // always must start with document_id and document
+        $columnAliases = array_merge(['document_id'], $additionalAliases); // always must start with document_id
         $tags = [];
 
         if ($node instanceof AttributeFilterInterface) {
@@ -126,8 +126,10 @@ class FilterBuilder
     {
         return $this->engine->getConnection()->createQueryBuilder()
             ->select(
-                sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
-                sprintf('%s.document AS document', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
+                sprintf(
+                    '%s.id AS document_id',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+                )
             )
             ->from(
                 IndexInfo::TABLE_NAME_DOCUMENTS,
@@ -191,7 +193,7 @@ class FilterBuilder
             }
 
             if ($groupFroms !== []) {
-                $froms[] = 'SELECT document_id, document FROM (';
+                $froms[] = 'SELECT document_id FROM (';
                 $froms[] = implode(' ', $groupFroms);
                 $froms[] = ')';
             }
@@ -207,13 +209,12 @@ class FilterBuilder
                     $froms[] = 'SELECT id AS document_id, document FROM documents';
                 } else {
                     // Otherwise, no document matches
-                    $froms[] = 'SELECT document_id, document FROM (SELECT NULL AS document_id, NULL AS document) WHERE 1 = 0';
+                    $froms[] = 'SELECT document_id FROM (SELECT NULL AS document_id) WHERE 1 = 0';
                 }
             } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
                 $qb = $this->engine->getConnection()->createQueryBuilder();
                 $qb->select(
                     sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
-                    sprintf('%s.document', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
                     sprintf('%s.attribute', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES)),
                     sprintf('%s.numeric_value', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES)),
                     sprintf('%s.string_value', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES))
@@ -258,7 +259,7 @@ class FilterBuilder
                 $qb->groupBy($documentAlias . '.id');
 
                 $cteName = $this->addCTEForNode($node, $qb, ['attribute', 'numeric_value', 'string_value']);
-                $froms[] = 'SELECT document_id, document FROM ' . $cteName;
+                $froms[] = 'SELECT document_id FROM ' . $cteName;
             } else {
                 // Single attribute
                 $attribute = $node->attribute;
@@ -272,14 +273,14 @@ class FilterBuilder
                     $documentAlias . '.' . $attribute,
                     $node->value
                 ));
-                $froms[] = 'SELECT document_id, document FROM ' . $cteName;
+                $froms[] = 'SELECT document_id FROM ' . $cteName;
             }
         }
 
         if ($node instanceof GeoDistance) {
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $froms[] = 'SELECT document_id, document FROM (SELECT NULL AS document_id, NULL AS document) WHERE 1 = 0';
+                $froms[] = 'SELECT document_id FROM (SELECT NULL AS document_id) WHERE 1 = 0';
 
                 return;
             }
@@ -315,13 +316,13 @@ class FilterBuilder
             $qb->andWhere(implode(' ', $where));
 
             $cteName = $this->addCTEForNode($node, $qb);
-            $froms[] = 'SELECT document_id, document FROM ' . $cteName;
+            $froms[] = 'SELECT document_id FROM ' . $cteName;
         }
 
         if ($node instanceof GeoBoundingBox) {
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
-                $froms[] = 'SELECT document_id, document FROM (SELECT NULL AS document_id, NULL AS document) WHERE 1 = 0';
+                $froms[] = 'SELECT document_id FROM (SELECT NULL AS document_id) WHERE 1 = 0';
                 return;
             }
 
@@ -329,7 +330,7 @@ class FilterBuilder
                 $node,
                 implode(' ', $this->createGeoBoundingBoxWhereStatement($node->attributeName, $node->getBbox()))
             );
-            $froms[] = 'SELECT document_id, document FROM ' . $cteName;
+            $froms[] = 'SELECT document_id FROM ' . $cteName;
         }
 
         if ($node instanceof Concatenator) {
