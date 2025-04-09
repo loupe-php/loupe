@@ -230,7 +230,7 @@ class LoupeTypes
             return true;
         }
 
-        if (($schemaType === self::TYPE_ARRAY_EMPTY || $schemaType === self::TYPE_ARRAY_STRING) && $checkType === self::TYPE_ARRAY_STRING) {
+        if ($schemaType === self::TYPE_ARRAY_EMPTY && ($checkType === self::TYPE_ARRAY_NUMBER || $checkType === self::TYPE_ARRAY_STRING)) {
             return true;
         }
 
