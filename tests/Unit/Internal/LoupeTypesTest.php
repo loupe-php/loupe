@@ -78,7 +78,7 @@ class LoupeTypesTest extends TestCase
         $this->assertSame($expectedResult, LoupeTypes::typeMatchesType($schemaType, $checkType));
     }
 
-    public static function typeMatchesTypeProvider()
+    public static function typeMatchesTypeProvider(): \Generator
     {
         yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NULL, true];
         yield [LoupeTypes::TYPE_NUMBER, LoupeTypes::TYPE_NUMBER, true];
