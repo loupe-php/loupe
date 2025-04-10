@@ -84,7 +84,7 @@ class Searcher
         $unions = [];
 
         foreach ($this->getCtesByTag('attribute:' . $attribute) as $cte) {
-            $unions[] = sprintf('SELECT document_id, attribute, numeric_value, string_value FROM %s', $cte->getName());
+            $unions[] = sprintf('SELECT document_id, attribute_id FROM %s', $cte->getName());
         }
 
         if ($unions === []) {
@@ -92,10 +92,10 @@ class Searcher
         }
 
         $qb = $this->engine->getConnection()->createQueryBuilder();
-        $qb->select('document_id', 'attribute', 'numeric_value', 'string_value');
-        $qb->from('(' . implode(' UNION ALL ', $unions) . ')');
+        $qb->select('document_id', 'attribute_id');
+        $qb->from('(' . implode(' UNION ', $unions) . ')');
 
-        $this->addCTE(new Cte($cteName, ['document_id', 'attribute', 'numeric_value', 'string_value'], $qb));
+        $this->addCTE(new Cte($cteName, ['document_id', 'attribute_id'], $qb));
 
         return $cteName;
     }

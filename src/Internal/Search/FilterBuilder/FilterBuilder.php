@@ -215,9 +215,7 @@ class FilterBuilder
                 $qb = $this->engine->getConnection()->createQueryBuilder();
                 $qb->select(
                     sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
-                    sprintf('%s.attribute', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES)),
-                    sprintf('%s.numeric_value', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES)),
-                    sprintf('%s.string_value', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES))
+                    sprintf('%s.id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES))
                 );
                 $qb->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS));
                 $qb->innerJoin(
@@ -256,9 +254,7 @@ class FilterBuilder
                     $qb->andWhere(implode(' ', $whereStatement));
                 }
 
-                $qb->groupBy($documentAlias . '.id');
-
-                $cteName = $this->addCTEForNode($node, $qb, ['attribute', 'numeric_value', 'string_value']);
+                $cteName = $this->addCTEForNode($node, $qb, ['attribute_id']);
                 $froms[] = 'SELECT document_id FROM ' . $cteName;
             } else {
                 // Single attribute

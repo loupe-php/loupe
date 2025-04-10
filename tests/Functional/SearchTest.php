@@ -1199,12 +1199,12 @@ class SearchTest extends TestCase
             'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
-                    'id' => 1,
-                    'name' => 'Event A',
-                ],
-                [
                     'id' => 2,
                     'name' => 'Event B',
+                ],
+                [
+                    'id' => 1,
+                    'name' => 'Event A',
                 ],
             ],
         ];
@@ -1214,12 +1214,12 @@ class SearchTest extends TestCase
             'dates BETWEEN 2 AND 6 AND ratings BETWEEN 2 AND 6', // the ratings does not really filter because we use the same values as in "dates", just here to spot query errors
             [
                 [
-                    'id' => 2,
-                    'name' => 'Event B',
-                ],
-                [
                     'id' => 1,
                     'name' => 'Event A',
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Event B',
                 ],
             ],
         ];
@@ -1306,8 +1306,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname'])
             ->withFilter("(departments = 'Backoffice' OR departments = 'Project Management') AND gender = 'female'")
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -1327,14 +1326,12 @@ class SearchTest extends TestCase
     public function testDamerauLevensthein(): void
     {
         $configuration = Configuration::create()
-            ->withSearchableAttributes(['title'])
-        ;
+            ->withSearchableAttributes(['title']);
 
         $searchParameters = SearchParameters::create()
             ->withQuery('convesre') // With Levenshtein this would be a total cost of 3, with Damerau-Levenshtein, just 2
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withAttributesToHighlight(['title'])
-        ;
+            ->withAttributesToHighlight(['title']);
 
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocument([
@@ -1364,14 +1361,12 @@ class SearchTest extends TestCase
     public function testDisplayedAttributes(): void
     {
         $configuration = Configuration::create()
-            ->withDisplayedAttributes(['id', 'title'])
-        ;
+            ->withDisplayedAttributes(['id', 'title']);
         $loupe = $this->setupLoupeWithMoviesFixture($configuration);
 
         $searchParameters = SearchParameters::create()
             ->withQuery('four')
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -1403,8 +1398,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname'])
             ->withFilter($filter)
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedHits,
@@ -1427,8 +1421,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname'])
             ->withFilter($filter)
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedHits,
@@ -1443,8 +1436,7 @@ class SearchTest extends TestCase
     public function testEscapeFilterValues(): void
     {
         $configuration = Configuration::create()
-            ->withFilterableAttributes(['title', 'published'])
-        ;
+            ->withFilterableAttributes(['title', 'published']);
 
         $document = [
             'id' => 42,
@@ -1457,8 +1449,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'title', 'published'])
-            ->withFilter('title = ' . SearchParameters::escapeFilterValue($document['title']))
-        ;
+            ->withFilter('title = ' . SearchParameters::escapeFilterValue($document['title']));
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [$document],
@@ -1505,8 +1496,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('administrative files')
             ->withAttributesToRetrieve(['id', 'content'])
-            ->withShowRankingScore(true)
-        ;
+            ->withShowRankingScore(true);
 
         // Both documents would weigh exactly the same because both "administrative" and "administrator" get stemmed
         // for "administr". Also, the terms are exactly the same distance apart. Hence, we test the exactness feature here.
@@ -1535,8 +1525,7 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['id'])
-            ->withSortableAttributes(['id'])
-        ;
+            ->withSortableAttributes(['id']);
 
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocuments([
@@ -1557,8 +1546,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['id:desc'])
-            ->withFilter('id IN (42, 12)')
-        ;
+            ->withFilter('id IN (42, 12)');
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [[
@@ -1580,8 +1568,7 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['location'])
-            ->withSearchableAttributes(['title'])
-        ;
+            ->withSearchableAttributes(['title']);
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'locations');
@@ -1602,8 +1589,7 @@ class SearchTest extends TestCase
                 $athen['lng'],
                 $athen['lat'],
                 $dublin['lng'],
-            ))
-        ;
+            ));
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -1636,8 +1622,7 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['location', 'type'])
-            ->withSortableAttributes(['location', 'rating'])
-        ;
+            ->withSortableAttributes(['location', 'rating']);
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'restaurants');
@@ -1645,8 +1630,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'name', 'location'])
             ->withFilter('_geoRadius(location, 45.472735, 9.184019, 2000)')
-            ->withSort(['_geoPoint(location, 45.472735, 9.184019):asc'])
-        ;
+            ->withSort(['_geoPoint(location, 45.472735, 9.184019):asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -1700,8 +1684,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['*', '_geoDistance(location)']) // Test should also work with *
-            ->withSort(['_geoPoint(location, 48.8561446,2.2978204):asc'])
-        ;
+            ->withSort(['_geoPoint(location, 48.8561446,2.2978204):asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -1767,16 +1750,14 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['location'])
-            ->withSearchableAttributes(['title'])
-        ;
+            ->withSearchableAttributes(['title']);
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'locations');
 
         $searchParameters = SearchParameters::create()
             ->withFilter('_geoRadius(location, 52.52, 13.405, ' . $distance . ')' /* Berlin */)
-            ->withAttributesToRetrieve(['id', 'title', 'location'])
-        ;
+            ->withAttributesToRetrieve(['id', 'title', 'location']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -1811,16 +1792,14 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['location'])
-            ->withSearchableAttributes(['title'])
-        ;
+            ->withSearchableAttributes(['title']);
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'locations');
 
         $searchParameters = SearchParameters::create()
             ->withFilter('_geoRadius(location, 52.52, 13.405, 1000000)' /* Berlin */)
-            ->withAttributesToRetrieve(['id', 'title', 'location', '_geoDistance(location)'])
-        ;
+            ->withAttributesToRetrieve(['id', 'title', 'location', '_geoDistance(location)']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -1874,8 +1853,7 @@ class SearchTest extends TestCase
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])
             ->withSortableAttributes(['title'])
-            ->withStopWords($stopWords)
-        ;
+            ->withStopWords($stopWords);
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
@@ -1885,8 +1863,7 @@ class SearchTest extends TestCase
             ->withAttributesToHighlight($attributesToHighlight, $highlightStartTag, $highlightEndTag)
             ->withShowMatchesPosition($showMatchesPosition)
             ->withAttributesToRetrieve(['id', 'title', 'overview', 'genres'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
     }
@@ -1898,8 +1875,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('This is a very long query that should be shortened because it is just way too long')
             ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [],
@@ -1922,8 +1898,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname'])
             ->withFilter($filter)
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedHits,
@@ -1946,8 +1921,7 @@ class SearchTest extends TestCase
         $configuration = $configuration
             ->withFilterableAttributes(['rating', 'dates'])
             ->withSortableAttributes(['name'])
-            ->withSearchableAttributes(['name'])
-        ;
+            ->withSearchableAttributes(['name']);
 
         $loupe = $this->createLoupe($configuration);
 
@@ -2007,8 +1981,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'name', 'rating', 'dates'])
             ->withFilter($filter)
-            ->withSort(['name:asc'])
-        ;
+            ->withSort(['name:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedHits,
@@ -2027,8 +2000,7 @@ class SearchTest extends TestCase
         $searchParametersWithoutNegation = SearchParameters::create()
             ->withQuery('friendly mother -boy -"depressed suburban father" father')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
             'hits' => [
@@ -2060,8 +2032,7 @@ class SearchTest extends TestCase
         $searchParametersWithoutNegation = SearchParameters::create()
             ->withQuery('appears')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
             'hits' => [
@@ -2084,8 +2055,7 @@ class SearchTest extends TestCase
         $searchParametersWithNegation = SearchParameters::create()
             ->withQuery('appears -disappears')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
             'hits' => [
@@ -2109,8 +2079,7 @@ class SearchTest extends TestCase
         $searchParametersWithoutNegation = SearchParameters::create()
             ->withQuery('life "new life"')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParametersWithoutNegation, [
             'hits' => [
@@ -2149,8 +2118,7 @@ class SearchTest extends TestCase
         $searchParametersWithNegation = SearchParameters::create()
             ->withQuery('life -"new life"')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParametersWithNegation, [
             'hits' => [
@@ -2194,8 +2162,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname'])
             ->withFilter($filter)
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedHits,
@@ -2212,8 +2179,7 @@ class SearchTest extends TestCase
         $configuration = Configuration::create()
             ->withSortableAttributes(['title'])
             ->withSearchableAttributes(['title', 'overview'])
-            ->withTypoTolerance(TypoTolerance::create()->disable())
-        ;
+            ->withTypoTolerance(TypoTolerance::create()->disable());
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
@@ -2223,8 +2189,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('I like Star Wars')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -2270,8 +2235,7 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview'])
-        ;
+            ->withSearchableAttributes(['title', 'overview']);
 
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocuments([
@@ -2291,8 +2255,7 @@ class SearchTest extends TestCase
         // within the same attributes
         $searchParameters = SearchParameters::create()
             ->withQuery('"Star Wars"')
-            ->withAttributesToRetrieve(['id', 'title'])
-        ;
+            ->withAttributesToRetrieve(['id', 'title']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -2326,8 +2289,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery($query)
             ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedResults,
@@ -2349,8 +2311,7 @@ class SearchTest extends TestCase
             ->withQuery('assat')
             ->withAttributesToRetrieve(['id', 'title', 'overview'])
             ->withSort(['title:asc'])
-            ->withAttributesToHighlight(['overview'])
-        ;
+            ->withAttributesToHighlight(['overview']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [[
@@ -2378,8 +2339,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('star')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         // This should find Ariel because "star" matches "starting" in prefix search
         $this->searchAndAssertResults($loupe, $searchParameters, [
@@ -2426,8 +2386,7 @@ class SearchTest extends TestCase
             ->withQuery('Aelxander')
             ->withFilter("colors IN ('Blue')")
             ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [[
@@ -2452,8 +2411,7 @@ class SearchTest extends TestCase
             ->withQuery('Pirates of the Caribbean: The Curse of the Black Pearl')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withShowRankingScore(true)
-            ->withHitsPerPage(1)
-        ;
+            ->withHitsPerPage(1);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -2475,8 +2433,7 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
-            ->withSortableAttributes(['content'])
-        ;
+            ->withSortableAttributes(['content']);
 
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocuments([
@@ -2501,8 +2458,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('life learning')
             ->withAttributesToRetrieve(['id', 'content'])
-            ->withShowRankingScore(true)
-        ;
+            ->withShowRankingScore(true);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -2562,8 +2518,7 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
-            ->withSortableAttributes(['content'])
-        ;
+            ->withSortableAttributes(['content']);
 
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocuments([
@@ -2588,8 +2543,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('foobar life learning')
             ->withAttributesToRetrieve(['id', 'content'])
-            ->withShowRankingScore(true)
-        ;
+            ->withShowRankingScore(true);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -2645,12 +2599,10 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('game of life')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withShowRankingScore(true)
-        ;
+            ->withShowRankingScore(true);
 
         $configurationWithoutAttributes = Configuration::create()
-            ->withSortableAttributes(['title', 'content'])
-        ;
+            ->withSortableAttributes(['title', 'content']);
 
         $loupe = $this->createLoupe($configurationWithoutAttributes);
         $loupe->addDocuments($documents);
@@ -2682,8 +2634,7 @@ class SearchTest extends TestCase
 
         $configurationWithAttributes = Configuration::create()
             ->withSearchableAttributes(['title', 'content'])
-            ->withSortableAttributes(['title', 'content'])
-        ;
+            ->withSortableAttributes(['title', 'content']);
 
         $loupe = $this->createLoupe($configurationWithAttributes);
         $loupe->addDocuments($documents);
@@ -2736,8 +2687,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withQuery('lorem ipsum')
-            ->withShowRankingScore(true)
-        ;
+            ->withShowRankingScore(true);
 
         $configurationWithDefaultRules = Configuration::create()
             ->withSearchableAttributes(['title', 'content']);
@@ -2847,8 +2797,7 @@ class SearchTest extends TestCase
     public function testSearchingForNumericArrayType(): void
     {
         $configuration = Configuration::create()
-            ->withFilterableAttributes(['months'])
-        ;
+            ->withFilterableAttributes(['months']);
 
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocument([
@@ -2858,8 +2807,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'months'])
-            ->withFilter('months IN (04)')
-        ;
+            ->withFilter('months IN (04)');
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [[
@@ -2882,8 +2830,7 @@ class SearchTest extends TestCase
             ->withQuery('four')
             ->withAttributesToSearchOn(['title'])
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -2907,8 +2854,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('four')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -2935,8 +2881,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['firstname'])
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
@@ -3004,7 +2949,7 @@ class SearchTest extends TestCase
     }
 
     /**
-     *@param array<array<string,mixed>> $expectedHits
+     * @param array<array<string,mixed>> $expectedHits
      */
     #[DataProvider('sortOnMultiAttributesWithMinAndMaxModifiers')]
     public function testSortOnMultiAttributesWithMinAndMaxModifiers(string $sort, string $filter, array $expectedHits): void
@@ -3013,8 +2958,7 @@ class SearchTest extends TestCase
 
         $configuration = $configuration
             ->withFilterableAttributes(['dates', 'ratings', 'price'])
-            ->withSortableAttributes(['dates', 'ratings'])
-        ;
+            ->withSortableAttributes(['dates', 'ratings']);
 
         $loupe = $this->createLoupe($configuration);
 
@@ -3045,8 +2989,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'name'])
             ->withFilter($filter)
-            ->withSort([$sort])
-        ;
+            ->withSort([$sort]);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedHits,
@@ -3068,8 +3011,7 @@ class SearchTest extends TestCase
         $configuration = Configuration::create()
             ->withFilterableAttributes(['rating'])
             ->withSortableAttributes(['name', 'rating'])
-            ->withSearchableAttributes(['name'])
-        ;
+            ->withSearchableAttributes(['name']);
 
         $loupe = $this->createLoupe($configuration);
 
@@ -3101,8 +3043,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'name', 'rating'])
-            ->withSort($sort)
-        ;
+            ->withSort($sort);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedHits,
@@ -3119,14 +3060,12 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('young glaciologist')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $configurationWithoutStopWords = Configuration::create()
             ->withSortableAttributes(['title'])
             ->withSearchableAttributes(['title', 'overview'])
-            ->withTypoTolerance(TypoTolerance::create()->disable())
-        ;
+            ->withTypoTolerance(TypoTolerance::create()->disable());
 
         $loupe = $this->createLoupe($configurationWithoutStopWords);
         $this->indexFixture($loupe, 'movies');
@@ -3158,8 +3097,7 @@ class SearchTest extends TestCase
             ->withSortableAttributes(['title'])
             ->withSearchableAttributes(['title', 'overview'])
             ->withTypoTolerance(TypoTolerance::create()->disable())
-            ->withStopWords(['young'])
-        ;
+            ->withStopWords(['young']);
 
         $loupe = $this->createLoupe($configurationWithStopWords);
         $this->indexFixture($loupe, 'movies');
@@ -3208,8 +3146,7 @@ class SearchTest extends TestCase
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
             ->withSortableAttributes(['firstname'])
-            ->withSearchableAttributes(['firstname', 'lastname'])
-        ;
+            ->withSearchableAttributes(['firstname', 'lastname']);
 
         $configuration = $configuration->withTypoTolerance($typoTolerance);
 
@@ -3219,8 +3156,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery($query)
             ->withAttributesToRetrieve(['id', 'firstname', 'lastname'])
-            ->withSort(['firstname:asc'])
-        ;
+            ->withSort(['firstname:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
     }
@@ -3230,14 +3166,12 @@ class SearchTest extends TestCase
         $configuration = Configuration::create()
             ->withSortableAttributes(['title'])
             ->withSearchableAttributes(['title'])
-            ->withTypoTolerance(TypoTolerance::create()->disable())
-        ;
+            ->withTypoTolerance(TypoTolerance::create()->disable());
 
         $searchParameters = SearchParameters::create()
             ->withQuery('vienna')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc'])
-        ;
+            ->withSort(['title:asc']);
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'locations');
@@ -3284,8 +3218,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['firstname', 'lastname'])
             ->withSort(['firstname:asc'])
-            ->withQuery($query)
-        ;
+            ->withQuery($query);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => $expectedResults,
@@ -3456,8 +3389,7 @@ class SearchTest extends TestCase
         $configuration = $configuration
             ->withFilterableAttributes(['departments', 'gender', 'isActive', 'colors'])
             ->withSortableAttributes(['firstname'])
-            ->withSearchableAttributes(['firstname', 'lastname'])
-        ;
+            ->withSearchableAttributes(['firstname', 'lastname']);
 
         $loupe = $this->createLoupe($configuration, $dataDir);
         $this->indexFixture($loupe, 'departments');
@@ -3474,8 +3406,7 @@ class SearchTest extends TestCase
         $configuration = $configuration
             ->withFilterableAttributes(['genres'])
             ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview'])
-        ;
+            ->withSearchableAttributes(['title', 'overview']);
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');

@@ -90,9 +90,20 @@ class MultiAttribute extends AbstractSorter
         $qb
             ->addSelect(
                 sprintf('%s.document_id AS document_id', $cteName),
-                sprintf('%s AS sort_order', $this->aggregate->buildSql($cteName . '.' . $column)),
+                sprintf('%s AS sort_order', $this->aggregate->buildSql($engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . $column)),
             )
-            ->from($cteName);
+            ->from($cteName)
+            ->innerJoin(
+                $cteName,
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                sprintf(
+                    '%s.id = %s.attribute_id',
+                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $cteName,
+                )
+            )
+        ;
 
         return $qb;
     }
