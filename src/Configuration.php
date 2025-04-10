@@ -155,7 +155,7 @@ final class Configuration
 
     public static function fromString(string $string): self
     {
-        return self::fromArray(json_decode($string, true));
+        return self::fromArray(json_decode($string, true, 512, JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -315,7 +315,7 @@ final class Configuration
 
     public function toString(): string
     {
-        return (string) json_encode($this->toArray());
+        return json_encode($this->toArray(), JSON_THROW_ON_ERROR);
     }
 
     public static function validateAttributeName(string $name): void
