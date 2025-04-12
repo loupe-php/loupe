@@ -51,6 +51,47 @@ final class TypoTolerance
         return $this->firstCharTypoCountsDouble;
     }
 
+    /**
+     * @param array{
+     *     alphabetSize?: int,
+     *     firstCharTypoCountsDouble?: bool,
+     *     indexLength?: int,
+     *     isDisabled?: bool,
+     *     isEnabledForPrefixSearch?: bool,
+     *     typoThresholds?: array<int, int>
+     * } $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $instance = new self();
+
+        if (isset($data['isDisabled']) && $data['isDisabled'] === true) {
+            $instance = $instance->disable();
+        }
+
+        if (isset($data['alphabetSize'])) {
+            $instance = $instance->withAlphabetSize((int) $data['alphabetSize']);
+        }
+
+        if (isset($data['firstCharTypoCountsDouble'])) {
+            $instance = $instance->withFirstCharTypoCountsDouble((bool) $data['firstCharTypoCountsDouble']);
+        }
+
+        if (isset($data['indexLength'])) {
+            $instance = $instance->withIndexLength((int) $data['indexLength']);
+        }
+
+        if (isset($data['isEnabledForPrefixSearch'])) {
+            $instance = $instance->withEnabledForPrefixSearch((bool) $data['isEnabledForPrefixSearch']);
+        }
+
+        if (isset($data['typoThresholds']) && \is_array($data['typoThresholds'])) {
+            $instance = $instance->withTypoThresholds($data['typoThresholds']);
+        }
+
+        return $instance;
+    }
+
     public function getAlphabetSize(): int
     {
         return $this->alphabetSize;
@@ -86,6 +127,28 @@ final class TypoTolerance
     public function isEnabledForPrefixSearch(): bool
     {
         return $this->isEnabledForPrefixSearch;
+    }
+
+    /**
+     * @return array{
+     *     alphabetSize: int,
+     *     firstCharTypoCountsDouble: bool,
+     *     indexLength: int,
+     *     isDisabled: bool,
+     *     isEnabledForPrefixSearch: bool,
+     *     typoThresholds: array<int, int>
+     * }
+     */
+    public function toArray(): array
+    {
+        return [
+            'alphabetSize' => $this->alphabetSize,
+            'firstCharTypoCountsDouble' => $this->firstCharTypoCountsDouble,
+            'indexLength' => $this->indexLength,
+            'isDisabled' => $this->isDisabled,
+            'isEnabledForPrefixSearch' => $this->isEnabledForPrefixSearch,
+            'typoThresholds' => $this->typoThresholds,
+        ];
     }
 
     public function withAlphabetSize(int $alhabetSize): self

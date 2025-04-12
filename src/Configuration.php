@@ -81,6 +81,84 @@ final class Configuration
     }
 
     /**
+     * @param array{
+     *     displayedAttributes?: array<string>,
+     *     filterableAttributes?: array<string>,
+     *     languages?: array<string>,
+     *     maxQueryTokens?: int,
+     *     minTokenLengthForPrefixSearch?: int,
+     *     primaryKey?: string,
+     *     rankingRules?: array<string>,
+     *     searchableAttributes?: array<string>,
+     *     sortableAttributes?: array<string>,
+     *     stopWords?: array<string>,
+     *     typoTolerance?: array{
+     *         alphabetSize?: int,
+     *         firstCharTypoCountsDouble?: bool,
+     *         indexLength?: int,
+     *         isDisabled?: bool,
+     *         isEnabledForPrefixSearch?: bool,
+     *         typoThresholds?: array<int, int>
+     *     }
+     * } $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $instance = new self();
+
+        if (isset($data['displayedAttributes'])) {
+            $instance = $instance->withDisplayedAttributes($data['displayedAttributes']);
+        }
+
+        if (isset($data['filterableAttributes'])) {
+            $instance = $instance->withFilterableAttributes($data['filterableAttributes']);
+        }
+
+        if (isset($data['languages'])) {
+            $instance = $instance->withLanguages($data['languages']);
+        }
+
+        if (isset($data['maxQueryTokens'])) {
+            $instance = $instance->withMaxQueryTokens((int) $data['maxQueryTokens']);
+        }
+
+        if (isset($data['minTokenLengthForPrefixSearch'])) {
+            $instance = $instance->withMinTokenLengthForPrefixSearch((int) $data['minTokenLengthForPrefixSearch']);
+        }
+
+        if (isset($data['primaryKey'])) {
+            $instance = $instance->withPrimaryKey($data['primaryKey']);
+        }
+
+        if (isset($data['rankingRules'])) {
+            $instance = $instance->withRankingRules($data['rankingRules']);
+        }
+
+        if (isset($data['searchableAttributes'])) {
+            $instance = $instance->withSearchableAttributes($data['searchableAttributes']);
+        }
+
+        if (isset($data['sortableAttributes'])) {
+            $instance = $instance->withSortableAttributes($data['sortableAttributes']);
+        }
+
+        if (isset($data['stopWords'])) {
+            $instance = $instance->withStopWords($data['stopWords']);
+        }
+
+        if (isset($data['typoTolerance']) && \is_array($data['typoTolerance'])) {
+            $instance = $instance->withTypoTolerance(TypoTolerance::fromArray($data['typoTolerance']));
+        }
+
+        return $instance;
+    }
+
+    public static function fromString(string $string): self
+    {
+        return self::fromArray(json_decode($string, true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    /**
      * @return array<string>
      */
     public function getDisplayedAttributes(): array
@@ -194,6 +272,50 @@ final class Configuration
     public function getTypoTolerance(): TypoTolerance
     {
         return $this->typoTolerance;
+    }
+
+    /**
+     * @return array{
+     *     displayedAttributes: array<string>,
+     *     filterableAttributes: array<string>,
+     *     languages: array<string>,
+     *     maxQueryTokens: int,
+     *     minTokenLengthForPrefixSearch: int,
+     *     primaryKey: string,
+     *     rankingRules: array<string>,
+     *     searchableAttributes: array<string>,
+     *     sortableAttributes: array<string>,
+     *     stopWords: array<string>,
+     *     typoTolerance: array{
+     *         alphabetSize: int,
+     *         firstCharTypoCountsDouble: bool,
+     *         indexLength: int,
+     *         isDisabled: bool,
+     *         isEnabledForPrefixSearch: bool,
+     *         typoThresholds: array<int, int>
+     *     }
+     * }
+     */
+    public function toArray(): array
+    {
+        return [
+            'displayedAttributes' => $this->displayedAttributes,
+            'filterableAttributes' => $this->filterableAttributes,
+            'languages' => $this->languages,
+            'maxQueryTokens' => $this->maxQueryTokens,
+            'minTokenLengthForPrefixSearch' => $this->minTokenLengthForPrefixSearch,
+            'primaryKey' => $this->primaryKey,
+            'rankingRules' => $this->rankingRules,
+            'searchableAttributes' => $this->searchableAttributes,
+            'sortableAttributes' => $this->sortableAttributes,
+            'stopWords' => $this->stopWords,
+            'typoTolerance' => $this->typoTolerance->toArray(),
+        ];
+    }
+
+    public function toString(): string
+    {
+        return json_encode($this->toArray(), JSON_THROW_ON_ERROR);
     }
 
     public static function validateAttributeName(string $name): void
