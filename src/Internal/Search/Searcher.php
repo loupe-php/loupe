@@ -564,7 +564,7 @@ class Searcher
     /**
      * @param array<mixed> $hit
      */
-    private function formatHit(array &$hit, TokenCollection $tokens): void
+    private function formatHit(array &$hit, TokenCollection $queryTerms): void
     {
         $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes()
             ? array_keys($hit)
@@ -590,11 +590,11 @@ class Searcher
             if (\is_array($formatted[$attribute])) {
                 foreach ($formatted[$attribute] as $key => $value) {
                     $formatterResult = $this->engine->getFormatter()
-                        ->format($attribute, (string) $value, $tokens, $options);
+                        ->format($attribute, (string) $value, $queryTerms, $options);
 
-                    if ($showMatchesPosition && \count($formatterResult->getMatches()) > 0) {
+                    if ($showMatchesPosition && $formatterResult->hasMatches()) {
                         $matchesPosition[$attribute] ??= [];
-                        $matchesPosition[$attribute][$key] = $formatterResult->getMatches();
+                        $matchesPosition[$attribute][$key] = $formatterResult->getMatchesArray();
                     }
 
                     if ($requiresFormatting) {
@@ -604,10 +604,10 @@ class Searcher
             } else {
                 $value = $formatted[$attribute];
                 $formatterResult = $this->engine->getFormatter()
-                    ->format($attribute, (string) $value, $tokens, $options);
+                    ->format($attribute, (string) $value, $queryTerms, $options);
 
-                if ($showMatchesPosition && \count($formatterResult->getMatches()) > 0) {
-                    $matchesPosition[$attribute] = $formatterResult->getMatches();
+                if ($showMatchesPosition && $formatterResult->hasMatches()) {
+                    $matchesPosition[$attribute] = $formatterResult->getMatchesArray();
                 }
 
                 if ($requiresFormatting) {
@@ -668,9 +668,9 @@ class Searcher
         $positiveConditions = [];
         $negativeConditions = [];
 
-        foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
+        foreach ($tokenCollection->phraseGroups() as $tokenOrPhrase) {
             $statements = [];
-            foreach ($tokenOrPhrase->getTokens() as $token) {
+            foreach ($tokenOrPhrase->all() as $token) {
                 $statements[] = $this->createTermDocumentMatchesCTECondition($token);
             }
 

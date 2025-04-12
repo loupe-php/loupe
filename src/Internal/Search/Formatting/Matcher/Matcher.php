@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Internal\Search\Formatting;
+namespace Loupe\Loupe\Internal\Search\Formatting\Matcher;
 
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Levenshtein;
@@ -16,63 +16,48 @@ class Matcher
     ) {
     }
 
-    /**
-     * @return array<int, array{start: int, length: int, stopword: bool}>
-     */
-    public function calculateMatches(string $text, TokenCollection $queryTokens): array
+    public function calculateMatches(string $text, TokenCollection $queryTokens): TokenCollection
     {
         if ($text === '') {
-            return [];
+            return new TokenCollection();
         }
 
         $matches = [];
         $stopWords = $this->engine->getConfiguration()->getStopWords();
-        $textTokens = $this->engine->getTokenizer()->tokenize($text);
+        $textTokens = $this->engine->getTokenizer()->tokenize($text, stopWords: $stopWords, includeStopWords: true);
 
+        $matches = new TokenCollection();
         foreach ($textTokens->all() as $textToken) {
             if ($this->isMatch($textToken, $queryTokens)) {
-                $matches[] = [
-                    'start' => $textToken->getStartPosition(),
-                    'length' => $textToken->getLength(),
-                    'stopword' => $textToken->isOneOf($stopWords),
-                ];
+                $matches->add($textToken);
             }
         }
-
-        // Sort matches by start
-        uasort($matches, fn (array $a, array $b) => $a['start'] <=> $b['start']);
 
         return $matches;
     }
 
-    /**
-     * @param array<array{start:int, length:int, stopword:bool}> $matches
-     * @return array<array{start:int, end:int}>
-     */
-    public function mergeMatchesIntoSpans(array $matches): array
+    public function calculateMatchSpans(TokenCollection $matches): MatchSpanCollection
     {
-        $matches = $this->removeStopWordMatches($matches);
+        $matches = $this->removeSolitaryStopWords($matches);
 
         $spans = [];
         $previousEnd = null;
 
-        foreach ($matches as $match) {
-            $end = $match['start'] + $match['length'];
-
+        foreach ($matches->all() as $match) {
             // Merge matches that are exactly after one another
-            if ($previousEnd === $match['start'] - 1) {
-                $spans[count($spans) - 1]['end'] = $end;
+            if ($previousEnd === $match->getStartPosition() - 1) {
+                $spans[count($spans) - 1]['end'] = $match->getEndPosition();
             } else {
                 $spans[] = [
-                    'start' => $match['start'],
-                    'end' => $end
+                    'start' => $match->getStartPosition(),
+                    'end' => $match->getEndPosition()
                 ];
             }
 
-            $previousEnd = $end;
+            $previousEnd = $match->getEndPosition();
         }
 
-        return $spans;
+        return new MatchSpanCollection($spans);
     }
 
     private function isMatch(Token $textToken, TokenCollection $queryTokens): bool
@@ -130,37 +115,36 @@ class Matcher
         return false;
     }
 
-    /**
-     * @param array<array{start:int, length:int, stopword:bool}> $matches
-     * @return array<array{start:int, length:int, stopword:bool}> $matches
-     */
-    private function removeStopWordMatches(array $matches): array
+    private function removeSolitaryStopWords(TokenCollection $matches): TokenCollection
     {
         $maxCharDistance = 1;
         $maxWordDistance = 1;
 
-        foreach ($matches as $i => $match) {
-            if (!$match['stopword']) {
+        $result = new TokenCollection();
+
+        foreach ($matches->all() as $i =>$match) {
+            if (!$match->isStopWord()) {
+                $result->add($match);
                 continue;
             }
 
             $hasNonStopWordNeighbor = false;
 
             for ($j = 1; $j <= $maxWordDistance; $j++) {
-                $prevMatch = $matches[$i - $j] ?? null;
-                $nextMatch = $matches[$i + $j] ?? null;
+                $prevMatch = $matches->at($i - $j);
+                $nextMatch = $matches->at($i + $j);
 
                 // Keep stopword matches between non-stopword matches of interest
-                $hasNonStopWordNeighbor = ($prevMatch && $prevMatch['stopword'] === false && ($prevMatch['start'] + $prevMatch['length']) >= $match['start'] - $maxCharDistance)
-                    || ($nextMatch && $nextMatch['stopword'] === false && $nextMatch['start'] <= $match['start'] + $match['length'] + $maxCharDistance);
+                $hasNonStopWordNeighbor = ($prevMatch && !$prevMatch->isStopWord() && $prevMatch->getEndPosition() >= $match->getStartPosition() - $maxCharDistance)
+                    || ($nextMatch && !$nextMatch->isStopWord() && $nextMatch->getStartPosition() <= $match->getEndPosition() + $maxCharDistance);
 
                 if ($hasNonStopWordNeighbor) {
                     break;
                 }
             }
 
-            if (!$hasNonStopWordNeighbor) {
-                unset($matches[$i]);
+            if ($hasNonStopWordNeighbor) {
+                $result->add($match);
             }
         }
 

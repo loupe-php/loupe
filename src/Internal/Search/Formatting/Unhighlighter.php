@@ -5,27 +5,20 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Search\Formatting;
 
 use Loupe\Loupe\Internal\Search\Formatting\Matcher\Matcher;
+use Loupe\Loupe\Internal\Search\Formatting\Matcher\MatchSpanCollection;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
-class Cropper implements AbstractTransformer
+class Unhighlighter implements AbstractTransformer
 {
     public function __construct(
         private Matcher $matcher,
-        private int $cropLength,
-        private string $cropMarker
+        private string $startTag,
+        private string $endTag
     ) {
     }
 
     public function transform(string $text, TokenCollection $matches, MatchSpanCollection $spans): string
     {
-        if (empty($spans) || $this->cropLength <= 0) {
-            return [$text, $spans];
-        }
-
-        $result = '';
-        $previousEnd = 0;
-        $adjustedSpans = [];
-
-        return [$result, $adjustedSpans];
+        return str_replace([$this->startTag, $this->endTag], '', $text);
     }
 }

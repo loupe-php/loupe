@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Tokenizer;
 
-class Phrase
+class Phrase extends TokenCollection
 {
     /**
      * @param array<Token> $tokens
@@ -13,21 +13,7 @@ class Phrase
         private array $tokens,
         private bool $isNegated
     ) {
-    }
-
-    public function addToken(Token $token): self
-    {
-        $this->tokens[] = $token;
-
-        return $this;
-    }
-
-    /**
-     * @return array<Token>
-     */
-    public function getTokens(): array
-    {
-        return $this->tokens;
+        parent::__construct($tokens);
     }
 
     public function isNegated(): bool

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Tokenizer;
 
-class TokenCollection
+class TokenCollection implements \Countable
 {
     /**
      * @var Token[]
@@ -28,12 +28,35 @@ class TokenCollection
         return $this;
     }
 
+    public function remove(Token $token): self
+    {
+        $this->tokens = array_filter($this->tokens, fn (Token $t) => $t !== $token);
+
+        return $this;
+    }
+
     /**
      * @return Token[]
      */
     public function all(): array
     {
         return $this->tokens;
+    }
+
+    public function at(int $index): ?Token
+    {
+        return $this->tokens[$index] ?? null;
+    }
+
+    public function indexOf(Token $token): ?int
+    {
+        foreach ($this->tokens as $index => $t) {
+            if ($t === $token) {
+                return $index;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -111,22 +134,19 @@ class TokenCollection
     }
 
     /**
-     * Return an array of "token groups" -- either single tokens or phrases as single objects.
+     * Return an array of "phrase groups" -- either single tokens or phrases as single objects.
      *
      * @return array<Phrase|Token>
      */
-    public function getGroups(): array
+    public function phraseGroups(): array
     {
         $groups = [];
         $phrase = null;
 
         foreach ($this->tokens as $token) {
             if ($token->isPartOfPhrase()) {
-                if (!$phrase) {
-                    $phrase = new Phrase([$token], $token->isNegated());
-                } else {
-                    $phrase->addToken($token);
-                }
+                $phrase = $phrase ?? new Phrase([], $token->isNegated());
+                $phrase->add($token);
             } else {
                 if ($phrase) {
                     $groups[] = $phrase;
@@ -141,6 +161,16 @@ class TokenCollection
         }
 
         return $groups;
+    }
+
+    public function first(): ?Token
+    {
+        $first = reset($this->tokens);
+        if ($first instanceof Token) {
+            return $first;
+        }
+
+        return null;
     }
 
     public function last(): ?Token

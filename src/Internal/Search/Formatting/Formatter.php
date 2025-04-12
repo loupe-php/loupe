@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Search\Formatting;
 
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Search\Formatting\Matcher\Matcher;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
 class Formatter
@@ -19,24 +20,29 @@ class Formatter
     public function format(
         string $attribute,
         string $text,
-        TokenCollection $terms,
+        TokenCollection $queryTerms,
         FormatterOptions $options
     ): FormatterResult {
-        $matches = $this->matcher->calculateMatches($text, $terms);
-        $spans = $this->matcher->mergeMatchesIntoSpans($matches);
+        $matches = $this->matcher->calculateMatches($text, $queryTerms);
+        $spans = $this->matcher->calculateMatchSpans($matches);
 
         $transformers = [];
-        if ($options->shouldCropAttribute($attribute)) {
-            $transformers[] = new Cropper($options);
-        }
         if ($options->shouldHighlightAttribute($attribute)) {
-            $transformers[] = new Highlighter($options);
+            $transformers[] = new Highlighter($spans, $options->getHighlightStartTag(), $options->getHighlightEndTag());
+        }
+        if ($options->shouldCropAttribute($attribute)) {
+            if (! $options->shouldHighlightAttribute($attribute)) {
+                $transformers[] = new Highlighter('[~MATCH~]', '[~/MATCH~]');
+            }
+            $transformers[] = new Cropper($options->getCropLength(), $options->getCropMarker());
+            if (! $options->shouldHighlightAttribute($attribute)) {
+                $transformers[] = new Unhighlighter('[~MATCH~]', '[~/MATCH~]');
+            }
         }
 
         $formattedText = $text;
-        $updatedSpans = $spans;
         foreach ($transformers as $transformer) {
-            [$formattedText, $updatedSpans] = $transformer->transform($formattedText, $updatedSpans);
+            $formattedText = $transformer->transform($formattedText, $matches, $spans);
         }
 
         return new FormatterResult($formattedText, $matches);

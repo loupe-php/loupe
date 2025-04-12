@@ -6,6 +6,8 @@ namespace Loupe\Loupe\Internal\Tokenizer;
 
 class Token
 {
+    private int $length;
+
     /**
      * @param array<string> $variants
      */
@@ -15,8 +17,10 @@ class Token
         private int $startPosition,
         private array $variants,
         private bool $isPartOfPhrase,
-        private bool $isNegated
+        private bool $isNegated,
+        private bool $isStopWord,
     ) {
+        $this->length = mb_strlen($this->term, 'UTF-8');
     }
 
     /**
@@ -34,12 +38,17 @@ class Token
 
     public function getLength(): int
     {
-        return (int) mb_strlen($this->getTerm(), 'UTF-8');
+        return $this->length;
     }
 
     public function getStartPosition(): int
     {
         return $this->startPosition;
+    }
+
+    public function getEndPosition(): int
+    {
+        return $this->startPosition + $this->length;
     }
 
     public function getTerm(): string
@@ -53,7 +62,7 @@ class Token
      *
      * @return array<Token>
      */
-    public function getTokens(): array
+    public function all(): array
     {
         return [$this];
     }
@@ -94,5 +103,10 @@ class Token
     public function isPartOfPhrase(): bool
     {
         return $this->isPartOfPhrase;
+    }
+
+    public function isStopWord(): bool
+    {
+        return $this->isStopWord;
     }
 }
