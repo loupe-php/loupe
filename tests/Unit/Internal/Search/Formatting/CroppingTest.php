@@ -59,7 +59,7 @@ class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 16,
                             'title' => 'Dancer in the Dark',
-                            'overview' => 'Selma, a Czech immigrant on the verge of blindness, struggles to...fate without an expensive operation. When life gets too difficult, Selma learns to cope through her love of musicals, escaping life\'s...',
+                            'overview' => 'Selma, a Czech immigrant on the verge of blindness, struggles…expensive operation. When life gets too difficult, Selma learns to cope through her love of musicals, escaping…',
                             'genres' => ['Drama', 'Crime'],
                         ],
                     ],
@@ -91,7 +91,7 @@ class CroppingTest extends TestCase
         string $highlightStartTag = '<em>',
         string $highlightEndTag = '</em>',
         string $cropMarker = '…',
-        int $cropLength = 10,
+        int $cropLength = 50,
     ): void {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)

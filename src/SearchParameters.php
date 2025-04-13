@@ -30,9 +30,9 @@ final class SearchParameters
      */
     private array $attributesToSearchOn = ['*'];
 
-    private int $cropLength = 10;
+    private int $cropLength = 50;
 
-    private string $cropMarker = '≥';
+    private string $cropMarker = '…';
 
     private string $filter = '';
 
@@ -97,7 +97,7 @@ final class SearchParameters
             $instance = $instance->withAttributesToCrop(
                 $data['attributesToCrop'],
                 $data['cropMarker'] ?? '…',
-                $data['cropLength'] ?? 10,
+                $data['cropLength'] ?? 50,
             );
         }
 
@@ -330,7 +330,7 @@ final class SearchParameters
     public function withAttributesToCrop(
         array $attributesToCrop,
         string $cropMarker = '…',
-        int $cropLength = 10,
+        int $cropLength = 50,
     ): self {
         sort($attributesToCrop);
 

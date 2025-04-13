@@ -9,10 +9,6 @@ use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
 class Formatter
 {
-    private const TEMP_HIGHLIGHT_END_TAG = '[~/MATCH~]';
-
-    private const TEMP_HIGHLIGHT_START_TAG = '[~MATCH~]';
-
     private Matcher $matcher;
 
     public function __construct(Engine $engine)
@@ -32,17 +28,14 @@ class Formatter
         $shouldCrop = $options->shouldCropAttribute($attribute);
 
         $transformers = [];
-        if ($shouldHighlight) {
+        if ($shouldHighlight || $shouldCrop) {
             $transformers[] = new Highlighter($this->matcher, $options->getHighlightStartTag(), $options->getHighlightEndTag());
         }
         if ($shouldCrop) {
-            if (!$shouldHighlight) {
-                $transformers[] = new Highlighter($this->matcher, self::TEMP_HIGHLIGHT_START_TAG, self::TEMP_HIGHLIGHT_END_TAG);
-            }
-            $transformers[] = new Cropper($options->getCropLength(), $options->getCropMarker());
-            if (!$shouldHighlight) {
-                $transformers[] = new Unhighlighter(self::TEMP_HIGHLIGHT_START_TAG, self::TEMP_HIGHLIGHT_END_TAG);
-            }
+            $transformers[] = new Cropper($options->getCropLength(), $options->getCropMarker(), $options->getHighlightStartTag(), $options->getHighlightEndTag());
+        }
+        if (!$shouldHighlight) {
+            $transformers[] = new Unhighlighter($options->getHighlightStartTag(), $options->getHighlightEndTag());
         }
 
         $formattedText = $text;
