@@ -19,7 +19,11 @@ class Cropper implements AbstractTransformer
 
     public function transform(string $text, TokenCollection $matches): string
     {
-        if (empty($matches) || $this->cropLength <= 0) {
+        if (!$text || !$matches->count() || $this->cropLength <= 0) {
+            return $text;
+        }
+
+        if ($this->highlightStartTag === '' || $this->highlightEndTag === '') {
             return $text;
         }
 
@@ -36,13 +40,13 @@ class Cropper implements AbstractTransformer
         }
 
         // Create context window spans around each highlighted chunk
-        $textLength = \mb_strlen($text, 'UTF-8');
-        $startTagLength = \mb_strlen($this->highlightStartTag, 'UTF-8');
-        $endTagLength = \mb_strlen($this->highlightEndTag, 'UTF-8');
+        $textLength = mb_strlen($text, 'UTF-8');
+        $startTagLength = mb_strlen($this->highlightStartTag, 'UTF-8');
+        $endTagLength = mb_strlen($this->highlightEndTag, 'UTF-8');
         $position = 0;
         $spans = [];
         foreach ($chunks as $i => $chunk) {
-            $chunkLength = \mb_strlen($chunk, 'UTF-8');
+            $chunkLength = mb_strlen($chunk, 'UTF-8');
 
             if ($i % 2 === 0) {
                 $position += $chunkLength;
@@ -69,7 +73,7 @@ class Cropper implements AbstractTransformer
                 $this->closestWordBoundary($text, $adjustedContextEnd, true),
             );
 
-            $prev = $spans[count($spans) - 1] ?? null;
+            $prev = $spans[\count($spans) - 1] ?? null;
             if ($prev && $prev->getEndPosition() >= $span->getStartPosition()) {
                 $span = new Span($prev->getStartPosition(), max($prev->getEndPosition(), $span->getEndPosition()));
                 array_pop($spans);
@@ -102,12 +106,12 @@ class Cropper implements AbstractTransformer
         foreach ([' ', "\r", "\n", "\t", ','] as $char) {
             if ($forward) {
                 $boundary = mb_strpos($string, $char, $position, 'UTF-8');
-                if (false !== $boundary) {
+                if ($boundary !== false) {
                     $boundaries[] = $boundary;
                 }
             } else {
                 $boundary = mb_strrpos($string, $char, 0 - (mb_strlen($string) - $position), 'UTF-8');
-                if (false !== $boundary) {
+                if ($boundary !== false) {
                     $boundaries[] = $boundary + 1;
                 }
             }
