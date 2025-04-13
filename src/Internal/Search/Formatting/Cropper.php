@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Formatting;
 
+use Loupe\Loupe\Internal\Tokenizer\Span;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
-use Symfony\Component\String\UnicodeString;
 
 class Cropper implements AbstractTransformer
 {
@@ -23,12 +23,10 @@ class Cropper implements AbstractTransformer
             return $text;
         }
 
-        $context = new UnicodeString($text);
         $chunks = [];
-
-        foreach ($context->split($this->highlightStartTag) as $chunk) {
-            foreach ($chunk->split($this->highlightEndTag, 2) as $innerChunk) {
-                $chunks[] = $innerChunk;
+        foreach (explode($this->highlightStartTag, $text) as $outer) {
+            foreach (explode($this->highlightEndTag, $outer, 2) as $inner) {
+                $chunks[] = $inner;
             }
         }
 
@@ -36,55 +34,65 @@ class Cropper implements AbstractTransformer
             return $text;
         }
 
-        $result = [];
-
+        $textLength = \mb_strlen($text, 'UTF-8');
+        $startTagLength = \mb_strlen($this->highlightStartTag, 'UTF-8');
+        $endTagLength = \mb_strlen($this->highlightEndTag, 'UTF-8');
+        $position = 0;
+        $spans = [];
         foreach ($chunks as $i => $chunk) {
-            // Odd = highlighted key phrases, leave untouched and surround with tags
-            if ($i % 2 === 1) {
-                $result[] = $chunk->prepend($this->highlightStartTag)->append($this->highlightEndTag)->toString();
+            $chunkLength = \mb_strlen($chunk, 'UTF-8');
+
+            if ($i % 2 === 0) {
+                $position += $chunkLength;
                 continue;
             }
 
-            // Even = context window around highlighted phrases
+            $highlightStart = $position;
+            $highlightEnd = $position + $startTagLength + $chunkLength + $endTagLength;
+            $contextSize = (int) max(0, floor(($this->cropLength - $chunkLength) / 2));
+            $contextStart = max(0, $highlightStart - $contextSize);
+            $contextEnd = min($textLength, $highlightEnd + $contextSize);
+            $spans[] = new Span(
+                $this->closestWordBoundary($text, $contextStart, false),
+                $this->closestWordBoundary($text, $contextEnd, true),
+            );
 
-            if ($i === 0) {
-                // The first chunk only ever has to be prepended
-                $result[] = $this->trim($chunk, true)->toString();
-            } elseif ($i === \count($chunks) - 1) {
-                // The last chunk only ever has to be appended
-                $result[] = $this->trim($chunk, false)->toString();
-            } elseif ($chunk->length() <= $this->cropLength) {
-                // An in-between chunk has to be left untouched, if it is shorter or equal the desired context length
-                $result[] = $chunk->toString();
-            } else {
-                // Otherwise we have to prepend and append
-                $pre = $this->trim($chunk, true);
-                $post = $this->trim($chunk, false);
+            $position = $highlightEnd;
+        }
 
-                // If both have been shortened, we would have a double ellipsis now, so let's trim that
-                if ($post->endsWith($this->cropMarker) && $pre->startsWith($this->cropMarker)) {
-                    $post = $post->trimSuffix($this->cropMarker);
-                }
-
-                $result[] = $post->append($pre->toString())->toString();
+        $result = '';
+        foreach ($spans as $span) {
+            if ($span->getStartPosition() > 0) {
+                $result .= $this->cropMarker;
+            }
+            $result .= mb_substr($text, $span->getStartPosition(), $span->getLength(), 'UTF-8');
+            if ($span->getEndPosition() < $textLength) {
+                $result .= $this->cropMarker;
             }
         }
 
-        return implode('', $result);
+        // Remove duplicate crop markers
+        $result = str_replace($this->cropMarker . $this->cropMarker, $this->cropMarker, $result);
+
+        return $result;
     }
 
-    private function trim(UnicodeString $string, bool $fromEnd): UnicodeString
+    private function closestWordBoundary(string $string, int $position, bool $forward = true): int
     {
-        $truncated = $fromEnd
-            ? $string->reverse()->truncate($this->cropLength, cut: false)->reverse()
-            : $string->truncate($this->cropLength, cut: false);
-
-        if ($truncated->equalsTo($string)) {
-            return $string;
+        $boundaries = [];
+        foreach ([' ', "\r", "\n", "\t"] as $char) {
+            $boundary = $forward
+                ? mb_strpos($string, $char, $position, 'UTF-8')
+                : mb_strrpos($string, $char, 0 - (mb_strlen($string) - $position), 'UTF-8');
+            if (false !== $boundary) {
+                $boundaries[] = $boundary;
+            }
         }
 
-        return $fromEnd
-            ? $truncated->prepend($this->cropMarker)
-            : $truncated->append($this->cropMarker);
+        if (empty($boundaries)) {
+            return $position;
+        }
+
+        return $forward ? min($boundaries) : max($boundaries);
     }
 }
