@@ -24,11 +24,11 @@ class Highlighter implements AbstractTransformer
         }
 
         $result = '';
-        $previousEnd = 0;
+        $end = 0;
 
         foreach ($spans as $span) {
             // Insert start tag before span
-            $result .= mb_substr($text, $previousEnd, $span->getStartPosition() - $previousEnd, 'UTF-8');
+            $result .= mb_substr($text, $end, $span->getStartPosition() - $end, 'UTF-8');
             $result .= $this->startTag;
 
             // Insert span text
@@ -36,11 +36,11 @@ class Highlighter implements AbstractTransformer
 
             // Insert end tag after span
             $result .= $this->endTag;
-            $previousEnd = $span->getEndPosition();
+            $end = $span->getEndPosition();
         }
 
         // Add remaining text after last span
-        $result .= mb_substr($text, $previousEnd, null, 'UTF-8');
+        $result .= mb_substr($text, $end, null, 'UTF-8');
 
         return $result;
     }
