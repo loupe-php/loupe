@@ -25,11 +25,6 @@ class FormatterResult
         return $this->matches;
     }
 
-    public function hasMatches(): bool
-    {
-        return $this->matches->count() > 0;
-    }
-
     /**
      * @return array<int, array{start: int, length: int, stopword: bool}>
      */
@@ -40,5 +35,10 @@ class FormatterResult
             'length' => $token->getLength(),
             'stopword' => $token->isStopWord(),
         ], $this->matches->all());
+    }
+
+    public function hasMatches(): bool
+    {
+        return $this->matches->count() > 0;
     }
 }

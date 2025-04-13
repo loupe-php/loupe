@@ -143,10 +143,10 @@ class Tokenizer
                 }
             }
 
-            $stopword = in_array($term, $stopWords);
+            $stopword = \in_array($term, $stopWords, true);
             if (!$stopword) {
                 foreach ($variants as $variant) {
-                    if (in_array($variant, $stopWords)) {
+                    if (\in_array($variant, $stopWords, true)) {
                         $stopword = true;
                     }
                 }
@@ -168,7 +168,7 @@ class Tokenizer
             $all->add($token);
 
             // Skip stop words
-            if ($stopword && ! $includeStopWords) {
+            if ($stopword && !$includeStopWords) {
                 continue;
             }
 

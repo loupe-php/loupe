@@ -72,14 +72,6 @@ final class SearchParameters
     }
 
     /**
-     * @return array<string>
-     */
-    public function getAttributesToCrop(): array
-    {
-        return $this->attributesToCrop;
-    }
-
-    /**
      * @param array{
      *     attributesToCrop?: array<string>,
      *     attributesToHighlight?: array<string>,
@@ -163,6 +155,14 @@ final class SearchParameters
     public static function fromString(string $string): self
     {
         return self::fromArray(json_decode($string, true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getAttributesToCrop(): array
+    {
+        return $this->attributesToCrop;
     }
 
     /**
@@ -278,24 +278,6 @@ final class SearchParameters
     }
 
     /**
-     * @param array<string> $attributesToCrop
-     */
-    public function withAttributesToCrop(
-        array $attributesToCrop,
-        string $cropMarker = '…',
-        int $cropLength = 10,
-    ): self {
-        sort($attributesToCrop);
-
-        $clone = clone $this;
-        $clone->attributesToCrop = $attributesToCrop;
-        $clone->cropMarker = $cropMarker;
-        $clone->cropLength = $cropLength;
-
-        return $clone;
-    }
-
-    /**
      * @return array{
      *     attributesToCrop: array<string>,
      *     attributesToHighlight: array<string>,
@@ -340,6 +322,24 @@ final class SearchParameters
     public function toString(): string
     {
         return json_encode($this->toArray(), JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param array<string> $attributesToCrop
+     */
+    public function withAttributesToCrop(
+        array $attributesToCrop,
+        string $cropMarker = '…',
+        int $cropLength = 10,
+    ): self {
+        sort($attributesToCrop);
+
+        $clone = clone $this;
+        $clone->attributesToCrop = $attributesToCrop;
+        $clone->cropMarker = $cropMarker;
+        $clone->cropLength = $cropLength;
+
+        return $clone;
     }
 
     /**

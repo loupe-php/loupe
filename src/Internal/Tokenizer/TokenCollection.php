@@ -28,46 +28,12 @@ class TokenCollection implements \Countable
         return $this;
     }
 
-    public function remove(Token $token): self
-    {
-        $this->tokens = array_filter($this->tokens, fn (Token $t) => $t !== $token);
-
-        return $this;
-    }
-
     /**
      * @return Token[]
      */
     public function all(): array
     {
         return $this->tokens;
-    }
-
-    public function atIndex(int $index): ?Token
-    {
-        return $this->tokens[$index] ?? null;
-    }
-
-    public function atPosition(int $index): ?Token
-    {
-        foreach ($this->tokens as $token) {
-            if ($token->getStartPosition() <= $index && $index <= $token->getEndPosition()) {
-                return $token;
-            }
-        }
-
-        return null;
-    }
-
-    public function indexOf(Token $token): ?int
-    {
-        foreach ($this->tokens as $index => $t) {
-            if ($t === $token) {
-                return $index;
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -134,6 +100,22 @@ class TokenCollection implements \Countable
         return array_unique($tokens);
     }
 
+    public function atIndex(int $index): ?Token
+    {
+        return $this->tokens[$index] ?? null;
+    }
+
+    public function atPosition(int $index): ?Token
+    {
+        foreach ($this->tokens as $token) {
+            if ($token->getStartPosition() <= $index && $index <= $token->getEndPosition()) {
+                return $token;
+            }
+        }
+
+        return null;
+    }
+
     public function count(): int
     {
         return \count($this->tokens);
@@ -142,6 +124,37 @@ class TokenCollection implements \Countable
     public function empty(): bool
     {
         return $this->tokens === [];
+    }
+
+    public function first(): ?Token
+    {
+        $first = reset($this->tokens);
+        if ($first instanceof Token) {
+            return $first;
+        }
+
+        return null;
+    }
+
+    public function indexOf(Token $token): ?int
+    {
+        foreach ($this->tokens as $index => $t) {
+            if ($t === $token) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    public function last(): ?Token
+    {
+        $last = end($this->tokens);
+        if ($last instanceof Token) {
+            return $last;
+        }
+
+        return null;
     }
 
     /**
@@ -174,23 +187,10 @@ class TokenCollection implements \Countable
         return $groups;
     }
 
-    public function first(): ?Token
+    public function remove(Token $token): self
     {
-        $first = reset($this->tokens);
-        if ($first instanceof Token) {
-            return $first;
-        }
+        $this->tokens = array_filter($this->tokens, fn (Token $t) => $t !== $token);
 
-        return null;
-    }
-
-    public function last(): ?Token
-    {
-        $last = end($this->tokens);
-        if ($last instanceof Token) {
-            return $last;
-        }
-
-        return null;
+        return $this;
     }
 }

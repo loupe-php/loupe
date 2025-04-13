@@ -125,7 +125,7 @@ class Matcher
         $result = new TokenCollection();
 
         foreach ($matches->all() as $i => $match) {
-            if (! $match->isStopWord()) {
+            if (!$match->isStopWord()) {
                 $result->add($match);
                 continue;
             }

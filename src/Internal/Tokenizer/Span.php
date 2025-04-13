@@ -9,11 +9,7 @@ class Span
     public function __construct(
         private int $startPosition,
         private int $endPosition,
-    ) {}
-
-    public function getStartPosition(): int
-    {
-        return $this->startPosition;
+    ) {
     }
 
     public function getEndPosition(): int
@@ -26,8 +22,13 @@ class Span
         return $this->endPosition - $this->startPosition;
     }
 
-    public function withEndPosition(int $endPosition): Span
+    public function getStartPosition(): int
     {
-        return new Span($this->startPosition, $endPosition);
+        return $this->startPosition;
+    }
+
+    public function withEndPosition(int $endPosition): self
+    {
+        return new self($this->startPosition, $endPosition);
     }
 }
