@@ -96,8 +96,8 @@ final class SearchParameters
         if (isset($data['attributesToCrop'])) {
             $instance = $instance->withAttributesToCrop(
                 $data['attributesToCrop'],
-                $data['cropMarker'] ?? '…',
                 $data['cropLength'] ?? 50,
+                $data['cropMarker'] ?? '…',
             );
         }
 
@@ -329,8 +329,8 @@ final class SearchParameters
      */
     public function withAttributesToCrop(
         array $attributesToCrop,
-        string $cropMarker = '…',
         int $cropLength = 50,
+        string $cropMarker = '…',
     ): self {
         $clone = clone $this;
 
