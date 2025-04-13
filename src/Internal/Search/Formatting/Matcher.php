@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Internal\Search\Formatting\Matcher;
+namespace Loupe\Loupe\Internal\Search\Formatting;
 
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Levenshtein;
+use Loupe\Loupe\Internal\Tokenizer\Span;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
@@ -36,28 +37,29 @@ class Matcher
         return $matches;
     }
 
-    public function calculateMatchSpans(TokenCollection $matches): MatchSpanCollection
+    /**
+     * @return Span[]
+     */
+    public function calculateMatchSpans(TokenCollection $matches): array
     {
         $matches = $this->removeSolitaryStopWords($matches);
 
         $spans = [];
-        $previousEnd = null;
+        $prevMatch = null;
 
         foreach ($matches->all() as $match) {
             // Merge matches that are exactly after one another
-            if ($previousEnd === $match->getStartPosition() - 1) {
-                $spans[count($spans) - 1]['end'] = $match->getEndPosition();
+            if ($prevMatch?->getEndPosition() === $match->getStartPosition() - 1) {
+                $prevSpan = end($spans);
+                array_splice($spans, -1, 1, [$prevSpan->withEndPosition($match->getEndPosition())]);
             } else {
-                $spans[] = [
-                    'start' => $match->getStartPosition(),
-                    'end' => $match->getEndPosition()
-                ];
+                $spans[] = new Span($match->getStartPosition(), $match->getEndPosition());
             }
 
-            $previousEnd = $match->getEndPosition();
+            $prevMatch = $match;
         }
 
-        return new MatchSpanCollection($spans);
+        return $spans;
     }
 
     private function isMatch(Token $textToken, TokenCollection $queryTokens): bool
@@ -122,8 +124,8 @@ class Matcher
 
         $result = new TokenCollection();
 
-        foreach ($matches->all() as $i =>$match) {
-            if (!$match->isStopWord()) {
+        foreach ($matches->all() as $i => $match) {
+            if (! $match->isStopWord()) {
                 $result->add($match);
                 continue;
             }

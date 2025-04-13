@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Formatting;
 
-use Loupe\Loupe\Internal\Search\Formatting\Matcher\Matcher;
-use Loupe\Loupe\Internal\Search\Formatting\Matcher\MatchSpanCollection;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
 class Unhighlighter implements AbstractTransformer
@@ -17,8 +15,8 @@ class Unhighlighter implements AbstractTransformer
     ) {
     }
 
-    public function transform(string $text, TokenCollection $matches, MatchSpanCollection $spans): string
+    public function transform(string $text, TokenCollection $matches): string
     {
-        return str_replace([$this->startTag, $this->endTag], '', $text);
+        return str_replace([$this->startTag, $this->endTag], ['', ''], $text);
     }
 }

@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Search\Formatting;
 
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Search\Formatting\Matcher\Matcher;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
 class Formatter
 {
     private Matcher $matcher;
+
+    private const TEMP_HIGHLIGHT_START_TAG = '[~MATCH~]';
+    private const TEMP_HIGHLIGHT_END_TAG = '[~/MATCH~]';
 
     public function __construct(Engine $engine)
     {
@@ -24,25 +26,27 @@ class Formatter
         FormatterOptions $options
     ): FormatterResult {
         $matches = $this->matcher->calculateMatches($text, $queryTerms);
-        $spans = $this->matcher->calculateMatchSpans($matches);
+
+        $shouldHighlight = $options->shouldHighlightAttribute($attribute);
+        $shouldCrop = $options->shouldCropAttribute($attribute);
 
         $transformers = [];
-        if ($options->shouldHighlightAttribute($attribute)) {
-            $transformers[] = new Highlighter($spans, $options->getHighlightStartTag(), $options->getHighlightEndTag());
+        if ($shouldHighlight) {
+            $transformers[] = new Highlighter($this->matcher, $options->getHighlightStartTag(), $options->getHighlightEndTag());
         }
-        if ($options->shouldCropAttribute($attribute)) {
-            if (! $options->shouldHighlightAttribute($attribute)) {
-                $transformers[] = new Highlighter('[~MATCH~]', '[~/MATCH~]');
+        if ($shouldCrop) {
+            if (! $shouldHighlight) {
+                $transformers[] = new Highlighter($this->matcher, self::TEMP_HIGHLIGHT_START_TAG, self::TEMP_HIGHLIGHT_END_TAG);
             }
-            $transformers[] = new Cropper($options->getCropLength(), $options->getCropMarker());
-            if (! $options->shouldHighlightAttribute($attribute)) {
-                $transformers[] = new Unhighlighter('[~MATCH~]', '[~/MATCH~]');
+            $transformers[] = new Cropper($this->matcher, $options->getCropLength(), $options->getCropMarker());
+            if (! $shouldHighlight) {
+                $transformers[] = new Unhighlighter($this->matcher, self::TEMP_HIGHLIGHT_START_TAG, self::TEMP_HIGHLIGHT_END_TAG);
             }
         }
 
         $formattedText = $text;
         foreach ($transformers as $transformer) {
-            $formattedText = $transformer->transform($formattedText, $matches, $spans);
+            $formattedText = $transformer->transform($formattedText, $matches);
         }
 
         return new FormatterResult($formattedText, $matches);

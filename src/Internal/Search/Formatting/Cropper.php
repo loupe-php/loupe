@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\Formatting;
 
-use Loupe\Loupe\Internal\Search\Formatting\Matcher\Matcher;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 
 class Cropper implements AbstractTransformer
@@ -16,7 +15,7 @@ class Cropper implements AbstractTransformer
     ) {
     }
 
-    public function transform(string $text, TokenCollection $matches, MatchSpanCollection $spans): string
+    public function transform(string $text, TokenCollection $matches): string
     {
         if (empty($spans) || $this->cropLength <= 0) {
             return [$text, $spans];
