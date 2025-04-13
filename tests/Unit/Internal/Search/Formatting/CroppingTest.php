@@ -160,7 +160,9 @@ class CroppingTest extends TestCase
         yield 'Cropping with highlights' => [
             'assassin',
             ['title', 'overview'],
-            ['overview' => 20],
+            [
+                'overview' => 20,
+            ],
             [],
             [
                 'hits' => [
@@ -187,8 +189,8 @@ class CroppingTest extends TestCase
     }
 
     /**
-     * @param array<string>|array<string,int> $searchableAttributes
-     * @param array<string> $attributesToCrop
+     * @param array<string> $searchableAttributes
+     * @param array<string>|array<string,int> $attributesToCrop
      * @param array<string> $attributesToHighlight
      * @param array<mixed> $expectedResults
      * @param array<string> $stopWords

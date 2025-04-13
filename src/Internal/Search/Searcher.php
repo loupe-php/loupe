@@ -772,41 +772,6 @@ class Searcher
     {
         $this->addTermMatchesCTEs($tokenCollection);
         $this->addTermDocumentMatchesCTEs($tokenCollection);
-        $positiveConditions = [];
-        $negativeConditions = [];
-
-        foreach ($tokenCollection->phraseGroups() as $tokenOrPhrase) {
-            $statements = [];
-            foreach ($tokenOrPhrase->all() as $token) {
-                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
-            }
-
-            if (\count(array_filter($statements))) {
-                if ($tokenOrPhrase->isNegated()) {
-                    $negativeConditions[] = $statements;
-                } else {
-                    $positiveConditions[] = $statements;
-                }
-            }
-        }
-
-        $where = implode(' OR ', array_map(
-            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
-            $positiveConditions
-        ));
-
-        if ($where !== '') {
-            $this->queryBuilder->andWhere('(' . $where . ')');
-        }
-
-        $whereNot = implode(' AND ', array_map(
-            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
-            $negativeConditions
-        ));
-
-        if ($whereNot !== '') {
-            $this->queryBuilder->andWhere('(' . $whereNot . ')');
-        }
     }
 
     private function selectDistance(): void

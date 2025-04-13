@@ -105,17 +105,6 @@ class TokenCollection implements \Countable
         return $this->tokens[$index] ?? null;
     }
 
-    public function atPosition(int $index): ?Token
-    {
-        foreach ($this->tokens as $token) {
-            if ($token->getStartPosition() <= $index && $index <= $token->getEndPosition()) {
-                return $token;
-            }
-        }
-
-        return null;
-    }
-
     public function count(): int
     {
         return \count($this->tokens);
@@ -124,27 +113,6 @@ class TokenCollection implements \Countable
     public function empty(): bool
     {
         return $this->tokens === [];
-    }
-
-    public function first(): ?Token
-    {
-        $first = reset($this->tokens);
-        if ($first instanceof Token) {
-            return $first;
-        }
-
-        return null;
-    }
-
-    public function indexOf(Token $token): ?int
-    {
-        foreach ($this->tokens as $index => $t) {
-            if ($t === $token) {
-                return $index;
-            }
-        }
-
-        return null;
     }
 
     public function last(): ?Token
@@ -185,12 +153,5 @@ class TokenCollection implements \Countable
         }
 
         return $groups;
-    }
-
-    public function remove(Token $token): self
-    {
-        $this->tokens = array_filter($this->tokens, fn (Token $t) => $t !== $token);
-
-        return $this;
     }
 }

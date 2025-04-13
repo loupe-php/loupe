@@ -73,7 +73,7 @@ final class SearchParameters
 
     /**
      * @param array{
-     *     attributesToCrop?: array<string>,
+     *     attributesToCrop?: array<string>|array<string,int>,
      *     attributesToHighlight?: array<string>,
      *     attributesToRetrieve?: array<string>,
      *     attributesToSearchOn?: array<string>,
@@ -279,7 +279,7 @@ final class SearchParameters
 
     /**
      * @return array{
-     *     attributesToCrop: array<string>,
+     *     attributesToCrop: array<string,int>,
      *     attributesToHighlight: array<string>,
      *     attributesToRetrieve: array<string>,
      *     attributesToSearchOn: array<string>,
@@ -336,9 +336,9 @@ final class SearchParameters
 
         $attributes = [];
         foreach ($attributesToCrop as $key => $attribute) {
-            if (is_string($key)) {
-                $attributes[$key] = (int) $attribute;
-            } else {
+            if (\is_string($key) && \is_int($attribute)) {
+                $attributes[$key] = $attribute;
+            } elseif (\is_string($attribute)) {
                 $attributes[$attribute] = $cropLength;
             }
         }

@@ -61,13 +61,13 @@ class FormatterOptions
 
     public function shouldCropAttribute(string $attribute): bool
     {
-        return array_key_exists($attribute, $this->attributesToCrop) ||
-            array_key_exists('*', $this->attributesToCrop) && \in_array($attribute, $this->searchableAttributes);
+        return \array_key_exists($attribute, $this->attributesToCrop) ||
+            \array_key_exists('*', $this->attributesToCrop) && \in_array($attribute, $this->searchableAttributes, true);
     }
 
     public function shouldHighlightAttribute(string $attribute): bool
     {
-        return \in_array($attribute, $this->attributesToHighlight) ||
-            in_array('*', $this->attributesToHighlight) && \in_array($attribute, $this->searchableAttributes);
+        return \in_array($attribute, $this->attributesToHighlight, true) ||
+            \in_array('*', $this->attributesToHighlight, true) && \in_array($attribute, $this->searchableAttributes, true);
     }
 }
