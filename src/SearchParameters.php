@@ -11,7 +11,7 @@ final class SearchParameters
     public const MAX_HITS_PER_PAGE = 1000;
 
     /**
-     * @var array<string>
+     * @var array<string,int>
      */
     private array $attributesToCrop = [];
 
@@ -158,7 +158,7 @@ final class SearchParameters
     }
 
     /**
-     * @return array<string>
+     * @return array<string,int>
      */
     public function getAttributesToCrop(): array
     {
@@ -325,17 +325,27 @@ final class SearchParameters
     }
 
     /**
-     * @param array<string> $attributesToCrop
+     * @param array<string>|array<string,int> $attributesToCrop
      */
     public function withAttributesToCrop(
         array $attributesToCrop,
         string $cropMarker = '…',
         int $cropLength = 50,
     ): self {
-        sort($attributesToCrop);
-
         $clone = clone $this;
-        $clone->attributesToCrop = $attributesToCrop;
+
+        $attributes = [];
+        foreach ($attributesToCrop as $key => $attribute) {
+            if (is_string($key)) {
+                $attributes[$key] = (int) $attribute;
+            } else {
+                $attributes[$attribute] = $cropLength;
+            }
+        }
+
+        ksort($attributes);
+
+        $clone->attributesToCrop = $attributes;
         $clone->cropMarker = $cropMarker;
         $clone->cropLength = $cropLength;
 

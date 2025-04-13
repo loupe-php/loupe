@@ -9,7 +9,7 @@ use Loupe\Loupe\SearchParameters;
 class FormatterOptions
 {
     /**
-     * @var array<string>
+     * @var array<string,int>
      */
     private array $attributesToCrop;
 
@@ -23,20 +23,20 @@ class FormatterOptions
      */
     public function __construct(
         private SearchParameters $searchParameters,
-        array $searchableAttributes
+        private array $searchableAttributes
     ) {
-        $this->attributesToCrop = ['*'] === $this->searchParameters->getAttributesToCrop()
-            ? $searchableAttributes
-            : $this->searchParameters->getAttributesToCrop();
-
-        $this->attributesToHighlight = ['*'] === $this->searchParameters->getAttributesToHighlight()
-            ? $searchableAttributes
-            : $this->searchParameters->getAttributesToHighlight();
+        $this->attributesToHighlight = $this->searchParameters->getAttributesToHighlight();
+        $this->attributesToCrop = $this->searchParameters->getAttributesToCrop();
     }
 
     public function getCropLength(): int
     {
         return $this->searchParameters->getCropLength();
+    }
+
+    public function getCropLengthForAttribute(string $attribute): int
+    {
+        return $this->attributesToCrop[$attribute] ?? $this->searchParameters->getCropLength();
     }
 
     public function getCropMarker(): string
@@ -61,11 +61,13 @@ class FormatterOptions
 
     public function shouldCropAttribute(string $attribute): bool
     {
-        return \in_array($attribute, $this->attributesToCrop, true);
+        return array_key_exists($attribute, $this->attributesToCrop) ||
+            array_key_exists('*', $this->attributesToCrop) && \in_array($attribute, $this->searchableAttributes);
     }
 
     public function shouldHighlightAttribute(string $attribute): bool
     {
-        return \in_array($attribute, $this->attributesToHighlight, true);
+        return \in_array($attribute, $this->attributesToHighlight) ||
+            in_array('*', $this->attributesToHighlight) && \in_array($attribute, $this->searchableAttributes);
     }
 }

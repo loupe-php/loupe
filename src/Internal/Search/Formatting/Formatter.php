@@ -32,7 +32,7 @@ class Formatter
             $transformers[] = new Highlighter($this->matcher, $options->getHighlightStartTag(), $options->getHighlightEndTag());
         }
         if ($shouldCrop) {
-            $transformers[] = new Cropper($options->getCropLength(), $options->getCropMarker(), $options->getHighlightStartTag(), $options->getHighlightEndTag());
+            $transformers[] = new Cropper($options->getCropLengthForAttribute($attribute), $options->getCropMarker(), $options->getHighlightStartTag(), $options->getHighlightEndTag());
         }
         if (!$shouldHighlight) {
             $transformers[] = new Unhighlighter($options->getHighlightStartTag(), $options->getHighlightEndTag());

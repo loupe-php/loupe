@@ -128,7 +128,7 @@ class CroppingTest extends TestCase
             ],
         ];
 
-        yield 'Cropping with highlights' => [
+        yield 'Cropping with custom crop length' => [
             'assassin',
             ['title', 'overview'],
             ['overview'],
@@ -154,11 +154,40 @@ class CroppingTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
+
+        ];
+
+        yield 'Cropping with highlights' => [
+            'assassin',
+            ['title', 'overview'],
+            ['overview' => 20],
+            [],
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
+                        '_formatted' => [
+                            'id' => 24,
+                            'title' => 'Kill Bill: Vol. 1',
+                            'overview' => 'An assassin is shot…their assassination circle…',
+                            'genres' => ['Action', 'Crime'],
+                        ],
+                    ],
+                ],
+                'query' => 'assassin',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
         ];
     }
 
     /**
-     * @param array<string> $searchableAttributes
+     * @param array<string>|array<string,int> $searchableAttributes
      * @param array<string> $attributesToCrop
      * @param array<string> $attributesToHighlight
      * @param array<mixed> $expectedResults
