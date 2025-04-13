@@ -221,7 +221,7 @@ class CroppingTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery($query)
             ->withAttributesToHighlight($attributesToHighlight, $highlightStartTag, $highlightEndTag)
-            ->withAttributesToCrop($attributesToCrop, $cropMarker, $cropLength)
+            ->withAttributesToCrop($attributesToCrop, $cropLength, $cropMarker)
             ->withAttributesToRetrieve(['id', 'title', 'overview', 'genres'])
             ->withSort(['title:asc'])
         ;
