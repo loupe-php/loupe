@@ -23,6 +23,7 @@ class Cropper implements AbstractTransformer
             return $text;
         }
 
+        // Split the text into chunks based on the highlight tags
         $chunks = [];
         foreach (explode($this->highlightStartTag, $text) as $outer) {
             foreach (explode($this->highlightEndTag, $outer, 2) as $inner) {
@@ -34,6 +35,7 @@ class Cropper implements AbstractTransformer
             return $text;
         }
 
+        // Create context window spans around each highlighted chunk
         $textLength = \mb_strlen($text, 'UTF-8');
         $startTagLength = \mb_strlen($this->highlightStartTag, 'UTF-8');
         $endTagLength = \mb_strlen($this->highlightEndTag, 'UTF-8');
@@ -49,17 +51,34 @@ class Cropper implements AbstractTransformer
 
             $highlightStart = $position;
             $highlightEnd = $position + $startTagLength + $chunkLength + $endTagLength;
-            $contextSize = (int) max(0, floor(($this->cropLength - $chunkLength) / 2));
-            $contextStart = max(0, $highlightStart - $contextSize);
-            $contextEnd = min($textLength, $highlightEnd + $contextSize);
-            $spans[] = new Span(
-                $this->closestWordBoundary($text, $contextStart, false),
-                $this->closestWordBoundary($text, $contextEnd, true),
+            $position = $highlightEnd;
+
+            if ($chunkLength >= $this->cropLength) {
+                $spans[] = new Span($highlightStart, $highlightEnd);
+                continue;
+            }
+
+            $contextPadding = (int) floor(($this->cropLength - $chunkLength) / 2);
+            $contextStart = max(0, $highlightStart - $contextPadding);
+            $contextEnd = min($textLength, $highlightEnd + $contextPadding);
+            $adjustedContextStart = max(0, min($contextStart, $highlightEnd - $this->cropLength));
+            $adjustedContextEnd = min($textLength, max($contextEnd, $highlightStart + $this->cropLength));
+
+            $span = new Span(
+                $this->closestWordBoundary($text, $adjustedContextStart, false),
+                $this->closestWordBoundary($text, $adjustedContextEnd, true),
             );
 
-            $position = $highlightEnd;
+            $prev = $spans[count($spans) - 1] ?? null;
+            if ($prev && $prev->getEndPosition() >= $span->getStartPosition()) {
+                $span = new Span($prev->getStartPosition(), max($prev->getEndPosition(), $span->getEndPosition()));
+                array_pop($spans);
+            }
+
+            $spans[] = $span;
         }
 
+        // Put back together and add crop markers
         $result = '';
         foreach ($spans as $span) {
             if ($span->getStartPosition() > 0) {
@@ -80,12 +99,17 @@ class Cropper implements AbstractTransformer
     private function closestWordBoundary(string $string, int $position, bool $forward = true): int
     {
         $boundaries = [];
-        foreach ([' ', "\r", "\n", "\t"] as $char) {
-            $boundary = $forward
-                ? mb_strpos($string, $char, $position, 'UTF-8')
-                : mb_strrpos($string, $char, 0 - (mb_strlen($string) - $position), 'UTF-8');
-            if (false !== $boundary) {
-                $boundaries[] = $boundary;
+        foreach ([' ', "\r", "\n", "\t", ','] as $char) {
+            if ($forward) {
+                $boundary = mb_strpos($string, $char, $position, 'UTF-8');
+                if (false !== $boundary) {
+                    $boundaries[] = $boundary;
+                }
+            } else {
+                $boundary = mb_strrpos($string, $char, 0 - (mb_strlen($string) - $position), 'UTF-8');
+                if (false !== $boundary) {
+                    $boundaries[] = $boundary + 1;
+                }
             }
         }
 
