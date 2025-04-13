@@ -17,7 +17,7 @@ class CroppingTest extends TestCase
     public static function croppingProvider(): \Generator
     {
         yield 'Cropping with too little text and no change' => [
-            'assassin',
+            'assassin employer member vengeance',
             ['title', 'overview'],
             ['overview'],
             [],
@@ -36,6 +36,34 @@ class CroppingTest extends TestCase
                         ],
                     ],
                 ],
+                'query' => 'assassin employer member vengeance',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        ];
+
+        yield 'Cropping with multiple matches' => [
+            'assassin',
+            ['title', 'overview'],
+            ['overview'],
+            [],
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
+                        '_formatted' => [
+                            'id' => 24,
+                            'title' => 'Kill Bill: Vol. 1',
+                            'overview' => 'An assassin is shot by her ruthless employer…and other members of their assassination circle – but she lives to plot…',
+                            'genres' => ['Action', 'Crime'],
+                        ],
+                    ],
+                ],
                 'query' => 'assassin',
                 'hitsPerPage' => 20,
                 'page' => 1,
@@ -44,7 +72,7 @@ class CroppingTest extends TestCase
             ],
         ];
 
-        yield 'Cropping without highlighting' => [
+        yield 'Cropping at the beginning' => [
             'selma',
             ['title', 'overview'],
             ['overview'],
@@ -59,12 +87,68 @@ class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 16,
                             'title' => 'Dancer in the Dark',
-                            'overview' => 'Selma, a Czech immigrant on the verge of blindness, struggles…expensive operation. When life gets too difficult, Selma learns to cope through her love of musicals, escaping…',
+                            'overview' => 'Selma, a Czech immigrant on the verge of blindness…operation. When life gets too difficult, Selma learns to cope through her love of musicals…',
                             'genres' => ['Drama', 'Crime'],
                         ],
                     ],
                 ],
                 'query' => 'selma',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        ];
+
+        yield 'Cropping at the end' => [
+            'surroundings',
+            ['title', 'overview'],
+            ['overview'],
+            [],
+            [
+                'hits' => [
+                    [
+                        'id' => 16,
+                        'title' => 'Dancer in the Dark',
+                        'overview' => 'Selma, a Czech immigrant on the verge of blindness, struggles to make ends meet for herself and her son, who has inherited the same genetic disorder and will suffer the same fate without an expensive operation. When life gets too difficult, Selma learns to cope through her love of musicals, escaping life\'s troubles - even if just for a moment - by dreaming up little numbers to the rhythmic beats of her surroundings.',
+                        'genres' => ['Drama', 'Crime'],
+                        '_formatted' => [
+                            'id' => 16,
+                            'title' => 'Dancer in the Dark',
+                            'overview' => '…to the rhythmic beats of her surroundings.',
+                            'genres' => ['Drama', 'Crime'],
+                        ],
+                    ],
+                ],
+                'query' => 'surroundings',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        ];
+
+        yield 'Cropping with highlights' => [
+            'assassin',
+            ['title', 'overview'],
+            ['overview'],
+            ['overview'],
+            [
+                'hits' => [
+                    [
+                        'id' => 24,
+                        'title' => 'Kill Bill: Vol. 1',
+                        'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                        'genres' => ['Action', 'Crime'],
+                        '_formatted' => [
+                            'id' => 24,
+                            'title' => 'Kill Bill: Vol. 1',
+                            'overview' => 'An <em>assassin</em> is shot by her ruthless employer…and other members of their <em>assassination</em> circle – but she lives to plot…',
+                            'genres' => ['Action', 'Crime'],
+                        ],
+                    ],
+                ],
+                'query' => 'assassin',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
