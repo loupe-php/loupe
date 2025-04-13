@@ -80,6 +80,92 @@ final class SearchParameters
     }
 
     /**
+     * @param array{
+     *     attributesToCrop?: array<string>,
+     *     attributesToHighlight?: array<string>,
+     *     attributesToRetrieve?: array<string>,
+     *     attributesToSearchOn?: array<string>,
+     *     filter?: string,
+     *     highlightEndTag?: string,
+     *     highlightStartTag?: string,
+     *     hitsPerPage?: int,
+     *     page?: int,
+     *     query?: string,
+     *     rankingScoreThreshold?: float,
+     *     showMatchesPosition?: bool,
+     *     showRankingScore?: bool,
+     *     sort?: array<string>
+     * } $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $instance = new self();
+
+        if (isset($data['attributesToCrop'])) {
+            $instance = $instance->withAttributesToCrop(
+                $data['attributesToCrop'],
+                $data['cropMarker'] ?? '…',
+                $data['cropLength'] ?? 10,
+            );
+        }
+
+        if (isset($data['attributesToHighlight'])) {
+            $instance = $instance->withAttributesToHighlight(
+                $data['attributesToHighlight'],
+                $data['highlightStartTag'] ?? '<em>',
+                $data['highlightEndTag'] ?? '</em>',
+            );
+        }
+
+        if (isset($data['attributesToRetrieve'])) {
+            $instance = $instance->withAttributesToRetrieve($data['attributesToRetrieve']);
+        }
+
+        if (isset($data['attributesToSearchOn'])) {
+            $instance = $instance->withAttributesToSearchOn($data['attributesToSearchOn']);
+        }
+
+        if (isset($data['filter'])) {
+            $instance = $instance->withFilter($data['filter']);
+        }
+
+        if (isset($data['hitsPerPage'])) {
+            $instance = $instance->withHitsPerPage($data['hitsPerPage']);
+        }
+
+        if (isset($data['page'])) {
+            $instance = $instance->withPage($data['page']);
+        }
+
+        if (isset($data['query'])) {
+            $instance = $instance->withQuery($data['query']);
+        }
+
+        if (isset($data['rankingScoreThreshold'])) {
+            $instance = $instance->withRankingScoreThreshold($data['rankingScoreThreshold']);
+        }
+
+        if (isset($data['showMatchesPosition'])) {
+            $instance = $instance->withShowMatchesPosition($data['showMatchesPosition']);
+        }
+
+        if (isset($data['showRankingScore'])) {
+            $instance = $instance->withShowRankingScore($data['showRankingScore']);
+        }
+
+        if (isset($data['sort'])) {
+            $instance = $instance->withSort($data['sort']);
+        }
+
+        return $instance;
+    }
+
+    public static function fromString(string $string): self
+    {
+        return self::fromArray(json_decode($string, true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    /**
      * @return array<string>
      */
     public function getAttributesToHighlight(): array
@@ -130,6 +216,7 @@ final class SearchParameters
         $hash[] = json_encode($this->getCropLength());
         $hash[] = json_encode($this->getCropMarker());
         $hash[] = json_encode($this->getHighlightEndTag());
+        $hash[] = json_encode($this->getHighlightStartTag());
         $hash[] = json_encode($this->getAttributesToRetrieve());
         $hash[] = json_encode($this->getAttributesToSearchOn());
         $hash[] = json_encode($this->getFilter());
@@ -206,6 +293,53 @@ final class SearchParameters
         $clone->cropLength = $cropLength;
 
         return $clone;
+    }
+
+    /**
+     * @return array{
+     *     attributesToCrop: array<string>,
+     *     attributesToHighlight: array<string>,
+     *     attributesToRetrieve: array<string>,
+     *     attributesToSearchOn: array<string>,
+     *     cropLength: int,
+     *     cropMarker: string,
+     *     filter: string,
+     *     highlightEndTag: string,
+     *     highlightStartTag: string,
+     *     hitsPerPage: int,
+     *     page: int,
+     *     query: string,
+     *     rankingScoreThreshold: float,
+     *     showMatchesPosition: bool,
+     *     showRankingScore: bool,
+     *     sort: array<string>
+     * }
+     */
+    public function toArray(): array
+    {
+        return [
+            'attributesToCrop' => $this->attributesToCrop,
+            'attributesToHighlight' => $this->attributesToHighlight,
+            'attributesToRetrieve' => $this->attributesToRetrieve,
+            'attributesToSearchOn' => $this->attributesToSearchOn,
+            'cropLength' => $this->cropLength,
+            'cropMarker' => $this->cropMarker,
+            'filter' => $this->filter,
+            'highlightEndTag' => $this->highlightEndTag,
+            'highlightStartTag' => $this->highlightStartTag,
+            'hitsPerPage' => $this->hitsPerPage,
+            'page' => $this->page,
+            'query' => $this->query,
+            'rankingScoreThreshold' => $this->rankingScoreThreshold,
+            'showMatchesPosition' => $this->showMatchesPosition,
+            'showRankingScore' => $this->showRankingScore,
+            'sort' => $this->sort,
+        ];
+    }
+
+    public function toString(): string
+    {
+        return json_encode($this->toArray(), JSON_THROW_ON_ERROR);
     }
 
     /**

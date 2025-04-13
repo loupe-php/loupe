@@ -25,6 +25,20 @@ class Concatenator extends Node
         return $this->concatenator;
     }
 
+    public function getSetOperator(): string
+    {
+        return match ($this->concatenator) {
+            'AND' => 'INTERSECT',
+            'OR' => 'UNION',
+            default => throw new \InvalidArgumentException('Invalid concatenator.')
+        };
+    }
+
+    public function isConjunctive(): bool
+    {
+        return $this->concatenator === 'AND';
+    }
+
     public function toArray(): array
     {
         return [$this->getConcatenator()];

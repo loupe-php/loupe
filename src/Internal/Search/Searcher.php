@@ -7,8 +7,9 @@ namespace Loupe\Loupe\Internal\Search;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
+use Location\Bounds;
+use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
@@ -21,6 +22,10 @@ use Loupe\Loupe\SearchResult;
 
 class Searcher
 {
+    public const CTE_ALL_MULTI_FILTERS_PREFIX = '_cte_mf_all_';
+
+    public const CTE_MATCHES = '_cte_matches';
+
     public const CTE_TERM_DOCUMENT_MATCHES_PREFIX = '_cte_term_document_matches_';
 
     public const CTE_TERM_MATCHES_PREFIX = '_cte_term_matches_';
@@ -37,18 +42,16 @@ class Searcher
     private const MAX_DOCUMENT_MATCHES = 1000;
 
     /**
-     * @var array<string, array{cols: array<string>, sql: string}>
+     * @var array<string, Cte>
      */
-    private array $CTEs = [];
-
-    private Ast $filterAst;
+    private array $ctesByName = [];
 
     /**
-     * @var array<string, bool>
+     * @var array<string, array<string, Cte>>
      */
-    private array $geoDistanceSelectsAdded = [];
+    private array $ctesByTag = [];
 
-    private bool $multiAttributeJoinAdded = false;
+    private FilterBuilder $filterBuilder;
 
     private QueryBuilder $queryBuilder;
 
@@ -62,82 +65,100 @@ class Searcher
         private SearchParameters $searchParameters
     ) {
         $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
-        $this->filterAst = $filterParser->getAst($this->searchParameters->getFilter());
+        $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
+        $this->filterBuilder = new FilterBuilder($this->engine, $this, $filterParser->getAst($this->searchParameters->getFilter()));
     }
 
-    public function addGeoDistanceSelectToQueryBuilder(string $attribute, float $latitude, float $longitude): string
+    /**
+     * This creates a UNION ALL CTE for all the filter CTEs that were added
+     * for a specific attribute. So if you e.g. searched for "multi IN ('foobar') OR multi IN('baz')", it will
+     * UNION those two filter CTEs in order to find all matching rows.
+     */
+    public function addAllMultiFiltersCte(string $attribute): ?string
     {
-        $alias = self::DISTANCE_ALIAS . '_' . $attribute;
+        $cteName = self::CTE_ALL_MULTI_FILTERS_PREFIX . $attribute;
 
-        // Do not add multiple times for performance reasons
-        if (isset($this->geoDistanceSelectsAdded[$alias])) {
-            return $alias;
+        if ($this->hasCTE($cteName)) {
+            return $cteName;
         }
 
-        $documentAlias = $this->engine->getIndexInfo()
-            ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $unions = [];
 
-        // Add the distance to the select query, so it's also part of the result
-        $this->getQueryBuilder()->addSelect(sprintf(
-            'loupe_geo_distance(%f, %f, %s, %s) AS %s',
-            $latitude,
-            $longitude,
-            $documentAlias . '.' . $attribute . '_geo_lat',
-            $documentAlias . '.' . $attribute . '_geo_lng',
-            self::DISTANCE_ALIAS . '_' . $attribute
-        ));
+        foreach ($this->getCtesByTag('attribute:' . $attribute) as $cte) {
+            $unions[] = sprintf('SELECT document_id, attribute_id FROM %s', $cte->getName());
+        }
 
-        $this->geoDistanceSelectsAdded[$alias] = true;
+        if ($unions === []) {
+            return null;
+        }
 
-        return $alias;
+        $qb = $this->engine->getConnection()->createQueryBuilder();
+        $qb->select('document_id', 'attribute_id');
+        $qb->from('(' . implode(' UNION ', $unions) . ')');
+
+        $this->addCTE(new Cte($cteName, ['document_id', 'attribute_id'], $qb));
+
+        return $cteName;
     }
 
-    public function addJoinForMultiAttributes(): void
+    public function addCTE(Cte $cte): void
     {
-        if ($this->multiAttributeJoinAdded) {
-            return;
+        $this->ctesByName[$cte->getName()] = $cte;
+
+        foreach ($cte->getTags() as $tag) {
+            $this->ctesByTag[$tag][$cte->getName()] = $cte;
+        }
+    }
+
+    public function addGeoDistanceCte(string $attribute, float $latitude, float $longitude, ?Bounds $bounds = null): string
+    {
+        $cteName = self::DISTANCE_ALIAS . '_' . $attribute;
+
+        if ($this->hasCTE($cteName)) {
+            return $cteName;
         }
 
-        $this->queryBuilder
-            ->innerJoin(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+        $documentAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $qb = $this->engine->getConnection()->createQueryBuilder()
+            ->select($documentAlias . '.id AS document_id')
+            ->addSelect(
                 sprintf(
-                    '%s.id = %s.document',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                    'loupe_geo_distance(%f, %f, %s, %s) AS distance',
+                    $latitude,
+                    $longitude,
+                    $documentAlias . '.' . $attribute . '_geo_lat',
+                    $documentAlias . '.' . $attribute . '_geo_lng',
                 )
             )
-            ->innerJoin(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
-                    '%s.attribute = %s.id',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                )
-            );
+            ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentAlias)
+            // Improve performance by drawing a BBOX around our coordinates to reduce the result set considerably before
+            // the actual distance is compared. This can use indexes.
+            // We use floor() and ceil() respectively to ensure we get matches as the BearingSpherical calculation of the
+            // BBOX may not be as precise so when searching for the e.g. 3rd decimal floating point, we might exclude
+            // locations we shouldn't.
+            ->andWhere(implode(' ', $this->filterBuilder->createGeoBoundingBoxWhereStatement($attribute, $bounds)))
+            ->groupBy($documentAlias . '.id')
+        ;
 
-        $this->multiAttributeJoinAdded = true;
+        $this->addCTE(new Cte($cteName, ['document_id', 'distance'], $qb));
+
+        return $cteName;
     }
 
     public function fetchResult(): SearchResult
     {
         $start = (int) floor(microtime(true) * 1000);
 
-        $this->queryBuilder = $this->engine->getConnection()
-            ->createQueryBuilder();
-
         $tokens = $this->getTokens();
         $tokensIncludingStopwords = $this->getTokensIncludingStopwords();
 
-        $this->selectTotalHits();
+        // Now it's time to add our CTEs
         $this->selectDocuments();
-        $this->filterDocuments();
-        $this->searchDocuments($tokens);
+        $this->searchDocuments($tokens); // First, add the search term CTEs
+        $this->filterDocuments($tokens); // Then filter the documents (requires the search term CTEs)
+        $this->selectTotalHits();
         $this->sortDocuments();
+        $this->selectDistance();
         $this->limitPagination();
 
         $showAllAttributes = \in_array('*', $this->searchParameters->getAttributesToRetrieve(), true);
@@ -152,10 +173,6 @@ class Searcher
                 if (str_starts_with($k, self::DISTANCE_ALIAS)) {
                     $document['_geoDistance(' . str_replace(self::DISTANCE_ALIAS . '_', '', $k) . ')'] = (int) round((float) $v);
                 }
-            }
-
-            if (\array_key_exists(self::DISTANCE_ALIAS, $result)) {
-                $document['_geoDistance'] = (int) round($result[self::DISTANCE_ALIAS]);
             }
 
             $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
@@ -185,6 +202,11 @@ class Searcher
         );
     }
 
+    public function getCTE(string $name): ?Cte
+    {
+        return $this->ctesByName[$name] ?? null;
+    }
+
     public function getCTENameForToken(string $prefix, Token $token): string
     {
         // For debugging: return $prefix . $token->getId() . '_' .  $token->getTerm();
@@ -192,16 +214,19 @@ class Searcher
     }
 
     /**
-     * @return array<string, array{cols: array<string>, sql: string}>
+     * @return array<string, Cte>
      */
-    public function getCTEs(): array
+    public function getCtesByName(): array
     {
-        return $this->CTEs;
+        return $this->ctesByName;
     }
 
-    public function getFilterAst(): Ast
+    /**
+     * @return array<string, Cte>
+     */
+    public function getCtesByTag(string $tag): array
     {
-        return $this->filterAst;
+        return $this->ctesByTag[$tag] ?? [];
     }
 
     public function getQueryBuilder(): QueryBuilder
@@ -244,7 +269,7 @@ class Searcher
 
     public function hasCTE(string $cteName): bool
     {
-        return isset($this->CTEs[$cteName]);
+        return isset($this->ctesByName[$cteName]);
     }
 
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
@@ -252,7 +277,7 @@ class Searcher
         // No term matches CTE -> no term document matches CTE
         $termMatchesCTE = $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token);
 
-        if (!isset($this->CTEs[$termMatchesCTE])) {
+        if (!$this->hasCTE($termMatchesCTE)) {
             return;
         }
 
@@ -301,8 +326,12 @@ class Searcher
         $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
-        $this->CTEs[$cteName]['cols'] = ['document', 'term', 'attribute', 'position', 'typos'];
-        $this->CTEs[$cteName]['sql'] = $cteSelectQb->getSQL();
+
+        $this->addCTE(new Cte(
+            $cteName,
+            ['document', 'term', 'attribute', 'position', 'typos'],
+            $cteSelectQb
+        ));
     }
 
     private function addTermDocumentMatchesCTEs(TokenCollection $tokenCollection): void
@@ -351,9 +380,7 @@ class Searcher
         }
 
         $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
-
-        $this->CTEs[$this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)]['cols'] = ['id'];
-        $this->CTEs[$this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token)]['sql'] = $cteSelectQb->getSQL();
+        $this->addCTE(new Cte($this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token), ['id'], $cteSelectQb));
     }
 
     private function addTermMatchesCTEs(TokenCollection $tokenCollection): void
@@ -365,6 +392,60 @@ class Searcher
         foreach ($tokenCollection->all() as $token) {
             $this->addTermMatchesCTE($token, $token === $tokenCollection->last());
         }
+    }
+
+    private function buildTokenFrom(TokenCollection $tokenCollection): string
+    {
+        if ($tokenCollection->empty()) {
+            return '';
+        }
+
+        $qb = $this->engine->getConnection()->createQueryBuilder()
+            ->select(
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id AS document_id'
+            )
+            ->from(
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+            );
+
+        $positiveConditions = [];
+        $negativeConditions = [];
+
+        foreach ($tokenCollection->phraseGroups() as $tokenOrPhrase) {
+            $statements = [];
+            foreach ($tokenOrPhrase->all() as $token) {
+                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
+            }
+
+            if (\count(array_filter($statements))) {
+                if ($tokenOrPhrase->isNegated()) {
+                    $negativeConditions[] = $statements;
+                } else {
+                    $positiveConditions[] = $statements;
+                }
+            }
+        }
+
+        $where = implode(' OR ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $positiveConditions
+        ));
+
+        if ($where !== '') {
+            $qb->andWhere('(' . $where . ')');
+        }
+
+        $whereNot = implode(' AND ', array_map(
+            fn ($statements) => '(' . implode(' AND ', $statements) . ')',
+            $negativeConditions
+        ));
+
+        if ($whereNot !== '') {
+            $qb->andWhere('(' . $whereNot . ')');
+        }
+
+        return $qb->getSQL();
     }
 
     private function createAnalyzedQuery(TokenCollection $tokens): string
@@ -437,7 +518,7 @@ class Searcher
     {
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
-        if (!isset($this->CTEs[$cteName])) {
+        if (!$this->hasCTE($cteName)) {
             return null;
         }
 
@@ -551,14 +632,40 @@ class Searcher
         return implode(' ', $where);
     }
 
-    private function filterDocuments(): void
+    private function filterDocuments(TokenCollection $tokenCollection): void
     {
-        if ($this->searchParameters->getFilter() === '') {
-            return;
+        $froms = [];
+        $qbMatches = $this->engine->getConnection()->createQueryBuilder();
+        $qbMatches->select('document_id');
+
+        // User filters
+        $froms[] = $this->filterBuilder->buildFrom();
+
+        // User query
+        $froms[] = $this->buildTokenFrom($tokenCollection);
+
+        // Drop empty froms
+        $froms = array_values(array_filter($froms));
+
+        // Not filtered by either filters or user query, fetch everything
+        if ($froms === []) {
+            $froms[] = sprintf(
+                '(SELECT %s.id AS document_id FROM %s %s)',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+            );
         }
 
-        $filterBuilder = new FilterBuilder($this->engine, $this, $this->queryBuilder);
-        $filterBuilder->buildForDocument();
+        if (\count($froms) === 1) {
+            $qbMatches->from('(' . $froms[0] . ')');
+        } else {
+            $qbMatches->from('(' . implode(' INTERSECT ', $froms) . ')');
+        }
+
+        $qbMatches->groupBy('document_id');
+
+        $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id'], $qbMatches));
     }
 
     /**
@@ -637,14 +744,14 @@ class Searcher
     {
         $queryParts = [];
 
-        if ($this->CTEs !== []) {
+        if ($this->ctesByName !== []) {
             $queryParts[] = 'WITH';
-            foreach ($this->CTEs as $name => $config) {
+            foreach ($this->ctesByName as $name => $cte) {
                 $queryParts[] = sprintf(
                     '%s (%s) AS (%s)',
                     $name,
-                    implode(',', $config['cols']),
-                    $config['sql']
+                    implode(',', $cte->getColumnAliasList()),
+                    $cte->getQueryBuilder()->getSQL()
                 );
                 $queryParts[] = ',';
             }
@@ -702,17 +809,49 @@ class Searcher
         }
     }
 
+    private function selectDistance(): void
+    {
+        foreach ($this->searchParameters->getAttributesToRetrieve() as $attribute) {
+            if (str_starts_with($attribute, '_geoDistance(')) {
+                $attribute = (string) preg_replace('/^_geoDistance\((' . Configuration::ATTRIBUTE_NAME_RGXP . ')\)$/', '$1', $attribute);
+                $cteName = self::DISTANCE_ALIAS . '_' . $attribute;
+
+                if (!$this->hasCTE($cteName)) {
+                    continue;
+                }
+
+                $this->queryBuilder->addSelect($cteName . '.distance AS ' . self::DISTANCE_ALIAS . '_' . $attribute);
+                $this->queryBuilder
+                    ->innerJoin(
+                        self::CTE_MATCHES,
+                        $cteName,
+                        $cteName,
+                        sprintf(
+                            '%s.document_id = %s.document_id',
+                            $cteName,
+                            self::CTE_MATCHES
+                        )
+                    );
+            }
+        }
+    }
+
     private function selectDocuments(): void
     {
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
         $this->queryBuilder
-            ->addSelect($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document')
-            ->from(
-                IndexInfo::TABLE_NAME_DOCUMENTS,
-                $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
-            )
-            ->groupBy($this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.document')
-        ;
+            ->addSelect($documentsAlias . '.document')
+            ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
+            ->innerJoin(
+                $documentsAlias,
+                self::CTE_MATCHES,
+                self::CTE_MATCHES,
+                sprintf(
+                    '%s.id = %s.document_id',
+                    $documentsAlias,
+                    self::CTE_MATCHES
+                )
+            );
     }
 
     private function selectTotalHits(): void
