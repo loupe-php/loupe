@@ -43,9 +43,20 @@ class TokenCollection implements \Countable
         return $this->tokens;
     }
 
-    public function at(int $index): ?Token
+    public function atIndex(int $index): ?Token
     {
         return $this->tokens[$index] ?? null;
+    }
+
+    public function atPosition(int $index): ?Token
+    {
+        foreach ($this->tokens as $token) {
+            if ($token->getStartPosition() <= $index && $index <= $token->getEndPosition()) {
+                return $token;
+            }
+        }
+
+        return null;
     }
 
     public function indexOf(Token $token): ?int

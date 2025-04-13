@@ -133,8 +133,8 @@ class Matcher
             $hasNonStopWordNeighbor = false;
 
             for ($j = 1; $j <= $maxWordDistance; $j++) {
-                $prevMatch = $matches->at($i - $j);
-                $nextMatch = $matches->at($i + $j);
+                $prevMatch = $matches->atIndex($i - $j);
+                $nextMatch = $matches->atIndex($i + $j);
 
                 // Keep stopword matches between non-stopword matches of interest
                 $hasNonStopWordNeighbor = ($prevMatch && !$prevMatch->isStopWord() && $prevMatch->getEndPosition() >= $match->getStartPosition() - $maxCharDistance)
@@ -150,6 +150,6 @@ class Matcher
             }
         }
 
-        return $matches;
+        return $result;
     }
 }

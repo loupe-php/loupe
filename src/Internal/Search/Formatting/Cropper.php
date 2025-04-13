@@ -17,14 +17,10 @@ class Cropper implements AbstractTransformer
 
     public function transform(string $text, TokenCollection $matches): string
     {
-        if (empty($spans) || $this->cropLength <= 0) {
-            return [$text, $spans];
+        if (empty($matches) || $this->cropLength <= 0) {
+            return $text;
         }
 
-        $result = '';
-        $previousEnd = 0;
-        $adjustedSpans = [];
-
-        return [$result, $adjustedSpans];
+        return $text;
     }
 }
