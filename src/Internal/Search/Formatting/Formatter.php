@@ -39,9 +39,9 @@ class Formatter
             if (!$shouldHighlight) {
                 $transformers[] = new Highlighter($this->matcher, self::TEMP_HIGHLIGHT_START_TAG, self::TEMP_HIGHLIGHT_END_TAG);
             }
-            $transformers[] = new Cropper($this->matcher, $options->getCropLength(), $options->getCropMarker());
+            $transformers[] = new Cropper($options->getCropLength(), $options->getCropMarker());
             if (!$shouldHighlight) {
-                $transformers[] = new Unhighlighter($this->matcher, self::TEMP_HIGHLIGHT_START_TAG, self::TEMP_HIGHLIGHT_END_TAG);
+                $transformers[] = new Unhighlighter(self::TEMP_HIGHLIGHT_START_TAG, self::TEMP_HIGHLIGHT_END_TAG);
             }
         }
 

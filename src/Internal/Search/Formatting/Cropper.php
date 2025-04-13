@@ -9,7 +9,6 @@ use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 class Cropper implements AbstractTransformer
 {
     public function __construct(
-        private Matcher $matcher,
         private int $cropLength,
         private string $cropMarker
     ) {

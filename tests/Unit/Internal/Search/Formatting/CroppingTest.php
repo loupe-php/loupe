@@ -75,9 +75,10 @@ class CroppingTest extends TestCase
 
     /**
      * @param array<string> $searchableAttributes
+     * @param array<string> $attributesToCrop
      * @param array<string> $attributesToHighlight
-     * @param array<string> $stopWords
      * @param array<mixed> $expectedResults
+     * @param array<string> $stopWords
      */
     #[DataProvider('croppingProvider')]
     public function testCropping(

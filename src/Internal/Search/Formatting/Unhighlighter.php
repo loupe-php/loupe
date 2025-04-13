@@ -9,7 +9,6 @@ use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 class Unhighlighter implements AbstractTransformer
 {
     public function __construct(
-        private Matcher $matcher,
         private string $startTag,
         private string $endTag
     ) {

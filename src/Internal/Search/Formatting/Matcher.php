@@ -49,8 +49,8 @@ class Matcher
 
         foreach ($matches->all() as $match) {
             // Merge matches that are exactly after one another
-            if ($prevMatch?->getEndPosition() === $match->getStartPosition() - 1) {
-                $prevSpan = end($spans);
+            $prevSpan = end($spans);
+            if ($prevSpan && $prevMatch && $prevMatch->getEndPosition() === $match->getStartPosition() - 1) {
                 array_splice($spans, -1, 1, [$prevSpan->withEndPosition($match->getEndPosition())]);
             } else {
                 $spans[] = new Span($match->getStartPosition(), $match->getEndPosition());

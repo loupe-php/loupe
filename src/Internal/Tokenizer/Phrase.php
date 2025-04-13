@@ -10,7 +10,7 @@ class Phrase extends TokenCollection
      * @param array<Token> $tokens
      */
     public function __construct(
-        private array $tokens,
+        array $tokens,
         private bool $isNegated
     ) {
         parent::__construct($tokens);
