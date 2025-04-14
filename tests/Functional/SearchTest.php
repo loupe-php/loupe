@@ -2794,6 +2794,67 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testSearchingForAQueryThatMatchesWayTooManyDocumentsDoesNotTakeForeverAndAlsoStillReturnsTheMostRelevantDocument(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $documents = [];
+
+        foreach (range(1, 2000) as $id) {
+            $documents[] = [
+                'id' => str_pad((string) $id, 4, '0', STR_PAD_LEFT),
+                'content' => 'dog',
+            ];
+        }
+
+        $documents[] = [
+            'id' => '9999',
+            'content' => 'dog sled',
+        ];
+
+        $loupe->addDocuments($documents);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('dog sled')
+            ->withAttributesToRetrieve(['id', 'content'])
+            ->withShowRankingScore(true)
+            ->withHitsPerPage(4)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => '9999',
+                    'content' => 'dog sled',
+                    '_rankingScore' => 1.0,
+                ],
+                [
+                    'id' => '0001',
+                    'content' => 'dog',
+                    '_rankingScore' => 0.77641,
+                ],
+                [
+                    'id' => '0002',
+                    'content' => 'dog',
+                    '_rankingScore' => 0.77641,
+                ],
+                [
+                    'id' => '0003',
+                    'content' => 'dog',
+                    '_rankingScore' => 0.77641,
+                ],
+            ],
+            'query' => 'dog sled',
+            'hitsPerPage' => 4,
+            'page' => 1,
+            'totalPages' => 251,
+            'totalHits' => 1001,
+        ]);
+    }
+
     public function testSearchingForNumericArrayType(): void
     {
         $configuration = Configuration::create()
