@@ -374,7 +374,7 @@ class Searcher
         $termsDocumentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS);
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
-        $cteSelectQb->addSelect('DISTINCT ' . $termsDocumentsAlias . '.document');
+        $cteSelectQb->select($termsDocumentsAlias . '.document')->distinct();
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
         $cteSelectQb->where(sprintf('%s.term IN (SELECT id FROM %s)', $termsDocumentsAlias, $termMatchesCTE));
