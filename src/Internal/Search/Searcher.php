@@ -799,10 +799,12 @@ class Searcher
 
     private function limitPagination(): void
     {
-        $this->queryBuilder->setFirstResult(
-            ($this->searchParameters->getPage() - 1) * $this->searchParameters->getHitsPerPage()
-        );
-        $this->queryBuilder->setMaxResults($this->searchParameters->getHitsPerPage());
+        $hitsPerPage = min($this->searchParameters->getHitsPerPage(), $this->searchParameters->getMaxTotalHits());
+        $pageOffset = ($this->searchParameters->getPage() - 1) * $hitsPerPage;
+        $maxPageOffset = $this->searchParameters->getMaxTotalHits() - $hitsPerPage;
+
+        $this->queryBuilder->setFirstResult(min($pageOffset, $maxPageOffset));
+        $this->queryBuilder->setMaxResults($hitsPerPage);
     }
 
     private function query(): Result
@@ -887,7 +889,9 @@ class Searcher
 
     private function selectTotalHits(): void
     {
-        $this->queryBuilder->addSelect('COUNT() OVER() AS totalHits');
+        $this->queryBuilder->addSelect(
+            sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->searchParameters->getMaxTotalHits())
+        );
     }
 
     private function sortDocuments(): void
