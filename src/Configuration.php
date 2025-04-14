@@ -38,6 +38,8 @@ final class Configuration
 
     private int $maxQueryTokens = 10;
 
+    private int $maxTotalHits = 1000;
+
     private int $minTokenLengthForPrefixSearch = 3;
 
     private string $primaryKey = 'id';
@@ -85,6 +87,7 @@ final class Configuration
      *     displayedAttributes?: array<string>,
      *     filterableAttributes?: array<string>,
      *     languages?: array<string>,
+     *     maxTotalHits?: int,
      *     maxQueryTokens?: int,
      *     minTokenLengthForPrefixSearch?: int,
      *     primaryKey?: string,
@@ -116,6 +119,10 @@ final class Configuration
 
         if (isset($data['languages'])) {
             $instance = $instance->withLanguages($data['languages']);
+        }
+
+        if (isset($data['maxTotalHits'])) {
+            $instance = $instance->withMaxTotalHits($data['maxTotalHits']);
         }
 
         if (isset($data['maxQueryTokens'])) {
@@ -198,6 +205,7 @@ final class Configuration
         $hash[] = json_encode($this->getPrimaryKey());
         $hash[] = json_encode($this->getSearchableAttributes());
         $hash[] = json_encode($this->getFilterableAttributes());
+        $hash[] = json_encode($this->getMaxTotalHits());
         $hash[] = json_encode($this->getSortableAttributes());
         $hash[] = json_encode($this->getStopWords());
 
@@ -225,6 +233,11 @@ final class Configuration
     public function getMaxQueryTokens(): int
     {
         return $this->maxQueryTokens;
+    }
+
+    public function getMaxTotalHits(): int
+    {
+        return $this->maxTotalHits;
     }
 
     public function getMinTokenLengthForPrefixSearch(): int
@@ -279,6 +292,7 @@ final class Configuration
      *     displayedAttributes: array<string>,
      *     filterableAttributes: array<string>,
      *     languages: array<string>,
+     *     maxTotalHits: int,
      *     maxQueryTokens: int,
      *     minTokenLengthForPrefixSearch: int,
      *     primaryKey: string,
@@ -302,6 +316,7 @@ final class Configuration
             'displayedAttributes' => $this->displayedAttributes,
             'filterableAttributes' => $this->filterableAttributes,
             'languages' => $this->languages,
+            'maxTotalHits' => $this->maxTotalHits,
             'maxQueryTokens' => $this->maxQueryTokens,
             'minTokenLengthForPrefixSearch' => $this->minTokenLengthForPrefixSearch,
             'primaryKey' => $this->primaryKey,
@@ -382,6 +397,14 @@ final class Configuration
     {
         $clone = clone $this;
         $clone->maxQueryTokens = $maxQueryTokens;
+
+        return $clone;
+    }
+
+    public function withMaxTotalHits(int $maxTotalHits): self
+    {
+        $clone = clone $this;
+        $clone->maxTotalHits = $maxTotalHits;
 
         return $clone;
     }

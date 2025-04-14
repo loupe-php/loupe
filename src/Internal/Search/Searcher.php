@@ -36,13 +36,6 @@ class Searcher
     public const RELEVANCE_ALIAS = '_relevance';
 
     /**
-     * If searching for a query that is super broad like "this is taking so long", way too many
-     * documents are going to match so we have to internally limit those matches to prevent
-     * "endless" search queries.
-     */
-    private const MAX_DOCUMENT_MATCHES = 1000;
-
-    /**
      * @var array<string, Cte>
      */
     private array $ctesByName = [];
@@ -386,7 +379,7 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
+        $cteSelectQb->setMaxResults($this->engine->getConfiguration()->getMaxTotalHits());
 
         $this->addCTE(new Cte(
             $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $token),
@@ -806,10 +799,13 @@ class Searcher
 
     private function limitPagination(): void
     {
-        $this->queryBuilder->setFirstResult(
-            ($this->searchParameters->getPage() - 1) * $this->searchParameters->getHitsPerPage()
-        );
-        $this->queryBuilder->setMaxResults($this->searchParameters->getHitsPerPage());
+        $maxTotalHits = $this->engine->getConfiguration()->getMaxTotalHits();
+        $hitsPerPage = min($this->searchParameters->getHitsPerPage(), $maxTotalHits);
+        $pageOffset = ($this->searchParameters->getPage() - 1) * $hitsPerPage;
+        $maxPageOffset = $maxTotalHits - $hitsPerPage;
+
+        $this->queryBuilder->setFirstResult(min($pageOffset, $maxPageOffset));
+        $this->queryBuilder->setMaxResults($hitsPerPage);
     }
 
     private function query(): Result
@@ -894,7 +890,9 @@ class Searcher
 
     private function selectTotalHits(): void
     {
-        $this->queryBuilder->addSelect('COUNT() OVER() AS totalHits');
+        $this->queryBuilder->addSelect(
+            sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->engine->getConfiguration()->getMaxTotalHits())
+        );
     }
 
     private function sortDocuments(): void

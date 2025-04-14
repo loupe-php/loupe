@@ -41,12 +41,22 @@ class ConfigurationTest extends TestCase
         Configuration::create()->withRankingRules(['invalid-rule']);
     }
 
+    public function testMaxTotalHits(): void
+    {
+        $config = Configuration::create();
+        $this->assertSame(1000, $config->getMaxTotalHits());
+
+        $config = $config->withMaxTotalHits(500);
+        $this->assertSame(500, $config->getMaxTotalHits());
+    }
+
     public function testToArrayAndFromArray(): void
     {
         $original = Configuration::create()
             ->withDisplayedAttributes(['title', 'description'])
             ->withFilterableAttributes(['category'])
             ->withLanguages(['en', 'fr'])
+            ->withMaxTotalHits(100)
             ->withMaxQueryTokens(20)
             ->withMinTokenLengthForPrefixSearch(2)
             ->withPrimaryKey('uid')
