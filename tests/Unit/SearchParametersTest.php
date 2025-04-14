@@ -38,15 +38,6 @@ class SearchParametersTest extends TestCase
         SearchParameters::create()->withHitsPerPage(2000);
     }
 
-    public function testMaxTotalHits(): void
-    {
-        $searchParameters = SearchParameters::create();
-        $this->assertSame(1000, $searchParameters->getMaxTotalHits());
-
-        $searchParameters = $searchParameters->withMaxTotalHits(500);
-        $this->assertSame(500, $searchParameters->getMaxTotalHits());
-    }
-
     public function testToArrayAndFromArray(): void
     {
         $original = SearchParameters::create()

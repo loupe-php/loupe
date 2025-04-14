@@ -203,6 +203,17 @@ $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
 ;
 ```
 
+## Total result limit
+
+Loupe enforces a maximum number of 1.000 results across all pages to safeguard your index against malicious scraping.
+Beyond this limit, no results will be calculated or returned, independent of pagination settings. The limit can be
+configured if your application requires a different value.
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withMaxTotalHits(100);
+```
+
 ## Debugging
 
 You may pass a PSR-3 logger to Loupe. For the sake of simplicity, Loupe also ships with a very simple 

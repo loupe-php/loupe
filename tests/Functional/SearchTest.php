@@ -1997,7 +1997,8 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
-            ->withTypoTolerance(TypoTolerance::create()->disable());
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withMaxTotalHits(100);
 
         $loupe = $this->createLoupe($configuration);
         $documents = [];
@@ -2025,9 +2026,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('dog cat bird')
             ->withAttributesToRetrieve(['id'])
-            ->withHitsPerPage(50)
-            ->withMaxTotalHits(100)
-        ;
+            ->withHitsPerPage(50);
 
         $results = $loupe->search($searchParameters)->toArray();
         unset($results['processingTimeMs']);

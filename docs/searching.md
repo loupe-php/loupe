@@ -210,17 +210,6 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 
 Note: You cannot go any higher than `1000` documents per page. The higher the value you choose, the slower Loupe gets.
 
-### Total result limit
-
-Loupe enforces a maximum number of 1.000 results across all pages to safeguard your index against malicious scraping.
-Beyond this limit, no results will be calculated or returned, independent of pagination settings. The limit can be
-configured if your application requires a different value.
-
-```php
-$searchParameters = \Loupe\Loupe\SearchParameters::create()
-    ->withMaxTotalHits(100);
-```
-
 ## Term highlighting
 
 You can enable term highlighting by telling Loupe, which attributes you're interested in:

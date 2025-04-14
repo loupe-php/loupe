@@ -379,7 +379,7 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->setMaxResults($this->searchParameters->getMaxTotalHits());
+        $cteSelectQb->setMaxResults($this->engine->getConfiguration()->getMaxTotalHits());
 
         $this->addCTE(new Cte(
             $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $token),
@@ -799,9 +799,10 @@ class Searcher
 
     private function limitPagination(): void
     {
-        $hitsPerPage = min($this->searchParameters->getHitsPerPage(), $this->searchParameters->getMaxTotalHits());
+        $maxTotalHits = $this->engine->getConfiguration()->getMaxTotalHits();
+        $hitsPerPage = min($this->searchParameters->getHitsPerPage(), $maxTotalHits);
         $pageOffset = ($this->searchParameters->getPage() - 1) * $hitsPerPage;
-        $maxPageOffset = $this->searchParameters->getMaxTotalHits() - $hitsPerPage;
+        $maxPageOffset = $maxTotalHits - $hitsPerPage;
 
         $this->queryBuilder->setFirstResult(min($pageOffset, $maxPageOffset));
         $this->queryBuilder->setMaxResults($hitsPerPage);
@@ -890,7 +891,7 @@ class Searcher
     private function selectTotalHits(): void
     {
         $this->queryBuilder->addSelect(
-            sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->searchParameters->getMaxTotalHits())
+            sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->engine->getConfiguration()->getMaxTotalHits())
         );
     }
 
