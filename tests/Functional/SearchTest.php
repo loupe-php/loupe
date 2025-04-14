@@ -1993,6 +1993,55 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testMaxHits(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $documents = [];
+
+        foreach (range(1, 100) as $id) {
+            $documents[] = [
+                'id' => $id,
+                'content' => 'dog',
+            ];
+        }
+        foreach (range(101, 200) as $id) {
+            $documents[] = [
+                'id' => $id,
+                'content' => 'cat',
+            ];
+        }
+        foreach (range(201, 300) as $id) {
+            $documents[] = [
+                'id' => $id,
+                'content' => 'bird',
+            ];
+        }
+        $loupe->addDocuments($documents);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('dog cat bird')
+            ->withAttributesToRetrieve(['id'])
+            ->withHitsPerPage(50)
+            ->withMaxTotalHits(100)
+        ;
+
+        $results = $loupe->search($searchParameters)->toArray();
+        unset($results['processingTimeMs']);
+        unset($results['hits']);
+
+        $this->assertSame([
+            'query' => 'dog cat bird',
+            'hitsPerPage' => 50,
+            'page' => 1,
+            'totalPages' => 2,
+            'totalHits' => 100,
+        ], $results);
+    }
+
     public function testNegatedComplexSearch(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
@@ -2850,8 +2899,8 @@ class SearchTest extends TestCase
             'query' => 'dog sled',
             'hitsPerPage' => 4,
             'page' => 1,
-            'totalPages' => 251,
-            'totalHits' => 1001,
+            'totalPages' => 250,
+            'totalHits' => 1000,
         ]);
     }
 
