@@ -36,13 +36,6 @@ class Searcher
     public const RELEVANCE_ALIAS = '_relevance';
 
     /**
-     * If searching for a query that is super broad like "this is taking so long", way too many
-     * documents are going to match so we have to internally limit those matches to prevent
-     * "endless" search queries.
-     */
-    private const MAX_DOCUMENT_MATCHES = 1000;
-
-    /**
      * @var array<string, Cte>
      */
     private array $ctesByName = [];
@@ -386,7 +379,7 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->setMaxResults(self::MAX_DOCUMENT_MATCHES);
+        $cteSelectQb->setMaxResults($this->searchParameters->getMaxTotalHits());
 
         $this->addCTE(new Cte(
             $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $token),

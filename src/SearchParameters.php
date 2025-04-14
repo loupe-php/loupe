@@ -33,6 +33,8 @@ final class SearchParameters
 
     private int $hitsPerPage = 20;
 
+    private int $maxTotalHits = 1000;
+
     private int $page = 1;
 
     private string $query = '';
@@ -71,6 +73,7 @@ final class SearchParameters
      *     highlightEndTag?: string,
      *     highlightStartTag?: string,
      *     hitsPerPage?: int,
+     *     maxTotalHits?: int,
      *     page?: int,
      *     query?: string,
      *     rankingScoreThreshold?: float,
@@ -105,6 +108,10 @@ final class SearchParameters
 
         if (isset($data['hitsPerPage'])) {
             $instance = $instance->withHitsPerPage($data['hitsPerPage']);
+        }
+
+        if (isset($data['maxTotalHits'])) {
+            $instance = $instance->withMaxTotalHits($data['maxTotalHits']);
         }
 
         if (isset($data['page'])) {
@@ -182,6 +189,7 @@ final class SearchParameters
         $hash[] = json_encode($this->getAttributesToSearchOn());
         $hash[] = json_encode($this->getFilter());
         $hash[] = json_encode($this->getHitsPerPage());
+        $hash[] = json_encode($this->getMaxTotalHits());
         $hash[] = json_encode($this->getPage());
         $hash[] = json_encode($this->getQuery());
         $hash[] = json_encode($this->showMatchesPosition());
@@ -203,6 +211,11 @@ final class SearchParameters
     public function getHitsPerPage(): int
     {
         return $this->hitsPerPage;
+    }
+
+    public function getMaxTotalHits(): int
+    {
+        return $this->maxTotalHits;
     }
 
     public function getPage(): int
@@ -247,6 +260,7 @@ final class SearchParameters
      *     highlightEndTag: string,
      *     highlightStartTag: string,
      *     hitsPerPage: int,
+     *     maxTotalHits: int,
      *     page: int,
      *     query: string,
      *     rankingScoreThreshold: float,
@@ -265,6 +279,7 @@ final class SearchParameters
             'highlightEndTag' => $this->highlightEndTag,
             'highlightStartTag' => $this->highlightStartTag,
             'hitsPerPage' => $this->hitsPerPage,
+            'maxTotalHits' => $this->maxTotalHits,
             'page' => $this->page,
             'query' => $this->query,
             'rankingScoreThreshold' => $this->rankingScoreThreshold,
@@ -339,6 +354,14 @@ final class SearchParameters
 
         $clone = clone $this;
         $clone->hitsPerPage = $hitsPerPage;
+
+        return $clone;
+    }
+
+    public function withMaxTotalHits(int $maxTotalHits): self
+    {
+        $clone = clone $this;
+        $clone->maxTotalHits = $maxTotalHits;
 
         return $clone;
     }
