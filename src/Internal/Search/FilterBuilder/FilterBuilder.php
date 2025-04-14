@@ -19,6 +19,7 @@ use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Searcher;
+use Loupe\Loupe\Internal\Search\Sorting;
 
 class FilterBuilder
 {
@@ -180,6 +181,22 @@ class FilterBuilder
     }
 
     /**
+     * @return array<string, string> The SELECT statement and the alias
+     */
+    private function getSortingSelects(string $attribute): array
+    {
+        $selects = [];
+
+        foreach ($this->searcher->getSorting()->getSorters() as $sorter) {
+            if ($sorter instanceof Sorting\MultiAttribute && $attribute === $sorter->getAttribute()) {
+                $selects[$sorter->getFilterSelect($this->engine)] = $sorter->getFilterSelectAlias();
+            }
+        }
+
+        return $selects;
+    }
+
+    /**
      * @param array<string|float> $froms
      */
     private function handleFilterAstNode(Node $node, array &$froms): void
@@ -212,11 +229,12 @@ class FilterBuilder
                     $froms[] = 'SELECT document_id FROM (SELECT NULL AS document_id) WHERE 1 = 0';
                 }
             } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+                $sortingSelects = $this->getSortingSelects($node->attribute);
                 $qb = $this->engine->getConnection()->createQueryBuilder();
-                $qb->select(
-                    sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)),
-                    sprintf('%s.id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES))
-                );
+                $qb->select(sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)));
+                foreach ($sortingSelects as $sortingSelect => $alias) {
+                    $qb->addSelect($sortingSelect . ' AS ' . $alias);
+                }
                 $qb->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS));
                 $qb->innerJoin(
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
@@ -254,7 +272,10 @@ class FilterBuilder
                     $qb->andWhere(implode(' ', $whereStatement));
                 }
 
-                $cteName = $this->addCTEForNode($node, $qb, ['attribute_id']);
+                // Needed in case a multi sorter (that does MIN() or MAX() or any other aggregate) is applied.
+                $qb->groupBy('document_id');
+
+                $cteName = $this->addCTEForNode($node, $qb, $sortingSelects);
                 $froms[] = 'SELECT document_id FROM ' . $cteName;
             } else {
                 // Single attribute

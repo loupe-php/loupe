@@ -39,11 +39,11 @@ class MultiAttribute extends AbstractSorter
         $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
         $column = ($isFloatType ? 'numeric_value' : 'string_value');
 
-        $multiFilterCte = $searcher->addAllMultiFiltersCte($this->attributeName);
+        $multiFilterCte = $searcher->addAllMultiFiltersCte($this->attributeName, $this->getFilterSelectAlias());
 
         // There are filters for this attribute, we have to apply those filters to our multi attribute
         if ($multiFilterCte !== null) {
-            $qb = $this->createQueryBuilderForFilterCte($engine, $searcher, $column, $multiFilterCte);
+            $qb = $this->createQueryBuilderForFilterCte($engine, $multiFilterCte);
         } else {
             // Otherwise we join with the general matches
             $qb = $this->createQueryBuilderWithoutFilterCte($engine, $searcher, $column);
@@ -66,6 +66,25 @@ class MultiAttribute extends AbstractSorter
         return new self($matches['attribute'], $matches['aggregate'], $direction);
     }
 
+    public function getAttribute(): string
+    {
+        return $this->attributeName;
+    }
+
+    public function getFilterSelect(Engine $engine): string
+    {
+        return $this->aggregate->buildSql(
+            $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES)
+            . '.'
+            . $this->getColumnName($engine)
+        );
+    }
+
+    public function getFilterSelectAlias(): string
+    {
+        return 'sort_value_' . $this->getId();
+    }
+
     public static function supports(string $value, Engine $engine): bool
     {
         $matches = self::split($value);
@@ -84,25 +103,15 @@ class MultiAttribute extends AbstractSorter
         return true;
     }
 
-    private function createQueryBuilderForFilterCte(Engine $engine, Searcher $searcher, string $column, string $cteName): QueryBuilder
+    private function createQueryBuilderForFilterCte(Engine $engine, string $cteName): QueryBuilder
     {
         $qb = $engine->getConnection()->createQueryBuilder();
         $qb
             ->addSelect(
                 sprintf('%s.document_id AS document_id', $cteName),
-                sprintf('%s AS sort_order', $this->aggregate->buildSql($engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' . $column)),
+                sprintf('%s AS sort_order', $this->getFilterSelectAlias()),
             )
             ->from($cteName)
-            ->innerJoin(
-                $cteName,
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
-                    '%s.id = %s.attribute_id',
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $cteName,
-                )
-            )
         ;
 
         return $qb;
@@ -143,6 +152,12 @@ class MultiAttribute extends AbstractSorter
                     )
                 )
             );
+    }
+
+    private function getColumnName(Engine $engine): string
+    {
+        $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
+        return $isFloatType ? 'numeric_value' : 'string_value';
     }
 
     /**

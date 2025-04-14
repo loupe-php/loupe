@@ -13,9 +13,23 @@ use Loupe\Loupe\Internal\Search\Searcher;
 
 abstract class AbstractSorter
 {
+    private int $id = 0;
+
     abstract public function apply(Searcher $searcher, Engine $engine): void;
 
     abstract public static function fromString(string $value, Engine $engine, Direction $direction): self;
+
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
+    public function setId(int $id): self
+    {
+        $this->id = $id;
+
+        return $this;
+    }
 
     abstract public static function supports(string $value, Engine $engine): bool;
 

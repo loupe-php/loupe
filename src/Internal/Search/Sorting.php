@@ -20,7 +20,7 @@ class Sorting
     /**
      * @param array<AbstractSorter> $sorters
      */
-    public function __construct(
+    private function __construct(
         private Engine $engine,
         private array $sorters
     ) {
@@ -40,6 +40,7 @@ class Sorting
     {
         $sorters = [];
 
+        $i = 0;
         foreach ($sort as $v) {
             if (!\is_string($v)) {
                 throw new SortFormatException('Sort parameters must be an array of strings.');
@@ -65,9 +66,18 @@ class Sorting
                 throw SortFormatException::becauseNotSortable($chunks[0]);
             }
 
+            $sorter->setId(++$i);
             $sorters[] = $sorter;
         }
 
         return new self($engine, $sorters);
+    }
+
+    /**
+     * @return array<AbstractSorter>
+     */
+    public function getSorters(): array
+    {
+        return $this->sorters;
     }
 }

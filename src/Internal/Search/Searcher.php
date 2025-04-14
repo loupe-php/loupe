@@ -68,7 +68,7 @@ class Searcher
      * for a specific attribute. So if you e.g. searched for "multi IN ('foobar') OR multi IN('baz')", it will
      * UNION those two filter CTEs in order to find all matching rows.
      */
-    public function addAllMultiFiltersCte(string $attribute): ?string
+    public function addAllMultiFiltersCte(string $attribute, string $alias): ?string
     {
         $cteName = self::CTE_ALL_MULTI_FILTERS_PREFIX . $attribute;
 
@@ -79,7 +79,7 @@ class Searcher
         $unions = [];
 
         foreach ($this->getCtesByTag('attribute:' . $attribute) as $cte) {
-            $unions[] = sprintf('SELECT document_id, attribute_id FROM %s', $cte->getName());
+            $unions[] = sprintf('SELECT document_id, %s FROM %s', $alias, $cte->getName());
         }
 
         if ($unions === []) {
@@ -87,10 +87,10 @@ class Searcher
         }
 
         $qb = $this->engine->getConnection()->createQueryBuilder();
-        $qb->select('document_id', 'attribute_id');
+        $qb->select('document_id', $alias);
         $qb->from('(' . implode(' UNION ', $unions) . ')');
 
-        $this->addCTE(new Cte($cteName, ['document_id', 'attribute_id'], $qb));
+        $this->addCTE(new Cte($cteName, ['document_id', $alias], $qb));
 
         return $cteName;
     }
@@ -231,6 +231,11 @@ class Searcher
     public function getSearchParameters(): SearchParameters
     {
         return $this->searchParameters;
+    }
+
+    public function getSorting(): Sorting
+    {
+        return $this->sorting;
     }
 
     public function getTokens(): TokenCollection
