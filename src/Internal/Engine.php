@@ -12,7 +12,7 @@ use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
-use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
+use Loupe\Loupe\Internal\Search\Formatting\Formatter;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
@@ -31,7 +31,7 @@ class Engine
 
     private Parser $filterParser;
 
-    private Highlighter $highlighter;
+    private Formatter $formatter;
 
     private Indexer $indexer;
 
@@ -59,7 +59,7 @@ class Engine
             new NullDataStore()
         );
         $this->indexer = new Indexer($this);
-        $this->highlighter = new Highlighter($this);
+        $this->formatter = new Formatter($this);
         $this->filterParser = new Parser($this);
         $this->sqliteVersion = match (true) {
             \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
@@ -144,9 +144,9 @@ class Engine
         return null;
     }
 
-    public function getHighlighter(): Highlighter
+    public function getFormatter(): Formatter
     {
-        return $this->highlighter;
+        return $this->formatter;
     }
 
     public function getIndexInfo(): IndexInfo

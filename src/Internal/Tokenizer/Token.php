@@ -6,6 +6,8 @@ namespace Loupe\Loupe\Internal\Tokenizer;
 
 class Token
 {
+    private int $length;
+
     /**
      * @param array<string> $variants
      */
@@ -15,8 +17,21 @@ class Token
         private int $startPosition,
         private array $variants,
         private bool $isPartOfPhrase,
-        private bool $isNegated
+        private bool $isNegated,
+        private bool $isStopWord,
     ) {
+        $this->length = mb_strlen($this->term, 'UTF-8');
+    }
+
+    /**
+     * Return an array with a single element, the token itself.
+     * Useful for iterating over a TokenCollection with tokens and phrases.
+     *
+     * @return array<Token>
+     */
+    public function all(): array
+    {
+        return [$this];
     }
 
     /**
@@ -27,6 +42,11 @@ class Token
         return array_unique(array_merge([$this->getTerm()], $this->getVariants()));
     }
 
+    public function getEndPosition(): int
+    {
+        return $this->startPosition + $this->length;
+    }
+
     public function getId(): int
     {
         return $this->id;
@@ -34,7 +54,7 @@ class Token
 
     public function getLength(): int
     {
-        return (int) mb_strlen($this->getTerm(), 'UTF-8');
+        return $this->length;
     }
 
     public function getStartPosition(): int
@@ -45,17 +65,6 @@ class Token
     public function getTerm(): string
     {
         return $this->term;
-    }
-
-    /**
-     * Return an array with a single element, the token itself.
-     * Useful for iterating over a TokenCollection with tokens and phrases.
-     *
-     * @return array<Token>
-     */
-    public function getTokens(): array
-    {
-        return [$this];
     }
 
     /**
@@ -94,5 +103,10 @@ class Token
     public function isPartOfPhrase(): bool
     {
         return $this->isPartOfPhrase;
+    }
+
+    public function isStopWord(): bool
+    {
+        return $this->isStopWord;
     }
 }

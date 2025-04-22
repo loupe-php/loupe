@@ -281,6 +281,57 @@ $results = [
 ];
 ```
 
+## Context cropping
+
+Loupe can crop selected attributes to a certain length around the search terms. The is useful to
+show as much context as possible around matched words when displaying results.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title', 'summary']);
+```
+
+The result of a cropped attribute will look like this:
+
+```php
+$results = [
+    'hits' => [
+        [
+            'id' => 24,
+            'title' => 'Kill Bill: Vol. 1',
+            'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+            '_formatted' => [
+                'id' => 24,
+                'title' => 'Kill Bill: Vol. 1',
+                'overview' => 'An assassin is shot by her ruthless … members of their assassination circle …',
+            ],
+        ],
+    ],
+];
+```
+
+The default crop length is 50 characters. You can define a different crop length by passing in an
+integer value.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title', 'summary'], cropLength: 30);
+```
+
+Optionally, define a custom crop length for each attribute by passing in an array of lengths keyed by attribute name.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title' => 20, 'summary' => 40]);
+```
+
+Crop boundaries are marked with an ellipsis `…` character by default. You can change this by passing in a custom marker.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title', 'summary'], cropMarker: '∞');
+```
+
 ## Stop words
 
 When configuring Loupe, you can define a list of stop words to be ignored by the engine when matching and

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Tokenizer;
 
-class TokenCollection
+class TokenCollection implements \Countable
 {
     /**
      * @var Token[]
@@ -100,6 +100,11 @@ class TokenCollection
         return array_unique($tokens);
     }
 
+    public function atIndex(int $index): ?Token
+    {
+        return $this->tokens[$index] ?? null;
+    }
+
     public function count(): int
     {
         return \count($this->tokens);
@@ -110,23 +115,30 @@ class TokenCollection
         return $this->tokens === [];
     }
 
+    public function last(): ?Token
+    {
+        $last = end($this->tokens);
+        if ($last instanceof Token) {
+            return $last;
+        }
+
+        return null;
+    }
+
     /**
-     * Return an array of "token groups" -- either single tokens or phrases as single objects.
+     * Return an array of "phrase groups" -- either single tokens or phrases as single objects.
      *
      * @return array<Phrase|Token>
      */
-    public function getGroups(): array
+    public function phraseGroups(): array
     {
         $groups = [];
         $phrase = null;
 
         foreach ($this->tokens as $token) {
             if ($token->isPartOfPhrase()) {
-                if (!$phrase) {
-                    $phrase = new Phrase([$token], $token->isNegated());
-                } else {
-                    $phrase->addToken($token);
-                }
+                $phrase = $phrase ?? new Phrase([], $token->isNegated());
+                $phrase->add($token);
             } else {
                 if ($phrase) {
                     $groups[] = $phrase;
@@ -141,15 +153,5 @@ class TokenCollection
         }
 
         return $groups;
-    }
-
-    public function last(): ?Token
-    {
-        $last = end($this->tokens);
-        if ($last instanceof Token) {
-            return $last;
-        }
-
-        return null;
     }
 }

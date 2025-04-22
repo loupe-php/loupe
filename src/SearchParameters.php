@@ -11,6 +11,11 @@ final class SearchParameters
     public const MAX_HITS_PER_PAGE = 1000;
 
     /**
+     * @var array<string,int>
+     */
+    private array $attributesToCrop = [];
+
+    /**
      * @var array<string>
      */
     private array $attributesToHighlight = [];
@@ -24,6 +29,10 @@ final class SearchParameters
      * @var array<string>
      */
     private array $attributesToSearchOn = ['*'];
+
+    private int $cropLength = 50;
+
+    private string $cropMarker = '…';
 
     private string $filter = '';
 
@@ -64,6 +73,7 @@ final class SearchParameters
 
     /**
      * @param array{
+     *     attributesToCrop?: array<string>|array<string,int>,
      *     attributesToHighlight?: array<string>,
      *     attributesToRetrieve?: array<string>,
      *     attributesToSearchOn?: array<string>,
@@ -82,6 +92,14 @@ final class SearchParameters
     public static function fromArray(array $data): self
     {
         $instance = new self();
+
+        if (isset($data['attributesToCrop'])) {
+            $instance = $instance->withAttributesToCrop(
+                $data['attributesToCrop'],
+                $data['cropLength'] ?? 50,
+                $data['cropMarker'] ?? '…',
+            );
+        }
 
         if (isset($data['attributesToHighlight'])) {
             $instance = $instance->withAttributesToHighlight(
@@ -140,6 +158,14 @@ final class SearchParameters
     }
 
     /**
+     * @return array<string,int>
+     */
+    public function getAttributesToCrop(): array
+    {
+        return $this->attributesToCrop;
+    }
+
+    /**
      * @return array<string>
      */
     public function getAttributesToHighlight(): array
@@ -163,6 +189,16 @@ final class SearchParameters
         return $this->attributesToSearchOn;
     }
 
+    public function getCropLength(): int
+    {
+        return $this->cropLength;
+    }
+
+    public function getCropMarker(): string
+    {
+        return $this->cropMarker;
+    }
+
     public function getFilter(): string
     {
         return $this->filter;
@@ -175,9 +211,12 @@ final class SearchParameters
     {
         $hash = [];
 
+        $hash[] = json_encode($this->getAttributesToCrop());
         $hash[] = json_encode($this->getAttributesToHighlight());
-        $hash[] = json_encode($this->getHighlightStartTag());
+        $hash[] = json_encode($this->getCropLength());
+        $hash[] = json_encode($this->getCropMarker());
         $hash[] = json_encode($this->getHighlightEndTag());
+        $hash[] = json_encode($this->getHighlightStartTag());
         $hash[] = json_encode($this->getAttributesToRetrieve());
         $hash[] = json_encode($this->getAttributesToSearchOn());
         $hash[] = json_encode($this->getFilter());
@@ -240,9 +279,12 @@ final class SearchParameters
 
     /**
      * @return array{
+     *     attributesToCrop: array<string,int>,
      *     attributesToHighlight: array<string>,
      *     attributesToRetrieve: array<string>,
      *     attributesToSearchOn: array<string>,
+     *     cropLength: int,
+     *     cropMarker: string,
      *     filter: string,
      *     highlightEndTag: string,
      *     highlightStartTag: string,
@@ -258,9 +300,12 @@ final class SearchParameters
     public function toArray(): array
     {
         return [
+            'attributesToCrop' => $this->attributesToCrop,
             'attributesToHighlight' => $this->attributesToHighlight,
             'attributesToRetrieve' => $this->attributesToRetrieve,
             'attributesToSearchOn' => $this->attributesToSearchOn,
+            'cropLength' => $this->cropLength,
+            'cropMarker' => $this->cropMarker,
             'filter' => $this->filter,
             'highlightEndTag' => $this->highlightEndTag,
             'highlightStartTag' => $this->highlightStartTag,
@@ -277,6 +322,34 @@ final class SearchParameters
     public function toString(): string
     {
         return json_encode($this->toArray(), JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param array<string>|array<string,int> $attributesToCrop
+     */
+    public function withAttributesToCrop(
+        array $attributesToCrop,
+        int $cropLength = 50,
+        string $cropMarker = '…',
+    ): self {
+        $clone = clone $this;
+
+        $attributes = [];
+        foreach ($attributesToCrop as $key => $attribute) {
+            if (\is_string($key) && \is_int($attribute)) {
+                $attributes[$key] = $attribute;
+            } elseif (\is_string($attribute)) {
+                $attributes[$attribute] = $cropLength;
+            }
+        }
+
+        ksort($attributes);
+
+        $clone->attributesToCrop = $attributes;
+        $clone->cropMarker = $cropMarker;
+        $clone->cropLength = $cropLength;
+
+        return $clone;
     }
 
     /**

@@ -13,6 +13,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
+use Loupe\Loupe\Internal\Search\Formatting\FormatterOptions;
 use Loupe\Loupe\Internal\Tokenizer\Token;
 use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
@@ -176,7 +177,7 @@ class Searcher
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
-            $this->highlight($hit, $tokensIncludingStopwords);
+            $this->formatHit($hit, $tokensIncludingStopwords);
 
             $hits[] = $hit;
         }
@@ -469,9 +470,9 @@ class Searcher
         $positiveConditions = [];
         $negativeConditions = [];
 
-        foreach ($tokenCollection->getGroups() as $tokenOrPhrase) {
+        foreach ($tokenCollection->phraseGroups() as $tokenOrPhrase) {
             $statements = [];
-            foreach ($tokenOrPhrase->getTokens() as $token) {
+            foreach ($tokenOrPhrase->all() as $token) {
                 $statements[] = $this->createTermDocumentMatchesCTECondition($token);
             }
 
@@ -728,76 +729,63 @@ class Searcher
     /**
      * @param array<mixed> $hit
      */
-    private function highlight(array &$hit, TokenCollection $tokenCollection): void
+    private function formatHit(array &$hit, TokenCollection $queryTerms): void
     {
-        if ($this->searchParameters->getAttributesToHighlight() === [] && !$this->searchParameters->showMatchesPosition()) {
+        $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes()
+            ? array_keys($hit)
+            : $this->engine->getConfiguration()->getSearchableAttributes();
+
+        $options = new FormatterOptions($this->searchParameters, $searchableAttributes);
+        $requiresFormatting = $options->requiresFormatting();
+        $showMatchesPosition = $this->searchParameters->showMatchesPosition();
+
+        if (!$requiresFormatting && !$showMatchesPosition) {
             return;
         }
 
         $formatted = $hit;
         $matchesPosition = [];
 
-        $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes() ?
-            array_keys($hit) :
-            $this->engine->getConfiguration()->getSearchableAttributes();
-
-        $highlightAllAttributes = ['*'] === $this->searchParameters->getAttributesToHighlight();
-        $attributesToHighlight = $highlightAllAttributes ?
-            $searchableAttributes :
-            $this->searchParameters->getAttributesToHighlight()
-        ;
-
-        $highlightStartTag = $this->searchParameters->getHighlightStartTag();
-        $highlightEndTag = $this->searchParameters->getHighlightEndTag();
-
         foreach ($searchableAttributes as $attribute) {
             // Do not include any attribute not required by the result (limited by attributesToRetrieve)
-            if (!isset($formatted[$attribute])) {
+            if (!isset($hit[$attribute])) {
                 continue;
             }
 
             if (\is_array($formatted[$attribute])) {
-                foreach ($formatted[$attribute] as $key => $formattedEntry) {
-                    $highlightResult = $this->engine->getHighlighter()
-                        ->highlight(
-                            $formattedEntry,
-                            $tokenCollection,
-                            $highlightStartTag,
-                            $highlightEndTag
-                        );
+                foreach ($formatted[$attribute] as $key => $value) {
+                    $formatterResult = $this->engine->getFormatter()
+                        ->format($attribute, (string) $value, $queryTerms, $options);
 
-                    if (\in_array($attribute, $attributesToHighlight, true)) {
-                        $formatted[$attribute][$key] = $highlightResult->getHighlightedText();
+                    if ($showMatchesPosition && $formatterResult->hasMatches()) {
+                        $matchesPosition[$attribute] ??= [];
+                        $matchesPosition[$attribute][$key] = $formatterResult->getMatchesArray();
                     }
 
-                    if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
-                        $matchesPosition[$attribute][$key] = $highlightResult->getMatches();
+                    if ($requiresFormatting) {
+                        $formatted[$attribute][$key] = $formatterResult->getFormattedText();
                     }
                 }
             } else {
-                $highlightResult = $this->engine->getHighlighter()
-                    ->highlight(
-                        (string) $formatted[$attribute],
-                        $tokenCollection,
-                        $highlightStartTag,
-                        $highlightEndTag
-                    );
+                $value = $formatted[$attribute];
+                $formatterResult = $this->engine->getFormatter()
+                    ->format($attribute, (string) $value, $queryTerms, $options);
 
-                if (\in_array($attribute, $attributesToHighlight, true)) {
-                    $formatted[$attribute] = $highlightResult->getHighlightedText();
+                if ($showMatchesPosition && $formatterResult->hasMatches()) {
+                    $matchesPosition[$attribute] = $formatterResult->getMatchesArray();
                 }
 
-                if ($this->searchParameters->showMatchesPosition() && $highlightResult->getMatches() !== []) {
-                    $matchesPosition[$attribute] = $highlightResult->getMatches();
+                if ($requiresFormatting) {
+                    $formatted[$attribute] = $formatterResult->getFormattedText();
                 }
             }
         }
 
-        if ($attributesToHighlight !== []) {
+        if ($requiresFormatting) {
             $hit['_formatted'] = $formatted;
         }
 
-        if ($matchesPosition !== []) {
+        if ($showMatchesPosition) {
             $hit['_matchesPosition'] = $matchesPosition;
         }
     }

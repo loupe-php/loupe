@@ -29,7 +29,7 @@ class Tokenizer
     /**
      * @param array<string> $stopWords
      */
-    public function tokenize(string $string, ?int $maxTokens = null, array $stopWords = []): TokenCollection
+    public function tokenize(string $string, ?int $maxTokens = null, array $stopWords = [], bool $includeStopWords = false): TokenCollection
     {
         $language = null;
         $languageResult = $this->languageDetector->detect($string);
@@ -40,7 +40,7 @@ class Tokenizer
             $language = $languageResult->language;
         }
 
-        return $this->doTokenize($string, $language, $maxTokens, $stopWords);
+        return $this->doTokenize($string, $language, $maxTokens, $stopWords, $includeStopWords);
     }
 
     /**
@@ -89,7 +89,7 @@ class Tokenizer
     /**
      * @param array<string> $stopWords
      */
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, array $stopWords = []): TokenCollection
+    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, array $stopWords = [], bool $includeStopWords = false): TokenCollection
     {
         $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
         $iterator->setText($string);
@@ -143,13 +143,23 @@ class Tokenizer
                 }
             }
 
+            $stopword = \in_array($term, $stopWords, true);
+            if (!$stopword) {
+                foreach ($variants as $variant) {
+                    if (\in_array($variant, $stopWords, true)) {
+                        $stopword = true;
+                    }
+                }
+            }
+
             $token = new Token(
                 $id++,
                 $term,
                 $position,
                 $variants,
                 $phrase,
-                $negated
+                $negated,
+                $stopword
             );
 
             $position += $token->getLength();
@@ -158,7 +168,7 @@ class Tokenizer
             $all->add($token);
 
             // Skip stop words
-            if ($token->isOneOf($stopWords)) {
+            if ($stopword && !$includeStopWords) {
                 continue;
             }
 
