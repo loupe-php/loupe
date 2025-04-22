@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Tests\Unit\Internal\Search\Formatting;
+namespace Loupe\Loupe\Tests\Functional\Formatting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\SearchParameters;
