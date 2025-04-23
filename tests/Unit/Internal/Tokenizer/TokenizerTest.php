@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Unit\Internal\Tokenizer;
 
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Nitotm\Eld\LanguageDetector;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -309,6 +310,6 @@ class TokenizerTest extends TestCase
             $languageDetector->langSubset($configuration->getLanguages()); // Save subset
         }
 
-        return new Tokenizer($languageDetector);
+        return new Tokenizer($this->createMock(Engine::class), $languageDetector);
     }
 }
