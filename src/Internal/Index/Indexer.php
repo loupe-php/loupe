@@ -525,5 +525,15 @@ class Indexer
     {
         $this->removeOrphans();
         $this->persistStateSet();
+        $this->vacuumDatabase();
+    }
+
+    private function vacuumDatabase(): void
+    {
+        if (!$this->engine->needsVacuum()) {
+            return;
+        }
+
+        $this->engine->getConnection()->executeStatement('PRAGMA incremental_vacuum');
     }
 }

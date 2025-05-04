@@ -206,6 +206,15 @@ class Engine
         return false;
     }
 
+    public function needsVacuum(): bool
+    {
+        if ($this->getIndexInfo()->needsSetup()) {
+            return false;
+        }
+
+        return random_int(0, 100) <= 2;
+    }
+
     public function search(SearchParameters $parameters): SearchResult
     {
         if ($this->getIndexInfo()->needsSetup()) {
