@@ -132,7 +132,7 @@ class CroppingTest extends TestCase
             'assassin',
             ['title', 'overview'],
             ['overview'],
-            ['overview'],
+            [],
             [
                 'hits' => [
                     [
@@ -143,7 +143,7 @@ class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 24,
                             'title' => 'Kill Bill: Vol. 1',
-                            'overview' => 'An <em>assassin</em> is shot by her ruthless employer…and other members of their <em>assassination</em> circle – but she lives to plot…',
+                            'overview' => 'An assassin is shot…their assassination circle…',
                             'genres' => ['Action', 'Crime'],
                         ],
                     ],
@@ -154,7 +154,11 @@ class CroppingTest extends TestCase
                 'totalPages' => 1,
                 'totalHits' => 1,
             ],
-
+            [],
+            '<em>',
+            '</em>',
+            '…',
+            25,
         ];
 
         yield 'Cropping with highlights' => [
