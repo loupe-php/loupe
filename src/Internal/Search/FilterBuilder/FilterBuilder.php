@@ -228,7 +228,7 @@ class FilterBuilder
                     // Otherwise, no document matches
                     $froms[] = 'SELECT document_id FROM (SELECT NULL AS document_id) WHERE 1 = 0';
                 }
-            } elseif (\in_array($node->attribute, $this->engine->getIndexInfo()->getMultiFilterableAttributes(), true)) {
+            } elseif ($this->engine->getIndexInfo()->isMultiFilterableAttribute($node->attribute)) {
                 $sortingSelects = $this->getSortingSelects($node->attribute);
                 $qb = $this->engine->getConnection()->createQueryBuilder();
                 $qb->select(sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)));

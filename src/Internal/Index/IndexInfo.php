@@ -132,7 +132,7 @@ class IndexInfo
 
             // Update schema to narrower type (e.g. before it was "array" and now it becomes "array<string>" or before
             // it was "null" and now it becomes any other type.
-            if ($valueType !== LoupeTypes::TYPE_NULL && $documentSchema[$attributeName] !== $valueType) {
+            if (LoupeTypes::typeIsNarrowerThanType($documentSchema[$attributeName], $valueType)) {
                 $documentSchema[$attributeName] = $valueType;
                 $needsSchemaUpdate = true;
             }
@@ -278,6 +278,16 @@ class IndexInfo
     public function getSortableAttributes(): array
     {
         return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getSortableAttributes()), $this->getDocumentSchema()));
+    }
+
+    public function isMultiFilterableAttribute(string $attribute): bool
+    {
+        return \in_array($attribute, $this->getMultiFilterableAttributes(), true);
+    }
+
+    public function isNumericAttribute(string $attribute): bool
+    {
+        return LoupeTypes::isFloatType($this->getLoupeTypeForAttribute($attribute));
     }
 
     public static function isValidAttributeName(string $name): bool
