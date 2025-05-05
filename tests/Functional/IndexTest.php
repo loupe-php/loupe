@@ -440,6 +440,51 @@ class IndexTest extends TestCase
         ]);
     }
 
+    public function testVacuumProbabilityEnsured(): void
+    {
+        $dir = $this->createTemporaryDirectory();
+        $logger = new InMemoryLogger();
+        $configuration = Configuration::create()->withLogger($logger)->withVacuumProbability(100);
+
+        $loupe = $this->createLoupe($configuration, $dir);
+
+        $this->assertCount(0, $this->getLoggedStatements($logger, 'PRAGMA incremental_vacuum'));
+
+        $loupe->addDocument([
+            'id' => 1,
+            'title' => 'Test',
+        ]);
+
+        $this->assertCount(1, $this->getLoggedStatements($logger, 'PRAGMA incremental_vacuum'));
+
+        $loupe->addDocument([
+            'id' => 2,
+            'title' => 'Test',
+        ]);
+
+        $this->assertCount(2, $this->getLoggedStatements($logger, 'PRAGMA incremental_vacuum'));
+    }
+
+    public function testVacuumProbabilityZero(): void
+    {
+        $dir = $this->createTemporaryDirectory();
+        $logger = new InMemoryLogger();
+        $configuration = Configuration::create()->withLogger($logger)->withVacuumProbability(0);
+
+        $loupe = $this->createLoupe($configuration, $dir);
+
+        $this->assertCount(0, $this->getLoggedStatements($logger, 'PRAGMA incremental_vacuum'));
+
+        for ($i = 0; $i < 1000; $i++) {
+            $loupe->addDocument([
+                'id' => $i,
+                'title' => 'Test',
+            ]);
+        }
+
+        $this->assertCount(0, $this->getLoggedStatements($logger, 'PRAGMA incremental_vacuum'));
+    }
+
     /**
      * @param array<array<string, mixed>> $documents
      */
@@ -509,6 +554,21 @@ class IndexTest extends TestCase
                 ]),
             ],
         ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    private function getLoggedStatements(InMemoryLogger $logger, ?string $filter = null): array
+    {
+        $records = array_filter($logger->getRecords(), fn (array $record) => str_contains((string) $record['message'], 'Executing statement'));
+        $queries = array_map(fn (array $record) => $record['context']['sql'], $records);
+
+        if ($filter) {
+            return array_filter($queries, fn (string $query) => str_contains($query, $filter));
+        }
+
+        return $queries;
     }
 
     /**
