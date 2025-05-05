@@ -394,8 +394,8 @@ class Indexer
             return false;
         }
 
-        // Run after 2% of all indexing operations
-        return random_int(1, 100) <= 2;
+        // Check against configured vacuum probability
+        return random_int(1, 100) <= $this->engine->getConfiguration()->getVacuumProbability();
     }
 
     private function persistStateSet(): void

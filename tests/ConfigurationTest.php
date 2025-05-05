@@ -41,6 +41,15 @@ class ConfigurationTest extends TestCase
         Configuration::create()->withRankingRules(['invalid-rule']);
     }
 
+    public function testInvalidVacuumProbabilityThrows(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        Configuration::create()->withVacuumProbability(101);
+
+        $this->expectException(InvalidConfigurationException::class);
+        Configuration::create()->withVacuumProbability(-1);
+    }
+
     public function testMaxTotalHits(): void
     {
         $config = Configuration::create();
@@ -97,6 +106,15 @@ class ConfigurationTest extends TestCase
         $decoded = Configuration::fromString($string);
 
         $this->assertSame($config->toArray(), $decoded->toArray());
+    }
+
+    public function testVacuumProbability(): void
+    {
+        $config = Configuration::create();
+        $this->assertSame(2, $config->getVacuumProbability());
+
+        $config = $config->withVacuumProbability(10);
+        $this->assertSame(10, $config->getVacuumProbability());
     }
 
     public function testValidAttributeNameBoundary(): void
