@@ -34,6 +34,11 @@ final class SearchParameters
 
     private string $cropMarker = '…';
 
+    /**
+     * @var array<string>
+     */
+    private array $facets = [];
+
     private string $filter = '';
 
     private string $highlightEndTag = '</em>';
@@ -77,6 +82,7 @@ final class SearchParameters
      *     attributesToHighlight?: array<string>,
      *     attributesToRetrieve?: array<string>,
      *     attributesToSearchOn?: array<string>,
+     *     facets?: array<string>,
      *     filter?: string,
      *     highlightEndTag?: string,
      *     highlightStartTag?: string,
@@ -115,6 +121,10 @@ final class SearchParameters
 
         if (isset($data['attributesToSearchOn'])) {
             $instance = $instance->withAttributesToSearchOn($data['attributesToSearchOn']);
+        }
+
+        if (isset($data['facets'])) {
+            $instance = $instance->withFacets($data['facets']);
         }
 
         if (isset($data['filter'])) {
@@ -197,6 +207,14 @@ final class SearchParameters
     public function getCropMarker(): string
     {
         return $this->cropMarker;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getFacets(): array
+    {
+        return $this->facets;
     }
 
     public function getFilter(): string
@@ -283,6 +301,7 @@ final class SearchParameters
      *     attributesToHighlight: array<string>,
      *     attributesToRetrieve: array<string>,
      *     attributesToSearchOn: array<string>,
+     *     facets: array<string>,
      *     cropLength: int,
      *     cropMarker: string,
      *     filter: string,
@@ -304,6 +323,7 @@ final class SearchParameters
             'attributesToHighlight' => $this->attributesToHighlight,
             'attributesToRetrieve' => $this->attributesToRetrieve,
             'attributesToSearchOn' => $this->attributesToSearchOn,
+            'facets' => $this->facets,
             'cropLength' => $this->cropLength,
             'cropMarker' => $this->cropMarker,
             'filter' => $this->filter,
@@ -392,6 +412,17 @@ final class SearchParameters
 
         $clone = clone $this;
         $clone->attributesToSearchOn = $attributesToSearchOn;
+
+        return $clone;
+    }
+
+    /**
+     * @param array<string> $facets
+     */
+    public function withFacets(array $facets): self
+    {
+        $clone = clone $this;
+        $clone->facets = $facets;
 
         return $clone;
     }

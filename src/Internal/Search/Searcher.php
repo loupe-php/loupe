@@ -12,6 +12,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
 use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
@@ -33,6 +34,8 @@ class Searcher
     public const CTE_TERM_MATCHES_PREFIX = '_cte_term_matches_';
 
     public const DISTANCE_ALIAS = '_distance';
+
+    public const FACET_ALIAS_PREFIX = '_facet_';
 
     public const RELEVANCE_ALIAS = '_relevance';
 
@@ -181,6 +184,7 @@ class Searcher
         $this->selectDocuments();
         $this->searchDocuments($tokens); // First, add the search term CTEs
         $this->filterDocuments($tokens); // Then filter the documents (requires the search term CTEs)
+        $this->addFacets();
         $this->selectTotalHits();
         $this->sortDocuments();
         $this->selectDistance();
@@ -216,7 +220,7 @@ class Searcher
         $totalPages = (int) ceil($totalHits / $this->searchParameters->getHitsPerPage());
         $end = (int) floor(microtime(true) * 1000);
 
-        return new SearchResult(
+        $searchResult = new SearchResult(
             $hits,
             $this->createAnalyzedQuery($tokens),
             $end - $start,
@@ -225,6 +229,8 @@ class Searcher
             $totalPages,
             $totalHits
         );
+
+        return $this->addFacetsToSearchResult($searchResult, $result ?? []);
     }
 
     public function getCTE(string $name): ?Cte
@@ -300,6 +306,115 @@ class Searcher
     public function hasCTE(string $cteName): bool
     {
         return isset($this->ctesByName[$cteName]);
+    }
+
+    private function addFacets(): void
+    {
+        $facets = array_intersect($this->searchParameters->getFacets(), $this->engine->getIndexInfo()->getFilterableAttributes());
+
+        if ($facets === []) {
+            return;
+        }
+
+        foreach ($facets as $facet) {
+            $qb = $this->engine->getConnection()->createQueryBuilder();
+            $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($facet);
+
+            if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($facet)) {
+                $facetAlias = sprintf(
+                    '%s.%s',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $isNumeric ? 'numeric_value' : 'string_value',
+                );
+
+                if ($isNumeric) {
+                    $qb->select(sprintf('MIN(%s)', $facetAlias), sprintf('MAX(%s)', $facetAlias));
+                } else {
+                    $qb->select($facetAlias, sprintf('COUNT(DISTINCT %s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
+                    $qb->groupBy($facetAlias);
+                }
+
+                $this->addFromMultiAttributesAndJoinMatches($qb, $facet);
+            } else {
+                $facetAlias = sprintf(
+                    '%s.%s',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    $facet,
+                );
+
+                if ($isNumeric) {
+                    $qb->select(sprintf('MIN(%s)', $facetAlias), sprintf('MAX(%s)', $facetAlias));
+                } else {
+                    $qb->select($facetAlias, 'COUNT(*)');
+                    $qb->groupBy($facetAlias);
+                }
+                $qb->from(IndexInfo::TABLE_NAME_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS));
+                $qb->innerJoin(
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    self::CTE_MATCHES,
+                    self::CTE_MATCHES,
+                    sprintf(
+                        '%s.document_id = %s.id',
+                        self::CTE_MATCHES,
+                        $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+                    )
+                );
+            }
+
+            $cteName = self::FACET_ALIAS_PREFIX . $facet;
+
+            $this->addCTE(new Cte($cteName, ['facet_group', 'facet_value'], $qb));
+            $this->queryBuilder->addSelect(sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $cteName));
+        }
+    }
+
+    /**
+     * @param array<mixed> $result
+     */
+    private function addFacetsToSearchResult(SearchResult $searchResult, array $result): SearchResult
+    {
+        $facetDistribution = [];
+        $facetStats = [];
+
+        foreach ($result as $column => $value) {
+            if (str_starts_with($column, self::FACET_ALIAS_PREFIX)) {
+                $attribute = (string) preg_replace('/^' . self::FACET_ALIAS_PREFIX . '(' . Configuration::ATTRIBUTE_NAME_RGXP . ')$/', '$1', $column);
+                $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($attribute);
+
+                $items = explode(',', $value);
+                foreach ($items as $item) {
+                    $pos = strrpos($item, ':');
+
+                    if ($pos === false) {
+                        continue;
+                    }
+
+                    $group = substr($item, 0, $pos);
+                    $value = substr($item, $pos + 1);
+
+                    if ($isNumeric) {
+                        $facetStats[$attribute]['min'] = (float) $group;
+                        $facetStats[$attribute]['max'] = (float) $value;
+                    } else {
+                        if (\in_array($group, [LoupeTypes::VALUE_EMPTY, LoupeTypes::VALUE_NULL], true)) {
+                            continue;
+                        }
+
+                        $facetDistribution[$attribute][$group] = (int) $value;
+                    }
+                }
+            }
+        }
+
+        if ($facetDistribution !== []) {
+            $searchResult = $searchResult->withFacetDistribution($facetDistribution);
+        }
+
+        if ($facetStats !== []) {
+            $searchResult = $searchResult->withFacetStats($facetStats);
+        }
+
+        return $searchResult;
     }
 
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
