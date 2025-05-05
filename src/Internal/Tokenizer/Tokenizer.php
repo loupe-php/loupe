@@ -18,11 +18,6 @@ use Wamania\Snowball\StemmerFactory;
 class Tokenizer implements TokenizerInterface
 {
     /**
-     * @var array<string,?TokenizerInterface>
- */
-    private array $tokenizers = [];
-
-    /**
      * @var array<string,array<string,string>>
      */
     private array $stemmerCache = [];
@@ -32,10 +27,70 @@ class Tokenizer implements TokenizerInterface
      */
     private array $stemmers = [];
 
+    /**
+     * @var array<string,?TokenizerInterface>
+     */
+    private array $tokenizers = [];
+
     public function __construct(
         private Engine $engine,
         private LanguageDetector $languageDetector,
     ) {
+    }
+
+    public function matches(Token $token, TokenCollection $tokens): bool
+    {
+        $configuration = $this->engine->getConfiguration();
+        $firstCharTypoCountsDouble = $configuration->getTypoTolerance()->firstCharTypoCountsDouble();
+
+        foreach ($tokens->all() as $queryToken) {
+            foreach ($queryToken->allTerms() as $queryTerm) {
+                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($queryTerm);
+
+                if ($levenshteinDistance === 0) {
+                    if (\in_array($queryTerm, $token->allTerms(), true)) {
+                        return true;
+                    }
+                } else {
+                    foreach ($token->allTerms() as $textTerm) {
+                        if (Levenshtein::damerauLevenshtein($queryTerm, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        $lastToken = $tokens->last();
+
+        if ($lastToken === null) {
+            return false;
+        }
+
+        $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($lastToken->getTerm());
+
+        // Prefix search (only if minimum token length is fulfilled)
+        if (mb_strlen($token->getTerm()) <= $configuration->getMinTokenLengthForPrefixSearch()) {
+            return false;
+        }
+
+        $chars = mb_str_split($token->getTerm(), 1, 'UTF-8');
+        $prefix = implode('', \array_slice($chars, 0, $configuration->getMinTokenLengthForPrefixSearch()));
+        $rest = \array_slice($chars, $configuration->getMinTokenLengthForPrefixSearch());
+
+        if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+            return true;
+        }
+
+        while ($rest !== []) {
+            $prefix .= array_shift($rest);
+
+            if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -165,60 +220,5 @@ class Tokenizer implements TokenizerInterface
         }
 
         return $this->stemmerCache[$language][$term] = mb_strtolower($stemmer->stem($term), 'UTF-8');
-    }
-
-    public function matches(Token $token, TokenCollection $tokens): bool
-    {
-        $configuration = $this->engine->getConfiguration();
-        $firstCharTypoCountsDouble = $configuration->getTypoTolerance()->firstCharTypoCountsDouble();
-
-        foreach ($tokens->all() as $queryToken) {
-            foreach ($queryToken->allTerms() as $queryTerm) {
-                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($queryTerm);
-
-                if ($levenshteinDistance === 0) {
-                    if (\in_array($queryTerm, $token->allTerms(), true)) {
-                        return true;
-                    }
-                } else {
-                    foreach ($token->allTerms() as $textTerm) {
-                        if (Levenshtein::damerauLevenshtein($queryTerm, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        $lastToken = $tokens->last();
-
-        if ($lastToken === null) {
-            return false;
-        }
-
-        $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($lastToken->getTerm());
-
-        // Prefix search (only if minimum token length is fulfilled)
-        if (mb_strlen($token->getTerm()) <= $configuration->getMinTokenLengthForPrefixSearch()) {
-            return false;
-        }
-
-        $chars = mb_str_split($token->getTerm(), 1, 'UTF-8');
-        $prefix = implode('', \array_slice($chars, 0, $configuration->getMinTokenLengthForPrefixSearch()));
-        $rest = \array_slice($chars, $configuration->getMinTokenLengthForPrefixSearch());
-
-        if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
-            return true;
-        }
-
-        while ($rest !== []) {
-            $prefix .= array_shift($rest);
-
-            if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

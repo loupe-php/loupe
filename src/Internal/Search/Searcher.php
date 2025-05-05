@@ -13,11 +13,11 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
-use Loupe\Matcher\FormatterOptions;
-use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
+use Loupe\Matcher\FormatterOptions;
+use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 
 class Searcher
@@ -748,7 +748,7 @@ class Searcher
             ->withHighlightEndTag($this->getSearchParameters()->getHighlightEndTag())
         ;
 
-        $requiresFormatting = count($attributesToCrop) > 0 || count($attributesToHighlight) > 0;
+        $requiresFormatting = \count($attributesToCrop) > 0 || \count($attributesToHighlight) > 0;
         $showMatchesPosition = $this->searchParameters->showMatchesPosition();
 
         if (!$requiresFormatting && !$showMatchesPosition) {
@@ -766,7 +766,7 @@ class Searcher
 
             $attributeOptions = $options;
 
-            if (in_array($attribute, $attributesToCrop)) {
+            if (\in_array($attribute, $attributesToCrop, true)) {
                 $attributeOptions = $options->withEnableCrop();
 
                 if (isset($this->getSearchParameters()->getAttributesToCrop()[$attribute])) {
@@ -774,7 +774,7 @@ class Searcher
                 }
             }
 
-            if (in_array($attribute, $attributesToHighlight)) {
+            if (\in_array($attribute, $attributesToHighlight, true)) {
                 $attributeOptions = $options->withEnableHighlight();
             }
 
