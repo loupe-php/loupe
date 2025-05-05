@@ -13,12 +13,12 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
-use Loupe\Loupe\Internal\Search\Formatting\FormatterOptions;
-use Loupe\Loupe\Internal\Tokenizer\Token;
-use Loupe\Loupe\Internal\Tokenizer\TokenCollection;
 use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
+use Loupe\Matcher\FormatterOptions;
+use Loupe\Matcher\Tokenizer\Token;
+use Loupe\Matcher\Tokenizer\TokenCollection;
 
 class Searcher
 {
@@ -734,9 +734,21 @@ class Searcher
         $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes()
             ? array_keys($hit)
             : $this->engine->getConfiguration()->getSearchableAttributes();
+        $attributesToCrop = ['*'] === $this->getSearchParameters()->getAttributesToCrop()
+            ? array_keys($hit)
+            : array_keys($this->getSearchParameters()->getAttributesToCrop());
+        $attributesToHighlight = ['*'] === $this->getSearchParameters()->getAttributesToHighlight()
+            ? array_keys($hit)
+            : $this->getSearchParameters()->getAttributesToHighlight();
 
-        $options = new FormatterOptions($this->searchParameters, $searchableAttributes);
-        $requiresFormatting = $options->requiresFormatting();
+        $options = (new FormatterOptions())
+            ->withCropLength($this->getSearchParameters()->getCropLength())
+            ->withCropMarker($this->getSearchParameters()->getCropMarker())
+            ->withHighlightStartTag($this->getSearchParameters()->getHighlightStartTag())
+            ->withHighlightEndTag($this->getSearchParameters()->getHighlightEndTag())
+        ;
+
+        $requiresFormatting = \count($attributesToCrop) > 0 || \count($attributesToHighlight) > 0;
         $showMatchesPosition = $this->searchParameters->showMatchesPosition();
 
         if (!$requiresFormatting && !$showMatchesPosition) {
@@ -752,10 +764,24 @@ class Searcher
                 continue;
             }
 
+            $attributeOptions = $options;
+
+            if (\in_array($attribute, $attributesToCrop, true)) {
+                $attributeOptions = $options->withEnableCrop();
+
+                if (isset($this->getSearchParameters()->getAttributesToCrop()[$attribute])) {
+                    $attributeOptions = $attributeOptions->withCropLength($this->getSearchParameters()->getAttributesToCrop()[$attribute]);
+                }
+            }
+
+            if (\in_array($attribute, $attributesToHighlight, true)) {
+                $attributeOptions = $options->withEnableHighlight();
+            }
+
             if (\is_array($formatted[$attribute])) {
                 foreach ($formatted[$attribute] as $key => $value) {
                     $formatterResult = $this->engine->getFormatter()
-                        ->format($attribute, (string) $value, $queryTerms, $options);
+                        ->format((string) $value, $queryTerms, $attributeOptions);
 
                     if ($showMatchesPosition && $formatterResult->hasMatches()) {
                         $matchesPosition[$attribute] ??= [];
@@ -769,7 +795,7 @@ class Searcher
             } else {
                 $value = $formatted[$attribute];
                 $formatterResult = $this->engine->getFormatter()
-                    ->format($attribute, (string) $value, $queryTerms, $options);
+                    ->format((string) $value, $queryTerms, $attributeOptions);
 
                 if ($showMatchesPosition && $formatterResult->hasMatches()) {
                     $matchesPosition[$attribute] = $formatterResult->getMatchesArray();

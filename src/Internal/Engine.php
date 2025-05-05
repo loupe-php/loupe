@@ -12,12 +12,13 @@ use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
-use Loupe\Loupe\Internal\Search\Formatting\Formatter;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
+use Loupe\Matcher\Formatter;
+use Loupe\Matcher\Matcher;
 use Nitotm\Eld\LanguageDetector;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
@@ -59,7 +60,7 @@ class Engine
             new NullDataStore()
         );
         $this->indexer = new Indexer($this);
-        $this->formatter = new Formatter($this);
+        $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->configuration->getStopWords()));
         $this->filterParser = new Parser($this);
         $this->sqliteVersion = match (true) {
             \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
@@ -185,7 +186,7 @@ class Engine
         $languageDetector = new LanguageDetector($ngramsFile);
         $languageDetector->enableTextCleanup(true); // Clean stuff like URLs, domains etc. to improve language detection
 
-        return $this->tokenizer = new Tokenizer($languageDetector);
+        return $this->tokenizer = new Tokenizer($this, $languageDetector);
     }
 
     public function needsReindex(): bool
