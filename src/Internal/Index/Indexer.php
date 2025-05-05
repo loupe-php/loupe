@@ -388,6 +388,16 @@ class Indexer
         }
     }
 
+    private function needsVacuum(): bool
+    {
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            return false;
+        }
+
+        // Check against configured vacuum probability
+        return random_int(1, 100) <= $this->engine->getConfiguration()->getVacuumProbability();
+    }
+
     private function persistStateSet(): void
     {
         if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
@@ -525,5 +535,15 @@ class Indexer
     {
         $this->removeOrphans();
         $this->persistStateSet();
+        $this->vacuumDatabase();
+    }
+
+    private function vacuumDatabase(): void
+    {
+        if (!$this->needsVacuum()) {
+            return;
+        }
+
+        $this->engine->getConnection()->executeStatement('PRAGMA incremental_vacuum');
     }
 }

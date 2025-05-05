@@ -72,6 +72,11 @@ final class Configuration
 
     private TypoTolerance $typoTolerance;
 
+    /**
+     * Probability (0-100) of running vacuum on the SQLite database during indexing.
+     */
+    private int $vacuumProbability = 2;
+
     public function __construct()
     {
         $this->typoTolerance = new TypoTolerance();
@@ -288,6 +293,16 @@ final class Configuration
     }
 
     /**
+     * Get the probability (0-100) of running vacuum on the SQLite database during indexing.
+     *
+     * @internal
+     */
+    public function getVacuumProbability(): int
+    {
+        return $this->vacuumProbability;
+    }
+
+    /**
      * @return array{
      *     displayedAttributes: array<string>,
      *     filterableAttributes: array<string>,
@@ -499,6 +514,24 @@ final class Configuration
     {
         $clone = clone $this;
         $clone->typoTolerance = $tolerance;
+
+        return $clone;
+    }
+
+    /**
+     * Set the probability (0-100) of running vacuum on the SQLite database during indexing.
+     *
+     * @throws InvalidConfigurationException If the probability is not between 0 and 100
+     * @internal
+     */
+    public function withVacuumProbability(int $probability): self
+    {
+        if ($probability < 0 || $probability > 100) {
+            throw new InvalidConfigurationException('Vacuum probability must be between 0 and 100.');
+        }
+
+        $clone = clone $this;
+        $clone->vacuumProbability = $probability;
 
         return $clone;
     }
