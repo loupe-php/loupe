@@ -135,7 +135,7 @@ final class LoupeFactory implements LoupeFactoryInterface
 
         foreach ($optimizations as $optimization) {
             try {
-                $connection->executeQuery($optimization);
+                $connection->executeStatement($optimization);
             } catch (\Throwable $th) {
                 // Assume that the pragma is not supported
             }
@@ -155,7 +155,7 @@ final class LoupeFactory implements LoupeFactoryInterface
 
         foreach ($optimizations as $optimization) {
             try {
-                $connection->executeQuery($optimization);
+                $connection->executeStatement($optimization);
             } catch (\Throwable $th) {
                 // Assume that the pragma is not supported
             }

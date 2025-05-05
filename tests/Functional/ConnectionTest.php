@@ -45,7 +45,7 @@ class ConnectionTest extends TestCase
             'title' => 'Test',
         ]);
 
-        $this->assertCount(1, $this->getLoggedQueries($logger, 'PRAGMA page_size'));
+        $this->assertCount(1, $this->getLoggedStatements($logger, 'PRAGMA page_size'));
     }
 
     public function testPageSize(): void
@@ -67,9 +67,9 @@ class ConnectionTest extends TestCase
     /**
      * @return array<string>
      */
-    private function getLoggedQueries(InMemoryLogger $logger, ?string $filter = null): array
+    private function getLoggedStatements(InMemoryLogger $logger, ?string $filter = null): array
     {
-        $records = array_filter($logger->getRecords(), fn (array $record) => str_contains((string) $record['message'], 'Executing query'));
+        $records = array_filter($logger->getRecords(), fn (array $record) => str_contains((string) $record['message'], 'Executing statement'));
         $queries = array_map(fn (array $record) => $record['context']['sql'], $records);
 
         if ($filter) {
