@@ -7,7 +7,8 @@
         "departments": ["Development", "Engineering"],
         "colors": ["Green", "Blue"],
         "age": 40,
-        "isActive": true
+        "isActive": true,
+        "recentPerformanceScores": [4.5, 4.7, 4.6]
     },
     {
         "id": 2,
@@ -17,7 +18,8 @@
         "departments": ["Development", "Backoffice"],
         "colors": ["Red", "Orange"],
         "age": 29,
-        "isActive": true
+        "isActive": true,
+        "recentPerformanceScores": [3.9, 4.1]
     },
     {
         "id": 3,
@@ -27,7 +29,8 @@
         "departments": [],
         "colors": ["Blue"],
         "age": 32,
-        "isActive": true
+        "isActive": true,
+        "recentPerformanceScores": []
     },
     {
         "id": 4,
@@ -37,7 +40,8 @@
         "departments": ["Engineering", "Project Management"],
         "colors": ["Yellow", "Red"],
         "age": 58,
-        "isActive": true
+        "isActive": true,
+        "recentPerformanceScores": [4.0, 4.2, 3.8, 4.1]
     },
     {
         "id": 5,
@@ -47,7 +51,8 @@
         "departments": null,
         "colors": ["Purple"],
         "age": 22,
-        "isActive": true
+        "isActive": true,
+        "recentPerformanceScores": []
     },
     {
         "id": 6,
@@ -57,7 +62,8 @@
         "departments": ["Backoffice"],
         "colors": ["Green"],
         "age": 18,
-        "isActive": false
+        "isActive": false,
+        "recentPerformanceScores": [2.8]
     },
     {
         "id": 7,
@@ -67,6 +73,7 @@
         "departments": ["Facility-Management"],
         "colors": ["Magenta"],
         "age": 96,
-        "isActive": false
+        "isActive": false,
+        "recentPerformanceScores": []
     }
 ]

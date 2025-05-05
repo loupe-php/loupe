@@ -105,6 +105,36 @@ class Searcher
         }
     }
 
+    public function addFromMultiAttributesAndJoinMatches(QueryBuilder $qb, string $attribute): void
+    {
+        $qb->from(
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
+        )
+            ->innerJoin(
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                sprintf(
+                    '%s.attribute=%s AND %s.id = %s.attribute',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $this->getQueryBuilder()->createNamedParameter($attribute),
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                )
+            )
+            ->innerJoin(
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                self::CTE_MATCHES,
+                self::CTE_MATCHES,
+                sprintf(
+                    '%s.document_id = %s.document',
+                    self::CTE_MATCHES,
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
+                )
+            );
+    }
+
     public function addGeoDistanceCte(string $attribute, float $latitude, float $longitude, ?Bounds $bounds = null): string
     {
         $cteName = self::DISTANCE_ALIAS . '_' . $attribute;

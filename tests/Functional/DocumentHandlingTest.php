@@ -26,12 +26,11 @@ class DocumentHandlingTest extends TestCase
             'firstname' => 'Sandra',
             'lastname' => 'Maier',
             'gender' => 'female',
-            'departments' =>
-                ['Development', 'Engineering'],
-            'colors' =>
-                ['Green', 'Blue'],
+            'departments' => ['Development', 'Engineering'],
+            'colors' => ['Green', 'Blue'],
             'age' => 40,
             'isActive' => true,
+            'recentPerformanceScores' => [4.5, 4.7, 4.6],
         ], $loupe->getDocument(1));
 
         $this->assertSame([
@@ -39,12 +38,11 @@ class DocumentHandlingTest extends TestCase
             'firstname' => 'Sandra',
             'lastname' => 'Maier',
             'gender' => 'female',
-            'departments' =>
-                ['Development', 'Engineering'],
-            'colors' =>
-                ['Green', 'Blue'],
+            'departments' => ['Development', 'Engineering'],
+            'colors' => ['Green', 'Blue'],
             'age' => 40,
             'isActive' => true,
+            'recentPerformanceScores' => [4.5, 4.7, 4.6],
         ], $loupe->getDocument('1'));
 
         $this->assertNull($loupe->getDocument('foobar'));

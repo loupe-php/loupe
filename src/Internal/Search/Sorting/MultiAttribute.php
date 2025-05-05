@@ -36,7 +36,7 @@ class MultiAttribute extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
-        $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
+        $isFloatType = $engine->getIndexInfo()->isNumericAttribute($this->attributeName);
         $column = ($isFloatType ? 'numeric_value' : 'string_value');
 
         $multiFilterCte = $searcher->addAllMultiFiltersCte($this->attributeName, $this->getFilterSelectAlias());
@@ -119,39 +119,15 @@ class MultiAttribute extends AbstractSorter
 
     private function createQueryBuilderWithoutFilterCte(Engine $engine, Searcher $searcher, string $column): QueryBuilder
     {
-        return $engine->getConnection()->createQueryBuilder()
+        $qb = $engine->getConnection()->createQueryBuilder()
             ->addSelect(
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS) . '.document AS document_id',
                 $this->aggregate->buildSql($column) . ' AS sort_order'
-            )
-            ->from(
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
-            )
-            ->innerJoin(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
-                    '%s.attribute=%s AND %s.id = %s.attribute',
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $searcher->getQueryBuilder()->createNamedParameter($this->attributeName),
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                )
-            )
-            ->innerJoin(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                Searcher::CTE_MATCHES,
-                Searcher::CTE_MATCHES,
-                sprintf(
-                    '%s.document_id = %s.document',
-                    Searcher::CTE_MATCHES,
-                    $engine->getIndexInfo()->getAliasForTable(
-                        IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS
-                    )
-                )
             );
+
+        $searcher->addFromMultiAttributesAndJoinMatches($qb, $this->attributeName);
+
+        return $qb;
     }
 
     private function getColumnName(Engine $engine): string
