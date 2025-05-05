@@ -395,7 +395,7 @@ class Indexer
         }
 
         // Run after 2% of all indexing operations
-        return random_int(0, 100) <= 2;
+        return random_int(0, 100) < 2;
     }
 
     private function persistStateSet(): void
