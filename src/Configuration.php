@@ -107,8 +107,7 @@ final class Configuration
      *         isDisabled?: bool,
      *         isEnabledForPrefixSearch?: bool,
      *         typoThresholds?: array<int, int>
-     *     },
-     *     vacuumProbability?: int
+     *     }
      * } $data
      */
     public static function fromArray(array $data): self
@@ -161,10 +160,6 @@ final class Configuration
 
         if (isset($data['typoTolerance']) && \is_array($data['typoTolerance'])) {
             $instance = $instance->withTypoTolerance(TypoTolerance::fromArray($data['typoTolerance']));
-        }
-
-        if (isset($data['vacuumProbability'])) {
-            $instance = $instance->withVacuumProbability((int) $data['vacuumProbability']);
         }
 
         return $instance;
@@ -345,7 +340,6 @@ final class Configuration
             'sortableAttributes' => $this->sortableAttributes,
             'stopWords' => $this->stopWords,
             'typoTolerance' => $this->typoTolerance->toArray(),
-            'vacuumProbability' => $this->vacuumProbability,
         ];
     }
 
