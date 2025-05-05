@@ -388,6 +388,16 @@ class Indexer
         }
     }
 
+    private function needsVacuum(): bool
+    {
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            return false;
+        }
+
+        // Run after 2% of all indexing operations
+        return random_int(0, 100) <= 2;
+    }
+
     private function persistStateSet(): void
     {
         if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
@@ -530,7 +540,7 @@ class Indexer
 
     private function vacuumDatabase(): void
     {
-        if (!$this->engine->needsVacuum()) {
+        if (!$this->needsVacuum()) {
             return;
         }
 
