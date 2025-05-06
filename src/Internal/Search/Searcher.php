@@ -322,12 +322,17 @@ class Searcher
         // If neither, exactness nor typo is part of the ranking rules, we can omit calculating the info for better performance
         if (\in_array('exactness', $this->engine->getConfiguration()->getRankingRules(), true) || \in_array('typo', $this->engine->getConfiguration()->getRankingRules(), true)) {
             $cteSelectQb->addSelect(sprintf(
-                'loupe_levensthein((SELECT term FROM %s WHERE id=%s.term), %s, %s) AS typos',
-                IndexInfo::TABLE_NAME_TERMS,
-                $termsDocumentsAlias,
+                'loupe_levensthein(%s.term, %s, %s) AS typos',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
                 $this->getQueryBuilder()->createNamedParameter($token->getTerm()),
                 $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
             ));
+            $cteSelectQb->innerJoin(
+                $termsDocumentsAlias,
+                IndexInfo::TABLE_NAME_TERMS,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                sprintf('%s.id = %s.term', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS), $termsDocumentsAlias)
+            );
         } else {
             $cteSelectQb->addSelect('0 AS typos');
         }
@@ -724,7 +729,7 @@ class Searcher
     {
         $froms = [];
         $qbMatches = $this->engine->getConnection()->createQueryBuilder();
-        $qbMatches->select('document_id');
+        $qbMatches->select('document_id')->distinct();
 
         // User filters
         $froms[] = $this->filterBuilder->buildFrom();
@@ -750,8 +755,6 @@ class Searcher
         } else {
             $qbMatches->from('(' . implode(' INTERSECT ', $froms) . ')');
         }
-
-        $qbMatches->groupBy('document_id');
 
         $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id'], $qbMatches));
     }
