@@ -12,6 +12,7 @@ $startTime = microtime(true);
 
 $searchParameters = SearchParameters::create()
     ->withQuery($query)
+    ->withFacets(['genres'])
 ;
 
 $result = $config['loupe']->search($searchParameters);

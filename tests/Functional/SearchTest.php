@@ -850,6 +850,47 @@ class SearchTest extends TestCase
                 ],
             ],
         ];
+
+        yield 'Getting all types of facets with filter' => [
+            '',
+            "departments = 'Backoffice'",
+            ['gender', 'age', 'departments', 'recentPerformanceScores'],
+            [
+                'hits' => [
+                    [
+                        'firstname' => 'Huckleberry',
+                    ],
+                    [
+                        'firstname' => 'Uta',
+                    ],
+                ],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 2,
+                'facetDistribution' => [
+                    'gender' => [
+                        'female' => 1,
+                        'male' => 1,
+                    ],
+                    'departments' => [
+                        'Backoffice' => 2,
+                        'Development' => 1,
+                    ],
+                ],
+                'facetStats' => [
+                    'age' => [
+                        'min' => 18.0,
+                        'max' => 29.0,
+                    ],
+                    'recentPerformanceScores' => [
+                        'min' => 2.8,
+                        'max' => 4.1,
+                    ],
+                ],
+            ],
+        ];
     }
 
     public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
