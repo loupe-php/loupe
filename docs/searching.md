@@ -118,6 +118,53 @@ If you filter for `ratings >= 2 AND ratings <= 4`, you will get **both** documen
 attribute and all of its values are evaluated individually. If you want both conditions to apply, use the `BETWEEN` 
 operator: `ratings BETWEEN 2 AND 4`.
 
+## Search with facets
+
+Yes, you read that right, Loupe even supports facets! Facets are supported on all filterable attributes, so make sure you have defined those first:
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withFilterableAttributes(['departments', 'age'])
+;
+```
+
+You can then ask Loupe to create facets for the attributes you're interested in:
+
+```php
+$searchParameters = SearchParameters::create()
+    ->withQuery('...')
+    ->withFilter('...')
+    ->withFacets(['departments', 'age'])
+;
+```
+
+The result will contain all documents matching the query and the filter. It also returns two fields you can use to create a faceted search interface, `facetDistribution` and `facetStats`:
+
+```php
+$results = [
+    'hits' => [...],
+    'facetDistribution' => [
+        'departments' => [
+            'Backoffice' => 2,
+            'Development' => 2,
+            'Engineering' => 2,
+            'Facility-Management' => 1,
+            'Project Management' => 1,
+        ],
+    ],
+    'facetStats' => [
+        'age' => [
+            'min' => 18.0,
+            'max' => 96.0,
+        ],
+    ],
+];
+```
+
+`facetDistribution` lists all facets present in your search results, along with the number of documents returned for each facet for attributes containing string values.
+
+`facetStats` contains the highest and lowest values for all facets containing numeric values.
+
 ## Sort
 
 By default, Loupe sorts your results based on relevance. Relevance is determined using a number of factors such as the
