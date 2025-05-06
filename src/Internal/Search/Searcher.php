@@ -724,7 +724,7 @@ class Searcher
     {
         $froms = [];
         $qbMatches = $this->engine->getConnection()->createQueryBuilder();
-        $qbMatches->select('document_id');
+        $qbMatches->select('document_id')->distinct();
 
         // User filters
         $froms[] = $this->filterBuilder->buildFrom();
@@ -750,8 +750,6 @@ class Searcher
         } else {
             $qbMatches->from('(' . implode(' INTERSECT ', $froms) . ')');
         }
-
-        $qbMatches->groupBy('document_id');
 
         $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id'], $qbMatches));
     }
