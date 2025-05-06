@@ -7,6 +7,16 @@ namespace Loupe\Loupe;
 final class SearchResult
 {
     /**
+     * @var array<string, array<string, int>>|null
+     */
+    private ?array $facetDistribution = null;
+
+    /**
+     * @var array<string, array<string, float>>|null
+     */
+    private ?array $facetStats = null;
+
+    /**
      * @param array<array<string, mixed>> $hits
      */
     public function __construct(
@@ -31,6 +41,22 @@ final class SearchResult
             0,
             0
         );
+    }
+
+    /**
+     * @return array<string, array<string, int>>
+     */
+    public function getFacetDistribution(): array
+    {
+        return $this->facetDistribution ?? [];
+    }
+
+    /**
+     * @return array<string, array<string, float>>
+     */
+    public function getFacetStats(): array
+    {
+        return $this->facetStats ?? [];
     }
 
     /**
@@ -79,12 +105,14 @@ final class SearchResult
      *     hitsPerPage: int,
      *     page: int,
      *     totalPages: int,
-     *     totalHits: int
+     *     totalHits: int,
+     *     facetDistribution?: array<string, array<string, int>>,
+     *     facetStats?: array<string, array<string, float>>,
      * }
      */
     public function toArray(): array
     {
-        return [
+        $array = [
             'hits' => $this->getHits(),
             'query' => $this->getQuery(),
             'processingTimeMs' => $this->getProcessingTimeMs(),
@@ -93,5 +121,35 @@ final class SearchResult
             'totalPages' => $this->getTotalPages(),
             'totalHits' => $this->getTotalHits(),
         ];
+
+        if ($this->facetDistribution) {
+            $array['facetDistribution'] = $this->facetDistribution;
+        }
+
+        if ($this->facetStats) {
+            $array['facetStats'] = $this->facetStats;
+        }
+
+        return $array;
+    }
+
+    /**
+     * @param array<string, array<string, int>> $facetDistribution
+     */
+    public function withFacetDistribution(array $facetDistribution): self
+    {
+        $clone = clone $this;
+        $clone->facetDistribution = $facetDistribution;
+        return $clone;
+    }
+
+    /**
+     * @param array<string, array<string, float>> $facetStats
+     */
+    public function withFacetStats(array $facetStats): self
+    {
+        $clone = clone $this;
+        $clone->facetStats = $facetStats;
+        return $clone;
     }
 }

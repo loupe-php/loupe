@@ -695,6 +695,204 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function searchWithFacetsProvider(): \Generator
+    {
+        yield 'No query and no filters, getting the gender facet only' => [
+            '',
+            '',
+            ['gender'],
+            [
+                'hits' => [
+                    [
+                        'firstname' => 'Alexander',
+                    ],
+                    [
+                        'firstname' => 'Huckleberry',
+                    ],
+                    [
+                        'firstname' => 'Jonas',
+                    ],
+                    [
+                        'firstname' => 'Marko',
+                    ],
+                    [
+                        'firstname' => 'Sandra',
+                    ],
+                    [
+                        'firstname' => 'Thomas',
+                    ],
+                    [
+                        'firstname' => 'Uta',
+                    ],
+                ],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 7,
+                'facetDistribution' => [
+                    'gender' => [
+
+                        'female' => 2,
+                        'male' => 2,
+                        'other' => 1,
+                    ],
+                ],
+            ],
+        ];
+
+        yield 'With query, getting gender facet only' => [
+            'finn',
+            '',
+            ['gender'],
+            [
+                'hits' => [
+                    [
+                        'firstname' => 'Huckleberry',
+                    ],
+                ],
+                'query' => 'finn',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+                'facetDistribution' => [
+                    'gender' => [
+                        'male' => 1,
+                    ],
+                ],
+            ],
+        ];
+
+        yield 'With filter, getting gender facet only' => [
+            '',
+            "departments = 'Backoffice'",
+            ['gender'],
+            [
+                'hits' => [
+                    [
+                        'firstname' => 'Huckleberry',
+                    ],
+                    [
+                        'firstname' => 'Uta',
+                    ],
+                ],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 2,
+                'facetDistribution' => [
+                    'gender' => [
+                        'female' => 1,
+                        'male' => 1,
+                    ],
+                ],
+            ],
+        ];
+
+        yield 'Getting all types of facets' => [
+            '',
+            '',
+            ['gender', 'age', 'departments', 'recentPerformanceScores'],
+            [
+                'hits' => [
+                    [
+                        'firstname' => 'Alexander',
+                    ],
+                    [
+                        'firstname' => 'Huckleberry',
+                    ],
+                    [
+                        'firstname' => 'Jonas',
+                    ],
+                    [
+                        'firstname' => 'Marko',
+                    ],
+                    [
+                        'firstname' => 'Sandra',
+                    ],
+                    [
+                        'firstname' => 'Thomas',
+                    ],
+                    [
+                        'firstname' => 'Uta',
+                    ],
+                ],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 7,
+                'facetDistribution' => [
+                    'gender' => [
+                        'female' => 2,
+                        'male' => 2,
+                        'other' => 1,
+                    ],
+                    'departments' => [
+                        'Backoffice' => 2,
+                        'Development' => 2,
+                        'Engineering' => 2,
+                        'Facility-Management' => 1,
+                        'Project Management' => 1,
+                    ],
+                ],
+                'facetStats' => [
+                    'age' => [
+                        'min' => 18.0,
+                        'max' => 96.0,
+                    ],
+                    'recentPerformanceScores' => [
+                        'min' => 2.8,
+                        'max' => 4.7,
+                    ],
+                ],
+            ],
+        ];
+
+        yield 'Getting all types of facets with filter' => [
+            '',
+            "departments = 'Backoffice'",
+            ['gender', 'age', 'departments', 'recentPerformanceScores'],
+            [
+                'hits' => [
+                    [
+                        'firstname' => 'Huckleberry',
+                    ],
+                    [
+                        'firstname' => 'Uta',
+                    ],
+                ],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 2,
+                'facetDistribution' => [
+                    'gender' => [
+                        'female' => 1,
+                        'male' => 1,
+                    ],
+                    'departments' => [
+                        'Backoffice' => 2,
+                        'Development' => 1,
+                    ],
+                ],
+                'facetStats' => [
+                    'age' => [
+                        'min' => 18.0,
+                        'max' => 29.0,
+                    ],
+                    'recentPerformanceScores' => [
+                        'min' => 2.8,
+                        'max' => 4.1,
+                    ],
+                ],
+            ],
+        ];
+    }
+
     public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
     {
         yield 'Test MIN aggregate without filters (ASC)' => [
@@ -2509,6 +2707,25 @@ class SearchTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<string> $facets
+     * @param array<mixed> $expectedResults
+     */
+    #[DataProvider('searchWithFacetsProvider')]
+    public function testSearchWithFacets(string $query, string $filter, array $facets, array $expectedResults): void
+    {
+        $loupe = $this->setupLoupeWithDepartmentsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery($query)
+            ->withFilter($filter)
+            ->withFacets($facets)
+            ->withAttributesToRetrieve(['firstname'])
+            ->withSort(['firstname:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
+    }
+
     public function testSimpleSearch(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
@@ -3049,7 +3266,7 @@ class SearchTest extends TestCase
         }
 
         $configuration = $configuration
-            ->withFilterableAttributes(['departments', 'gender', 'isActive', 'colors'])
+            ->withFilterableAttributes(['departments', 'gender', 'isActive', 'colors', 'age', 'recentPerformanceScores'])
             ->withSortableAttributes(['firstname'])
             ->withSearchableAttributes(['firstname', 'lastname']);
 

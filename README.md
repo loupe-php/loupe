@@ -13,6 +13,7 @@ Loupe…
 * …supports negative keyword and phrase search using `-` as modifier
 * …supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * …supports filtering (and ordering) on Geo distance
+* …supports search facets
 * …orders relevance based on a number of factors such as number of matching terms, typos, proximity, word counts and exactness
 * …auto-detects languages
 * …supports stemming
@@ -121,14 +122,11 @@ $searchParameters = SearchParameters::create()
     ->withQuery('Gucleberry')
     ->withAttributesToRetrieve(['uuid', 'firstname'])
     ->withFilter("(departments = 'Backoffice' OR departments = 'Project Management') AND age > 17")
+    ->withFacets(['departments', 'age'])
     ->withSort(['lastname:asc'])
 ;
 
 $results = $loupe->search($searchParameters);
-
-foreach ($results->getHits() as $hit) {
-    echo $hit['title'] . PHP_EOL;
-}
 ```
 
 The `$results` array contains a list of search hits and metadata about the query.
@@ -148,7 +146,18 @@ print_r($results->toArray());
     'hitsPerPage' => 20,
     'page' => 1,
     'totalPages' => 1,
-    'totalHits' => 1
+    'totalHits' => 1,
+    'facetDistribution' => [
+        'departments' => [
+            'Backoffice' => 1,
+        ],
+    ],
+    'facetStats' => [
+        'age' => [
+            'min' => 18,
+            'max' => 18,
+        ],
+    ],
 ]
 ```
 
