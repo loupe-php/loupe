@@ -255,6 +255,16 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withHitsPerPage(50);
 ```
 
+You can also work with offset and limit but be aware that if either `withPage()` or `withHitsPerPage()` is given, those
+take precedence:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withOffset(10)
+    ->withLimit(100)
+;
+```
+
 Note: You cannot go any higher than `1000` documents per page. The higher the value you choose, the slower Loupe gets.
 
 ## Term highlighting
