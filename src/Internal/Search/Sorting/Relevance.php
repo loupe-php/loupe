@@ -14,6 +14,7 @@ use Loupe\Loupe\Internal\Search\Ranking\RankingInfo;
 use Loupe\Loupe\Internal\Search\Ranking\TypoCount;
 use Loupe\Loupe\Internal\Search\Ranking\WordCount;
 use Loupe\Loupe\Internal\Search\Searcher;
+use Loupe\Loupe\SearchParameters;
 
 class Relevance extends AbstractSorter
 {
@@ -34,8 +35,10 @@ class Relevance extends AbstractSorter
 
     public function apply(Searcher $searcher, Engine $engine): void
     {
+        $queryParameters = $searcher->getQueryParameters();
+
         $tokens = $searcher->getTokens()->all();
-        if (!\count($tokens)) {
+        if (!\count($tokens) || !$queryParameters instanceof SearchParameters) {
             return;
         }
 
@@ -119,7 +122,7 @@ class Relevance extends AbstractSorter
         $searcher->getQueryBuilder()->addOrderBy(Searcher::RELEVANCE_ALIAS, $this->direction->getSQL());
 
         // Apply threshold
-        $threshold = $searcher->getSearchParameters()->getRankingScoreThreshold();
+        $threshold = $queryParameters->getRankingScoreThreshold();
         if ($threshold > 0) {
             $searcher->getQueryBuilder()->andWhere(Searcher::RELEVANCE_ALIAS . '>= ' . $threshold);
         }

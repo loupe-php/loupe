@@ -60,11 +60,16 @@ class Searcher
     public function __construct(
         private Engine $engine,
         Parser $filterParser,
-        private SearchParameters $searchParameters
+        private AbstractQueryParameters $queryParameters
     ) {
-        $this->sorting = Sorting::fromArray($this->searchParameters->getSort(), $this->engine);
+        if ($this->queryParameters instanceof SearchParameters) {
+            $this->sorting = Sorting::fromArray($this->queryParameters->getSort(), $this->engine);
+        } else {
+            $this->sorting = Sorting::fromArray([], $this->engine);
+        }
+
         $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
-        $this->filterBuilder = new FilterBuilder($this->engine, $this, $filterParser->getAst($this->searchParameters->getFilter()));
+        $this->filterBuilder = new FilterBuilder($this->engine, $this, $filterParser->getAst($this->queryParameters->getFilter()));
     }
 
     /**
@@ -190,8 +195,8 @@ class Searcher
         $this->selectDistance();
         $this->limitPagination();
 
-        $showAllAttributes = \in_array('*', $this->searchParameters->getAttributesToRetrieve(), true);
-        $attributesToRetrieve = array_flip($this->searchParameters->getAttributesToRetrieve());
+        $showAllAttributes = \in_array('*', $this->queryParameters->getAttributesToRetrieve(), true);
+        $attributesToRetrieve = array_flip($this->queryParameters->getAttributesToRetrieve());
 
         $hits = [];
 
@@ -206,7 +211,7 @@ class Searcher
 
             $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
 
-            if ($this->searchParameters->showRankingScore()) {
+            if ($this->queryParameters instanceof SearchParameters && $this->queryParameters->showRankingScore()) {
                 $hit['_rankingScore'] = \array_key_exists(self::RELEVANCE_ALIAS, $result) ?
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
@@ -267,9 +272,9 @@ class Searcher
         return $this->queryBuilder;
     }
 
-    public function getSearchParameters(): SearchParameters
+    public function getQueryParameters(): AbstractQueryParameters
     {
-        return $this->searchParameters;
+        return $this->queryParameters;
     }
 
     public function getSorting(): Sorting
@@ -283,13 +288,13 @@ class Searcher
             return $this->tokens;
         }
 
-        if ($this->searchParameters->getQuery() === '') {
+        if ($this->queryParameters->getQuery() === '') {
             return $this->tokens = new TokenCollection();
         }
 
         return $this->tokens = $this->engine->getTokenizer()
             ->tokenize(
-                $this->searchParameters->getQuery(),
+                $this->queryParameters->getQuery(),
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
                 $this->engine->getConfiguration()->getStopWords()
             );
@@ -299,7 +304,7 @@ class Searcher
     {
         return $this->tokens = $this->engine->getTokenizer()
             ->tokenize(
-                $this->searchParameters->getQuery(),
+                $this->queryParameters->getQuery(),
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
                 []
             );
@@ -312,7 +317,11 @@ class Searcher
 
     private function addFacets(): void
     {
-        $facets = array_intersect($this->searchParameters->getFacets(), $this->engine->getIndexInfo()->getFilterableAttributes());
+        if (!$this->queryParameters instanceof SearchParameters) {
+            return;
+        }
+
+        $facets = array_intersect($this->queryParameters->getFacets(), $this->engine->getIndexInfo()->getFilterableAttributes());
 
         if ($facets === []) {
             return;
@@ -473,10 +482,10 @@ class Searcher
         $cteSelectQb->where('(' . implode(' OR ', $documentConditions) . ')');
         $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $termMatchesCTE));
 
-        if (['*'] !== $this->searchParameters->getAttributesToSearchOn()) {
+        if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
-                $this->queryBuilder->createNamedParameter($this->searchParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
+                $this->queryBuilder->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
             ));
         }
 
@@ -530,10 +539,10 @@ class Searcher
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
         $cteSelectQb->where(sprintf('%s.term IN (SELECT id FROM %s)', $termsDocumentsAlias, $termMatchesCTE));
 
-        if (['*'] !== $this->searchParameters->getAttributesToSearchOn()) {
+        if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
-                $this->queryBuilder->createNamedParameter($this->searchParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
+                $this->queryBuilder->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
             ));
         }
 
@@ -663,10 +672,10 @@ class Searcher
         $lastToken = $tokens->last();
 
         if ($lastToken === null) {
-            return $this->searchParameters->getQuery();
+            return $this->queryParameters->getQuery();
         }
 
-        $query = mb_substr($this->searchParameters->getQuery(), 0, $lastToken->getStartPosition() + $lastToken->getLength());
+        $query = mb_substr($this->queryParameters->getQuery(), 0, $lastToken->getStartPosition() + $lastToken->getLength());
 
         if ($lastToken->isPartOfPhrase()) {
             $query .= '"';
@@ -881,25 +890,29 @@ class Searcher
      */
     private function formatHit(array &$hit, TokenCollection $queryTerms): void
     {
+        if (!$this->queryParameters instanceof SearchParameters) {
+            return;
+        }
+
         $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes()
             ? array_keys($hit)
             : $this->engine->getConfiguration()->getSearchableAttributes();
-        $attributesToCrop = ['*'] === $this->getSearchParameters()->getAttributesToCrop()
+        $attributesToCrop = ['*'] === $this->queryParameters->getAttributesToCrop()
             ? array_keys($hit)
-            : array_keys($this->getSearchParameters()->getAttributesToCrop());
-        $attributesToHighlight = ['*'] === $this->getSearchParameters()->getAttributesToHighlight()
+            : array_keys($this->queryParameters->getAttributesToCrop());
+        $attributesToHighlight = ['*'] === $this->queryParameters->getAttributesToHighlight()
             ? array_keys($hit)
-            : $this->getSearchParameters()->getAttributesToHighlight();
+            : $this->queryParameters->getAttributesToHighlight();
 
         $options = (new FormatterOptions())
-            ->withCropLength($this->getSearchParameters()->getCropLength())
-            ->withCropMarker($this->getSearchParameters()->getCropMarker())
-            ->withHighlightStartTag($this->getSearchParameters()->getHighlightStartTag())
-            ->withHighlightEndTag($this->getSearchParameters()->getHighlightEndTag())
+            ->withCropLength($this->queryParameters->getCropLength())
+            ->withCropMarker($this->queryParameters->getCropMarker())
+            ->withHighlightStartTag($this->queryParameters->getHighlightStartTag())
+            ->withHighlightEndTag($this->queryParameters->getHighlightEndTag())
         ;
 
         $requiresFormatting = \count($attributesToCrop) > 0 || \count($attributesToHighlight) > 0;
-        $showMatchesPosition = $this->searchParameters->showMatchesPosition();
+        $showMatchesPosition = $this->queryParameters->showMatchesPosition();
 
         if (!$requiresFormatting && !$showMatchesPosition) {
             return;
@@ -919,8 +932,8 @@ class Searcher
             if (\in_array($attribute, $attributesToCrop, true)) {
                 $attributeOptions = $options->withEnableCrop();
 
-                if (isset($this->getSearchParameters()->getAttributesToCrop()[$attribute])) {
-                    $attributeOptions = $attributeOptions->withCropLength($this->getSearchParameters()->getAttributesToCrop()[$attribute]);
+                if (isset($this->queryParameters->getAttributesToCrop()[$attribute])) {
+                    $attributeOptions = $attributeOptions->withCropLength($this->queryParameters->getAttributesToCrop()[$attribute]);
                 }
             }
 
@@ -970,12 +983,12 @@ class Searcher
     {
         $maxTotalHits = $this->engine->getConfiguration()->getMaxTotalHits();
 
-        $offset = $this->searchParameters->getOffset();
-        $limit = $this->searchParameters->getLimit();
+        $offset = $this->queryParameters->getOffset();
+        $limit = $this->queryParameters->getLimit();
 
-        if ($this->searchParameters->getHitsPerPage() !== null || $this->searchParameters->getPage() !== null) {
-            $limit = $this->searchParameters->getHitsPerPage() ?? SearchParameters::MAX_LIMIT;
-            $offset = (($this->searchParameters->getPage() ?? 1) - 1) * $limit;
+        if ($this->queryParameters->getHitsPerPage() !== null || $this->queryParameters->getPage() !== null) {
+            $limit = $this->queryParameters->getHitsPerPage() ?? SearchParameters::MAX_LIMIT;
+            $offset = (($this->queryParameters->getPage() ?? 1) - 1) * $limit;
         }
 
         $limit = min($limit, $maxTotalHits);
@@ -1022,7 +1035,7 @@ class Searcher
 
     private function selectDistance(): void
     {
-        foreach ($this->searchParameters->getAttributesToRetrieve() as $attribute) {
+        foreach ($this->queryParameters->getAttributesToRetrieve() as $attribute) {
             if (str_starts_with($attribute, '_geoDistance(')) {
                 $attribute = (string) preg_replace('/^_geoDistance\((' . Configuration::ATTRIBUTE_NAME_RGXP . ')\)$/', '$1', $attribute);
                 $cteName = self::DISTANCE_ALIAS . '_' . $attribute;

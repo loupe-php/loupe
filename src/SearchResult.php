@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
-final class SearchResult
+use Loupe\Loupe\Internal\Search\AbstractQueryResult;
+
+final class SearchResult extends AbstractQueryResult
 {
     /**
      * @var array<string, array<string, int>>|null
@@ -15,20 +17,6 @@ final class SearchResult
      * @var array<string, array<string, float>>|null
      */
     private ?array $facetStats = null;
-
-    /**
-     * @param array<array<string, mixed>> $hits
-     */
-    public function __construct(
-        private array $hits,
-        private string $query,
-        private int $processingTimeMs,
-        private int $hitsPerPage,
-        private int $page,
-        private int $totalPages,
-        private int $totalHits
-    ) {
-    }
 
     public static function createEmptyFromSearchParameters(SearchParameters $searchParameters): self
     {
@@ -60,44 +48,6 @@ final class SearchResult
     }
 
     /**
-     * @return array<array<string, mixed>>
-     */
-    public function getHits(): array
-    {
-        return $this->hits;
-    }
-
-    public function getHitsPerPage(): int
-    {
-        return $this->hitsPerPage;
-    }
-
-    public function getPage(): int
-    {
-        return $this->page;
-    }
-
-    public function getProcessingTimeMs(): int
-    {
-        return $this->processingTimeMs;
-    }
-
-    public function getQuery(): string
-    {
-        return $this->query;
-    }
-
-    public function getTotalHits(): int
-    {
-        return $this->totalHits;
-    }
-
-    public function getTotalPages(): int
-    {
-        return $this->totalPages;
-    }
-
-    /**
      * @return array{
      *     hits: array<array<string, mixed>>,
      *     query: string,
@@ -112,15 +62,7 @@ final class SearchResult
      */
     public function toArray(): array
     {
-        $array = [
-            'hits' => $this->getHits(),
-            'query' => $this->getQuery(),
-            'processingTimeMs' => $this->getProcessingTimeMs(),
-            'hitsPerPage' => $this->getHitsPerPage(),
-            'page' => $this->getPage(),
-            'totalPages' => $this->getTotalPages(),
-            'totalHits' => $this->getTotalHits(),
-        ];
+        $array = parent::toArray();
 
         if ($this->facetDistribution) {
             $array['facetDistribution'] = $this->facetDistribution;

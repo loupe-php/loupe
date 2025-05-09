@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
-use Loupe\Loupe\Exception\InvalidSearchParametersException;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 
-final class SearchParameters
+final class SearchParameters extends AbstractQueryParameters
 {
-    public const MAX_LIMIT = 1000;
-
     /**
      * @var array<string,int>
      */
@@ -20,16 +18,6 @@ final class SearchParameters
      */
     private array $attributesToHighlight = [];
 
-    /**
-     * @var array<string>
-     */
-    private array $attributesToRetrieve = ['*'];
-
-    /**
-     * @var array<string>
-     */
-    private array $attributesToSearchOn = ['*'];
-
     private int $cropLength = 50;
 
     private string $cropMarker = '…';
@@ -39,21 +27,9 @@ final class SearchParameters
      */
     private array $facets = [];
 
-    private string $filter = '';
-
     private string $highlightEndTag = '</em>';
 
     private string $highlightStartTag = '<em>';
-
-    private ?int $hitsPerPage = null;
-
-    private int $limit = 20;
-
-    private int $offset = 0;
-
-    private ?int $page = null;
-
-    private string $query = '';
 
     private float $rankingScoreThreshold = 0.0;
 
@@ -66,20 +42,6 @@ final class SearchParameters
      */
     private array $sort = [Internal\Search\Searcher::RELEVANCE_ALIAS . ':desc'];
 
-    public static function create(): self
-    {
-        return new self();
-    }
-
-    public static function escapeFilterValue(string|int|float|bool $value): string
-    {
-        return match (true) {
-            \is_bool($value) => $value ? 'true' : 'false',
-            \is_int($value), \is_float($value) => (string) $value,
-            default => "'" . str_replace("'", "''", $value) . "'"
-        };
-    }
-
     /**
      * @param array{
      *     attributesToCrop?: array<string>|array<string,int>,
@@ -90,10 +52,8 @@ final class SearchParameters
      *     filter?: string,
      *     highlightEndTag?: string,
      *     highlightStartTag?: string,
-     *     hitsPerPage?: ?int,
-     *     page?: ?int,
-     *     offset?: int,
-     *     limit?: int,
+     *     hitsPerPage?: int,
+     *     page?: int,
      *     query?: string,
      *     rankingScoreThreshold?: float,
      *     showMatchesPosition?: bool,
@@ -103,7 +63,7 @@ final class SearchParameters
      */
     public static function fromArray(array $data): self
     {
-        $instance = new self();
+        $instance = parent::fromArray($data);
 
         if (isset($data['attributesToCrop'])) {
             $instance = $instance->withAttributesToCrop(
@@ -121,40 +81,8 @@ final class SearchParameters
             );
         }
 
-        if (isset($data['attributesToRetrieve'])) {
-            $instance = $instance->withAttributesToRetrieve($data['attributesToRetrieve']);
-        }
-
-        if (isset($data['attributesToSearchOn'])) {
-            $instance = $instance->withAttributesToSearchOn($data['attributesToSearchOn']);
-        }
-
         if (isset($data['facets'])) {
             $instance = $instance->withFacets($data['facets']);
-        }
-
-        if (isset($data['filter'])) {
-            $instance = $instance->withFilter($data['filter']);
-        }
-
-        if (isset($data['hitsPerPage'])) {
-            $instance = $instance->withHitsPerPage($data['hitsPerPage']);
-        }
-
-        if (isset($data['page'])) {
-            $instance = $instance->withPage($data['page']);
-        }
-
-        if (isset($data['offset'])) {
-            $instance = $instance->withOffset((int) $data['offset']);
-        }
-
-        if (isset($data['limit'])) {
-            $instance = $instance->withLimit((int) $data['limit']);
-        }
-
-        if (isset($data['query'])) {
-            $instance = $instance->withQuery($data['query']);
         }
 
         if (isset($data['rankingScoreThreshold'])) {
@@ -176,11 +104,6 @@ final class SearchParameters
         return $instance;
     }
 
-    public static function fromString(string $string): self
-    {
-        return self::fromArray(json_decode($string, true, 512, JSON_THROW_ON_ERROR));
-    }
-
     /**
      * @return array<string,int>
      */
@@ -195,22 +118,6 @@ final class SearchParameters
     public function getAttributesToHighlight(): array
     {
         return $this->attributesToHighlight;
-    }
-
-    /**
-     * @return array<string>
-     */
-    public function getAttributesToRetrieve(): array
-    {
-        return $this->attributesToRetrieve;
-    }
-
-    /**
-     * @return array<string>
-     */
-    public function getAttributesToSearchOn(): array
-    {
-        return $this->attributesToSearchOn;
     }
 
     public function getCropLength(): int
@@ -231,11 +138,6 @@ final class SearchParameters
         return $this->facets;
     }
 
-    public function getFilter(): string
-    {
-        return $this->filter;
-    }
-
     /**
      * Returns a hash of all the search settings. Use this if you want to cache results per request.
      */
@@ -254,8 +156,6 @@ final class SearchParameters
         $hash[] = json_encode($this->getFilter());
         $hash[] = json_encode($this->getHitsPerPage());
         $hash[] = json_encode($this->getPage());
-        $hash[] = json_encode($this->getLimit());
-        $hash[] = json_encode($this->getOffset());
         $hash[] = json_encode($this->getQuery());
         $hash[] = json_encode($this->showMatchesPosition());
         $hash[] = json_encode($this->showRankingScore());
@@ -271,31 +171,6 @@ final class SearchParameters
     public function getHighlightStartTag(): string
     {
         return $this->highlightStartTag;
-    }
-
-    public function getHitsPerPage(): ?int
-    {
-        return $this->hitsPerPage;
-    }
-
-    public function getLimit(): int
-    {
-        return $this->limit;
-    }
-
-    public function getOffset(): int
-    {
-        return $this->offset;
-    }
-
-    public function getPage(): ?int
-    {
-        return $this->page;
-    }
-
-    public function getQuery(): string
-    {
-        return $this->query;
     }
 
     public function getRankingScoreThreshold(): float
@@ -325,18 +200,14 @@ final class SearchParameters
      * @return array{
      *     attributesToCrop: array<string,int>,
      *     attributesToHighlight: array<string>,
-     *     attributesToRetrieve: array<string>,
-     *     attributesToSearchOn: array<string>,
      *     facets: array<string>,
      *     cropLength: int,
      *     cropMarker: string,
      *     filter: string,
      *     highlightEndTag: string,
      *     highlightStartTag: string,
-     *     hitsPerPage: ?int,
-     *     page: ?int,
-     *     offset: int,
-     *     limit: int,
+     *     hitsPerPage: int,
+     *     page: int,
      *     query: string,
      *     rankingScoreThreshold: float,
      *     showMatchesPosition: bool,
@@ -346,32 +217,19 @@ final class SearchParameters
      */
     public function toArray(): array
     {
-        return [
+        return array_merge(parent::toArray(), [
             'attributesToCrop' => $this->attributesToCrop,
             'attributesToHighlight' => $this->attributesToHighlight,
-            'attributesToRetrieve' => $this->attributesToRetrieve,
-            'attributesToSearchOn' => $this->attributesToSearchOn,
             'facets' => $this->facets,
             'cropLength' => $this->cropLength,
             'cropMarker' => $this->cropMarker,
-            'filter' => $this->filter,
             'highlightEndTag' => $this->highlightEndTag,
             'highlightStartTag' => $this->highlightStartTag,
-            'hitsPerPage' => $this->hitsPerPage,
-            'page' => $this->page,
-            'offset' => $this->offset,
-            'limit' => $this->limit,
-            'query' => $this->query,
             'rankingScoreThreshold' => $this->rankingScoreThreshold,
             'showMatchesPosition' => $this->showMatchesPosition,
             'showRankingScore' => $this->showRankingScore,
             'sort' => $this->sort,
-        ];
-    }
-
-    public function toString(): string
-    {
-        return json_encode($this->toArray(), JSON_THROW_ON_ERROR);
+        ]);
     }
 
     /**
@@ -421,94 +279,12 @@ final class SearchParameters
     }
 
     /**
-     * @param array<string> $attributesToRetrieve
-     */
-    public function withAttributesToRetrieve(array $attributesToRetrieve): self
-    {
-        sort($attributesToRetrieve);
-
-        $clone = clone $this;
-        $clone->attributesToRetrieve = $attributesToRetrieve;
-
-        return $clone;
-    }
-
-    /**
-     * @param array<string> $attributesToSearchOn
-     */
-    public function withAttributesToSearchOn(array $attributesToSearchOn): self
-    {
-        sort($attributesToSearchOn);
-
-        $clone = clone $this;
-        $clone->attributesToSearchOn = $attributesToSearchOn;
-
-        return $clone;
-    }
-
-    /**
      * @param array<string> $facets
      */
     public function withFacets(array $facets): self
     {
         $clone = clone $this;
         $clone->facets = $facets;
-
-        return $clone;
-    }
-
-    public function withFilter(string $filter): self
-    {
-        $clone = clone $this;
-        $clone->filter = $filter;
-
-        return $clone;
-    }
-
-    public function withHitsPerPage(?int $hitsPerPage): self
-    {
-        if ($hitsPerPage !== null && $hitsPerPage > self::MAX_LIMIT) {
-            throw InvalidSearchParametersException::maxLimit();
-        }
-
-        $clone = clone $this;
-        $clone->hitsPerPage = $hitsPerPage;
-
-        return $clone;
-    }
-
-    public function withLimit(int $limit): self
-    {
-        if ($limit > self::MAX_LIMIT) {
-            throw InvalidSearchParametersException::maxLimit();
-        }
-
-        $clone = clone $this;
-        $clone->limit = $limit;
-
-        return $clone;
-    }
-
-    public function withOffset(int $offset): self
-    {
-        $clone = clone $this;
-        $clone->offset = $offset;
-
-        return $clone;
-    }
-
-    public function withPage(?int $page): self
-    {
-        $clone = clone $this;
-        $clone->page = $page;
-
-        return $clone;
-    }
-
-    public function withQuery(string $query): self
-    {
-        $clone = clone $this;
-        $clone->query = $query;
 
         return $clone;
     }
