@@ -8,7 +8,7 @@ use Loupe\Loupe\Exception\InvalidSearchParametersException;
 
 final class SearchParameters
 {
-    public const MAX_HITS_PER_PAGE = 1000;
+    public const MAX_LIMIT = 1000;
 
     /**
      * @var array<string,int>
@@ -45,9 +45,13 @@ final class SearchParameters
 
     private string $highlightStartTag = '<em>';
 
-    private int $hitsPerPage = 20;
+    private ?int $hitsPerPage = null;
 
-    private int $page = 1;
+    private int $limit = 20;
+
+    private int $offset = 0;
+
+    private ?int $page = null;
 
     private string $query = '';
 
@@ -86,8 +90,10 @@ final class SearchParameters
      *     filter?: string,
      *     highlightEndTag?: string,
      *     highlightStartTag?: string,
-     *     hitsPerPage?: int,
-     *     page?: int,
+     *     hitsPerPage?: ?int,
+     *     page?: ?int,
+     *     offset?: int,
+     *     limit?: int,
      *     query?: string,
      *     rankingScoreThreshold?: float,
      *     showMatchesPosition?: bool,
@@ -137,6 +143,14 @@ final class SearchParameters
 
         if (isset($data['page'])) {
             $instance = $instance->withPage($data['page']);
+        }
+
+        if (isset($data['offset'])) {
+            $instance = $instance->withOffset((int) $data['offset']);
+        }
+
+        if (isset($data['limit'])) {
+            $instance = $instance->withLimit((int) $data['limit']);
         }
 
         if (isset($data['query'])) {
@@ -240,6 +254,8 @@ final class SearchParameters
         $hash[] = json_encode($this->getFilter());
         $hash[] = json_encode($this->getHitsPerPage());
         $hash[] = json_encode($this->getPage());
+        $hash[] = json_encode($this->getLimit());
+        $hash[] = json_encode($this->getOffset());
         $hash[] = json_encode($this->getQuery());
         $hash[] = json_encode($this->showMatchesPosition());
         $hash[] = json_encode($this->showRankingScore());
@@ -257,12 +273,22 @@ final class SearchParameters
         return $this->highlightStartTag;
     }
 
-    public function getHitsPerPage(): int
+    public function getHitsPerPage(): ?int
     {
         return $this->hitsPerPage;
     }
 
-    public function getPage(): int
+    public function getLimit(): int
+    {
+        return $this->limit;
+    }
+
+    public function getOffset(): int
+    {
+        return $this->offset;
+    }
+
+    public function getPage(): ?int
     {
         return $this->page;
     }
@@ -307,8 +333,10 @@ final class SearchParameters
      *     filter: string,
      *     highlightEndTag: string,
      *     highlightStartTag: string,
-     *     hitsPerPage: int,
-     *     page: int,
+     *     hitsPerPage: ?int,
+     *     page: ?int,
+     *     offset: int,
+     *     limit: int,
      *     query: string,
      *     rankingScoreThreshold: float,
      *     showMatchesPosition: bool,
@@ -331,6 +359,8 @@ final class SearchParameters
             'highlightStartTag' => $this->highlightStartTag,
             'hitsPerPage' => $this->hitsPerPage,
             'page' => $this->page,
+            'offset' => $this->offset,
+            'limit' => $this->limit,
             'query' => $this->query,
             'rankingScoreThreshold' => $this->rankingScoreThreshold,
             'showMatchesPosition' => $this->showMatchesPosition,
@@ -435,10 +465,10 @@ final class SearchParameters
         return $clone;
     }
 
-    public function withHitsPerPage(int $hitsPerPage): self
+    public function withHitsPerPage(?int $hitsPerPage): self
     {
-        if ($hitsPerPage > self::MAX_HITS_PER_PAGE) {
-            throw InvalidSearchParametersException::maxHitsPerPage();
+        if ($hitsPerPage !== null && $hitsPerPage > self::MAX_LIMIT) {
+            throw InvalidSearchParametersException::maxLimit();
         }
 
         $clone = clone $this;
@@ -447,7 +477,27 @@ final class SearchParameters
         return $clone;
     }
 
-    public function withPage(int $page): self
+    public function withLimit(int $limit): self
+    {
+        if ($limit > self::MAX_LIMIT) {
+            throw InvalidSearchParametersException::maxLimit();
+        }
+
+        $clone = clone $this;
+        $clone->limit = $limit;
+
+        return $clone;
+    }
+
+    public function withOffset(int $offset): self
+    {
+        $clone = clone $this;
+        $clone->offset = $offset;
+
+        return $clone;
+    }
+
+    public function withPage(?int $page): self
     {
         $clone = clone $this;
         $clone->page = $page;

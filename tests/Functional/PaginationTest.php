@@ -13,7 +13,7 @@ class PaginationTest extends TestCase
 {
     use FunctionalTestTrait;
 
-    public function testPagination(): void
+    public function testPaginationWithHitsPerPage(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
 
@@ -21,6 +21,8 @@ class PaginationTest extends TestCase
             ->withQuery('and')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withHitsPerPage(5)
+            ->withOffset(100) // Should be ignored because "hitsPerPage" is set
+            ->withLimit(100) // Should be ignored because "hitsPerPage" is set
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
@@ -75,6 +77,36 @@ class PaginationTest extends TestCase
             'hitsPerPage' => 1,
             'page' => 1,
             'totalPages' => 14,
+            'totalHits' => 14,
+        ]);
+    }
+
+    public function testPaginationWithOffsetAndLimit(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('and')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withOffset(2)
+            ->withLimit(2)
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 6,
+                    'title' => 'Judgment Night',
+                ],
+                [
+                    'id' => 11,
+                    'title' => 'Star Wars',
+                ],
+            ],
+            'query' => 'and',
+            'hitsPerPage' => 2,
+            'page' => 2,
+            'totalPages' => 7,
             'totalHits' => 14,
         ]);
     }

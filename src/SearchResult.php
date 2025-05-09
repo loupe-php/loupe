@@ -36,8 +36,8 @@ final class SearchResult
             [],
             $searchParameters->getQuery(),
             0,
-            $searchParameters->getHitsPerPage(),
-            $searchParameters->getPage(),
+            $searchParameters->getHitsPerPage() ?? $searchParameters->getLimit(),
+            1,
             0,
             0
         );
