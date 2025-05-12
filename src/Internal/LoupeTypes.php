@@ -134,8 +134,9 @@ class LoupeTypes
             self::TYPE_STRING => self::convertToString($attributeValue),
             self::TYPE_NUMBER => self::convertToFloat($attributeValue),
             self::TYPE_BOOLEAN => (bool) $attributeValue,
-            self::TYPE_ARRAY_STRING => self::convertToArrayOfStrings($attributeValue),
-            self::TYPE_ARRAY_NUMBER, self::TYPE_GEO => self::convertToArrayOfFloats($attributeValue),
+            self::TYPE_ARRAY_STRING => $attributeValue === [] ? self::VALUE_EMPTY : self::convertToArrayOfStrings($attributeValue),
+            self::TYPE_ARRAY_NUMBER => $attributeValue === [] ? self::VALUE_EMPTY : self::convertToArrayOfFloats($attributeValue),
+            self::TYPE_GEO => self::convertToArrayOfFloats($attributeValue),
             default => throw new \InvalidArgumentException('Invalid type given.')
         };
     }
@@ -216,6 +217,27 @@ class LoupeTypes
         ], true);
     }
 
+    public static function typeIsNarrowerThanType(string $schemaType, string $checkType): bool
+    {
+        if ($checkType === self::TYPE_NULL) {
+            return false;
+        }
+
+        if ($schemaType === self::TYPE_NULL) {
+            return true;
+        }
+
+        if ($schemaType !== self::TYPE_ARRAY_EMPTY) {
+            return false;
+        }
+
+        if (\in_array($checkType, [self::TYPE_ARRAY_NUMBER, self::TYPE_ARRAY_STRING], true)) {
+            return true;
+        }
+
+        return false;
+    }
+
     public static function typeMatchesType(string $schemaType, string $checkType): bool
     {
         if ($checkType === self::TYPE_NULL || $schemaType === self::TYPE_NULL) {
@@ -230,7 +252,7 @@ class LoupeTypes
             return true;
         }
 
-        if (($schemaType === self::TYPE_ARRAY_EMPTY || $schemaType === self::TYPE_ARRAY_STRING) && $checkType === self::TYPE_ARRAY_STRING) {
+        if ($schemaType === self::TYPE_ARRAY_EMPTY && ($checkType === self::TYPE_ARRAY_NUMBER || $checkType === self::TYPE_ARRAY_STRING)) {
             return true;
         }
 

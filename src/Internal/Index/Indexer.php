@@ -141,9 +141,15 @@ class Indexer
      */
     private function createDocument(array $document): int
     {
+        if ($this->engine->getConfiguration()->getDisplayedAttributes() !== ['*']) {
+            $documentData = array_intersect_key($document, array_flip($this->engine->getConfiguration()->getDisplayedAttributes()));
+        } else {
+            $documentData = $document;
+        }
+
         $data = [
             'user_id' => (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
-            'document' => Util::encodeJson($document),
+            'document' => Util::encodeJson($documentData),
         ];
 
         foreach ($this->engine->getIndexInfo()->getSingleFilterableAndSortableAttributes() as $attribute) {
@@ -382,6 +388,16 @@ class Indexer
         }
     }
 
+    private function needsVacuum(): bool
+    {
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            return false;
+        }
+
+        // Check against configured vacuum probability
+        return random_int(1, 100) <= $this->engine->getConfiguration()->getVacuumProbability();
+    }
+
     private function persistStateSet(): void
     {
         if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
@@ -519,5 +535,15 @@ class Indexer
     {
         $this->removeOrphans();
         $this->persistStateSet();
+        $this->vacuumDatabase();
+    }
+
+    private function vacuumDatabase(): void
+    {
+        if (!$this->needsVacuum()) {
+            return;
+        }
+
+        $this->engine->getConnection()->executeStatement('PRAGMA incremental_vacuum');
     }
 }

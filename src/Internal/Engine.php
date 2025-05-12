@@ -6,18 +6,21 @@ namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
+use Loupe\Loupe\BrowseParameters;
+use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
-use Loupe\Loupe\Internal\Search\Highlighter\Highlighter;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
+use Loupe\Matcher\Formatter;
+use Loupe\Matcher\Matcher;
 use Nitotm\Eld\LanguageDetector;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
@@ -27,11 +30,11 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '0.8.0'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.9.0'; // Increase this whenever a re-index of all documents is needed
 
     private Parser $filterParser;
 
-    private Highlighter $highlighter;
+    private Formatter $formatter;
 
     private Indexer $indexer;
 
@@ -59,7 +62,7 @@ class Engine
             new NullDataStore()
         );
         $this->indexer = new Indexer($this);
-        $this->highlighter = new Highlighter($this);
+        $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->configuration->getStopWords()));
         $this->filterParser = new Parser($this);
         $this->sqliteVersion = match (true) {
             \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
@@ -74,6 +77,15 @@ class Engine
     public function addDocuments(array $documents): IndexResult
     {
         return $this->indexer->addDocuments($documents);
+    }
+
+    public function browse(BrowseParameters $parameters): BrowseResult
+    {
+        if ($this->getIndexInfo()->needsSetup()) {
+            return BrowseResult::createEmptyFromBrowseParameters($parameters);
+        }
+
+        return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
     }
 
     public function countDocuments(): int
@@ -144,9 +156,9 @@ class Engine
         return null;
     }
 
-    public function getHighlighter(): Highlighter
+    public function getFormatter(): Formatter
     {
-        return $this->highlighter;
+        return $this->formatter;
     }
 
     public function getIndexInfo(): IndexInfo
@@ -185,7 +197,7 @@ class Engine
         $languageDetector = new LanguageDetector($ngramsFile);
         $languageDetector->enableTextCleanup(true); // Clean stuff like URLs, domains etc. to improve language detection
 
-        return $this->tokenizer = new Tokenizer($languageDetector);
+        return $this->tokenizer = new Tokenizer($this, $languageDetector);
     }
 
     public function needsReindex(): bool
@@ -213,6 +225,16 @@ class Engine
         }
 
         return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
+    }
+
+    /**
+     * Returns the approx. size in bytes
+     */
+    public function size(): int
+    {
+        return (int) $this->connection
+            ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
+            ->fetchOne();
     }
 
     /**

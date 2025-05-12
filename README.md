@@ -13,6 +13,7 @@ Loupe…
 * supports negative keyword and phrase search using `-` as modifier
 * supports filtering (and ordering) on any attribute with any SQL-inspired filter statement
 * supports filtering (and ordering) on Geo distance
+* supports search facets
 * orders relevance based on a number of factors such as number of matching terms, typos, proximity, word counts and exactness
 * auto-detects languages
 * supports stemming
@@ -158,6 +159,7 @@ print_r($results->toArray());
 * [Configuration](./docs/configuration.md)
 * [Indexing](./docs/indexing.md)
 * [Searching](./docs/searching.md)
+* [Browsing](./docs/browsing.md)
 * [Ranking](./docs/ranking.md)
 * [Tokenizer](./docs/tokenizer.md)
 * [Performance](./docs/performance.md)

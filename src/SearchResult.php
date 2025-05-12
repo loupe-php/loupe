@@ -4,21 +4,19 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
-final class SearchResult
+use Loupe\Loupe\Internal\Search\AbstractQueryResult;
+
+final class SearchResult extends AbstractQueryResult
 {
     /**
-     * @param array<array<string, mixed>> $hits
+     * @var array<string, array<string, int>>|null
      */
-    public function __construct(
-        private array $hits,
-        private string $query,
-        private int $processingTimeMs,
-        private int $hitsPerPage,
-        private int $page,
-        private int $totalPages,
-        private int $totalHits
-    ) {
-    }
+    private ?array $facetDistribution = null;
+
+    /**
+     * @var array<string, array<string, float>>|null
+     */
+    private ?array $facetStats = null;
 
     public static function createEmptyFromSearchParameters(SearchParameters $searchParameters): self
     {
@@ -26,49 +24,27 @@ final class SearchResult
             [],
             $searchParameters->getQuery(),
             0,
-            $searchParameters->getHitsPerPage(),
-            $searchParameters->getPage(),
+            $searchParameters->getHitsPerPage() ?? $searchParameters->getLimit(),
+            1,
             0,
             0
         );
     }
 
     /**
-     * @return array<array<string, mixed>>
+     * @return array<string, array<string, int>>
      */
-    public function getHits(): array
+    public function getFacetDistribution(): array
     {
-        return $this->hits;
+        return $this->facetDistribution ?? [];
     }
 
-    public function getHitsPerPage(): int
+    /**
+     * @return array<string, array<string, float>>
+     */
+    public function getFacetStats(): array
     {
-        return $this->hitsPerPage;
-    }
-
-    public function getPage(): int
-    {
-        return $this->page;
-    }
-
-    public function getProcessingTimeMs(): int
-    {
-        return $this->processingTimeMs;
-    }
-
-    public function getQuery(): string
-    {
-        return $this->query;
-    }
-
-    public function getTotalHits(): int
-    {
-        return $this->totalHits;
-    }
-
-    public function getTotalPages(): int
-    {
-        return $this->totalPages;
+        return $this->facetStats ?? [];
     }
 
     /**
@@ -79,19 +55,43 @@ final class SearchResult
      *     hitsPerPage: int,
      *     page: int,
      *     totalPages: int,
-     *     totalHits: int
+     *     totalHits: int,
+     *     facetDistribution?: array<string, array<string, int>>,
+     *     facetStats?: array<string, array<string, float>>,
      * }
      */
     public function toArray(): array
     {
-        return [
-            'hits' => $this->getHits(),
-            'query' => $this->getQuery(),
-            'processingTimeMs' => $this->getProcessingTimeMs(),
-            'hitsPerPage' => $this->getHitsPerPage(),
-            'page' => $this->getPage(),
-            'totalPages' => $this->getTotalPages(),
-            'totalHits' => $this->getTotalHits(),
-        ];
+        $array = parent::toArray();
+
+        if ($this->facetDistribution) {
+            $array['facetDistribution'] = $this->facetDistribution;
+        }
+
+        if ($this->facetStats) {
+            $array['facetStats'] = $this->facetStats;
+        }
+
+        return $array;
+    }
+
+    /**
+     * @param array<string, array<string, int>> $facetDistribution
+     */
+    public function withFacetDistribution(array $facetDistribution): self
+    {
+        $clone = clone $this;
+        $clone->facetDistribution = $facetDistribution;
+        return $clone;
+    }
+
+    /**
+     * @param array<string, array<string, float>> $facetStats
+     */
+    public function withFacetStats(array $facetStats): self
+    {
+        $clone = clone $this;
+        $clone->facetStats = $facetStats;
+        return $clone;
     }
 }

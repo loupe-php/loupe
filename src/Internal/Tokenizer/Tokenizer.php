@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Tokenizer;
 
+use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Levenshtein;
+use Loupe\Matcher\Tokenizer\Token;
+use Loupe\Matcher\Tokenizer\TokenCollection;
+use Loupe\Matcher\Tokenizer\Tokenizer as LoupeMatcherTokenizer;
+use Loupe\Matcher\Tokenizer\TokenizerInterface;
 use Nitotm\Eld\LanguageDetector;
 use Wamania\Snowball\NotFoundException;
 use Wamania\Snowball\Stemmer\Stemmer;
 use Wamania\Snowball\StemmerFactory;
 
-class Tokenizer
+class Tokenizer implements TokenizerInterface
 {
     /**
      * @var array<string,array<string,string>>
@@ -21,15 +27,76 @@ class Tokenizer
      */
     private array $stemmers = [];
 
+    /**
+     * @var array<string,?TokenizerInterface>
+     */
+    private array $tokenizers = [];
+
     public function __construct(
-        private LanguageDetector $languageDetector
+        private Engine $engine,
+        private LanguageDetector $languageDetector,
     ) {
+    }
+
+    public function matches(Token $token, TokenCollection $tokens): bool
+    {
+        $configuration = $this->engine->getConfiguration();
+        $firstCharTypoCountsDouble = $configuration->getTypoTolerance()->firstCharTypoCountsDouble();
+
+        foreach ($tokens->all() as $queryToken) {
+            foreach ($queryToken->allTerms() as $queryTerm) {
+                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($queryTerm);
+
+                if ($levenshteinDistance === 0) {
+                    if (\in_array($queryTerm, $token->allTerms(), true)) {
+                        return true;
+                    }
+                } else {
+                    foreach ($token->allTerms() as $textTerm) {
+                        if (Levenshtein::damerauLevenshtein($queryTerm, $textTerm, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        $lastToken = $tokens->last();
+
+        if ($lastToken === null) {
+            return false;
+        }
+
+        $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($lastToken->getTerm());
+
+        // Prefix search (only if minimum token length is fulfilled)
+        if (mb_strlen($token->getTerm()) <= $configuration->getMinTokenLengthForPrefixSearch()) {
+            return false;
+        }
+
+        $chars = mb_str_split($token->getTerm(), 1, 'UTF-8');
+        $prefix = implode('', \array_slice($chars, 0, $configuration->getMinTokenLengthForPrefixSearch()));
+        $rest = \array_slice($chars, $configuration->getMinTokenLengthForPrefixSearch());
+
+        if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+            return true;
+        }
+
+        while ($rest !== []) {
+            $prefix .= array_shift($rest);
+
+            if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
      * @param array<string> $stopWords
      */
-    public function tokenize(string $string, ?int $maxTokens = null, array $stopWords = []): TokenCollection
+    public function tokenize(string $string, ?int $maxTokens = null, array $stopWords = [], bool $includeStopWords = false): TokenCollection
     {
         $language = null;
         $languageResult = $this->languageDetector->detect($string);
@@ -40,7 +107,7 @@ class Tokenizer
             $language = $languageResult->language;
         }
 
-        return $this->doTokenize($string, $language, $maxTokens, $stopWords);
+        return $this->doTokenize($string, $language, $maxTokens, $stopWords, $includeStopWords);
     }
 
     /**
@@ -89,85 +156,40 @@ class Tokenizer
     /**
      * @param array<string> $stopWords
      */
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, array $stopWords = []): TokenCollection
+    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, array $stopWords = [], bool $includeStopWords = false): TokenCollection
     {
-        $iterator = \IntlRuleBasedBreakIterator::createWordInstance($language); // @phpstan-ignore-line - null is allowed
-        $iterator->setText($string);
+        if (!isset($this->tokenizers[$language])) {
+            $this->tokenizers[$language] = new LoupeMatcherTokenizer($language);
+        }
 
-        $all = new TokenCollection();
-        $tokens = new TokenCollection();
-        $id = 0;
-        $position = 0;
-        $phrase = false;
-        $negated = false;
-        $whitespace = true;
+        $tokenCollection = $this->tokenizers[$language]->tokenize($string, $maxTokens, $stopWords, $includeStopWords);
+        $tokenCollectionWithVariants = new TokenCollection();
 
-        foreach ($iterator->getPartsIterator() as $term) {
-            // Set negation if the previous token was not a word and we're not in a phrase
-            if (!$phrase && $whitespace) {
-                $negated = false;
-                if ($term === '-') {
-                    $negated = true;
-                }
-            }
-
-            // Toggle phrases between quotes
-            if ($term === '"') {
-                $phrase = !$phrase;
-                if (!$phrase) {
-                    $negated = false;
-                }
-            }
-
-            $status = $iterator->getRuleStatus();
-            $word = $this->isWord($status);
-            $whitespace = $this->isWhitespace($status, $term);
-
-            if (!$word) {
-                $position += mb_strlen($term, 'UTF-8');
-                continue;
-            }
-
-            if ($maxTokens !== null && $tokens->count() >= $maxTokens) {
-                break;
-            }
-
-            $term = mb_strtolower($term, 'UTF-8');
+        foreach ($tokenCollection->all() as $token) {
             $variants = [];
 
             // Stem if we detected a language - but only if not part of a phrase
-            if ($language !== null && !$phrase) {
-                $stem = $this->stem($term, $language);
-                if ($stem !== null && $term !== $stem) {
+            if ($language !== null && !$token->isPartOfPhrase()) {
+                $stem = $this->stem($token->getTerm(), $language);
+                if ($stem !== null && $token->getTerm() !== $stem) {
                     $variants = [$stem];
                 }
             }
 
-            $token = new Token(
-                $id++,
-                $term,
-                $position,
-                $variants,
-                $phrase,
-                $negated
-            );
+            $token = $token->withVariants($variants);
 
-            $position += $token->getLength();
-
-            // Collect all tokens regardless of stop word status
-            $all->add($token);
-
-            // Skip stop words
-            if ($token->isOneOf($stopWords)) {
-                continue;
+            if (!$token->isStopWord()) {
+                foreach ($variants as $variant) {
+                    if (\in_array($variant, $stopWords, true)) {
+                        $token = $token->withMarkAsStopWord();
+                    }
+                }
             }
 
-            // Only add non-stop words to the result
-            $tokens->add($token);
+            $tokenCollectionWithVariants->add($token);
         }
 
-        // If removing stop words resulted in an empty collection, return all tokens
-        return $tokens->empty() ? $all : $tokens;
+        return $tokenCollectionWithVariants;
     }
 
     private function getStemmerForLanguage(string $language): ?Stemmer
@@ -183,16 +205,6 @@ class Tokenizer
         }
 
         return $this->stemmers[$language] = $stemmer;
-    }
-
-    private function isWhitespace(?int $status, string $token): bool
-    {
-        return ($status === null || ($status >= \IntlBreakIterator::WORD_NONE && $status < \IntlBreakIterator::WORD_NONE_LIMIT)) && trim($token) === '';
-    }
-
-    private function isWord(?int $status): bool
-    {
-        return $status >= \IntlBreakIterator::WORD_NONE_LIMIT;
     }
 
     private function stem(string $term, string $language): ?string

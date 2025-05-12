@@ -31,8 +31,7 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
-You can also exclude documents that match to a given keyword. Use `-` as modifier. You can exclude both, regular keywords
-as well as phrases:
+You can also exclude documents that match to a given keyword. Use `-` as modifier. You can exclude both, regular keywords as well as phrases:
 
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create()
@@ -118,6 +117,53 @@ If you filter for `ratings >= 2 AND ratings <= 4`, you will get **both** documen
 attribute and all of its values are evaluated individually. If you want both conditions to apply, use the `BETWEEN` 
 operator: `ratings BETWEEN 2 AND 4`.
 
+## Search with facets
+
+Yes, you read that right, Loupe even supports facets! Facets are supported on all filterable attributes, so make sure you have defined those first:
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withFilterableAttributes(['departments', 'age'])
+;
+```
+
+You can then ask Loupe to create facets for the attributes you're interested in:
+
+```php
+$searchParameters = SearchParameters::create()
+    ->withQuery('...')
+    ->withFilter('...')
+    ->withFacets(['departments', 'age'])
+;
+```
+
+The result will contain all documents matching the query and the filter. It also returns two fields you can use to create a faceted search interface, `facetDistribution` and `facetStats`:
+
+```php
+$results = [
+    'hits' => [...],
+    'facetDistribution' => [
+        'departments' => [
+            'Backoffice' => 2,
+            'Development' => 2,
+            'Engineering' => 2,
+            'Facility-Management' => 1,
+            'Project Management' => 1,
+        ],
+    ],
+    'facetStats' => [
+        'age' => [
+            'min' => 18.0,
+            'max' => 96.0,
+        ],
+    ],
+];
+```
+
+`facetDistribution` lists all facets present in your search results, along with the number of documents returned for each facet for attributes containing string values.
+
+`facetStats` contains the highest and lowest values for all facets containing numeric values.
+
 ## Sort
 
 By default, Loupe sorts your results based on relevance. Relevance is determined using a number of factors such as the
@@ -201,11 +247,21 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withPage(3);
 ```
 
-By default, Loupe returns `20` results per page but you can configure this as well:
+By default, Loupe returns `20` results per page, but you can configure this as well:
 
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withHitsPerPage(50);
+```
+
+You can also work with offset and limit but be aware that if either `withPage()` or `withHitsPerPage()` is given, those
+take precedence:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withOffset(10)
+    ->withLimit(100)
+;
 ```
 
 Note: You cannot go any higher than `1000` documents per page. The higher the value you choose, the slower Loupe gets.
@@ -279,6 +335,57 @@ $results = [
         ],
     ],
 ];
+```
+
+## Context cropping
+
+Loupe can crop selected attributes to a certain length around the search terms. The is useful to
+show as much context as possible around matched words when displaying results.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title', 'summary']);
+```
+
+The result of a cropped attribute will look like this:
+
+```php
+$results = [
+    'hits' => [
+        [
+            'id' => 24,
+            'title' => 'Kill Bill: Vol. 1',
+            'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+            '_formatted' => [
+                'id' => 24,
+                'title' => 'Kill Bill: Vol. 1',
+                'overview' => 'An assassin is shot by her ruthless … members of their assassination circle …',
+            ],
+        ],
+    ],
+];
+```
+
+The default crop length is 50 characters. You can define a different crop length by passing in an
+integer value.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title', 'summary'], cropLength: 30);
+```
+
+Optionally, define a custom crop length for each attribute by passing in an array of lengths keyed by attribute name.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title' => 20, 'summary' => 40]);
+```
+
+Crop boundaries are marked with an ellipsis `…` character by default. You can change this by passing in a custom marker.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title', 'summary'], cropMarker: '∞');
 ```
 
 ## Stop words

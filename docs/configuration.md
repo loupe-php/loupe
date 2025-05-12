@@ -32,6 +32,19 @@ $configuration = \Loupe\Loupe\Configuration::create()
 Note that the order of searchable attributes has an influence on the [relevance ranking](./ranking.md) of search
 results: attributes listed earlier carry more weight than attributes listed later.
 
+## Displayed attributes
+
+By default, Loupe lists all the attributes of your documents in a search result.
+If a field attribute is not in the displayed attribute list, the field won't be added to the returned documents.
+This can be useful if you e.g. need an attribute only for filtering, but you're never interested in the value itself when
+receiving the document. Internally, Loupe can thus also optimize the storage.
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withDisplayedAttributes(['firstname', 'lastname'])
+;
+```
+
 ## Filterable attributes
 
 By default, no attribute can be filtered on in Loupe. Any attribute you want to filter for, needs to be defined as 
@@ -190,6 +203,19 @@ $typoTolerance = \Loupe\Loupe\Config\TypoTolerance::create()
 ;
 ```
 
+## Total result limit
+
+Loupe enforces a maximum number of 1,000 results across all pages to safeguard your index against malicious scraping.
+Beyond this limit, no results will be calculated or returned, independent of pagination settings. The limit can be
+configured if your application requires a different value.
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withMaxTotalHits(100);
+```
+
+If you need to browse all the documents and ignore this limit, use [the browse API][Browse].
+
 ## Debugging
 
 You may pass a PSR-3 logger to Loupe. For the sake of simplicity, Loupe also ships with a very simple 
@@ -205,5 +231,18 @@ $configuration = \Loupe\Loupe\Configuration::create()
 print_r($logger->getRecords());
 ```
 
+## Serializing and reconstructing configuration
 
+If you need to serialize the configuration of Loupe e.g. to allow configuration using a DSN, you can use the `toString()` and `fromString()` helpers accordingly:
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create();
+
+$serialized = $configuration->toString();
+$reconstructed = \Loupe\Loupe\Configuration::fromString($serialized);
+```
+
+Note that this does not work for instances such as the "logger".
+
+[Browse]: browsing.md
 [Paper]: https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf

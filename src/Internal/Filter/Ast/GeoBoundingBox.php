@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Internal\Filter\Ast;
 use Location\Bounds;
 use Location\Coordinate;
 
-class GeoBoundingBox extends Node
+class GeoBoundingBox extends Node implements AttributeFilterInterface
 {
     private Bounds $bbox;
 
@@ -24,9 +24,19 @@ class GeoBoundingBox extends Node
         );
     }
 
+    public function getAttribute(): string
+    {
+        return $this->attributeName;
+    }
+
     public function getBbox(): Bounds
     {
         return $this->bbox;
+    }
+
+    public function getShortHash(): string
+    {
+        return substr(hash('sha256', (string) json_encode($this->toArray())), 0, 8);
     }
 
     public function toArray(): array

@@ -89,8 +89,6 @@ final class LoupeFactory implements LoupeFactoryInterface
             ));
         }
 
-        $this->optimizeSQLiteConnection($connection);
-
         $this->registerSQLiteFunctions($connection);
 
         return $connection;
@@ -98,13 +96,14 @@ final class LoupeFactory implements LoupeFactoryInterface
 
     private function createFromConnection(Connection $connection, Configuration $configuration, ?string $dataDir = null): Loupe
     {
-        return new Loupe(
-            new Engine(
-                $connection,
-                $configuration,
-                $dataDir
-            )
-        );
+        $engine = new Engine($connection, $configuration, $dataDir);
+
+        if ($engine->getIndexInfo()->needsSetup()) {
+            $this->optimizeSQLiteDatabase($connection);
+        }
+        $this->optimizeSQLiteConnection($connection);
+
+        return new Loupe($engine);
     }
 
     private function getDbalConfiguration(Configuration $configuration): DbalConfiguration
@@ -124,29 +123,39 @@ final class LoupeFactory implements LoupeFactoryInterface
     private function optimizeSQLiteConnection(Connection $connection): void
     {
         $optimizations = [
-            // Incremental vacuum to keep the database size in check (vacuum to apply the changes)
-            'PRAGMA auto_vacuum = incremental; VACUUM;',
-            // Temporary disable WAL to allow setting page size
-            'PRAGMA journal_mode=DELETE;',
-            // Increase page size to 8KB to reduce disk i/o  (vacuum to apply the changes)
-            'PRAGMA page_size = 8192; VACUUM;',
-            // Now enable write-ahead logging to allow concurrent reads and writes
-            'PRAGMA journal_mode=WAL;',
             // Set cache size to 20MB to reduce disk i/o
-            'PRAGMA cache_size = -20000;',
-            // Incremental vacuum to keep the database size in check
-            'PRAGMA incremental_vacuum;',
+            'PRAGMA cache_size = -20000',
             // Set mmap size to 32MB to avoid i/o for database reads
-            'PRAGMA mmap_size = 33554432;',
+            'PRAGMA mmap_size = 33554432',
             // Store temporary tables in memory instead of on disk
-            'PRAGMA temp_store = MEMORY;',
+            'PRAGMA temp_store = MEMORY',
             // Set timeout to 2 seconds to avoid locking issues
             'PRAGMA busy_timeout = 2000',
         ];
 
         foreach ($optimizations as $optimization) {
             try {
-                $connection->executeQuery($optimization);
+                $connection->executeStatement($optimization);
+            } catch (\Throwable $th) {
+                // Assume that the pragma is not supported
+            }
+        }
+    }
+
+    private function optimizeSQLiteDatabase(Connection $connection): void
+    {
+        $optimizations = [
+            // Increase page size to 8KB to reduce disk i/o
+            'PRAGMA page_size = 8192',
+            // Enable write-ahead logging to allow concurrent reads and writes
+            'PRAGMA journal_mode=WAL',
+            // Incremental vacuum to keep the database size in check
+            'PRAGMA auto_vacuum = incremental',
+        ];
+
+        foreach ($optimizations as $optimization) {
+            try {
+                $connection->executeStatement($optimization);
             } catch (\Throwable $th) {
                 // Assume that the pragma is not supported
             }

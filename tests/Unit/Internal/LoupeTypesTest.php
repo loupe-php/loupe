@@ -71,4 +71,42 @@ class LoupeTypesTest extends TestCase
     {
         $this->assertSame($expectedType, LoupeTypes::getTypeFromValue($value));
     }
+
+    #[DataProvider('typeIsNarrowerThanType')]
+    public function testTypeIsNarrowerThanType(string $schemaType, string $checkType, bool $expectedResult): void
+    {
+        $this->assertSame($expectedResult, LoupeTypes::typeIsNarrowerThanType($schemaType, $checkType));
+    }
+
+    #[DataProvider('typeMatchesTypeProvider')]
+    public function testTypeMatchesType(string $schemaType, string $checkType, bool $expectedResult): void
+    {
+        $this->assertSame($expectedResult, LoupeTypes::typeMatchesType($schemaType, $checkType));
+    }
+
+    public static function typeIsNarrowerThanType(): \Generator
+    {
+        yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NULL, false];
+        yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NUMBER, true];
+        yield [LoupeTypes::TYPE_NUMBER, LoupeTypes::TYPE_GEO, false];
+        yield [LoupeTypes::TYPE_ARRAY_EMPTY, LoupeTypes::TYPE_ARRAY_EMPTY, false];
+        yield [LoupeTypes::TYPE_ARRAY_EMPTY, LoupeTypes::TYPE_ARRAY_NUMBER, true];
+        yield [LoupeTypes::TYPE_ARRAY_EMPTY, LoupeTypes::TYPE_ARRAY_STRING, true];
+    }
+
+    public static function typeMatchesTypeProvider(): \Generator
+    {
+        yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NULL, true];
+        yield [LoupeTypes::TYPE_NUMBER, LoupeTypes::TYPE_NUMBER, true];
+        yield [LoupeTypes::TYPE_GEO, LoupeTypes::TYPE_GEO, true];
+        yield [LoupeTypes::TYPE_BOOLEAN, LoupeTypes::TYPE_BOOLEAN, true];
+        yield [LoupeTypes::TYPE_STRING, LoupeTypes::TYPE_STRING, true];
+        yield [LoupeTypes::TYPE_ARRAY_EMPTY, LoupeTypes::TYPE_ARRAY_EMPTY, true];
+        yield [LoupeTypes::TYPE_ARRAY_NUMBER, LoupeTypes::TYPE_ARRAY_NUMBER, true];
+        yield [LoupeTypes::TYPE_ARRAY_STRING, LoupeTypes::TYPE_ARRAY_STRING, true];
+        yield [LoupeTypes::TYPE_ARRAY_STRING, LoupeTypes::TYPE_ARRAY_EMPTY, true];
+        yield [LoupeTypes::TYPE_ARRAY_NUMBER, LoupeTypes::TYPE_ARRAY_EMPTY, true];
+        yield [LoupeTypes::TYPE_ARRAY_EMPTY, LoupeTypes::TYPE_ARRAY_STRING, true];
+        yield [LoupeTypes::TYPE_ARRAY_EMPTY, LoupeTypes::TYPE_ARRAY_NUMBER, true];
+    }
 }

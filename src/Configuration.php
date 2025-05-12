@@ -22,6 +22,11 @@ final class Configuration
     /**
      * @var array<string>
      */
+    private array $displayedAttributes = ['*'];
+
+    /**
+     * @var array<string>
+     */
     private array $filterableAttributes = [];
 
     /**
@@ -32,6 +37,8 @@ final class Configuration
     private ?LoggerInterface $logger = null;
 
     private int $maxQueryTokens = 10;
+
+    private int $maxTotalHits = 1000;
 
     private int $minTokenLengthForPrefixSearch = 3;
 
@@ -65,6 +72,11 @@ final class Configuration
 
     private TypoTolerance $typoTolerance;
 
+    /**
+     * Probability (0-100) of running vacuum on the SQLite database during indexing.
+     */
+    private int $vacuumProbability = 2;
+
     public function __construct()
     {
         $this->typoTolerance = new TypoTolerance();
@@ -73,6 +85,97 @@ final class Configuration
     public static function create(): self
     {
         return new self();
+    }
+
+    /**
+     * @param array{
+     *     displayedAttributes?: array<string>,
+     *     filterableAttributes?: array<string>,
+     *     languages?: array<string>,
+     *     maxTotalHits?: int,
+     *     maxQueryTokens?: int,
+     *     minTokenLengthForPrefixSearch?: int,
+     *     primaryKey?: string,
+     *     rankingRules?: array<string>,
+     *     searchableAttributes?: array<string>,
+     *     sortableAttributes?: array<string>,
+     *     stopWords?: array<string>,
+     *     typoTolerance?: array{
+     *         alphabetSize?: int,
+     *         firstCharTypoCountsDouble?: bool,
+     *         indexLength?: int,
+     *         isDisabled?: bool,
+     *         isEnabledForPrefixSearch?: bool,
+     *         typoThresholds?: array<int, int>
+     *     }
+     * } $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $instance = new self();
+
+        if (isset($data['displayedAttributes'])) {
+            $instance = $instance->withDisplayedAttributes($data['displayedAttributes']);
+        }
+
+        if (isset($data['filterableAttributes'])) {
+            $instance = $instance->withFilterableAttributes($data['filterableAttributes']);
+        }
+
+        if (isset($data['languages'])) {
+            $instance = $instance->withLanguages($data['languages']);
+        }
+
+        if (isset($data['maxTotalHits'])) {
+            $instance = $instance->withMaxTotalHits($data['maxTotalHits']);
+        }
+
+        if (isset($data['maxQueryTokens'])) {
+            $instance = $instance->withMaxQueryTokens((int) $data['maxQueryTokens']);
+        }
+
+        if (isset($data['minTokenLengthForPrefixSearch'])) {
+            $instance = $instance->withMinTokenLengthForPrefixSearch((int) $data['minTokenLengthForPrefixSearch']);
+        }
+
+        if (isset($data['primaryKey'])) {
+            $instance = $instance->withPrimaryKey($data['primaryKey']);
+        }
+
+        if (isset($data['rankingRules'])) {
+            $instance = $instance->withRankingRules($data['rankingRules']);
+        }
+
+        if (isset($data['searchableAttributes'])) {
+            $instance = $instance->withSearchableAttributes($data['searchableAttributes']);
+        }
+
+        if (isset($data['sortableAttributes'])) {
+            $instance = $instance->withSortableAttributes($data['sortableAttributes']);
+        }
+
+        if (isset($data['stopWords'])) {
+            $instance = $instance->withStopWords($data['stopWords']);
+        }
+
+        if (isset($data['typoTolerance']) && \is_array($data['typoTolerance'])) {
+            $instance = $instance->withTypoTolerance(TypoTolerance::fromArray($data['typoTolerance']));
+        }
+
+        return $instance;
+    }
+
+    public static function fromString(string $string): self
+    {
+        return self::fromArray(json_decode($string, true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getDisplayedAttributes(): array
+    {
+        return $this->displayedAttributes;
     }
 
     /**
@@ -107,6 +210,7 @@ final class Configuration
         $hash[] = json_encode($this->getPrimaryKey());
         $hash[] = json_encode($this->getSearchableAttributes());
         $hash[] = json_encode($this->getFilterableAttributes());
+        $hash[] = json_encode($this->getMaxTotalHits());
         $hash[] = json_encode($this->getSortableAttributes());
         $hash[] = json_encode($this->getStopWords());
 
@@ -134,6 +238,11 @@ final class Configuration
     public function getMaxQueryTokens(): int
     {
         return $this->maxQueryTokens;
+    }
+
+    public function getMaxTotalHits(): int
+    {
+        return $this->maxTotalHits;
     }
 
     public function getMinTokenLengthForPrefixSearch(): int
@@ -183,6 +292,62 @@ final class Configuration
         return $this->typoTolerance;
     }
 
+    /**
+     * Get the probability (0-100) of running vacuum on the SQLite database during indexing.
+     *
+     * @internal
+     */
+    public function getVacuumProbability(): int
+    {
+        return $this->vacuumProbability;
+    }
+
+    /**
+     * @return array{
+     *     displayedAttributes: array<string>,
+     *     filterableAttributes: array<string>,
+     *     languages: array<string>,
+     *     maxTotalHits: int,
+     *     maxQueryTokens: int,
+     *     minTokenLengthForPrefixSearch: int,
+     *     primaryKey: string,
+     *     rankingRules: array<string>,
+     *     searchableAttributes: array<string>,
+     *     sortableAttributes: array<string>,
+     *     stopWords: array<string>,
+     *     typoTolerance: array{
+     *         alphabetSize: int,
+     *         firstCharTypoCountsDouble: bool,
+     *         indexLength: int,
+     *         isDisabled: bool,
+     *         isEnabledForPrefixSearch: bool,
+     *         typoThresholds: array<int, int>
+     *     }
+     * }
+     */
+    public function toArray(): array
+    {
+        return [
+            'displayedAttributes' => $this->displayedAttributes,
+            'filterableAttributes' => $this->filterableAttributes,
+            'languages' => $this->languages,
+            'maxTotalHits' => $this->maxTotalHits,
+            'maxQueryTokens' => $this->maxQueryTokens,
+            'minTokenLengthForPrefixSearch' => $this->minTokenLengthForPrefixSearch,
+            'primaryKey' => $this->primaryKey,
+            'rankingRules' => $this->rankingRules,
+            'searchableAttributes' => $this->searchableAttributes,
+            'sortableAttributes' => $this->sortableAttributes,
+            'stopWords' => $this->stopWords,
+            'typoTolerance' => $this->typoTolerance->toArray(),
+        ];
+    }
+
+    public function toString(): string
+    {
+        return json_encode($this->toArray(), JSON_THROW_ON_ERROR);
+    }
+
     public static function validateAttributeName(string $name): void
     {
         if (\strlen($name) > self::MAX_ATTRIBUTE_NAME_LENGTH
@@ -190,6 +355,21 @@ final class Configuration
         ) {
             throw InvalidConfigurationException::becauseInvalidAttributeName($name);
         }
+    }
+
+    /**
+     * @param array<string> $displayedAttributes
+     */
+    public function withDisplayedAttributes(array $displayedAttributes): self
+    {
+        if (['*'] !== $displayedAttributes) {
+            self::validateAttributeNames($displayedAttributes);
+        }
+
+        $clone = clone $this;
+        $clone->displayedAttributes = $displayedAttributes;
+
+        return $clone;
     }
 
     /**
@@ -232,6 +412,14 @@ final class Configuration
     {
         $clone = clone $this;
         $clone->maxQueryTokens = $maxQueryTokens;
+
+        return $clone;
+    }
+
+    public function withMaxTotalHits(int $maxTotalHits): self
+    {
+        $clone = clone $this;
+        $clone->maxTotalHits = $maxTotalHits;
 
         return $clone;
     }
@@ -326,6 +514,24 @@ final class Configuration
     {
         $clone = clone $this;
         $clone->typoTolerance = $tolerance;
+
+        return $clone;
+    }
+
+    /**
+     * Set the probability (0-100) of running vacuum on the SQLite database during indexing.
+     *
+     * @throws InvalidConfigurationException If the probability is not between 0 and 100
+     * @internal
+     */
+    public function withVacuumProbability(int $probability): self
+    {
+        if ($probability < 0 || $probability > 100) {
+            throw new InvalidConfigurationException('Vacuum probability must be between 0 and 100.');
+        }
+
+        $clone = clone $this;
+        $clone->vacuumProbability = $probability;
 
         return $clone;
     }

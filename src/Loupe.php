@@ -38,6 +38,12 @@ final class Loupe
         return $this->engine->addDocuments($documents);
     }
 
+    public function browse(BrowseParameters $parameters): BrowseResult
+    {
+        StaticCache::enterContext($this);
+        return $this->engine->browse($parameters);
+    }
+
     public function countDocuments(): int
     {
         StaticCache::enterContext($this);
@@ -93,5 +99,11 @@ final class Loupe
     {
         StaticCache::enterContext($this);
         return $this->engine->search($parameters);
+    }
+
+    public function size(): int
+    {
+        StaticCache::enterContext($this);
+        return $this->engine->size();
     }
 }

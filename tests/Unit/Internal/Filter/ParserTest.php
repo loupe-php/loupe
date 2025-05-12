@@ -215,9 +215,9 @@ class ParserTest extends TestCase
                     'attribute' => 'genres',
                     'operator' => 'IN',
                     'value' => [
-                        'Drama',
                         'Action',
                         'Documentary',
+                        'Drama',
                     ],
                 ],
             ],
@@ -231,8 +231,8 @@ class ParserTest extends TestCase
                         'attribute' => 'genres',
                         'operator' => 'IN',
                         'value' => [
-                            'Drama',
                             'Action',
+                            'Drama',
                         ],
                     ],
                     ['OR'],
@@ -255,9 +255,9 @@ class ParserTest extends TestCase
                     'attribute' => 'genres',
                     'operator' => 'NOT IN',
                     'value' => [
-                        'Drama',
                         'Action',
                         'Documentary',
+                        'Drama',
                     ],
                 ],
             ],

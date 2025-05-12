@@ -8,8 +8,8 @@ use Loupe\Loupe\SearchParameters;
 
 class InvalidSearchParametersException extends \InvalidArgumentException implements LoupeExceptionInterface
 {
-    public static function maxHitsPerPage(): self
+    public static function maxLimit(): self
     {
-        return new self(sprintf('Cannot request more than %d documents per request, use pagination.', SearchParameters::MAX_HITS_PER_PAGE));
+        return new self(sprintf('Cannot request more than %d documents per request, use pagination.', SearchParameters::MAX_LIMIT));
     }
 }

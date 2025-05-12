@@ -4,15 +4,15 @@ use Loupe\Loupe\SearchParameters;
 
 $config = require_once __DIR__ . '/../config.php';
 
-$options = getopt('q::d', ['query::', 'debug']);
-$query = $options['q'] ?? $options['query'] ?? 'Amakin Dkywalker';
+$options = getopt('d', ['debug']);
 $debug = isset($options['d']) || isset($options['debug']);
 
 $startTime = microtime(true);
 
 $searchParameters = SearchParameters::create()
-    ->withQuery($query)
-    ->withFacets(['genres'])
+    ->withQuery('aircarft')
+    ->withFilter("release_date < 1127433600 AND genres IN ('Drama', 'Western')")
+    ->withSort(['release_date:desc'])
 ;
 
 $result = $config['loupe']->search($searchParameters);

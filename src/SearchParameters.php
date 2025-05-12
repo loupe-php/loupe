@@ -4,38 +4,32 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
-use Loupe\Loupe\Exception\InvalidSearchParametersException;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 
-final class SearchParameters
+final class SearchParameters extends AbstractQueryParameters
 {
-    public const MAX_HITS_PER_PAGE = 1000;
+    /**
+     * @var array<string,int>
+     */
+    private array $attributesToCrop = [];
 
     /**
      * @var array<string>
      */
     private array $attributesToHighlight = [];
 
-    /**
-     * @var array<string>
-     */
-    private array $attributesToRetrieve = ['*'];
+    private int $cropLength = 50;
+
+    private string $cropMarker = '…';
 
     /**
      * @var array<string>
      */
-    private array $attributesToSearchOn = ['*'];
-
-    private string $filter = '';
+    private array $facets = [];
 
     private string $highlightEndTag = '</em>';
 
     private string $highlightStartTag = '<em>';
-
-    private int $hitsPerPage = 20;
-
-    private int $page = 1;
-
-    private string $query = '';
 
     private float $rankingScoreThreshold = 0.0;
 
@@ -48,18 +42,81 @@ final class SearchParameters
      */
     private array $sort = [Internal\Search\Searcher::RELEVANCE_ALIAS . ':desc'];
 
-    public static function create(): self
+    public static function create(): static
     {
         return new self();
     }
 
-    public static function escapeFilterValue(string|int|float|bool $value): string
+    /**
+     * @param array{
+     *     attributesToCrop?: array<string>|array<string,int>,
+     *     attributesToHighlight?: array<string>,
+     *     attributesToRetrieve?: array<string>,
+     *     attributesToSearchOn?: array<string>,
+     *     facets?: array<string>,
+     *     filter?: string,
+     *     highlightEndTag?: string,
+     *     highlightStartTag?: string,
+     *     hitsPerPage?: ?int,
+     *     page?: ?int,
+     *     offset?: int,
+     *     limit?: int,
+     *     query?: string,
+     *     rankingScoreThreshold?: float,
+     *     showMatchesPosition?: bool,
+     *     showRankingScore?: bool,
+     *     sort?: array<string>
+     * } $data
+     */
+    public static function fromArray(array $data): static
     {
-        return match (true) {
-            \is_bool($value) => $value ? 'true' : 'false',
-            \is_int($value), \is_float($value) => (string) $value,
-            default => "'" . str_replace("'", "''", $value) . "'"
-        };
+        $instance = parent::fromArray($data);
+
+        if (isset($data['attributesToCrop'])) {
+            $instance = $instance->withAttributesToCrop(
+                $data['attributesToCrop'],
+                $data['cropLength'] ?? 50,
+                $data['cropMarker'] ?? '…',
+            );
+        }
+
+        if (isset($data['attributesToHighlight'])) {
+            $instance = $instance->withAttributesToHighlight(
+                $data['attributesToHighlight'],
+                $data['highlightStartTag'] ?? '<em>',
+                $data['highlightEndTag'] ?? '</em>',
+            );
+        }
+
+        if (isset($data['facets'])) {
+            $instance = $instance->withFacets($data['facets']);
+        }
+
+        if (isset($data['rankingScoreThreshold'])) {
+            $instance = $instance->withRankingScoreThreshold($data['rankingScoreThreshold']);
+        }
+
+        if (isset($data['showMatchesPosition'])) {
+            $instance = $instance->withShowMatchesPosition($data['showMatchesPosition']);
+        }
+
+        if (isset($data['showRankingScore'])) {
+            $instance = $instance->withShowRankingScore($data['showRankingScore']);
+        }
+
+        if (isset($data['sort'])) {
+            $instance = $instance->withSort($data['sort']);
+        }
+
+        return $instance;
+    }
+
+    /**
+     * @return array<string,int>
+     */
+    public function getAttributesToCrop(): array
+    {
+        return $this->attributesToCrop;
     }
 
     /**
@@ -70,25 +127,22 @@ final class SearchParameters
         return $this->attributesToHighlight;
     }
 
-    /**
-     * @return array<string>
-     */
-    public function getAttributesToRetrieve(): array
+    public function getCropLength(): int
     {
-        return $this->attributesToRetrieve;
+        return $this->cropLength;
+    }
+
+    public function getCropMarker(): string
+    {
+        return $this->cropMarker;
     }
 
     /**
      * @return array<string>
      */
-    public function getAttributesToSearchOn(): array
+    public function getFacets(): array
     {
-        return $this->attributesToSearchOn;
-    }
-
-    public function getFilter(): string
-    {
-        return $this->filter;
+        return $this->facets;
     }
 
     /**
@@ -98,14 +152,19 @@ final class SearchParameters
     {
         $hash = [];
 
+        $hash[] = json_encode($this->getAttributesToCrop());
         $hash[] = json_encode($this->getAttributesToHighlight());
-        $hash[] = json_encode($this->getHighlightStartTag());
+        $hash[] = json_encode($this->getCropLength());
+        $hash[] = json_encode($this->getCropMarker());
         $hash[] = json_encode($this->getHighlightEndTag());
+        $hash[] = json_encode($this->getHighlightStartTag());
         $hash[] = json_encode($this->getAttributesToRetrieve());
         $hash[] = json_encode($this->getAttributesToSearchOn());
         $hash[] = json_encode($this->getFilter());
         $hash[] = json_encode($this->getHitsPerPage());
         $hash[] = json_encode($this->getPage());
+        $hash[] = json_encode($this->getLimit());
+        $hash[] = json_encode($this->getOffset());
         $hash[] = json_encode($this->getQuery());
         $hash[] = json_encode($this->showMatchesPosition());
         $hash[] = json_encode($this->showRankingScore());
@@ -121,21 +180,6 @@ final class SearchParameters
     public function getHighlightStartTag(): string
     {
         return $this->highlightStartTag;
-    }
-
-    public function getHitsPerPage(): int
-    {
-        return $this->hitsPerPage;
-    }
-
-    public function getPage(): int
-    {
-        return $this->page;
-    }
-
-    public function getQuery(): string
-    {
-        return $this->query;
     }
 
     public function getRankingScoreThreshold(): float
@@ -162,6 +206,74 @@ final class SearchParameters
     }
 
     /**
+     * @return array{
+     *     attributesToCrop: array<string,int>,
+     *     attributesToHighlight: array<string>,
+     *     facets: array<string>,
+     *     cropLength: int,
+     *     cropMarker: string,
+     *     filter: string,
+     *     highlightEndTag: string,
+     *     highlightStartTag: string,
+     *     hitsPerPage: ?int,
+     *     page: ?int,
+     *     offset: int,
+     *     limit: int,
+     *     query: string,
+     *     attributesToRetrieve: array<string>,
+     *     attributesToSearchOn: array<string>,
+     *     rankingScoreThreshold: float,
+     *     showMatchesPosition: bool,
+     *     showRankingScore: bool,
+     *     sort: array<string>
+     * }
+     */
+    public function toArray(): array
+    {
+        return array_merge(parent::toArray(), [
+            'attributesToCrop' => $this->attributesToCrop,
+            'attributesToHighlight' => $this->attributesToHighlight,
+            'facets' => $this->facets,
+            'cropLength' => $this->cropLength,
+            'cropMarker' => $this->cropMarker,
+            'highlightEndTag' => $this->highlightEndTag,
+            'highlightStartTag' => $this->highlightStartTag,
+            'rankingScoreThreshold' => $this->rankingScoreThreshold,
+            'showMatchesPosition' => $this->showMatchesPosition,
+            'showRankingScore' => $this->showRankingScore,
+            'sort' => $this->sort,
+        ]);
+    }
+
+    /**
+     * @param array<string>|array<string,int> $attributesToCrop
+     */
+    public function withAttributesToCrop(
+        array $attributesToCrop,
+        int $cropLength = 50,
+        string $cropMarker = '…',
+    ): self {
+        $clone = clone $this;
+
+        $attributes = [];
+        foreach ($attributesToCrop as $key => $attribute) {
+            if (\is_string($key) && \is_int($attribute)) {
+                $attributes[$key] = $attribute;
+            } elseif (\is_string($attribute)) {
+                $attributes[$attribute] = $cropLength;
+            }
+        }
+
+        ksort($attributes);
+
+        $clone->attributesToCrop = $attributes;
+        $clone->cropMarker = $cropMarker;
+        $clone->cropLength = $cropLength;
+
+        return $clone;
+    }
+
+    /**
      * @param array<string> $attributesToHighlight
      */
     public function withAttributesToHighlight(
@@ -180,63 +292,12 @@ final class SearchParameters
     }
 
     /**
-     * @param array<string> $attributesToRetrieve
+     * @param array<string> $facets
      */
-    public function withAttributesToRetrieve(array $attributesToRetrieve): self
-    {
-        sort($attributesToRetrieve);
-
-        $clone = clone $this;
-        $clone->attributesToRetrieve = $attributesToRetrieve;
-
-        return $clone;
-    }
-
-    /**
-     * @param array<string> $attributesToSearchOn
-     */
-    public function withAttributesToSearchOn(array $attributesToSearchOn): self
-    {
-        sort($attributesToSearchOn);
-
-        $clone = clone $this;
-        $clone->attributesToSearchOn = $attributesToSearchOn;
-
-        return $clone;
-    }
-
-    public function withFilter(string $filter): self
+    public function withFacets(array $facets): self
     {
         $clone = clone $this;
-        $clone->filter = $filter;
-
-        return $clone;
-    }
-
-    public function withHitsPerPage(int $hitsPerPage): self
-    {
-        if ($hitsPerPage > self::MAX_HITS_PER_PAGE) {
-            throw InvalidSearchParametersException::maxHitsPerPage();
-        }
-
-        $clone = clone $this;
-        $clone->hitsPerPage = $hitsPerPage;
-
-        return $clone;
-    }
-
-    public function withPage(int $page): self
-    {
-        $clone = clone $this;
-        $clone->page = $page;
-
-        return $clone;
-    }
-
-    public function withQuery(string $query): self
-    {
-        $clone = clone $this;
-        $clone->query = $query;
+        $clone->facets = $facets;
 
         return $clone;
     }
