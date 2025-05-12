@@ -7,7 +7,6 @@ namespace Loupe\Loupe\Tests\Functional;
 use Loupe\Loupe\BrowseParameters;
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\TestCase;
 
 class BrowseTest extends TestCase

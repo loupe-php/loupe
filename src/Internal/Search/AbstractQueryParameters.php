@@ -32,7 +32,9 @@ abstract class AbstractQueryParameters
 
     private string $query = '';
 
-    protected function __construct() {}
+    protected function __construct()
+    {
+    }
 
     abstract public static function create(): static;
 

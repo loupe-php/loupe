@@ -42,6 +42,11 @@ final class SearchParameters extends AbstractQueryParameters
      */
     private array $sort = [Internal\Search\Searcher::RELEVANCE_ALIAS . ':desc'];
 
+    public static function create(): static
+    {
+        return new self();
+    }
+
     /**
      * @param array{
      *     attributesToCrop?: array<string>|array<string,int>,
@@ -330,10 +335,5 @@ final class SearchParameters extends AbstractQueryParameters
         $clone->sort = $sort;
 
         return $clone;
-    }
-
-    public static function create(): static
-    {
-        return new self();
     }
 }

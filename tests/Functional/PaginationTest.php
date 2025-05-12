@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Functional;
 
-use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\TestCase;
 
