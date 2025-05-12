@@ -2597,7 +2597,9 @@ class SearchTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
-            ->withTypoTolerance(TypoTolerance::create()->disable());
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withMaxTotalHits(800)
+        ;
 
         $loupe = $this->createLoupe($configuration);
         $documents = [];
@@ -2649,8 +2651,8 @@ class SearchTest extends TestCase
             'query' => 'dog sled',
             'hitsPerPage' => 4,
             'page' => 1,
-            'totalPages' => 250,
-            'totalHits' => 1000,
+            'totalPages' => 200,
+            'totalHits' => 800, // Max total hits
         ]);
     }
 
@@ -3272,23 +3274,6 @@ class SearchTest extends TestCase
 
         $loupe = $this->createLoupe($configuration, $dataDir);
         $this->indexFixture($loupe, 'departments');
-
-        return $loupe;
-    }
-
-    private function setupLoupeWithMoviesFixture(Configuration $configuration = null): Loupe
-    {
-        if ($configuration === null) {
-            $configuration = Configuration::create();
-        }
-
-        $configuration = $configuration
-            ->withFilterableAttributes(['genres'])
-            ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview']);
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
 
         return $loupe;
     }

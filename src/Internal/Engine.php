@@ -6,6 +6,8 @@ namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
+use Loupe\Loupe\BrowseParameters;
+use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\IndexResult;
@@ -75,6 +77,15 @@ class Engine
     public function addDocuments(array $documents): IndexResult
     {
         return $this->indexer->addDocuments($documents);
+    }
+
+    public function browse(BrowseParameters $parameters): BrowseResult
+    {
+        if ($this->getIndexInfo()->needsSetup()) {
+            return BrowseResult::createEmptyFromBrowseParameters($parameters);
+        }
+
+        return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
     }
 
     public function countDocuments(): int

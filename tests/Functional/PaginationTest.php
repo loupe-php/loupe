@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Functional;
 
-use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\TestCase;
 
@@ -134,23 +132,5 @@ class PaginationTest extends TestCase
             'totalPages' => 14,
             'totalHits' => 14,
         ]);
-    }
-
-    private function setupLoupeWithMoviesFixture(Configuration $configuration = null): Loupe
-    {
-        if ($configuration === null) {
-            $configuration = Configuration::create();
-        }
-
-        $configuration = $configuration
-            ->withFilterableAttributes(['genres'])
-            ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview'])
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
-
-        return $loupe;
     }
 }
