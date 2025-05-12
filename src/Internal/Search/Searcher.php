@@ -217,15 +217,17 @@ class Searcher
         }
 
         $totalHits = $result['totalHits'] ?? 0;
-        $totalPages = (int) ceil($totalHits / $this->searchParameters->getHitsPerPage());
+        $hitsPerPage = $this->queryBuilder->getMaxResults() ?? 0;
+        $totalPages = $hitsPerPage === 0 ? 0 : ((int) ceil($totalHits / $hitsPerPage));
+        $currentPage = $hitsPerPage === 0 ? 0 : ((int) floor($this->queryBuilder->getFirstResult() / $hitsPerPage) + 1);
         $end = (int) floor(microtime(true) * 1000);
 
         $searchResult = new SearchResult(
             $hits,
             $this->createAnalyzedQuery($tokens),
             $end - $start,
-            $this->searchParameters->getHitsPerPage(),
-            $this->searchParameters->getPage(),
+            $hitsPerPage,
+            $currentPage,
             $totalPages,
             $totalHits
         );
@@ -967,12 +969,20 @@ class Searcher
     private function limitPagination(): void
     {
         $maxTotalHits = $this->engine->getConfiguration()->getMaxTotalHits();
-        $hitsPerPage = min($this->searchParameters->getHitsPerPage(), $maxTotalHits);
-        $pageOffset = ($this->searchParameters->getPage() - 1) * $hitsPerPage;
-        $maxPageOffset = $maxTotalHits - $hitsPerPage;
 
-        $this->queryBuilder->setFirstResult(min($pageOffset, $maxPageOffset));
-        $this->queryBuilder->setMaxResults($hitsPerPage);
+        $offset = $this->searchParameters->getOffset();
+        $limit = $this->searchParameters->getLimit();
+
+        if ($this->searchParameters->getHitsPerPage() !== null || $this->searchParameters->getPage() !== null) {
+            $limit = $this->searchParameters->getHitsPerPage() ?? SearchParameters::MAX_LIMIT;
+            $offset = (($this->searchParameters->getPage() ?? 1) - 1) * $limit;
+        }
+
+        $limit = min($limit, $maxTotalHits);
+        $offset = min($offset, $maxTotalHits - $limit);
+
+        $this->queryBuilder->setFirstResult($offset);
+        $this->queryBuilder->setMaxResults($limit);
     }
 
     private function query(): Result

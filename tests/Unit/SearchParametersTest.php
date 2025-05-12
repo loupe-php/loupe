@@ -26,7 +26,7 @@ class SearchParametersTest extends TestCase
         $newParams = $params->withPage(2);
 
         $this->assertNotSame($params, $newParams);
-        $this->assertSame(1, $params->getPage());
+        $this->assertNull($params->getPage());
         $this->assertSame(2, $newParams->getPage());
     }
 
