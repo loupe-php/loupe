@@ -31,8 +31,7 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 ;
 ```
 
-You can also exclude documents that match to a given keyword. Use `-` as modifier. You can exclude both, regular keywords
-as well as phrases:
+You can also exclude documents that match to a given keyword. Use `-` as modifier. You can exclude both, regular keywords as well as phrases:
 
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create()
@@ -248,7 +247,7 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withPage(3);
 ```
 
-By default, Loupe returns `20` results per page but you can configure this as well:
+By default, Loupe returns `20` results per page, but you can configure this as well:
 
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create()

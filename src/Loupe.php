@@ -38,7 +38,7 @@ final class Loupe
         return $this->engine->addDocuments($documents);
     }
 
-    public function browse(BrowseParameters $parameters): SearchResult
+    public function browse(BrowseParameters $parameters): BrowseResult
     {
         StaticCache::enterContext($this);
         return $this->engine->browse($parameters);

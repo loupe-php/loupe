@@ -135,22 +135,4 @@ class PaginationTest extends TestCase
             'totalHits' => 14,
         ]);
     }
-
-    private function setupLoupeWithMoviesFixture(Configuration $configuration = null): Loupe
-    {
-        if ($configuration === null) {
-            $configuration = Configuration::create();
-        }
-
-        $configuration = $configuration
-            ->withFilterableAttributes(['genres'])
-            ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview'])
-        ;
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
-
-        return $loupe;
-    }
 }

@@ -8,7 +8,7 @@ use Loupe\Loupe\Exception\InvalidSearchParametersException;
 
 abstract class AbstractQueryParameters
 {
-    public const MAX_HITS_PER_PAGE = 1000;
+    public const MAX_LIMIT = 1000;
 
     /**
      * @var array<string>
@@ -22,16 +22,19 @@ abstract class AbstractQueryParameters
 
     private string $filter = '';
 
-    private int $hitsPerPage = 20;
+    private ?int $hitsPerPage = null;
 
-    private int $page = 1;
+    private int $limit = 20;
+
+    private int $offset = 0;
+
+    private ?int $page = null;
 
     private string $query = '';
 
-    public static function create(): static
-    {
-        return new static();
-    }
+    protected function __construct() {}
+
+    abstract public static function create(): static;
 
     public static function escapeFilterValue(string|int|float|bool $value): string
     {
@@ -45,16 +48,18 @@ abstract class AbstractQueryParameters
     /**
      * @param array{
      *     filter?: string,
-     *     hitsPerPage?: int,
-     *     page?: int,
+     *     hitsPerPage?: ?int,
+     *     page?: ?int,
+     *     offset?: int,
+     *     limit?: int,
      *     query?: string,
      *     attributesToRetrieve?: array<string>,
      *     attributesToSearchOn?: array<string>,
      * } $data
      */
-    public static function fromArray(array $data): self
+    public static function fromArray(array $data): static
     {
-        $instance = new static();
+        $instance = static::create();
 
         if (isset($data['filter'])) {
             $instance = $instance->withFilter($data['filter']);
@@ -66,6 +71,14 @@ abstract class AbstractQueryParameters
 
         if (isset($data['page'])) {
             $instance = $instance->withPage($data['page']);
+        }
+
+        if (isset($data['offset'])) {
+            $instance = $instance->withOffset((int) $data['offset']);
+        }
+
+        if (isset($data['limit'])) {
+            $instance = $instance->withLimit((int) $data['limit']);
         }
 
         if (isset($data['query'])) {
@@ -83,7 +96,7 @@ abstract class AbstractQueryParameters
         return $instance;
     }
 
-    public static function fromString(string $string): self
+    public static function fromString(string $string): static
     {
         return self::fromArray(json_decode($string, true, 512, JSON_THROW_ON_ERROR));
     }
@@ -109,12 +122,22 @@ abstract class AbstractQueryParameters
         return $this->filter;
     }
 
-    public function getHitsPerPage(): int
+    public function getHitsPerPage(): ?int
     {
         return $this->hitsPerPage;
     }
 
-    public function getPage(): int
+    public function getLimit(): int
+    {
+        return $this->limit;
+    }
+
+    public function getOffset(): int
+    {
+        return $this->offset;
+    }
+
+    public function getPage(): ?int
     {
         return $this->page;
     }
@@ -127,8 +150,10 @@ abstract class AbstractQueryParameters
     /**
      * @return array{
      *     filter: string,
-     *     hitsPerPage: int,
-     *     page: int,
+     *     hitsPerPage: ?int,
+     *     page: ?int,
+     *     offset: int,
+     *     limit: int,
      *     query: string,
      *     attributesToRetrieve: array<string>,
      *     attributesToSearchOn: array<string>,
@@ -140,6 +165,8 @@ abstract class AbstractQueryParameters
             'filter' => $this->filter,
             'hitsPerPage' => $this->hitsPerPage,
             'page' => $this->page,
+            'offset' => $this->offset,
+            'limit' => $this->limit,
             'query' => $this->query,
             'attributesToRetrieve' => $this->attributesToRetrieve,
             'attributesToSearchOn' => $this->attributesToSearchOn,
@@ -154,7 +181,7 @@ abstract class AbstractQueryParameters
     /**
      * @param array<string> $attributesToRetrieve
      */
-    public function withAttributesToRetrieve(array $attributesToRetrieve): self
+    public function withAttributesToRetrieve(array $attributesToRetrieve): static
     {
         sort($attributesToRetrieve);
 
@@ -167,7 +194,7 @@ abstract class AbstractQueryParameters
     /**
      * @param array<string> $attributesToSearchOn
      */
-    public function withAttributesToSearchOn(array $attributesToSearchOn): self
+    public function withAttributesToSearchOn(array $attributesToSearchOn): static
     {
         sort($attributesToSearchOn);
 
@@ -177,7 +204,7 @@ abstract class AbstractQueryParameters
         return $clone;
     }
 
-    public function withFilter(string $filter): self
+    public function withFilter(string $filter): static
     {
         $clone = clone $this;
         $clone->filter = $filter;
@@ -185,10 +212,10 @@ abstract class AbstractQueryParameters
         return $clone;
     }
 
-    public function withHitsPerPage(int $hitsPerPage): self
+    public function withHitsPerPage(?int $hitsPerPage): static
     {
-        if ($hitsPerPage > self::MAX_HITS_PER_PAGE) {
-            throw InvalidSearchParametersException::maxHitsPerPage();
+        if ($hitsPerPage !== null && $hitsPerPage > self::MAX_LIMIT) {
+            throw InvalidSearchParametersException::maxLimit();
         }
 
         $clone = clone $this;
@@ -197,7 +224,27 @@ abstract class AbstractQueryParameters
         return $clone;
     }
 
-    public function withPage(int $page): self
+    public function withLimit(int $limit): static
+    {
+        if ($limit > self::MAX_LIMIT) {
+            throw InvalidSearchParametersException::maxLimit();
+        }
+
+        $clone = clone $this;
+        $clone->limit = $limit;
+
+        return $clone;
+    }
+
+    public function withOffset(int $offset): static
+    {
+        $clone = clone $this;
+        $clone->offset = $offset;
+
+        return $clone;
+    }
+
+    public function withPage(?int $page): static
     {
         $clone = clone $this;
         $clone->page = $page;
@@ -205,7 +252,7 @@ abstract class AbstractQueryParameters
         return $clone;
     }
 
-    public function withQuery(string $query): self
+    public function withQuery(string $query): static
     {
         $clone = clone $this;
         $clone->query = $query;

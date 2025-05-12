@@ -214,6 +214,8 @@ $configuration = \Loupe\Loupe\Configuration::create()
     ->withMaxTotalHits(100);
 ```
 
+If you need to browse all the documents and ignore this limit, use [the browse API][Browse].
+
 ## Debugging
 
 You may pass a PSR-3 logger to Loupe. For the sake of simplicity, Loupe also ships with a very simple 
@@ -242,4 +244,5 @@ $reconstructed = \Loupe\Loupe\Configuration::fromString($serialized);
 
 Note that this does not work for instances such as the "logger".
 
+[Browse]: browsing.md
 [Paper]: https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf

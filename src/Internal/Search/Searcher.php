@@ -8,6 +8,7 @@ use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
 use Location\Bounds;
+use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
@@ -21,6 +22,9 @@ use Loupe\Matcher\FormatterOptions;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 
+/**
+ * @template T of AbstractQueryParameters
+ */
 class Searcher
 {
     public const CTE_ALL_MULTI_FILTERS_PREFIX = '_cte_mf_all_';
@@ -57,6 +61,9 @@ class Searcher
 
     private ?TokenCollection $tokens = null;
 
+    /**
+     * @param T $queryParameters
+     */
     public function __construct(
         private Engine $engine,
         Parser $filterParser,
@@ -178,7 +185,10 @@ class Searcher
         return $cteName;
     }
 
-    public function fetchResult(): SearchResult
+    /**
+     * @return (T is SearchParameters ? SearchResult : BrowseResult)
+     */
+    public function fetchResult(): AbstractQueryResult
     {
         $start = (int) floor(microtime(true) * 1000);
 
@@ -227,7 +237,9 @@ class Searcher
         $currentPage = $hitsPerPage === 0 ? 0 : ((int) floor($this->queryBuilder->getFirstResult() / $hitsPerPage) + 1);
         $end = (int) floor(microtime(true) * 1000);
 
-        $searchResult = new SearchResult(
+        $resultClass = $this->queryParameters instanceof SearchParameters ? SearchResult::class : BrowseResult::class;
+
+        $resultObject = new $resultClass(
             $hits,
             $this->createAnalyzedQuery($tokens),
             $end - $start,
@@ -237,7 +249,11 @@ class Searcher
             $totalHits
         );
 
-        return $this->addFacetsToSearchResult($searchResult, $result ?? []);
+        if ($resultObject instanceof SearchResult) {
+            return $this->addFacetsToSearchResult($resultObject, $result ?? []);
+        }
+
+        return $resultObject;
     }
 
     public function getCTE(string $name): ?Cte
@@ -546,7 +562,10 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->setMaxResults($this->engine->getConfiguration()->getMaxTotalHits());
+        // Only apply max total hits to search queries
+        if ($this->queryParameters instanceof SearchParameters) {
+            $cteSelectQb->setMaxResults($this->engine->getConfiguration()->getMaxTotalHits());
+        }
 
         $this->addCTE(new Cte(
             $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $token),
@@ -1080,9 +1099,14 @@ class Searcher
 
     private function selectTotalHits(): void
     {
-        $this->queryBuilder->addSelect(
-            sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->engine->getConfiguration()->getMaxTotalHits())
-        );
+        // Only apply max total hits to search queries
+        if ($this->queryParameters instanceof SearchParameters) {
+            $select = sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->engine->getConfiguration()->getMaxTotalHits());
+        } else {
+            $select = 'COUNT() OVER() AS totalHits';
+        }
+
+        $this->queryBuilder->addSelect($select);
     }
 
     private function sortDocuments(): void

@@ -52,8 +52,10 @@ final class SearchParameters extends AbstractQueryParameters
      *     filter?: string,
      *     highlightEndTag?: string,
      *     highlightStartTag?: string,
-     *     hitsPerPage?: int,
-     *     page?: int,
+     *     hitsPerPage?: ?int,
+     *     page?: ?int,
+     *     offset?: int,
+     *     limit?: int,
      *     query?: string,
      *     rankingScoreThreshold?: float,
      *     showMatchesPosition?: bool,
@@ -61,7 +63,7 @@ final class SearchParameters extends AbstractQueryParameters
      *     sort?: array<string>
      * } $data
      */
-    public static function fromArray(array $data): self
+    public static function fromArray(array $data): static
     {
         $instance = parent::fromArray($data);
 
@@ -156,6 +158,8 @@ final class SearchParameters extends AbstractQueryParameters
         $hash[] = json_encode($this->getFilter());
         $hash[] = json_encode($this->getHitsPerPage());
         $hash[] = json_encode($this->getPage());
+        $hash[] = json_encode($this->getLimit());
+        $hash[] = json_encode($this->getOffset());
         $hash[] = json_encode($this->getQuery());
         $hash[] = json_encode($this->showMatchesPosition());
         $hash[] = json_encode($this->showRankingScore());
@@ -206,9 +210,13 @@ final class SearchParameters extends AbstractQueryParameters
      *     filter: string,
      *     highlightEndTag: string,
      *     highlightStartTag: string,
-     *     hitsPerPage: int,
-     *     page: int,
+     *     hitsPerPage: ?int,
+     *     page: ?int,
+     *     offset: int,
+     *     limit: int,
      *     query: string,
+     *     attributesToRetrieve: array<string>,
+     *     attributesToSearchOn: array<string>,
      *     rankingScoreThreshold: float,
      *     showMatchesPosition: bool,
      *     showRankingScore: bool,
@@ -322,5 +330,10 @@ final class SearchParameters extends AbstractQueryParameters
         $clone->sort = $sort;
 
         return $clone;
+    }
+
+    public static function create(): static
+    {
+        return new self();
     }
 }
