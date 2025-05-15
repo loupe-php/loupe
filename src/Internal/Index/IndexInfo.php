@@ -306,10 +306,10 @@ class IndexInfo
             return $this->needsSetup;
         }
 
-        return $this->needsSetup = !$this->engine->getConnection()
-            ->createSchemaManager()
-            ->tablesExist([self::TABLE_NAME_INDEX_INFO])
-        ;
+        return $this->needsSetup = !$this->engine->getConnection()->fetchOne(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            [self::TABLE_NAME_INDEX_INFO]
+        );
     }
 
     private function addDocumentsToSchema(Schema $schema): void
