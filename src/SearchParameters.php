@@ -22,6 +22,8 @@ final class SearchParameters extends AbstractQueryParameters
 
     private string $cropMarker = '…';
 
+    private ?string $distinct = null;
+
     /**
      * @var array<string>
      */
@@ -65,6 +67,7 @@ final class SearchParameters extends AbstractQueryParameters
      *     rankingScoreThreshold?: float,
      *     showMatchesPosition?: bool,
      *     showRankingScore?: bool,
+     *     distinct?: ?string,
      *     sort?: array<string>
      * } $data
      */
@@ -104,6 +107,10 @@ final class SearchParameters extends AbstractQueryParameters
             $instance = $instance->withShowRankingScore($data['showRankingScore']);
         }
 
+        if (isset($data['distinct'])) {
+            $instance = $instance->withDistinct($data['distinct']);
+        }
+
         if (isset($data['sort'])) {
             $instance = $instance->withSort($data['sort']);
         }
@@ -135,6 +142,11 @@ final class SearchParameters extends AbstractQueryParameters
     public function getCropMarker(): string
     {
         return $this->cropMarker;
+    }
+
+    public function getDistinct(): ?string
+    {
+        return $this->distinct;
     }
 
     /**
@@ -225,6 +237,7 @@ final class SearchParameters extends AbstractQueryParameters
      *     rankingScoreThreshold: float,
      *     showMatchesPosition: bool,
      *     showRankingScore: bool,
+     *     distinct: ?string,
      *     sort: array<string>
      * }
      */
@@ -241,6 +254,7 @@ final class SearchParameters extends AbstractQueryParameters
             'rankingScoreThreshold' => $this->rankingScoreThreshold,
             'showMatchesPosition' => $this->showMatchesPosition,
             'showRankingScore' => $this->showRankingScore,
+            'distinct' => $this->distinct,
             'sort' => $this->sort,
         ]);
     }
@@ -288,6 +302,13 @@ final class SearchParameters extends AbstractQueryParameters
         $clone->highlightStartTag = $highlightStartTag;
         $clone->highlightEndTag = $highlightEndTag;
 
+        return $clone;
+    }
+
+    public function withDistinct(?string $distinct): self
+    {
+        $clone = clone $this;
+        $clone->distinct = $distinct;
         return $clone;
     }
 

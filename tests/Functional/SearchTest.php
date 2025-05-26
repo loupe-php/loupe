@@ -6,7 +6,6 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -1171,6 +1170,31 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 2,
+        ]);
+    }
+
+    public function testDistinct(): void
+    {
+        $loupe = $this->setupLoupeWitProductsFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['sku', 'product_id'])
+            ->withQuery('ihpone')
+            ->withDistinct('product_id')
+            ->withSort(['name:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'sku' => 'IPH15-RD-128',
+                    'product_id' => 1001,
+                ],
+            ],
+            'query' => 'ihpone',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
         ]);
     }
 
@@ -3259,22 +3283,5 @@ class SearchTest extends TestCase
                 'totalHits' => 1,
             ],
         ];
-    }
-
-    private function setupLoupeWithDepartmentsFixture(Configuration $configuration = null, string $dataDir = ''): Loupe
-    {
-        if ($configuration === null) {
-            $configuration = Configuration::create();
-        }
-
-        $configuration = $configuration
-            ->withFilterableAttributes(['departments', 'gender', 'isActive', 'colors', 'age', 'recentPerformanceScores'])
-            ->withSortableAttributes(['firstname'])
-            ->withSearchableAttributes(['firstname', 'lastname']);
-
-        $loupe = $this->createLoupe($configuration, $dataDir);
-        $this->indexFixture($loupe, 'departments');
-
-        return $loupe;
     }
 }

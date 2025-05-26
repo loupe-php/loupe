@@ -69,6 +69,23 @@ trait FunctionalTestTrait
         $this->assertSame($expectedResults, $results);
     }
 
+    protected function setupLoupeWithDepartmentsFixture(Configuration $configuration = null, string $dataDir = ''): Loupe
+    {
+        if ($configuration === null) {
+            $configuration = Configuration::create();
+        }
+
+        $configuration = $configuration
+            ->withFilterableAttributes(['departments', 'gender', 'isActive', 'colors', 'age', 'recentPerformanceScores'])
+            ->withSortableAttributes(['firstname'])
+            ->withSearchableAttributes(['firstname', 'lastname']);
+
+        $loupe = $this->createLoupe($configuration, $dataDir);
+        $this->indexFixture($loupe, 'departments');
+
+        return $loupe;
+    }
+
     protected function setupLoupeWithMoviesFixture(Configuration $configuration = null): Loupe
     {
         if ($configuration === null) {
@@ -82,6 +99,24 @@ trait FunctionalTestTrait
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
+
+        return $loupe;
+    }
+
+    protected function setupLoupeWitProductsFixture(Configuration $configuration = null, string $dataDir = ''): Loupe
+    {
+        if ($configuration === null) {
+            $configuration = Configuration::create();
+        }
+
+        $configuration = $configuration
+            ->withPrimaryKey('sku')
+            ->withFilterableAttributes(['product_id', 'categories', 'price', 'isAvailable', 'ratings'])
+            ->withSortableAttributes(['name', 'price'])
+            ->withSearchableAttributes(['name', 'variant']);
+
+        $loupe = $this->createLoupe($configuration, $dataDir);
+        $this->indexFixture($loupe, 'products');
 
         return $loupe;
     }
