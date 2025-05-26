@@ -266,6 +266,33 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 
 Note: You cannot go any higher than `1000` documents per page. The higher the value you choose, the slower Loupe gets.
 
+## Grouping / Distinct attribute
+
+Sometimes you may want to group search results by a distinct attribute. This might be useful for cases where you want to reduce the final result set for a user, giving them an easier to browse catalog. If you e.g. index all variants of a certain sneaker (same model but exists in red, blue, green, size 10, 11, 12, etc.), you may want to list it only once in the result set, and it doesn't matter which of those variants. 
+
+```json
+[
+    {
+        "id": "sku-123-red",
+        "product_id": 123,
+        "color": "red"
+    },
+    {
+        "id": "sku-123-blue",
+        "product_id": 123,
+        "color": "blue"
+    }
+]
+```
+
+You can do this by using the attribute they have in common. Loupe will then only return one match per `product_id`:
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withDistinct('product_id')
+;
+```
+
 ## Term highlighting
 
 You can enable term highlighting by telling Loupe, which attributes you're interested in:

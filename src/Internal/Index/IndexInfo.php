@@ -275,6 +275,25 @@ class IndexInfo
     /**
      * @return array<string>
      */
+    public function getSingleFilterableAttributes(): array
+    {
+        $filterable = $this->getFilterableAttributes();
+        $result = [];
+
+        foreach ($filterable as $attributeName) {
+            if (!LoupeTypes::isSingleType($this->getLoupeTypeForAttribute($attributeName))) {
+                continue;
+            }
+
+            $result[] = $attributeName;
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<string>
+     */
     public function getSortableAttributes(): array
     {
         return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getSortableAttributes()), $this->getDocumentSchema()));

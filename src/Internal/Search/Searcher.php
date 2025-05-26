@@ -10,6 +10,7 @@ use Doctrine\DBAL\Result;
 use Location\Bounds;
 use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
@@ -203,6 +204,7 @@ class Searcher
         $this->selectTotalHits();
         $this->sortDocuments();
         $this->selectDistance();
+        $this->applyDistinct();
         $this->limitPagination();
 
         $showAllAttributes = \in_array('*', $this->queryParameters->getAttributesToRetrieve(), true);
@@ -630,6 +632,28 @@ class Searcher
         foreach ($tokenCollection->all() as $token) {
             $this->addTermMatchesCTE($token, $token === $tokenCollection->last());
         }
+    }
+
+    private function applyDistinct(): void
+    {
+        if (!$this->queryParameters instanceof SearchParameters) {
+            return;
+        }
+
+        $distinct = $this->queryParameters->getDistinct();
+
+        if ($distinct === null) {
+            return;
+        }
+
+        if (!\in_array($distinct, $this->engine->getIndexInfo()->getSingleFilterableAttributes(), true)) {
+            throw InvalidSearchParametersException::distinctAttributeMustBeASingleFilterableAttribute();
+        }
+
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $this->queryBuilder
+            ->addSelect($documentsAlias . '.' . $distinct)
+            ->groupBy($documentsAlias . '.' . $distinct);
     }
 
     private function buildTokenFrom(TokenCollection $tokenCollection): string

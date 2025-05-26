@@ -1,0 +1,72 @@
+[
+    {
+        "sku": "IPH15-RD-128",
+        "product_id": 1001,
+        "name": "iPhone 15",
+        "variant": "Red, 128GB",
+        "categories": ["Smartphones", "Electronics"],
+        "price": 999.99,
+        "isAvailable": true,
+        "ratings": [4.5, 5.0, 4.8]
+    },
+    {
+        "sku": "IPH15-BL-128",
+        "product_id": 1001,
+        "name": "iPhone 15",
+        "variant": "Blue, 128GB",
+        "categories": ["Smartphones", "Electronics"],
+        "price": 999.99,
+        "isAvailable": true,
+        "ratings": [4.7, 4.6]
+    },
+    {
+        "sku": "IPH15-RD-256",
+        "product_id": 1001,
+        "name": "iPhone 15",
+        "variant": "Red, 256GB",
+        "categories": ["Smartphones", "Electronics"],
+        "price": 1099.99,
+        "isAvailable": true,
+        "ratings": []
+    },
+    {
+        "sku": "GALAXY-S23-GR",
+        "product_id": 1002,
+        "name": "Galaxy S23",
+        "variant": "Green, 256GB",
+        "categories": ["Smartphones", "Electronics"],
+        "price": 899.99,
+        "isAvailable": true,
+        "ratings": [4.2, 4.3, 4.0]
+    },
+    {
+        "sku": "GALAXY-S23-WH",
+        "product_id": 1002,
+        "name": "Galaxy S23",
+        "variant": "White, 256GB",
+        "categories": ["Smartphones", "Electronics"],
+        "price": 899.99,
+        "isAvailable": false,
+        "ratings": []
+    },
+    {
+        "sku": "MBP16-SIL-1TB",
+        "product_id": 1003,
+        "name": "MacBook Pro 16\"",
+        "variant": "Silver, 1TB",
+        "categories": ["Laptops", "Computers"],
+        "price": 2499.00,
+        "isAvailable": true,
+        "ratings": [5.0, 4.9, 4.8, 5.0]
+    },
+    {
+        "sku": "MBP16-SPG-1TB",
+        "product_id": 1003,
+        "name": "MacBook Pro 16\"",
+        "variant": "Space Gray, 1TB",
+        "categories": ["Laptops", "Computers"],
+        "price": 2499.00,
+        "isAvailable": false,
+        "ratings": [4.6, 4.7]
+    }
+]
