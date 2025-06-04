@@ -55,7 +55,7 @@ class FilterBuilder
     /**
      * @return array<string|float>
      */
-    public function createGeoBoundingBoxWhereStatement(string $attributeName, Bounds $bounds = null): array
+    public function createGeoBoundingBoxWhereStatement(string $attributeName, Bounds|null $bounds = null): array
     {
         $documentAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
         $whereStatement = [];

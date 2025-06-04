@@ -2099,7 +2099,7 @@ class SearchTest extends TestCase
      * @param array<mixed> $expectedResults
      */
     #[DataProvider('prefixSearchProvider')]
-    public function testPrefixSearch(string $query, array $expectedResults, int $minTokenLengthForPrefixSearch = null): void
+    public function testPrefixSearch(string $query, array $expectedResults, int|null $minTokenLengthForPrefixSearch = null): void
     {
         $configuration = Configuration::create();
 

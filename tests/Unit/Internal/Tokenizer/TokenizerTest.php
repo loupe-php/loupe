@@ -300,7 +300,7 @@ class TokenizerTest extends TestCase
         ];
     }
 
-    private function createTokenizer(Configuration $configuration = null): Tokenizer
+    private function createTokenizer(Configuration|null $configuration = null): Tokenizer
     {
         $configuration = $configuration ?? Configuration::create();
         $languageDetector = new LanguageDetector();
