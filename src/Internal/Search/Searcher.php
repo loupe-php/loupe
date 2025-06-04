@@ -973,7 +973,7 @@ class Searcher
             $attributeOptions = $options;
 
             if (\in_array($attribute, $attributesToCrop, true)) {
-                $attributeOptions = $options->withEnableCrop();
+                $attributeOptions = $attributeOptions->withEnableCrop();
 
                 if (isset($this->queryParameters->getAttributesToCrop()[$attribute])) {
                     $attributeOptions = $attributeOptions->withCropLength($this->queryParameters->getAttributesToCrop()[$attribute]);
@@ -981,7 +981,7 @@ class Searcher
             }
 
             if (\in_array($attribute, $attributesToHighlight, true)) {
-                $attributeOptions = $options->withEnableHighlight();
+                $attributeOptions = $attributeOptions->withEnableHighlight();
             }
 
             if (\is_array($formatted[$attribute])) {
