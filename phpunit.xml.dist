@@ -6,6 +6,7 @@
          colors="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
          failOnWarning="true"
+         failOnDeprecation="true"
 >
     <php>
         <ini name="display_errors" value="1" />
