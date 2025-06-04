@@ -167,7 +167,7 @@ class CroppingTest extends TestCase
             [
                 'overview' => 20,
             ],
-            [],
+            ['title', 'overview'],
             [
                 'hits' => [
                     [
@@ -178,7 +178,7 @@ class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 24,
                             'title' => 'Kill Bill: Vol. 1',
-                            'overview' => 'An assassin is shot…their assassination circle…',
+                            'overview' => 'An <em>assassin</em> is shot…their <em>assassination</em> circle…',
                             'genres' => ['Action', 'Crime'],
                         ],
                     ],
