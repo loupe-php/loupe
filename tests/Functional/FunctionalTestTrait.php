@@ -69,7 +69,7 @@ trait FunctionalTestTrait
         $this->assertSame($expectedResults, $results);
     }
 
-    protected function setupLoupeWithDepartmentsFixture(Configuration $configuration = null, string $dataDir = ''): Loupe
+    protected function setupLoupeWithDepartmentsFixture(Configuration|null $configuration = null, string $dataDir = ''): Loupe
     {
         if ($configuration === null) {
             $configuration = Configuration::create();
@@ -86,7 +86,7 @@ trait FunctionalTestTrait
         return $loupe;
     }
 
-    protected function setupLoupeWithMoviesFixture(Configuration $configuration = null): Loupe
+    protected function setupLoupeWithMoviesFixture(Configuration|null $configuration = null): Loupe
     {
         if ($configuration === null) {
             $configuration = Configuration::create();
@@ -103,7 +103,7 @@ trait FunctionalTestTrait
         return $loupe;
     }
 
-    protected function setupLoupeWitProductsFixture(Configuration $configuration = null, string $dataDir = ''): Loupe
+    protected function setupLoupeWitProductsFixture(Configuration|null $configuration = null, string $dataDir = ''): Loupe
     {
         if ($configuration === null) {
             $configuration = Configuration::create();
