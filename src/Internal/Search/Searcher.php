@@ -20,6 +20,7 @@ use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
 use Loupe\Matcher\FormatterOptions;
+use Loupe\Matcher\FormatterResult;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 
@@ -41,6 +42,8 @@ class Searcher
     public const DISTANCE_ALIAS = '_distance';
 
     public const FACET_ALIAS_PREFIX = '_facet_';
+
+    public const MATCH_POSITION_INFO_PREFIX = '_match_position_info_';
 
     public const RELEVANCE_ALIAS = '_relevance';
 
@@ -199,6 +202,7 @@ class Searcher
         // Now it's time to add our CTEs
         $this->selectDocuments();
         $this->searchDocuments($tokens); // First, add the search term CTEs
+        $this->addPositionsForFormatting($tokens);
         $this->filterDocuments($tokens); // Then filter the documents (requires the search term CTEs)
         $this->addFacets();
         $this->selectTotalHits();
@@ -228,7 +232,7 @@ class Searcher
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
-            $this->formatHit($hit, $tokensIncludingStopwords);
+            $this->formatHit($hit, $result, $tokensIncludingStopwords);
 
             $hits[] = $hit;
         }
@@ -446,6 +450,37 @@ class Searcher
         return $searchResult;
     }
 
+    private function addPositionsForFormatting(TokenCollection $tokenCollection): void
+    {
+        if (!$this->askedForFormattingOrMatchesPosition()) {
+            return;
+        }
+
+        foreach ($tokenCollection->all() as $token) {
+            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+            $this->queryBuilder->addSelect(sprintf(
+                "(SELECT GROUP_CONCAT(attribute || ':' || position) FROM %s WHERE %s.id = %s.document) AS %s",
+                $cteName,
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                $cteName,
+                self::MATCH_POSITION_INFO_PREFIX . $token->getId(),
+            ));
+
+            $this->queryBuilder
+                ->innerJoin(
+                    self::CTE_MATCHES,
+                    self::CTE_MATCHES,
+                    $cteName,
+                    sprintf(
+                        '%s.document_id = %s.document_id',
+                        $cteName,
+                        self::CTE_MATCHES
+                    )
+                );
+        }
+    }
+
     private function addTermDocumentMatchesCTE(Token $token, ?Token $previousPhraseToken): void
     {
         // No term matches CTE -> no term document matches CTE
@@ -654,6 +689,22 @@ class Searcher
         $this->queryBuilder
             ->addSelect($documentsAlias . '.' . $distinct)
             ->groupBy($documentsAlias . '.' . $distinct);
+    }
+
+    private function askedForFormattingOrMatchesPosition(): bool
+    {
+        if (!$this->queryParameters instanceof SearchParameters) {
+            return false;
+        }
+        if ($this->queryParameters->getAttributesToHighlight() !== []) {
+            return true;
+        }
+
+        if ($this->queryParameters->getAttributesToCrop() !== []) {
+            return true;
+        }
+
+        return $this->queryParameters->showMatchesPosition();
     }
 
     private function buildTokenFrom(TokenCollection $tokenCollection): string
@@ -929,9 +980,24 @@ class Searcher
     }
 
     /**
-     * @param array<mixed> $hit
+     * @param array<string, array<int>> $matchPositionInfo
      */
-    private function formatHit(array &$hit, TokenCollection $queryTerms): void
+    private function formatAttributeForHit(string $attribute, string $value, TokenCollection $queryTerms, FormatterOptions $attributeOptions, array $matchPositionInfo): FormatterResult
+    {
+        if (!isset($matchPositionInfo[$attribute])) {
+            return new FormatterResult($value, new TokenCollection());
+        }
+
+        // TODO: pass on matchesPositionInfo somehow to the formatter so that it can re-use the positional info and does
+        // not tokenize the $value again
+        return $this->engine->getFormatter()->format($value, $queryTerms, $attributeOptions);
+    }
+
+    /**
+     * @param array<mixed> $hit
+     * @param array<mixed> $queryResult
+     */
+    private function formatHit(array &$hit, array $queryResult, TokenCollection $queryTerms): void
     {
         if (!$this->queryParameters instanceof SearchParameters) {
             return;
@@ -961,6 +1027,23 @@ class Searcher
             return;
         }
 
+        $matchPositionInfo = [];
+
+        foreach ($queryResult as $key => $value) {
+            if (str_starts_with($key, self::MATCH_POSITION_INFO_PREFIX)) {
+                $documentMatches = explode(',', $value);
+                foreach ($documentMatches as $documentMatch) {
+                    $attributeMatches = explode(':', $documentMatch);
+                    $matchPositionInfo[$attributeMatches[0]][] = (int) $attributeMatches[1];
+                }
+            }
+        }
+
+        // No match info, this should not happen (otherwise, why would it be a hit?) but defensive programming, I guess
+        if ($matchPositionInfo === []) {
+            return;
+        }
+
         $formatted = $hit;
         $matchesPosition = [];
 
@@ -986,8 +1069,7 @@ class Searcher
 
             if (\is_array($formatted[$attribute])) {
                 foreach ($formatted[$attribute] as $key => $value) {
-                    $formatterResult = $this->engine->getFormatter()
-                        ->format((string) $value, $queryTerms, $attributeOptions);
+                    $formatterResult = $this->formatAttributeForHit($attribute, (string) $value, $queryTerms, $attributeOptions, $matchPositionInfo);
 
                     if ($showMatchesPosition && $formatterResult->hasMatches()) {
                         $matchesPosition[$attribute] ??= [];
@@ -999,9 +1081,7 @@ class Searcher
                     }
                 }
             } else {
-                $value = $formatted[$attribute];
-                $formatterResult = $this->engine->getFormatter()
-                    ->format((string) $value, $queryTerms, $attributeOptions);
+                $formatterResult = $this->formatAttributeForHit($attribute, (string) $formatted[$attribute], $queryTerms, $attributeOptions, $matchPositionInfo);
 
                 if ($showMatchesPosition && $formatterResult->hasMatches()) {
                     $matchesPosition[$attribute] = $formatterResult->getMatchesArray();
