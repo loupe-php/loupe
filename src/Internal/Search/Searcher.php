@@ -988,9 +988,16 @@ class Searcher
             return new FormatterResult($value, new TokenCollection());
         }
 
-        // TODO: pass on matchesPositionInfo somehow to the formatter so that it can re-use the positional info and does
-        // not tokenize the $value again
-        return $this->engine->getFormatter()->format($value, $queryTerms, $attributeOptions);
+        $matches = new TokenCollection();
+
+        // TODO: must use stop words and include them here
+        foreach ($this->engine->getTokenizer()->tokenize($value)->all() as $i => $token) {
+            if (\in_array($i + 1, $matchPositionInfo[$attribute], true)) {
+                $matches->add($token);
+            }
+        }
+
+        return $this->engine->getFormatter()->format($value, $queryTerms, $attributeOptions, $matches);
     }
 
     /**
