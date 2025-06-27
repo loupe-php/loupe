@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Tokenizer;
 
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\LanguageDetection\LanguageDetectorInterface;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 use Loupe\Matcher\Tokenizer\Tokenizer as LoupeMatcherTokenizer;
 use Loupe\Matcher\Tokenizer\TokenizerInterface;
-use Nitotm\Eld\LanguageDetector;
 use Wamania\Snowball\NotFoundException;
 use Wamania\Snowball\Stemmer\Stemmer;
 use Wamania\Snowball\StemmerFactory;
@@ -34,7 +34,7 @@ class Tokenizer implements TokenizerInterface
 
     public function __construct(
         private Engine $engine,
-        private LanguageDetector $languageDetector,
+        private LanguageDetectorInterface $languageDetector,
     ) {
     }
 
@@ -98,16 +98,7 @@ class Tokenizer implements TokenizerInterface
      */
     public function tokenize(string $string, ?int $maxTokens = null, array $stopWords = [], bool $includeStopWords = false): TokenCollection
     {
-        $language = null;
-        $languageResult = $this->languageDetector->detect($string);
-
-        // For one simple string we have to check if the language result is reliable. There's not enough data for
-        // something like "Star Wars". It might be detected as nonsense, and we get weird stemming results.
-        if ($languageResult->isReliable()) {
-            $language = $languageResult->language;
-        }
-
-        return $this->doTokenize($string, $language, $maxTokens, $stopWords, $includeStopWords);
+        return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens, $stopWords, $includeStopWords);
     }
 
     /**
@@ -116,38 +107,13 @@ class Tokenizer implements TokenizerInterface
      */
     public function tokenizeDocument(array $document): array
     {
-        $bestScoresPerLanguage = [];
-        $languagePerAttribute = [];
-        foreach ($document as $attribute => $value) {
-            $languageResult = $this->languageDetector->detect($value);
-
-            // Store the best score per language
-            foreach ((array) $languageResult->scores() as $lang => $score) {
-                if (isset($bestScoresPerLanguage[$lang])) {
-                    $bestScoresPerLanguage[$lang] = max($bestScoresPerLanguage[$lang], $score);
-                } else {
-                    $bestScoresPerLanguage[$lang] = $score;
-                }
-            }
-
-            // If the language detection was reliable, we use this language for that attribute
-            if ($languageResult->isReliable()) {
-                $languagePerAttribute[$attribute] = $languageResult->language;
-            }
-        }
-
-        // The overall highest score is the best language for the entire document (if any)
-        $bestLanguage = null;
-        if ($bestScoresPerLanguage !== []) {
-            /** @var string $bestLanguage */
-            $bestLanguage = array_keys($bestScoresPerLanguage, max($bestScoresPerLanguage), true)[0];
-        }
+        $languageDetectionResult = $this->languageDetector->detectForDocument($document);
 
         $result = [];
 
         foreach ($document as $attribute => $value) {
-            // Tokenize using the language that was either detected or the best for the entire document
-            $result[$attribute] = $this->doTokenize($value, $languagePerAttribute[$attribute] ?? $bestLanguage);
+            // Tokenize using the language that was either detected for the attribute or the best for the entire document
+            $result[$attribute] = $this->doTokenize($value, $languageDetectionResult->getBestLanguageForAttribute($attribute) ?? $languageDetectionResult->getBestLanguageForDocument());
         }
 
         return $result;

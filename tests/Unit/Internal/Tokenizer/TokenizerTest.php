@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Unit\Internal\Tokenizer;
+namespace Loupe\Loupe\Tests\Unit\Internal\Tokenizer;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
-use Nitotm\Eld\LanguageDetector;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -303,12 +303,7 @@ class TokenizerTest extends TestCase
     private function createTokenizer(Configuration|null $configuration = null): Tokenizer
     {
         $configuration = $configuration ?? Configuration::create();
-        $languageDetector = new LanguageDetector();
-        $languageDetector->enableTextCleanup(true); // Clean stuff like URLs, domains etc. to improve language detection
-
-        if ($configuration->getLanguages() !== []) {
-            $languageDetector->langSubset($configuration->getLanguages()); // Save subset
-        }
+        $languageDetector = new NitotmLanguageDetector($configuration->getLanguages());
 
         return new Tokenizer($this->createMock(Engine::class), $languageDetector);
     }
