@@ -11,7 +11,6 @@ use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Logging\Middleware;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
-use Loupe\Loupe\Internal\Doctrine\CachePreparedStatementsMiddleware;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
@@ -109,7 +108,7 @@ final class LoupeFactory implements LoupeFactoryInterface
     private function getDbalConfiguration(Configuration $configuration): DbalConfiguration
     {
         $config = new DbalConfiguration();
-        $middlewares = [new CachePreparedStatementsMiddleware()];
+        $middlewares = [];
 
         if ($configuration->getLogger() !== null) {
             $middlewares[] = new Middleware($configuration->getLogger());
