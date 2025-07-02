@@ -43,13 +43,13 @@ abstract class AbstractSorter
 
         $searcher->getQueryBuilder()
             ->innerJoin(
-                Searcher::CTE_MATCHES,
+                $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
                 $cteName,
                 $cteName,
                 sprintf(
                     '%s.document_id = %s.document_id',
                     $cteName,
-                    Searcher::CTE_MATCHES
+                    $searcher->addSuffixToCteName(Searcher::CTE_MATCHES)
                 )
             );
 
