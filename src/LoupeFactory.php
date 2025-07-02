@@ -187,7 +187,7 @@ final class LoupeFactory implements LoupeFactoryInterface
 
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->$method(
+            $connection->getNativeConnection()->{$method}(
                 $functionName,
                 self::wrapSQLiteMethodForStaticCache($functionName, $function['callback']),
                 $function['numArgs']
