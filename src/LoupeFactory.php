@@ -64,7 +64,7 @@ final class LoupeFactory implements LoupeFactoryInterface
         } catch (Exception) {
             try {
                 $connection = DriverManager::getConnection(
-                    $dsnParser->parse('pdo_sqlite://' . $dsnPart),
+                    $dsnParser->parse('pdo-sqlite://' . $dsnPart),
                     $this->getDbalConfiguration($configuration)
                 );
             } catch (Exception) {
@@ -183,9 +183,11 @@ final class LoupeFactory implements LoupeFactoryInterface
             ],
         ];
 
+        $method = $connection->getNativeConnection() instanceof \PDO ? 'sqliteCreateFunction' : 'createFunction';
+
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->createFunction(
+            $connection->getNativeConnection()->$method(
                 $functionName,
                 self::wrapSQLiteMethodForStaticCache($functionName, $function['callback']),
                 $function['numArgs']
