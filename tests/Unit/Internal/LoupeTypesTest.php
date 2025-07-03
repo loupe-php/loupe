@@ -14,6 +14,13 @@ class LoupeTypesTest extends TestCase
     {
         yield 'String' => ['foobar', LoupeTypes::TYPE_STRING];
 
+        yield 'Stringable object' => [new class() implements \Stringable {
+            public function __toString()
+            {
+                return 'foobar';
+            }
+        }, LoupeTypes::TYPE_STRING];
+
         yield 'Integer' => [42, LoupeTypes::TYPE_NUMBER];
 
         yield 'Float' => [42.42, LoupeTypes::TYPE_NUMBER];
@@ -64,6 +71,15 @@ class LoupeTypesTest extends TestCase
             ],
             'whatever' => 'foo',
         ]));
+
+        $this->assertSame('foobar', LoupeTypes::convertToString(
+            new class() implements \Stringable {
+                public function __toString()
+                {
+                    return 'foobar';
+                }
+            }
+        ));
     }
 
     #[DataProvider('getTypeFromValueProvider')]
