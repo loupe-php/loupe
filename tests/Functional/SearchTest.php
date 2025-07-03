@@ -1028,6 +1028,16 @@ class SearchTest extends TestCase
             ['rating:asc', 'name:asc'],
             [
                 [
+                    'id' => 2,
+                    'name' => 'Indiana Jones',
+                    'rating' => 3.5,
+                ],
+                [
+                    'id' => 3,
+                    'name' => 'Jurassic Park',
+                    'rating' => 4,
+                ],
+                [
                     'id' => 5,
                     'name' => 'Back to the future',
                     'rating' => null,
@@ -1040,16 +1050,6 @@ class SearchTest extends TestCase
                 [
                     'id' => 1,
                     'name' => 'Star Wars',
-                ],
-                [
-                    'id' => 2,
-                    'name' => 'Indiana Jones',
-                    'rating' => 3.5,
-                ],
-                [
-                    'id' => 3,
-                    'name' => 'Jurassic Park',
-                    'rating' => 4,
                 ],
             ],
         ];
