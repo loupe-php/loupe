@@ -41,11 +41,11 @@ class SingleAttribute extends AbstractSorter
             )
             ->innerJoin(
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                Searcher::CTE_MATCHES,
-                Searcher::CTE_MATCHES,
+                $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
+                $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
                 sprintf(
                     '%s.document_id = %s.id',
-                    Searcher::CTE_MATCHES,
+                    $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
                     $engine->getIndexInfo()->getAliasForTable(
                         IndexInfo::TABLE_NAME_DOCUMENTS
                     )
@@ -53,7 +53,7 @@ class SingleAttribute extends AbstractSorter
             )
             ->groupBy('document_id');
 
-        $cteName = 'order_' . $this->attributeName;
+        $cteName = $searcher->addSuffixToCteName('order_' . $this->attributeName);
 
         $this->addAndOrderByCte($searcher, $engine, $this->direction, $cteName, $qb);
     }

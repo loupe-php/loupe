@@ -35,11 +35,11 @@ class GeoPoint extends AbstractSorter
             ->from($cteName)
             ->innerJoin(
                 $cteName,
-                Searcher::CTE_MATCHES,
-                Searcher::CTE_MATCHES,
+                $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
+                $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
                 sprintf(
                     '%s.document_id = %s.document_id',
-                    Searcher::CTE_MATCHES,
+                    $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
                     $cteName
                 )
             )

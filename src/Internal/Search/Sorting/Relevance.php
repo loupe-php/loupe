@@ -58,19 +58,19 @@ class Relevance extends AbstractSorter
             // Create the relevance CTE
             $qb = $engine->getConnection()->createQueryBuilder();
             $qb
-                ->addSelect(Searcher::CTE_MATCHES . '.document_id AS document')
+                ->addSelect($searcher->addSuffixToCteName(Searcher::CTE_MATCHES) . '.document_id AS document')
                 // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
                 // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
                 // because it's just a ";" separated list.
                 ->addSelect("COALESCE(group_concat(DISTINCT dm.position || ':' || dm.attribute || ':' || dm.typos), '0' ) AS relevance")
-                ->from(Searcher::CTE_MATCHES)
+                ->from($searcher->addSuffixToCteName(Searcher::CTE_MATCHES))
                 ->leftJoin(
-                    Searcher::CTE_MATCHES,
+                    $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
                     $cteName,
                     'dm',
-                    sprintf('dm.document = %s.document_id', Searcher::CTE_MATCHES)
+                    sprintf('dm.document = %s.document_id', $searcher->addSuffixToCteName(Searcher::CTE_MATCHES))
                 )
-                ->groupBy(Searcher::CTE_MATCHES . '.document_id');
+                ->groupBy($searcher->addSuffixToCteName(Searcher::CTE_MATCHES) . '.document_id');
 
             $searcher->addCTE(new Cte($termRelevanceCTE, ['document_id', 'relevance_per_term'], $qb));
 
@@ -85,23 +85,23 @@ class Relevance extends AbstractSorter
         // CTE for all documents
         $qb = $engine->getConnection()->createQueryBuilder();
         $qb
-            ->addSelect(Searcher::CTE_MATCHES . '.document_id AS document')
+            ->addSelect($searcher->addSuffixToCteName(Searcher::CTE_MATCHES) . '.document_id AS document')
             ->addSelect(implode(" || ';' || ", $relevances) . ' AS relevance_per_term')
-            ->from(Searcher::CTE_MATCHES)
+            ->from($searcher->addSuffixToCteName(Searcher::CTE_MATCHES))
         ;
 
         foreach ($ctes as $cte) {
-            $qb->leftJoin(Searcher::CTE_MATCHES, $cte, $cte, sprintf('%s.document_id = %s.document_id', $cte, Searcher::CTE_MATCHES));
+            $qb->leftJoin($searcher->addSuffixToCteName(Searcher::CTE_MATCHES), $cte, $cte, sprintf('%s.document_id = %s.document_id', $cte, $searcher->addSuffixToCteName(Searcher::CTE_MATCHES)));
         }
 
-        $searcher->addCTE(new Cte(self::CTE_NAME, ['document_id', 'relevance_per_term'], $qb));
+        $searcher->addCTE(new Cte($searcher->addSuffixToCteName(self::CTE_NAME), ['document_id', 'relevance_per_term'], $qb));
 
         // Join the CTE
         $searcher->getQueryBuilder()->join(
-            Searcher::CTE_MATCHES,
-            self::CTE_NAME,
-            self::CTE_NAME,
-            sprintf('%s.document_id = %s.document_id', self::CTE_NAME, Searcher::CTE_MATCHES)
+            $searcher->addSuffixToCteName(Searcher::CTE_MATCHES),
+            $searcher->addSuffixToCteName(self::CTE_NAME),
+            $searcher->addSuffixToCteName(self::CTE_NAME),
+            sprintf('%s.document_id = %s.document_id', $searcher->addSuffixToCteName(self::CTE_NAME), $searcher->addSuffixToCteName(Searcher::CTE_MATCHES))
         );
 
         // Searchable attributes to determine attribute weight
@@ -111,7 +111,7 @@ class Relevance extends AbstractSorter
             "loupe_relevance('%s', '%s', %s) AS %s",
             implode(':', $searchableAttributes),
             implode(':', $engine->getConfiguration()->getRankingRules()),
-            self::CTE_NAME . '.relevance_per_term',
+            $searcher->addSuffixToCteName(self::CTE_NAME) . '.relevance_per_term',
             Searcher::RELEVANCE_ALIAS,
         );
 

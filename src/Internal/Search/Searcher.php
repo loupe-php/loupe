@@ -90,7 +90,7 @@ class Searcher
      */
     public function addAllMultiFiltersCte(string $attribute, string $alias): ?string
     {
-        $cteName = self::CTE_ALL_MULTI_FILTERS_PREFIX . $attribute;
+        $cteName = $this->addSuffixToCteName(self::CTE_ALL_MULTI_FILTERS_PREFIX . $attribute);
 
         if ($this->hasCTE($cteName)) {
             return $cteName;
@@ -144,11 +144,11 @@ class Searcher
             )
             ->innerJoin(
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                self::CTE_MATCHES,
-                self::CTE_MATCHES,
+                $this->addSuffixToCteName(self::CTE_MATCHES),
+                $this->addSuffixToCteName(self::CTE_MATCHES),
                 sprintf(
                     '%s.document_id = %s.document',
-                    self::CTE_MATCHES,
+                    $this->addSuffixToCteName(self::CTE_MATCHES),
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
                 )
             );
@@ -156,7 +156,7 @@ class Searcher
 
     public function addGeoDistanceCte(string $attribute, float $latitude, float $longitude, ?Bounds $bounds = null): string
     {
-        $cteName = self::DISTANCE_ALIAS . '_' . $attribute;
+        $cteName = $this->addSuffixToCteName(self::DISTANCE_ALIAS . '_' . $attribute);
 
         if ($this->hasCTE($cteName)) {
             return $cteName;
@@ -187,6 +187,11 @@ class Searcher
         $this->addCTE(new Cte($cteName, ['document_id', 'distance'], $qb));
 
         return $cteName;
+    }
+
+    public function addSuffixToCteName(string $cteName): string
+    {
+        return $cteName . '_' . spl_object_id($this);
     }
 
     /**
@@ -269,8 +274,8 @@ class Searcher
 
     public function getCTENameForToken(string $prefix, Token $token): string
     {
-        // For debugging: return $prefix . $token->getId() . '_' .  $token->getTerm();
-        return $prefix . $token->getId();
+        // For debugging: return $this->addSuffixToCteName($prefix . $token->getId() . '_' .  $token->getTerm());
+        return $this->addSuffixToCteName($prefix . $token->getId());
     }
 
     /**
@@ -384,20 +389,21 @@ class Searcher
                 $qb->from(IndexInfo::TABLE_NAME_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS));
                 $qb->innerJoin(
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    self::CTE_MATCHES,
-                    self::CTE_MATCHES,
+                    $this->addSuffixToCteName(self::CTE_MATCHES),
+                    $this->addSuffixToCteName(self::CTE_MATCHES),
                     sprintf(
                         '%s.document_id = %s.id',
-                        self::CTE_MATCHES,
+                        $this->addSuffixToCteName(self::CTE_MATCHES),
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
                     )
                 );
             }
 
-            $cteName = self::FACET_ALIAS_PREFIX . $facet;
+            $alias = self::FACET_ALIAS_PREFIX . $facet;
+            $cteName = $this->addSuffixToCteName(self::FACET_ALIAS_PREFIX . $facet);
 
             $this->addCTE(new Cte($cteName, ['facet_group', 'facet_value'], $qb));
-            $this->queryBuilder->addSelect(sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $cteName));
+            $this->queryBuilder->addSelect(sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $alias));
         }
     }
 
@@ -469,13 +475,13 @@ class Searcher
 
             $this->queryBuilder
                 ->innerJoin(
-                    self::CTE_MATCHES,
-                    self::CTE_MATCHES,
+                    $this->addSuffixToCteName(self::CTE_MATCHES),
+                    $this->addSuffixToCteName(self::CTE_MATCHES),
                     $cteName,
                     sprintf(
                         '%s.document_id = %s.document_id',
                         $cteName,
-                        self::CTE_MATCHES
+                        $this->addSuffixToCteName(self::CTE_MATCHES)
                     )
                 );
         }
@@ -976,7 +982,7 @@ class Searcher
             $qbMatches->from('(' . implode(' INTERSECT ', $froms) . ')');
         }
 
-        $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id'], $qbMatches));
+        $this->addCTE(new Cte($this->addSuffixToCteName(self::CTE_MATCHES), ['document_id'], $qbMatches));
     }
 
     /**
@@ -1161,7 +1167,7 @@ class Searcher
         foreach ($this->queryParameters->getAttributesToRetrieve() as $attribute) {
             if (str_starts_with($attribute, '_geoDistance(')) {
                 $attribute = (string) preg_replace('/^_geoDistance\((' . Configuration::ATTRIBUTE_NAME_RGXP . ')\)$/', '$1', $attribute);
-                $cteName = self::DISTANCE_ALIAS . '_' . $attribute;
+                $cteName = $this->addSuffixToCteName(self::DISTANCE_ALIAS . '_' . $attribute);
 
                 if (!$this->hasCTE($cteName)) {
                     continue;
@@ -1170,13 +1176,13 @@ class Searcher
                 $this->queryBuilder->addSelect($cteName . '.distance AS ' . self::DISTANCE_ALIAS . '_' . $attribute);
                 $this->queryBuilder
                     ->innerJoin(
-                        self::CTE_MATCHES,
+                        $this->addSuffixToCteName(self::CTE_MATCHES),
                         $cteName,
                         $cteName,
                         sprintf(
                             '%s.document_id = %s.document_id',
                             $cteName,
-                            self::CTE_MATCHES
+                            $this->addSuffixToCteName(self::CTE_MATCHES)
                         )
                     );
             }
@@ -1191,12 +1197,12 @@ class Searcher
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
             ->innerJoin(
                 $documentsAlias,
-                self::CTE_MATCHES,
-                self::CTE_MATCHES,
+                $this->addSuffixToCteName(self::CTE_MATCHES),
+                $this->addSuffixToCteName(self::CTE_MATCHES),
                 sprintf(
                     '%s.id = %s.document_id',
                     $documentsAlias,
-                    self::CTE_MATCHES
+                    $this->addSuffixToCteName(self::CTE_MATCHES)
                 )
             );
     }
