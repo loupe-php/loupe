@@ -35,7 +35,7 @@ class IndexTest extends TestCase
                 self::assertNull($indexResult->generalException());
                 self::assertInstanceOf(InvalidDocumentException::class, $indexResult->exceptionForDocument(2));
                 self::assertSame(
-                    'Document ID "2" ("{"id":2,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
+                    'Document ID "2" ("{"id":2,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","lastname":"string","gender":"string","departments":"array<string>","colors":"array<string>","age":"number"}',
                     $indexResult->exceptionForDocument(2)->getMessage()
                 );
             },
@@ -60,7 +60,7 @@ class IndexTest extends TestCase
                 self::assertNull($indexResult->generalException());
                 self::assertInstanceOf(InvalidDocumentException::class, $indexResult->exceptionForDocument(3));
                 self::assertSame(
-                    'Document ID "3" ("{"id":3,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
+                    'Document ID "3" ("{"id":3,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","lastname":"string","gender":"string","departments":"array<string>","colors":"array<string>","age":"number"}',
                     $indexResult->exceptionForDocument(3)->getMessage()
                 );
             },
