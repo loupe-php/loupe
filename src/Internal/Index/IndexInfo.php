@@ -52,6 +52,7 @@ class IndexInfo
     public function setup(array $document): void
     {
         $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
+        $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
 
         if (!\array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
@@ -60,13 +61,11 @@ class IndexInfo
         $documentSchema = [];
 
         foreach ($document as $attributeName => $attributeValue) {
-            // Ignore invalid attributes on setup - we don't know yet if this is a searchable attribute or not, so during
-            // setup, we just have to ignore them.
-            try {
-                Configuration::validateAttributeName($attributeName);
-            } catch (InvalidConfigurationException) {
+            if (!\in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
                 continue;
             }
+
+            Configuration::validateAttributeName($attributeName);
 
             $documentSchema[$attributeName] = LoupeTypes::getTypeFromValue($attributeValue);
         }
