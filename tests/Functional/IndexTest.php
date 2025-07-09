@@ -409,6 +409,24 @@ class IndexTest extends TestCase
         $this->assertSame($uta, $document);
     }
 
+    public function testSkipsAttributesThatAreInvalidButNotSearchableOnSetup(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withSortableAttributes(['title'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 1,
+            'title' => 'Movie',
+            'overview' => 'This is some teaser',
+            'irrelevant@attribute-with!invalid-characters' => 'foobar',
+        ]);
+
+        $this->assertSame('Movie', $loupe->getDocument(1)['title'] ?? null);
+    }
+
     /**
      * @param array<array<string, mixed>> $documents
      * @param array<array<string, mixed>> $expectedHits
