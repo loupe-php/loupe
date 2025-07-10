@@ -33,12 +33,10 @@ class HighlightingTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
-                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
-                                    'stopword' => false,
                                 ],
                             ],
                         ],

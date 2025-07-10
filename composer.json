@@ -30,7 +30,7 @@
         "toflar/state-set-index": "^3.0",
         "psr/log": "^2.0 || ^3.0",
         "nitotm/efficient-language-detector": "^3.0",
-        "loupe/matcher": "^0.1.0"
+        "loupe/matcher": "dev-feature/stopwords-interface"
     },
     "require-dev": {
         "symfony/var-dumper": "^6.2",

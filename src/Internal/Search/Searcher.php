@@ -197,7 +197,10 @@ class Searcher
         $start = (int) floor(microtime(true) * 1000);
 
         $tokens = $this->getTokens();
-        $tokensIncludingStopwords = $this->getTokensIncludingStopwords();
+        $tokensIncludingStopwords = $this->engine->getTokenizer()->tokenize(
+            $this->queryParameters->getQuery(),
+            $this->engine->getConfiguration()->getMaxQueryTokens(),
+        );
 
         // Now it's time to add our CTEs
         $this->selectDocuments();
@@ -318,18 +321,7 @@ class Searcher
             ->tokenize(
                 $this->queryParameters->getQuery(),
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
-                $this->engine->getConfiguration()->getStopWords()
-            );
-    }
-
-    public function getTokensIncludingStopwords(): TokenCollection
-    {
-        return $this->tokens = $this->engine->getTokenizer()
-            ->tokenize(
-                $this->queryParameters->getQuery(),
-                $this->engine->getConfiguration()->getMaxQueryTokens(),
-                []
-            );
+            )->withoutStopwords($this->engine->getStopWords(), true);
     }
 
     public function hasCTE(string $cteName): bool
@@ -990,7 +982,6 @@ class Searcher
 
         $matches = new TokenCollection();
 
-        // TODO: must use stop words and include them here
         foreach ($this->engine->getTokenizer()->tokenize($value)->all() as $i => $token) {
             if (\in_array($i + 1, $matchPositionInfo[$attribute], true)) {
                 $matches->add($token);
@@ -1037,7 +1028,8 @@ class Searcher
         $matchPositionInfo = [];
 
         foreach ($queryResult as $key => $value) {
-            if (str_starts_with($key, self::MATCH_POSITION_INFO_PREFIX)) {
+            // Need to check for null because it might be that there was no match for a given term in this document
+            if (str_starts_with($key, self::MATCH_POSITION_INFO_PREFIX) && $value !== null) {
                 $documentMatches = explode(',', $value);
                 foreach ($documentMatches as $documentMatch) {
                     $attributeMatches = explode(':', $documentMatch);
@@ -1148,7 +1140,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
-
+        //dd(implode(' ', $queryParts), $this->queryBuilder->getParameters());
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
