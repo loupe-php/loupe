@@ -11,7 +11,6 @@ use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Logging\Middleware;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
-use Loupe\Loupe\Internal\Doctrine\CachePreparedStatementsMiddleware;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Geo;
 use Loupe\Loupe\Internal\Levenshtein;
@@ -64,7 +63,7 @@ final class LoupeFactory implements LoupeFactoryInterface
         } catch (Exception) {
             try {
                 $connection = DriverManager::getConnection(
-                    $dsnParser->parse('pdo_sqlite://' . $dsnPart),
+                    $dsnParser->parse('pdo-sqlite://' . $dsnPart),
                     $this->getDbalConfiguration($configuration)
                 );
             } catch (Exception) {
@@ -109,7 +108,7 @@ final class LoupeFactory implements LoupeFactoryInterface
     private function getDbalConfiguration(Configuration $configuration): DbalConfiguration
     {
         $config = new DbalConfiguration();
-        $middlewares = [new CachePreparedStatementsMiddleware()];
+        $middlewares = [];
 
         if ($configuration->getLogger() !== null) {
             $middlewares[] = new Middleware($configuration->getLogger());
@@ -183,9 +182,11 @@ final class LoupeFactory implements LoupeFactoryInterface
             ],
         ];
 
+        $method = $connection->getNativeConnection() instanceof \PDO ? 'sqliteCreateFunction' : 'createFunction';
+
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->createFunction(
+            $connection->getNativeConnection()->{$method}(
                 $functionName,
                 self::wrapSQLiteMethodForStaticCache($functionName, $function['callback']),
                 $function['numArgs']

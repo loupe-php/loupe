@@ -14,6 +14,8 @@ use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
+use Loupe\Loupe\Internal\LanguageDetection\PreselectedLanguageDetector;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
@@ -23,7 +25,6 @@ use Loupe\Matcher\Formatter;
 use Loupe\Matcher\Matcher;
 use Loupe\Matcher\StopWords\InMemoryStopWords;
 use Loupe\Matcher\StopWords\StopWordsInterface;
-use Nitotm\Eld\LanguageDetector;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
@@ -193,19 +194,13 @@ class Engine
         }
 
         $languages = $this->getConfiguration()->getLanguages();
-        $ngramsFile = null;
 
-        if ($languages !== []) {
-            // Load from data dir - this seems unnecessarily complicated, but we want to avoid calling new LanguageDetector()
-            // without arguments at all costs as this library currently loads the default ngram file even if only a subset
-            // is used later on. So we want to optimize this for memory if we can.
-            if ($this->getDataDir() !== null) {
-                $ngramsFile = $this->loadNGramsFile($languages);
-            }
+        // Fast route if you configured only one language
+        if (\count($languages) === 1) {
+            $languageDetector = new PreselectedLanguageDetector($languages[0]);
+        } else {
+            $languageDetector = new NitotmLanguageDetector($languages);
         }
-
-        $languageDetector = new LanguageDetector($ngramsFile);
-        $languageDetector->enableTextCleanup(true); // Clean stuff like URLs, domains etc. to improve language detection
 
         return $this->tokenizer = new Tokenizer($this, $languageDetector);
     }
@@ -388,42 +383,5 @@ class Engine
         }
 
         return $types;
-    }
-
-    /**
-     * @param array<string> $languages
-     */
-    private function loadNGramsFile(array $languages): ?string
-    {
-        $generateNgramsRefFile = function (string $ngramsRefFile, array $languages): bool {
-            // Prepare for the next time
-            $languageDetector = new LanguageDetector();
-            $file = $languageDetector->langSubset($languages)->file;
-
-            if ($file !== null) {
-                file_put_contents($ngramsRefFile, '<?php return ' . var_export($file, true) . ';');
-                return true;
-            }
-
-            return false;
-        };
-
-        sort($languages);
-        $ngramsRefFile = $this->getDataDir() . '/ngrams_' . hash('sha256', implode(' ', $languages)) . '.php';
-        if (!file_exists($ngramsRefFile)) {
-            if (!$generateNgramsRefFile($ngramsRefFile, $languages)) {
-                return null;
-            }
-        }
-
-        $ngramsFile = require $ngramsRefFile;
-
-        if (!\is_string($ngramsFile) || !file_exists($ngramsFile)) {
-            if (!$generateNgramsRefFile($ngramsRefFile, $languages)) {
-                return null;
-            }
-        }
-
-        return $ngramsFile;
     }
 }

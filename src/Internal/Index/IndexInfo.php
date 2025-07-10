@@ -61,11 +61,11 @@ class IndexInfo
         $documentSchema = [];
 
         foreach ($document as $attributeName => $attributeValue) {
-            Configuration::validateAttributeName($attributeName);
-
             if (!\in_array($attributeName, $documentSchemaRelevantAttributes, true)) {
                 continue;
             }
+
+            Configuration::validateAttributeName($attributeName);
 
             $documentSchema[$attributeName] = LoupeTypes::getTypeFromValue($attributeValue);
         }

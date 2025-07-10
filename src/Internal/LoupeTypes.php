@@ -80,6 +80,10 @@ class LoupeTypes
 
     public static function convertToString(mixed $attributeValue): string
     {
+        if ($attributeValue instanceof \Stringable) {
+            $attributeValue = (string) $attributeValue;
+        }
+
         if (\is_string($attributeValue)) {
             if ($attributeValue === '') {
                 return self::VALUE_EMPTY;
