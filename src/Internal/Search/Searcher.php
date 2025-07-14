@@ -972,10 +972,14 @@ class Searcher
     }
 
     /**
-     * @param array<string, array<int>> $matchPositionInfo
+     * @param array<string, array<int>>|null $matchPositionInfo
      */
-    private function formatAttributeForHit(string $attribute, string $value, TokenCollection $queryTerms, FormatterOptions $attributeOptions, array $matchPositionInfo): FormatterResult
+    private function formatAttributeForHit(string $attribute, string $value, TokenCollection $queryTerms, FormatterOptions $attributeOptions, ?array $matchPositionInfo = null): FormatterResult
     {
+        if ($matchPositionInfo === null) {
+            return $this->engine->getFormatter()->format($value, $queryTerms, $attributeOptions);
+        }
+
         if (!isset($matchPositionInfo[$attribute])) {
             return new FormatterResult($value, new TokenCollection());
         }
@@ -1068,7 +1072,8 @@ class Searcher
 
             if (\is_array($formatted[$attribute])) {
                 foreach ($formatted[$attribute] as $key => $value) {
-                    $formatterResult = $this->formatAttributeForHit($attribute, (string) $value, $queryTerms, $attributeOptions, $matchPositionInfo);
+                    // Do not pass along match positions as we don't have reliable information about the position of matches in arrays
+                    $formatterResult = $this->formatAttributeForHit($attribute, (string) $value, $queryTerms, $attributeOptions);
 
                     if ($showMatchesPosition && $formatterResult->hasMatches()) {
                         $matchesPosition[$attribute] ??= [];

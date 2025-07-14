@@ -135,4 +135,8 @@ $configuration = \Loupe\Loupe\Configuration::create()
 Note: Attributes you neither want to search or filter for are best kept **outside** of Loupe. Don't bother it with 
 data that doesn't need to be processed.
 
+## Avoid highlighting in nested attributes
+
+You should limit the highlighting and cropping of results to top-level string attributes. Loupe optimizes for this case by re-using existing match information when formatting results. Highlighting nested/array values is a more expensive operation as it has to recalculate the matches for each value in the array, leading to slower performance when applied to large datasets.
+
 [Paper]: https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf
