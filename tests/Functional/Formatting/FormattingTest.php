@@ -33,12 +33,10 @@ class FormattingTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
-                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
-                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -52,7 +50,7 @@ class FormattingTest extends TestCase
             ],
         ];
 
-        yield 'Matches position of stopwords' => [
+        yield 'Matches position has no stopwords' => [
             'her assassin',
             ['title', 'overview'],
             [],
@@ -69,22 +67,10 @@ class FormattingTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
-                                    'stopword' => false,
-                                ],
-                                [
-                                    'start' => 23,
-                                    'length' => 3,
-                                    'stopword' => true,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
-                                    'stopword' => false,
-                                ],
-                                [
-                                    'start' => 124,
-                                    'length' => 3,
-                                    'stopword' => true,
                                 ],
                             ],
                         ],
@@ -123,7 +109,6 @@ class FormattingTest extends TestCase
                                     [
                                         'start' => 0,
                                         'length' => 6,
-                                        'stopword' => false,
                                     ],
                                 ],
                             ],
@@ -145,7 +130,6 @@ class FormattingTest extends TestCase
                                 0 => [
                                     'start' => 127,
                                     'length' => 6,
-                                    'stopword' => false,
                                 ],
                             ],
                         ],

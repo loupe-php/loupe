@@ -8,6 +8,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
+use Loupe\Matcher\StopWords\InMemoryStopWords;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -168,8 +169,7 @@ class TokenizerTest extends TestCase
         $tokenizer = $this->createTokenizer();
         $tokens = $tokenizer->tokenize(
             'Hallo, mein Name ist Hase und ich weiß von nichts.',
-            stopWords: ['ist', 'und', 'von']
-        );
+        )->withoutStopwords(new InMemoryStopWords(['ist', 'und', 'von']), true);
 
         $this->assertSame([
             'hallo',
@@ -192,15 +192,13 @@ class TokenizerTest extends TestCase
 
         $tokensWithStopWords = $tokenizer->tokenize(
             'ist nicht seltsam',
-            stopWords: ['ist', 'nicht']
-        );
+        )->withoutStopwords(new InMemoryStopWords(['ist', 'nicht']), true);
 
         $this->assertSame(['seltsam'], $tokensWithStopWords->allTermsWithVariants());
 
         $tokensWithStopWordsOnly = $tokenizer->tokenize(
             'ist oder nicht',
-            stopWords: ['ist', 'oder', 'nicht']
-        );
+        )->withoutStopwords(new InMemoryStopWords(['ist', 'oder', 'nicht']), true);
 
         $this->assertSame(['ist', 'oder', 'nicht'], $tokensWithStopWordsOnly->allTermsWithVariants());
     }

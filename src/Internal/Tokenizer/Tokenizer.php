@@ -93,12 +93,9 @@ class Tokenizer implements TokenizerInterface
         return false;
     }
 
-    /**
-     * @param array<string> $stopWords
-     */
-    public function tokenize(string $string, ?int $maxTokens = null, array $stopWords = [], bool $includeStopWords = false): TokenCollection
+    public function tokenize(string $string, ?int $maxTokens = null): TokenCollection
     {
-        return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens, $stopWords, $includeStopWords);
+        return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens);
     }
 
     /**
@@ -119,16 +116,13 @@ class Tokenizer implements TokenizerInterface
         return $result;
     }
 
-    /**
-     * @param array<string> $stopWords
-     */
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, array $stopWords = [], bool $includeStopWords = false): TokenCollection
+    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
     {
         if (!isset($this->tokenizers[$language])) {
             $this->tokenizers[$language] = new LoupeMatcherTokenizer($language);
         }
 
-        $tokenCollection = $this->tokenizers[$language]->tokenize($string, $maxTokens, $stopWords, $includeStopWords);
+        $tokenCollection = $this->tokenizers[$language]->tokenize($string, $maxTokens);
         $tokenCollectionWithVariants = new TokenCollection();
 
         foreach ($tokenCollection->all() as $token) {
@@ -142,17 +136,7 @@ class Tokenizer implements TokenizerInterface
                 }
             }
 
-            $token = $token->withVariants($variants);
-
-            if (!$token->isStopWord()) {
-                foreach ($variants as $variant) {
-                    if (\in_array($variant, $stopWords, true)) {
-                        $token = $token->withMarkAsStopWord();
-                    }
-                }
-            }
-
-            $tokenCollectionWithVariants->add($token);
+            $tokenCollectionWithVariants->add($token->withVariants($variants));
         }
 
         return $tokenCollectionWithVariants;

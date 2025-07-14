@@ -23,6 +23,8 @@ use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
 use Loupe\Matcher\Formatter;
 use Loupe\Matcher\Matcher;
+use Loupe\Matcher\StopWords\InMemoryStopWords;
+use Loupe\Matcher\StopWords\StopWordsInterface;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
@@ -45,6 +47,8 @@ class Engine
 
     private StateSetIndex $stateSetIndex;
 
+    private StopwordsInterface $stopwords;
+
     private ?Tokenizer $tokenizer = null;
 
     public function __construct(
@@ -63,7 +67,8 @@ class Engine
             new NullDataStore()
         );
         $this->indexer = new Indexer($this);
-        $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->configuration->getStopWords()));
+        $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
+        $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->stopwords));
         $this->filterParser = new Parser($this);
         $this->sqliteVersion = match (true) {
             \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
@@ -175,6 +180,11 @@ class Engine
     public function getStateSetIndex(): StateSetIndex
     {
         return $this->stateSetIndex;
+    }
+
+    public function getStopWords(): StopWordsInterface
+    {
+        return $this->stopwords;
     }
 
     public function getTokenizer(): Tokenizer

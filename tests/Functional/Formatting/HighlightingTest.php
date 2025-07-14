@@ -33,12 +33,10 @@ class HighlightingTest extends TestCase
                                 [
                                     'start' => 3,
                                     'length' => 8,
-                                    'stopword' => false,
                                 ],
                                 [
                                     'start' => 79,
                                     'length' => 13,
-                                    'stopword' => false,
                                 ],
                             ],
                         ],
@@ -210,7 +208,7 @@ class HighlightingTest extends TestCase
                         'genres' => ['Adventure', 'Fantasy', 'Action'],
                         '_formatted' => [
                             'id' => 22,
-                            'title' => '<em>Pirates of the Caribbean</em>: <em>The Curse of the Black Pearl</em>',
+                            'title' => '<em>Pirates of the Caribbean: The Curse of the Black Pearl</em>',
                             'overview' => "Jack Sparrow, a freewheeling 18th-century pirate, quarrels with a rival pirate bent on pillaging Port Royal. When the governor's daughter is kidnapped, Sparrow decides to help the girl's love save her.",
                             'genres' => ['Adventure', 'Fantasy', 'Action'],
                         ],
