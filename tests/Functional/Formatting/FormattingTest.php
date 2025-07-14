@@ -50,7 +50,7 @@ class FormattingTest extends TestCase
             ],
         ];
 
-        yield 'Matches position of stopwords' => [
+        yield 'Matches position has no stopwords' => [
             'her assassin',
             ['title', 'overview'],
             [],
@@ -69,16 +69,8 @@ class FormattingTest extends TestCase
                                     'length' => 8,
                                 ],
                                 [
-                                    'start' => 23,
-                                    'length' => 3,
-                                ],
-                                [
                                     'start' => 79,
                                     'length' => 13,
-                                ],
-                                [
-                                    'start' => 124,
-                                    'length' => 3,
                                 ],
                             ],
                         ],
