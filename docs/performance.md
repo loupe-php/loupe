@@ -137,6 +137,32 @@ data that doesn't need to be processed.
 
 ## Avoid highlighting in nested attributes
 
-You should limit the highlighting and cropping of results to top-level string attributes. Loupe optimizes for this case by re-using existing match information when formatting results. Highlighting nested/array values is a more expensive operation as it has to recalculate the matches for each value in the array, leading to slower performance when applied to large datasets.
+You should limit the highlighting and cropping of results to top-level string attributes. Loupe optimizes for this case
+by re-using existing match information when formatting results. Highlighting nested/array values is a more expensive
+operation as it has to recalculate the matches for each value in the array, leading to slower performance when applied
+to large datasets.
+
+## Memory considerations
+
+Loupe uses SQLite and executes quite heavy queries which require complex computations by SQLite, but there's also quite 
+some stuff going on in PHP. Thus, if you have a long-running process that evaluates e.g. hundreds of queries, make sure
+to instantiate a fresh `Loupe` instance for every iteration so your database is closed and memory can be freed. There's
+a helper method that also calls garbage collection for you, so memory usage should be kept at a consistent level:
+
+```php
+foreach ($thousandsOfQueries as $query) {
+    $loupe = $loupeFactory->create(...);
+    $result = $loupe->search(SearchParameters::create()->withQuery($query));
+    // Do something with the result
+    Loupe::freeMemory($loupe); // $loupe is now null, caches are reset and the garbage collector is called
+}
+```
+
+The same also applies when indexing documents. Do not pass 20.000 documents to `$loupe->addDocuments()` if memory is
+relevant. Try splitting them in smaller chunks and measure your process.
+
+> Hint: Do not measure using memory_get_usage(true), Blackfire, Tideways or any other PHP profiler. You will miss out on
+> all the allocations that are NOT created by PHP/your code. You won't see what SQLite itself is using so monitor your
+> process using process monitoring tools such as "top".
 
 [Paper]: https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf
