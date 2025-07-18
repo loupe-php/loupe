@@ -13,7 +13,7 @@ class StateSet implements StateSetInterface
 {
     private bool $initialized = false;
 
-    private InMemoryStateSet $inMemoryStateSet;
+    private StateSetBloomFilter $inMemoryStateSet;
 
     public function __construct(
         private Engine $engine
@@ -35,7 +35,7 @@ class StateSet implements StateSetInterface
     public function clear(): void
     {
         $this->initialize();
-        $this->inMemoryStateSet = new InMemoryStateSet([]);
+        $this->inMemoryStateSet = StateSetBloomFilter::fromStatesArray([]);
     }
 
     public function has(int $state): bool
@@ -58,9 +58,7 @@ class StateSet implements StateSetInterface
             $this->engine->getConnection()->executeStatement(sprintf('INSERT INTO ' . IndexInfo::TABLE_NAME_STATE_SET . ' (state) VALUES %s', implode(',', $values)));
         }
 
-        $all = $this->inMemoryStateSet->all();
-        $all = array_combine($this->inMemoryStateSet->all(), array_fill(0, \count($all), true));
-        $this->dumpStateSetCache($all);
+        $this->dumpStateSetCache($this->inMemoryStateSet);
     }
 
     public function remove(int $state): void
@@ -72,7 +70,7 @@ class StateSet implements StateSetInterface
     /**
      * @param array<int, bool> $stateSet
 ^     */
-    private function dumpStateSetCache(array $stateSet): void
+    private function dumpStateSetCache(InMemoryStateSet|StateSetBloomFilter $stateSet): void
     {
         $cacheFile = $this->getStateSetCacheFile();
 
@@ -80,7 +78,11 @@ class StateSet implements StateSetInterface
             return;
         }
 
-        file_put_contents($cacheFile, pack('N*', ...array_keys($stateSet)));
+        if ($stateSet instanceof InMemoryStateSet) {
+            $stateSet = StateSetBloomFilter::fromStatesArray($stateSet->all());
+        }
+
+        file_put_contents($cacheFile, pack('N', round($stateSet->getProbability() * (2 ** 32))) . $stateSet->getBinaryData());
     }
 
     private function getStateSetCacheFile(): ?string
@@ -101,18 +103,21 @@ class StateSet implements StateSetInterface
         $cacheFile = $this->getStateSetCacheFile();
 
         if ($cacheFile === null) {
-            $data = $this->loadFromStorage();
+            $stateSet = new InMemoryStateSet($this->loadFromStorage());
         } else {
             if (!file_exists($cacheFile)) {
-                $data = $this->loadFromStorage();
-                $this->dumpStateSetCache($data);
+                $data = array_keys($this->loadFromStorage());
+                $stateSet = StateSetBloomFilter::fromStatesArray($data);
+                $this->dumpStateSetCache($stateSet);
             } else {
-                $data = (array) unpack('N*', (string) file_get_contents($cacheFile));
-                $data = array_combine($data, array_fill(0, \count($data), true));
+                $data = file_get_contents($cacheFile);
+                $probability = unpack('N', substr($data, 0, 4))[1] / (2 ** 32);
+                $data = substr($data, 4);
+                $stateSet = StateSetBloomFilter::fromBinaryData($data, $probability);
             }
         }
 
-        $this->inMemoryStateSet = new InMemoryStateSet($data);
+        $this->inMemoryStateSet = $stateSet;
         $this->initialized = true;
     }
 
