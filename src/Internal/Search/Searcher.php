@@ -490,8 +490,7 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
 
-        // If neither, exactness nor typo is part of the ranking rules, we can omit calculating the info for better performance
-        if (\in_array('exactness', $this->engine->getConfiguration()->getRankingRules(), true) || \in_array('typo', $this->engine->getConfiguration()->getRankingRules(), true)) {
+        if ($this->needsTypoCount()) {
             $cteSelectQb->addSelect(sprintf(
                 'loupe_levensthein(%s.term, %s, %s) AS typos',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
@@ -1125,6 +1124,21 @@ class Searcher
         $this->queryBuilder->setMaxResults($limit);
     }
 
+    /**
+     * If typo tolerance is disabled or neither, exactness nor typo are part of the ranking rules, we can omit
+     * calculating the info for better performance.
+     */
+    private function needsTypoCount(): bool
+    {
+        $configuration = $this->engine->getConfiguration();
+
+        if ($configuration->getTypoTolerance()->isDisabled()) {
+            return false;
+        }
+
+        return \in_array('exactness', $configuration->getRankingRules(), true) || \in_array('typo', $configuration->getRankingRules(), true);
+    }
+
     private function query(): Result
     {
         $queryParts = [];
@@ -1145,6 +1159,7 @@ class Searcher
         }
 
         $queryParts[] = $this->queryBuilder->getSQL();
+
         return $this->engine->getConnection()->executeQuery(
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
