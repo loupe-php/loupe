@@ -74,6 +74,9 @@ final class Loupe
         $this->engine->deleteDocuments($ids);
     }
 
+    /**
+     * @param-out null $loupe
+     */
     public static function freeMemory(self &$loupe): void
     {
         StaticCache::cleanUp($loupe);
