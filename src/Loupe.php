@@ -74,6 +74,13 @@ final class Loupe
         $this->engine->deleteDocuments($ids);
     }
 
+    public static function freeMemory(self &$loupe): void
+    {
+        StaticCache::cleanUp($loupe);
+        $loupe = null;
+        gc_collect_cycles();
+    }
+
     public function getConfiguration(): Configuration
     {
         StaticCache::enterContext($this);
