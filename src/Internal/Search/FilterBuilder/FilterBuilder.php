@@ -25,14 +25,11 @@ class FilterBuilder
 {
     private const CTE_PREFIX = 'cte_fnode_';
 
-    private QueryBuilder $globalQueryBuilder;
-
     public function __construct(
         private Engine $engine,
         private Searcher $searcher,
         private Ast $filterAst,
     ) {
-        $this->globalQueryBuilder = $this->searcher->getQueryBuilder();
     }
 
     public function buildFrom(): string
@@ -61,7 +58,7 @@ class FilterBuilder
         $whereStatement = [];
 
         // Prevent nullable
-        $nullTerm = $this->globalQueryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL);
+        $nullTerm = $this->searcher->createNamedParameter(LoupeTypes::VALUE_NULL);
         $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lat';
         $whereStatement[] = '!=';
         $whereStatement[] = $nullTerm;
@@ -159,7 +156,7 @@ class FilterBuilder
                     '%s.attribute=%s AND %s.id = %s.attribute',
                     $this->engine->getIndexInfo()
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->globalQueryBuilder->createNamedParameter($node->attribute),
+                    $this->searcher->createNamedParameter($node->attribute),
                     $this->engine->getIndexInfo()
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $this->engine->getIndexInfo()
@@ -243,7 +240,7 @@ class FilterBuilder
                     sprintf(
                         '%s.attribute=%s AND %s.id = %s.attribute',
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                        $this->globalQueryBuilder->createNamedParameter($node->attribute),
+                        $this->searcher->createNamedParameter($node->attribute),
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                     )

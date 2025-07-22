@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Search;
 
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
 use Location\Bounds;
@@ -58,6 +59,11 @@ class Searcher
     private array $ctesByTag = [];
 
     private FilterBuilder $filterBuilder;
+
+    /**
+     * @var array<int|float|string, string>
+     */
+    private array $namedParameters = [];
 
     private QueryBuilder $queryBuilder;
 
@@ -137,7 +143,7 @@ class Searcher
                 sprintf(
                     '%s.attribute=%s AND %s.id = %s.attribute',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->getQueryBuilder()->createNamedParameter($attribute),
+                    $this->createNamedParameter($attribute),
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                 )
@@ -187,6 +193,19 @@ class Searcher
         $this->addCTE(new Cte($cteName, ['document_id', 'distance'], $qb));
 
         return $cteName;
+    }
+
+    public function createNamedParameter(mixed $value, mixed $type = ParameterType::STRING): string
+    {
+        if ($type === ParameterType::STRING && \is_scalar($value)) {
+            if (isset($this->namedParameters[$value])) {
+                return $this->namedParameters[$value];
+            }
+
+            return $this->namedParameters[$value] = $this->queryBuilder->createNamedParameter($value, $type);
+        }
+
+        return $this->queryBuilder->createNamedParameter($value, $type);
     }
 
     /**
@@ -498,7 +517,7 @@ class Searcher
             $cteSelectQb->addSelect(sprintf(
                 'loupe_levensthein(%s.term, %s, %s) AS typos',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $this->getQueryBuilder()->createNamedParameter($token->getTerm()),
+                $this->createNamedParameter($token->getTerm()),
                 $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
             ));
             $cteSelectQb->innerJoin(
@@ -533,7 +552,7 @@ class Searcher
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
-                $this->queryBuilder->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
+                $this->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
             ));
         }
 
@@ -590,7 +609,7 @@ class Searcher
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
-                $this->queryBuilder->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
+                $this->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
             ));
         }
 
@@ -644,7 +663,7 @@ class Searcher
                 $ors[] = sprintf(
                     '%s.term LIKE %s',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                    $this->queryBuilder->createNamedParameter($token->getTerm() . '%')
+                    $this->createNamedParameter($token->getTerm() . '%')
                 );
             }
         }
@@ -812,7 +831,7 @@ class Searcher
         $where[] = 'AND';
         $where[] = sprintf(
             'loupe_max_levenshtein(%s, %s.%s, %d, %s)',
-            $this->queryBuilder->createNamedParameter($term),
+            $this->createNamedParameter($term),
             $this->engine->getIndexInfo()->getAliasForTable($table),
             $termColumnName,
             $levenshteinDistance,
@@ -841,7 +860,7 @@ class Searcher
     private function createWherePartForTerm(string $term, bool $prefix): string
     {
         $where = [];
-        $termParameter = $this->queryBuilder->createNamedParameter($term);
+        $termParameter = $this->createNamedParameter($term);
         $levenshteinDistance = $this->engine->getConfiguration()
             ->getTypoTolerance()
             ->getLevenshteinDistanceForTerm($term);
@@ -871,7 +890,7 @@ class Searcher
             $where[] = sprintf(
                 '%s.term LIKE %s',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $this->queryBuilder->createNamedParameter($term . '%')
+                $this->createNamedParameter($term . '%')
             );
             $where[] = ')';
         }
