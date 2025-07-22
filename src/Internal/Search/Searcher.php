@@ -386,6 +386,10 @@ class Searcher
                 );
             }
 
+            // Make sure null and empty values are not considered (MAX() would probably prefer those)
+            $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL));
+            $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_EMPTY));
+
             $cteName = self::FACET_ALIAS_PREFIX . $facet;
 
             $this->addCTE(new Cte($cteName, ['facet_group', 'facet_value'], $qb));
