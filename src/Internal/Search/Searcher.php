@@ -429,6 +429,13 @@ class Searcher
                 $attribute = (string) preg_replace('/^' . self::FACET_ALIAS_PREFIX . '(' . Configuration::ATTRIBUTE_NAME_RGXP . ')$/', '$1', $column);
                 $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($attribute);
 
+                // No matches
+                if ($value === null) {
+                    $facetStats[$attribute] = [];
+                    $facetDistribution[$attribute] = [];
+                    continue;
+                }
+
                 $items = explode(',', $value);
                 foreach ($items as $item) {
                     $pos = strrpos($item, ':');

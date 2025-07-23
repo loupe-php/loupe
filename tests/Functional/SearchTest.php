@@ -890,6 +890,38 @@ class SearchTest extends TestCase
                 ],
             ],
         ];
+
+        yield 'Test results containing empty facets' => [
+            'Marko Gerste',
+            '',
+            ['gender', 'age', 'departments', 'recentPerformanceScores'],
+            [
+                'hits' => [
+                    [
+                        'firstname' => 'Marko',
+                    ],
+                ],
+                'query' => 'Marko Gerste',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+                'facetDistribution' => [
+                    'gender' => [],
+                    'departments' => [],
+                    'recentPerformanceScores' => [],
+                ],
+                'facetStats' => [
+                    'gender' => [],
+                    'age' => [
+                        'min' => 22.0,
+                        'max' => 22.0,
+                    ],
+                    'departments' => [],
+                    'recentPerformanceScores' => [],
+                ],
+            ],
+        ];
     }
 
     public static function sortOnMultiAttributesWithMinAndMaxModifiers(): \Generator
