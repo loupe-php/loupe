@@ -198,7 +198,7 @@ class StateSetTest extends TestCase
         sort($all);
 
         $dump = (string) file_get_contents($engine->getDataDir() . '/state_set.bin');
-        $dump = (array) unpack('N*', $dump);
+        $dump = (array) unpack('Q*', $dump);
         $dump = array_combine($dump, array_fill(0, \count($dump), true));
         sort($dump);
 
