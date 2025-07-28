@@ -696,10 +696,10 @@ class SearchTest extends TestCase
 
     public static function searchWithFacetsProvider(): \Generator
     {
-        yield 'No query and no filters, getting the gender facet only' => [
+        yield 'No query and no filters, checking the gender and isActive facet only' => [
             '',
             '',
-            ['gender'],
+            ['gender', 'isActive'],
             [
                 'hits' => [
                     [
@@ -731,10 +731,13 @@ class SearchTest extends TestCase
                 'totalHits' => 7,
                 'facetDistribution' => [
                     'gender' => [
-
                         'female' => 2,
                         'male' => 2,
                         'other' => 1,
+                    ],
+                    'isActive' => [
+                        'false' => 2,
+                        'true' => 5,
                     ],
                 ],
             ],

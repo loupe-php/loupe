@@ -428,6 +428,7 @@ class Searcher
             if (str_starts_with($column, self::FACET_ALIAS_PREFIX)) {
                 $attribute = (string) preg_replace('/^' . self::FACET_ALIAS_PREFIX . '(' . Configuration::ATTRIBUTE_NAME_RGXP . ')$/', '$1', $column);
                 $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($attribute);
+                $isBoolean = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute) === LoupeTypes::TYPE_BOOLEAN;
 
                 // No matches
                 if ($value === null) {
@@ -446,6 +447,10 @@ class Searcher
 
                     $group = substr($item, 0, $pos);
                     $value = substr($item, $pos + 1);
+
+                    if ($isBoolean) {
+                        $group = $group === '1.0' ? 'true' : 'false';
+                    }
 
                     if ($isNumeric) {
                         $facetStats[$attribute]['min'] = (float) $group;
