@@ -832,12 +832,32 @@ class SearchTest extends TestCase
                         'male' => 2,
                         'other' => 1,
                     ],
+                    'age' => [
+                        '18.0' => 1,
+                        '22.0' => 1,
+                        '29.0' => 1,
+                        '32.0' => 1,
+                        '40.0' => 1,
+                        '58.0' => 1,
+                        '96.0' => 1,
+                    ],
                     'departments' => [
                         'Backoffice' => 2,
                         'Development' => 2,
                         'Engineering' => 2,
                         'Facility-Management' => 1,
                         'Project Management' => 1,
+                    ],
+                    'recentPerformanceScores' => [
+                        '2.8' => 1,
+                        '3.8' => 1,
+                        '3.9' => 1,
+                        '4.0' => 1,
+                        '4.1' => 2,
+                        '4.2' => 1,
+                        '4.5' => 1,
+                        '4.6' => 1,
+                        '4.7' => 1,
                     ],
                 ],
                 'facetStats' => [
@@ -876,9 +896,18 @@ class SearchTest extends TestCase
                         'female' => 1,
                         'male' => 1,
                     ],
+                    'age' => [
+                        '18.0' => 1,
+                        '29.0' => 1,
+                    ],
                     'departments' => [
                         'Backoffice' => 2,
                         'Development' => 1,
+                    ],
+                    'recentPerformanceScores' => [
+                        '2.8' => 1,
+                        '3.9' => 1,
+                        '4.1' => 1,
                     ],
                 ],
                 'facetStats' => [
@@ -911,16 +940,17 @@ class SearchTest extends TestCase
                 'totalHits' => 1,
                 'facetDistribution' => [
                     'gender' => [],
+                    'age' => [
+                        '22.0' => 1,
+                    ],
                     'departments' => [],
                     'recentPerformanceScores' => [],
                 ],
                 'facetStats' => [
-                    'gender' => [],
                     'age' => [
                         'min' => 22.0,
                         'max' => 22.0,
                     ],
-                    'departments' => [],
                     'recentPerformanceScores' => [],
                 ],
             ],
