@@ -42,7 +42,9 @@ class Searcher
 
     public const DISTANCE_ALIAS = '_distance';
 
-    public const FACET_ALIAS_PREFIX = '_facet_';
+    public const FACET_ALIAS_COUNT_PREFIX = '_facet_count_';
+
+    public const FACET_ALIAS_MIN_MAX_PREFIX = '_facet_minmax_';
 
     public const MATCH_POSITION_INFO_PREFIX = '_match_position_info_';
 
@@ -360,38 +362,12 @@ class Searcher
             return;
         }
 
-        foreach ($facets as $facet) {
+        $buildCommonQueryBuilder = function (string $attribute, string $facetAlias): QueryBuilder {
             $qb = $this->engine->getConnection()->createQueryBuilder();
-            $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($facet);
 
-            if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($facet)) {
-                $facetAlias = sprintf(
-                    '%s.%s',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $isNumeric ? 'numeric_value' : 'string_value',
-                );
-
-                if ($isNumeric) {
-                    $qb->select(sprintf('MIN(%s)', $facetAlias), sprintf('MAX(%s)', $facetAlias));
-                } else {
-                    $qb->select($facetAlias, sprintf('COUNT(DISTINCT %s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
-                    $qb->groupBy($facetAlias);
-                }
-
-                $this->addFromMultiAttributesAndJoinMatches($qb, $facet);
+            if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($attribute)) {
+                $this->addFromMultiAttributesAndJoinMatches($qb, $attribute);
             } else {
-                $facetAlias = sprintf(
-                    '%s.%s',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $facet,
-                );
-
-                if ($isNumeric) {
-                    $qb->select(sprintf('MIN(%s)', $facetAlias), sprintf('MAX(%s)', $facetAlias));
-                } else {
-                    $qb->select($facetAlias, 'COUNT(*)');
-                    $qb->groupBy($facetAlias);
-                }
                 $qb->from(IndexInfo::TABLE_NAME_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS));
                 $qb->innerJoin(
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
@@ -409,10 +385,62 @@ class Searcher
             $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL));
             $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_EMPTY));
 
-            $cteName = self::FACET_ALIAS_PREFIX . $facet;
+            $qb->setMaxResults(100); // Limit the number of facet values
 
+            return $qb;
+        };
+
+        $addFacetCte = function (string $cteName, QueryBuilder $qb): void {
             $this->addCTE(new Cte($cteName, ['facet_group', 'facet_value'], $qb));
             $this->queryBuilder->addSelect(sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $cteName));
+        };
+
+        foreach ($facets as $facet) {
+            $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($facet);
+
+            if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($facet)) {
+                $facetAlias = sprintf(
+                    '%s.%s',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $isNumeric ? 'numeric_value' : 'string_value',
+                );
+
+                $commonQb = $buildCommonQueryBuilder($facet, $facetAlias);
+
+                // Count facet, always needed
+                $qb = clone $commonQb;
+                $qb->select($facetAlias, sprintf('COUNT(DISTINCT %s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
+                $qb->groupBy($facetAlias);
+                $addFacetCte(self::FACET_ALIAS_COUNT_PREFIX . $facet, $qb);
+
+                // MinMax facet for numeric fields
+                if ($isNumeric) {
+                    $qb = clone $commonQb;
+                    $qb->select(sprintf('MIN(%s)', $facetAlias), sprintf('MAX(%s)', $facetAlias));
+                    $addFacetCte(self::FACET_ALIAS_MIN_MAX_PREFIX . $facet, $qb);
+                }
+            } else {
+                $facetAlias = sprintf(
+                    '%s.%s',
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    $facet,
+                );
+
+                $commonQb = $buildCommonQueryBuilder($facet, $facetAlias);
+
+                // Count facet, always needed
+                $qb = clone $commonQb;
+                $qb->select($facetAlias, 'COUNT(*)');
+                $qb->groupBy($facetAlias);
+                $addFacetCte(self::FACET_ALIAS_COUNT_PREFIX . $facet, $qb);
+
+                // MinMax facet for numeric fields
+                if ($isNumeric) {
+                    $qb = clone $commonQb;
+                    $qb->select(sprintf('MIN(%s)', $facetAlias), sprintf('MAX(%s)', $facetAlias));
+                    $addFacetCte(self::FACET_ALIAS_MIN_MAX_PREFIX . $facet, $qb);
+                }
+            }
         }
     }
 
@@ -425,14 +453,12 @@ class Searcher
         $facetStats = [];
 
         foreach ($result as $column => $value) {
-            if (str_starts_with($column, self::FACET_ALIAS_PREFIX)) {
-                $attribute = (string) preg_replace('/^' . self::FACET_ALIAS_PREFIX . '(' . Configuration::ATTRIBUTE_NAME_RGXP . ')$/', '$1', $column);
-                $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($attribute);
+            if (str_starts_with($column, self::FACET_ALIAS_COUNT_PREFIX)) {
+                $attribute = (string) preg_replace('/^' . self::FACET_ALIAS_COUNT_PREFIX . '(' . Configuration::ATTRIBUTE_NAME_RGXP . ')$/', '$1', $column);
                 $isBoolean = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute) === LoupeTypes::TYPE_BOOLEAN;
 
                 // No matches
                 if ($value === null) {
-                    $facetStats[$attribute] = [];
                     $facetDistribution[$attribute] = [];
                     continue;
                 }
@@ -452,17 +478,26 @@ class Searcher
                         $group = $group === '1.0' ? 'true' : 'false';
                     }
 
-                    if ($isNumeric) {
-                        $facetStats[$attribute]['min'] = (float) $group;
-                        $facetStats[$attribute]['max'] = (float) $value;
-                    } else {
-                        if (\in_array($group, [LoupeTypes::VALUE_EMPTY, LoupeTypes::VALUE_NULL], true)) {
-                            continue;
-                        }
-
-                        $facetDistribution[$attribute][$group] = (int) $value;
+                    if (\in_array($group, [LoupeTypes::VALUE_EMPTY, LoupeTypes::VALUE_NULL], true)) {
+                        continue;
                     }
+
+                    $facetDistribution[$attribute][$group] = (int) $value;
                 }
+            }
+
+            if (str_starts_with($column, self::FACET_ALIAS_MIN_MAX_PREFIX)) {
+                $attribute = (string) preg_replace('/^' . self::FACET_ALIAS_MIN_MAX_PREFIX . '(' . Configuration::ATTRIBUTE_NAME_RGXP . ')$/', '$1', $column);
+
+                // No matches
+                if ($value === null) {
+                    $facetStats[$attribute] = [];
+                    continue;
+                }
+
+                [$min, $max] = explode(':', $value);
+                $facetStats[$attribute]['min'] = (float) $min;
+                $facetStats[$attribute]['max'] = (float) $max;
             }
         }
 
