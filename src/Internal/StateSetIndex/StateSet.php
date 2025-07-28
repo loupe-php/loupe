@@ -80,7 +80,7 @@ class StateSet implements StateSetInterface
             return;
         }
 
-        file_put_contents($cacheFile, pack('N*', ...array_keys($stateSet)));
+        file_put_contents($cacheFile, pack('Q*', ...array_keys($stateSet)));
     }
 
     private function getStateSetCacheFile(): ?string
@@ -107,7 +107,7 @@ class StateSet implements StateSetInterface
                 $data = $this->loadFromStorage();
                 $this->dumpStateSetCache($data);
             } else {
-                $data = (array) unpack('N*', (string) file_get_contents($cacheFile));
+                $data = (array) unpack('Q*', (string) file_get_contents($cacheFile));
                 $data = array_combine($data, array_fill(0, \count($data), true));
             }
         }
