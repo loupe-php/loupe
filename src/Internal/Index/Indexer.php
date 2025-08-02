@@ -147,18 +147,19 @@ class Indexer
             $documentData = $document;
         }
 
+        $prKey = $this->engine->getConfiguration()->getPrimaryKey();
         $data = [
-            'user_id' => (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
+            'user_id' => (string) $document[$prKey],
             'document' => Util::encodeJson($documentData),
         ];
 
-        foreach ($this->engine->getIndexInfo()->getSingleFilterableAndSortableAttributes() as $attribute) {
-            if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {
+        $idxInfo = $this->engine->getIndexInfo();
+        foreach ($idxInfo->getSingleFilterableAndSortableAttributes() as $attribute) {
+            if ($attribute === $prKey) {
                 continue;
             }
 
-            $loupeType = $this->engine->getIndexInfo()
-                ->getLoupeTypeForAttribute($attribute);
+            $loupeType = $idxInfo->getLoupeTypeForAttribute($attribute);
 
             if ($loupeType === LoupeTypes::TYPE_GEO) {
                 if (!isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
@@ -174,8 +175,8 @@ class Indexer
         }
 
         // Markers for IS EMPTY and IS NULL filters on multi attributes
-        foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
-            $loupeType = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute);
+        foreach ($idxInfo->getMultiFilterableAttributes() as $attribute) {
+            $loupeType = $idxInfo->getLoupeTypeForAttribute($attribute);
             $value = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
 
             if (\is_array($value)) {
