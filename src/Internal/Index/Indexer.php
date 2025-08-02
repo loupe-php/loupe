@@ -54,17 +54,17 @@ class Indexer
         try {
             $this->engine->getConnection()
                 ->transactional(function () use ($indexInfo, $documents, &$successfulCount, &$documentExceptions) {
+                    $connection = $this->engine->getConnection();
                     foreach ($documents as $document) {
                         try {
                             $indexInfo->fixAndValidateDocument($document);
 
-                            $this->engine->getConnection()
-                                ->transactional(function () use ($document) {
-                                    $documentId = $this->createDocument($document);
-                                    $this->removeDocumentData($documentId);
-                                    $this->indexMultiAttributes($document, $documentId);
-                                    $this->indexTerms($document, $documentId);
-                                });
+                            $connection->transactional(function () use ($document) {
+                                $documentId = $this->createDocument($document);
+                                $this->removeDocumentData($documentId);
+                                $this->indexMultiAttributes($document, $documentId);
+                                $this->indexTerms($document, $documentId);
+                            });
 
                             $successfulCount++;
                         } catch (LoupeExceptionInterface $exception) {
