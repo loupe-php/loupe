@@ -41,11 +41,12 @@ class Tokenizer implements TokenizerInterface
     public function matches(Token $token, TokenCollection $tokens): bool
     {
         $configuration = $this->engine->getConfiguration();
-        $firstCharTypoCountsDouble = $configuration->getTypoTolerance()->firstCharTypoCountsDouble();
+        $typoTolerance = $configuration->getTypoTolerance();
+        $firstCharTypoCountsDouble = $typoTolerance->firstCharTypoCountsDouble();
 
         foreach ($tokens->all() as $queryToken) {
             foreach ($queryToken->allTerms() as $queryTerm) {
-                $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($queryTerm);
+                $levenshteinDistance = $typoTolerance->getLevenshteinDistanceForTerm($queryTerm);
 
                 if ($levenshteinDistance === 0) {
                     if (\in_array($queryTerm, $token->allTerms(), true)) {
@@ -67,7 +68,7 @@ class Tokenizer implements TokenizerInterface
             return false;
         }
 
-        $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($lastToken->getTerm());
+        $levenshteinDistance = $typoTolerance->getLevenshteinDistanceForTerm($lastToken->getTerm());
 
         // Prefix search (only if minimum token length is fulfilled)
         if (mb_strlen($token->getTerm()) <= $configuration->getMinTokenLengthForPrefixSearch()) {

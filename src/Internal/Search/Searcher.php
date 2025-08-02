@@ -125,10 +125,11 @@ class Searcher
 
     public function addCTE(Cte $cte): void
     {
-        $this->ctesByName[$cte->getName()] = $cte;
+        $cteName = $cte->getName();
+        $this->ctesByName[$cteName] = $cte;
 
         foreach ($cte->getTags() as $tag) {
-            $this->ctesByTag[$tag][$cte->getName()] = $cte;
+            $this->ctesByTag[$tag][$cteName] = $cte;
         }
     }
 
@@ -240,6 +241,8 @@ class Searcher
 
         $hits = [];
 
+        $showRankingScore = $this->queryParameters instanceof SearchParameters && $this->queryParameters->showRankingScore();
+
         foreach ($this->query()->iterateAssociative() as $result) {
             $document = Util::decodeJson($result['document']);
 
@@ -251,7 +254,7 @@ class Searcher
 
             $hit = $showAllAttributes ? $document : array_intersect_key($document, $attributesToRetrieve);
 
-            if ($this->queryParameters instanceof SearchParameters && $this->queryParameters->showRankingScore()) {
+            if ($showRankingScore) {
                 $hit['_rankingScore'] = \array_key_exists(self::RELEVANCE_ALIAS, $result) ?
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
@@ -356,27 +359,29 @@ class Searcher
             return;
         }
 
-        $facets = array_intersect($this->queryParameters->getFacets(), $this->engine->getIndexInfo()->getFilterableAttributes());
+        $idxInfo = $this->engine->getIndexInfo();
+
+        $facets = array_intersect($this->queryParameters->getFacets(), $idxInfo->getFilterableAttributes());
 
         if ($facets === []) {
             return;
         }
 
-        $buildCommonQueryBuilder = function (string $attribute, string $facetAlias): QueryBuilder {
+        $buildCommonQueryBuilder = function (string $attribute, string $facetAlias) use ($idxInfo): QueryBuilder {
             $qb = $this->engine->getConnection()->createQueryBuilder();
 
-            if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($attribute)) {
+            if ($idxInfo->isMultiFilterableAttribute($attribute)) {
                 $this->addFromMultiAttributesAndJoinMatches($qb, $attribute);
             } else {
-                $qb->from(IndexInfo::TABLE_NAME_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS));
+                $qb->from(IndexInfo::TABLE_NAME_DOCUMENTS, $idxInfo->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS));
                 $qb->innerJoin(
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    $idxInfo->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                     self::CTE_MATCHES,
                     self::CTE_MATCHES,
                     sprintf(
                         '%s.document_id = %s.id',
                         self::CTE_MATCHES,
-                        $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+                        $idxInfo->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
                     )
                 );
             }
@@ -395,13 +400,14 @@ class Searcher
             $this->queryBuilder->addSelect(sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $cteName));
         };
 
-        foreach ($facets as $facet) {
-            $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($facet);
 
-            if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($facet)) {
+        foreach ($facets as $facet) {
+            $isNumeric = $idxInfo->isNumericAttribute($facet);
+
+            if ($idxInfo->isMultiFilterableAttribute($facet)) {
                 $facetAlias = sprintf(
                     '%s.%s',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                    $idxInfo->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $isNumeric ? 'numeric_value' : 'string_value',
                 );
 
@@ -409,7 +415,7 @@ class Searcher
 
                 // Count facet, always needed
                 $qb = clone $commonQb;
-                $qb->select($facetAlias, sprintf('COUNT(DISTINCT %s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
+                $qb->select($facetAlias, sprintf('COUNT(DISTINCT %s.document)', $idxInfo->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
                 $qb->groupBy($facetAlias);
                 $addFacetCte(self::FACET_ALIAS_COUNT_PREFIX . $facet, $qb);
 
@@ -422,7 +428,7 @@ class Searcher
             } else {
                 $facetAlias = sprintf(
                     '%s.%s',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                    $idxInfo->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                     $facet,
                 );
 
@@ -441,7 +447,7 @@ class Searcher
                     $addFacetCte(self::FACET_ALIAS_MIN_MAX_PREFIX . $facet, $qb);
                 }
             }
-        }
+        } // endforeach
     }
 
     /**
@@ -451,11 +457,12 @@ class Searcher
     {
         $facetDistribution = [];
         $facetStats = [];
+        $idxInfo = $this->engine->getIndexInfo();
 
         foreach ($result as $column => $value) {
             if (str_starts_with($column, self::FACET_ALIAS_COUNT_PREFIX)) {
                 $attribute = (string) preg_replace('/^' . self::FACET_ALIAS_COUNT_PREFIX . '(' . Configuration::ATTRIBUTE_NAME_RGXP . ')$/', '$1', $column);
-                $isBoolean = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute) === LoupeTypes::TYPE_BOOLEAN;
+                $isBoolean = $idxInfo->getLoupeTypeForAttribute($attribute) === LoupeTypes::TYPE_BOOLEAN;
 
                 // No matches
                 if ($value === null) {
@@ -518,13 +525,14 @@ class Searcher
             return;
         }
 
+        $idxInfo = $this->engine->getIndexInfo();
         foreach ($tokenCollection->all() as $token) {
             $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
             $this->queryBuilder->addSelect(sprintf(
                 "(SELECT GROUP_CONCAT(attribute || ':' || position) FROM %s WHERE %s.id = %s.document) AS %s",
                 $cteName,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                $idxInfo->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 $cteName,
                 self::MATCH_POSITION_INFO_PREFIX . $token->getId(),
             ));
@@ -1164,7 +1172,7 @@ class Searcher
                     $formatted[$attribute] = $formatterResult->getFormattedText();
                 }
             }
-        }
+        } // endforeach
 
         if ($requiresFormatting) {
             $hit['_formatted'] = $formatted;

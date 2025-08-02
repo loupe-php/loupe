@@ -44,6 +44,7 @@ class Relevance extends AbstractSorter
 
         $ctes = [];
         $relevances = [];
+        $connection = $engine->getConnection();
 
         foreach ($tokens as $token) {
             $cteName = $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
@@ -56,7 +57,7 @@ class Relevance extends AbstractSorter
             $termRelevanceCTE = $searcher->getCTENameForToken(self::CTE_NAME . '_term_', $token);
 
             // Create the relevance CTE
-            $qb = $engine->getConnection()->createQueryBuilder();
+            $qb = $connection->createQueryBuilder();
             $qb
                 ->addSelect(Searcher::CTE_MATCHES . '.document_id AS document')
                 // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
@@ -83,7 +84,7 @@ class Relevance extends AbstractSorter
         }
 
         // CTE for all documents
-        $qb = $engine->getConnection()->createQueryBuilder();
+        $qb = $connection->createQueryBuilder();
         $qb
             ->addSelect(Searcher::CTE_MATCHES . '.document_id AS document')
             ->addSelect(implode(" || ';' || ", $relevances) . ' AS relevance_per_term')

@@ -25,8 +25,9 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
     {
         $bestScoresPerLanguage = [];
         $languagePerAttribute = [];
+        $langDetector = $this->getLanguageDetector();
         foreach ($document as $attribute => $value) {
-            $languageResult = $this->getLanguageDetector()->detect($value);
+            $languageResult = $langDetector->detect($value);
 
             // Store the best score per language
             foreach ($languageResult->scores() as $lang => $score) {

@@ -51,8 +51,9 @@ class IndexInfo
      */
     public function setup(array $document): void
     {
-        $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
-        $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
+        $configuration = $this->engine->getConfiguration();
+        $primaryKey = $configuration->getPrimaryKey();
+        $documentSchemaRelevantAttributes = $configuration->getDocumentSchemaRelevantAttributes();
 
         if (!\array_key_exists($primaryKey, $document)) {
             throw PrimaryKeyNotFoundException::becauseDoesNotExist($primaryKey);
@@ -72,17 +73,17 @@ class IndexInfo
 
         $this->updateDocumentSchema($documentSchema);
 
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'engineVersion',
-                'value' => Engine::VERSION,
-            ]);
+        $connection = $this->engine->getConnection();
 
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'configHash',
-                'value' => $this->engine->getConfiguration()->getIndexHash(),
-            ]);
+        $connection->insert(self::TABLE_NAME_INDEX_INFO, [
+            'key' => 'engineVersion',
+            'value' => Engine::VERSION,
+        ]);
+
+        $connection->insert(self::TABLE_NAME_INDEX_INFO, [
+            'key' => 'configHash',
+            'value' => $configuration->getIndexHash(),
+        ]);
 
         $this->needsSetup = false;
     }
@@ -93,9 +94,11 @@ class IndexInfo
     public function fixAndValidateDocument(array &$document): void
     {
         $documentSchema = $this->getDocumentSchema();
-        $documentSchemaRelevantAttributes = $this->engine->getConfiguration()->getDocumentSchemaRelevantAttributes();
-        $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?
-            (string) $document[$this->engine->getConfiguration()->getPrimaryKey()] :
+        $configuration = $this->engine->getConfiguration();
+        $documentSchemaRelevantAttributes = $configuration->getDocumentSchemaRelevantAttributes();
+        $primaryKey = $configuration->getPrimaryKey();
+        $primaryKey = $document[$primaryKey] ?
+            (string) $document[$primaryKey] :
             null;
 
         $missingAttributes = array_keys(array_diff_key($documentSchema, $document));
@@ -351,8 +354,9 @@ class IndexInfo
 
         $columns = [];
 
+        $prKey = $this->engine->getConfiguration()->getPrimaryKey();
         foreach ($this->getSingleFilterableAndSortableAttributes() as $attribute) {
-            if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {
+            if ($attribute === $prKey) {
                 continue;
             }
 
