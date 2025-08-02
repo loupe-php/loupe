@@ -229,13 +229,13 @@ class Indexer
      */
     private function indexMultiAttributes(array $document, int $documentId): void
     {
-        foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
+        $idxInfo = $this->engine->getIndexInfo();
+        foreach ($idxInfo->getMultiFilterableAttributes() as $attribute) {
             $attributeValue = $document[$attribute];
 
             $convertedValue = LoupeTypes::convertValueToType(
                 $attributeValue,
-                $this->engine->getIndexInfo()
-                    ->getLoupeTypeForAttribute($attribute)
+                $idxInfo->getLoupeTypeForAttribute($attribute)
             );
 
             if (\is_array($convertedValue)) {
