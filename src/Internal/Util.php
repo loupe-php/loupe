@@ -40,4 +40,27 @@ class Util
     {
         return log($num);
     }
+
+    /**
+     * @template T of mixed
+     * @param T[] $array
+     * @return ?T
+     */
+    public static function arrayFirst(array $array)
+    {
+        foreach($array as $item){
+            return $item;
+        }
+        return null;
+    }
+
+    /**
+     * @template T of int|string
+     * @param T[] $array
+     * @return T[]
+     */
+    public static function arrayUnique(array $array): array
+    {
+        return \array_keys(\array_flip($array));
+    }
 }

@@ -212,7 +212,7 @@ class IndexInfo
      */
     public function getFilterableAndSortableAttributes(): array
     {
-        return array_unique(array_merge($this->getFilterableAttributes(), $this->getSortableAttributes()));
+        return Util::arrayUnique(array_merge($this->getFilterableAttributes(), $this->getSortableAttributes()));
     }
 
     /**

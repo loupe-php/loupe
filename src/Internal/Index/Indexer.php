@@ -40,7 +40,7 @@ class Indexer
             return new IndexResult(0);
         }
 
-        $firstDocument = reset($documents);
+        $firstDocument = Util::arrayFirst($documents);
 
         $indexInfo = $this->engine->getIndexInfo();
 

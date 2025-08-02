@@ -7,6 +7,7 @@ namespace Loupe\Loupe;
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
+use Loupe\Loupe\Internal\Util;
 use Psr\Log\LoggerInterface;
 
 final class Configuration
@@ -183,7 +184,7 @@ final class Configuration
      */
     public function getDocumentSchemaRelevantAttributes(): array
     {
-        return array_unique(array_merge(
+        return Util::arrayUnique(array_merge(
             [$this->getPrimaryKey()],
             $this->getSearchableAttributes(),
             $this->getFilterableAttributes(),
