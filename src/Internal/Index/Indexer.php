@@ -48,16 +48,42 @@ class Indexer
             $indexInfo->setup($firstDocument);
         }
 
+        // Fix and validate all documents first to update the document schema if needed.
+        // Updating the schema locks the database so we don't want to do this while indexing (which can take quite a while)
+        $documentExceptions = [];
+
+        foreach ($documents as &$document) {
+            try {
+                $indexInfo->fixAndValidateDocument($document);
+            } catch (\Throwable $exception) {
+                if ($exception instanceof LoupeExceptionInterface) {
+                    $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null;
+
+                    // We cannot report this exception on the document because the key is missing - we have to
+                    // abort early here.
+                    if ($primaryKey === null) {
+                        return new IndexResult(0, $documentExceptions, $exception);
+                    }
+
+                    $documentExceptions[$primaryKey] = $exception;
+                    continue;
+                }
+
+                throw new IndexException($exception->getMessage(), 0, $exception);
+            }
+        }
+        if ($documentExceptions !== []) {
+            return new IndexResult(0, $documentExceptions);
+        }
+
         $documentExceptions = [];
         $successfulCount = 0;
 
         try {
             $this->engine->getConnection()
-                ->transactional(function () use ($indexInfo, $documents, &$successfulCount, &$documentExceptions) {
+                ->transactional(function () use ($documents, &$successfulCount, &$documentExceptions) {
                     foreach ($documents as $document) {
                         try {
-                            $indexInfo->fixAndValidateDocument($document);
-
                             $this->engine->getConnection()
                                 ->transactional(function () use ($document) {
                                     $documentId = $this->createDocument($document);
@@ -170,7 +196,7 @@ class Indexer
                 continue;
             }
 
-            $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
+            $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute] ?? null, $loupeType);
         }
 
         // Markers for IS EMPTY and IS NULL filters on multi attributes
