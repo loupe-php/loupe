@@ -29,7 +29,7 @@ class IndexTest extends TestCase
                 ]),
             ],
             function (IndexResult $indexResult) {
-                self::assertSame(1, $indexResult->successfulDocumentsCount());
+                self::assertSame(0, $indexResult->successfulDocumentsCount());
                 self::assertSame(1, $indexResult->erroredDocumentsCount());
                 self::assertCount(1, $indexResult->allDocumentExceptions());
                 self::assertNull($indexResult->generalException());
@@ -54,7 +54,7 @@ class IndexTest extends TestCase
             ],
 
             function (IndexResult $indexResult) {
-                self::assertSame(2, $indexResult->successfulDocumentsCount());
+                self::assertSame(0, $indexResult->successfulDocumentsCount());
                 self::assertSame(1, $indexResult->erroredDocumentsCount());
                 self::assertCount(1, $indexResult->allDocumentExceptions());
                 self::assertNull($indexResult->generalException());

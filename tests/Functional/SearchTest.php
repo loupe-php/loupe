@@ -3008,6 +3008,7 @@ class SearchTest extends TestCase
             [
                 'id' => 5,
                 'name' => 'Back to the future',
+                'rating' => null,
             ],
         ]);
 
