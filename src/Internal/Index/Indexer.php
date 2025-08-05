@@ -81,7 +81,7 @@ class Indexer
 
         try {
             $this->engine->getConnection()
-                ->transactional(function () use ($indexInfo, $documents, &$successfulCount, &$documentExceptions) {
+                ->transactional(function () use ($documents, &$successfulCount, &$documentExceptions) {
                     foreach ($documents as $document) {
                         try {
                             $this->engine->getConnection()
