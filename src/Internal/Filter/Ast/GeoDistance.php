@@ -62,7 +62,7 @@ class GeoDistance extends Node implements AttributeFilterInterface
             $east = $bearing->calculateDestination($center, 90, $this->distance);
 
             // Crossed the prime meridian, let's take the easternmost point which is 180°
-            if ($east->getLng() > $this->lng) {
+            if ($east->getLng() < $this->lng) {
                 $east = new Coordinate($this->lat, 180);
             }
         } catch (\Exception) {
