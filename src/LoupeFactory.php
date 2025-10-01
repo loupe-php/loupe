@@ -128,8 +128,8 @@ final class LoupeFactory implements LoupeFactoryInterface
             'PRAGMA mmap_size = 33554432',
             // Store temporary tables in memory instead of on disk
             'PRAGMA temp_store = MEMORY',
-            // Set timeout to 2 seconds to avoid locking issues
-            'PRAGMA busy_timeout = 2000',
+            // Set timeout to 5 seconds to avoid locking issues
+            'PRAGMA busy_timeout = 5000',
         ];
 
         foreach ($optimizations as $optimization) {
