@@ -75,40 +75,38 @@ class Indexer
         if ($documentExceptions !== []) {
             return new IndexResult(0, $documentExceptions);
         }
+        unset($document);
 
         $documentExceptions = [];
         $successfulCount = 0;
 
         try {
-            $this->engine->getConnection()
-                ->transactional(function () use ($documents, &$successfulCount, &$documentExceptions) {
-                    foreach ($documents as $document) {
-                        try {
-                            $this->engine->getConnection()
-                                ->transactional(function () use ($document) {
-                                    $documentId = $this->createDocument($document);
-                                    $this->removeDocumentData($documentId);
-                                    $this->indexMultiAttributes($document, $documentId);
-                                    $this->indexTerms($document, $documentId);
-                                });
+            foreach ($documents as $document) {
+                try {
+                    $this->engine->getConnection()
+                        ->transactional(function () use ($document) {
+                            $documentId = $this->createDocument($document);
+                            $this->removeDocumentData($documentId);
+                            $this->indexMultiAttributes($document, $documentId);
+                            $this->indexTerms($document, $documentId);
+                        });
 
-                            $successfulCount++;
-                        } catch (LoupeExceptionInterface $exception) {
-                            $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null;
+                    $successfulCount++;
+                } catch (LoupeExceptionInterface $exception) {
+                    $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null;
 
-                            // We cannot report this exception on the document because the key is missing - we have to
-                            // abort early here.
-                            if ($primaryKey === null) {
-                                return new IndexResult($successfulCount, $documentExceptions, $exception);
-                            }
-
-                            $documentExceptions[$primaryKey] = $exception;
-                        }
+                    // We cannot report this exception on the document because the key is missing - we have to
+                    // abort early here.
+                    if ($primaryKey === null) {
+                        return new IndexResult($successfulCount, $documentExceptions, $exception);
                     }
 
-                    // Update storage only once
-                    $this->reviseStorage();
-                });
+                    $documentExceptions[$primaryKey] = $exception;
+                }
+            }
+
+            // Update storage only once
+            $this->reviseStorage();
         } catch (\Throwable $e) {
             if ($e instanceof LoupeExceptionInterface) {
                 return new IndexResult($successfulCount, $documentExceptions, $e);
@@ -559,9 +557,11 @@ class Indexer
 
     private function reviseStorage(): void
     {
-        $this->removeOrphans();
-        $this->persistStateSet();
-        $this->vacuumDatabase();
+        $this->engine->getConnection()->transactional(function () {
+            $this->removeOrphans();
+            $this->persistStateSet();
+            $this->vacuumDatabase();
+        });
     }
 
     private function vacuumDatabase(): void
