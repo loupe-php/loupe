@@ -55,21 +55,18 @@ final class LoupeFactory implements LoupeFactoryInterface
         $dsnParser = new DsnParser();
 
         // Try sqlite3 first, it seems way faster than the pdo-sqlite driver
-        try {
-            $connection = DriverManager::getConnection(
-                $dsnParser->parse('sqlite3://' . $dsnPart),
-                $this->getDbalConfiguration($configuration)
-            );
-        } catch (Exception) {
-            try {
-                $connection = DriverManager::getConnection(
-                    $dsnParser->parse('pdo-sqlite://' . $dsnPart),
-                    $this->getDbalConfiguration($configuration)
-                );
-            } catch (Exception) {
-                // Noop
-            }
+        if (\class_exists('SQLite3')) {
+            $dsn = 'sqlite3://' . $dsnPart;
+        } elseif (\in_array('sqlite', \PDO::getAvailableDrivers(), true)) {
+            $dsn = 'pdo-sqlite://' . $dsnPart;
+        } else {
+            throw new \RuntimeException('Neither SQLite3 nor PDO_SQLite is available.');
         }
+
+        $connection = DriverManager::getConnection(
+            $dsnParser->parse($dsn),
+            $this->getDbalConfiguration($configuration)
+        );
 
         if ($connection === null) {
             throw new InvalidConfigurationException('You need either the sqlite3 (recommended) or pdo_sqlite PHP extension.');
