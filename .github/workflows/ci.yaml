@@ -43,7 +43,7 @@ jobs:
               run: composer phpstan
 
     tests:
-        name: 'PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }} (Composer Flags: ${{ matrix.composer }})'
+        name: 'PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }} (Composer Flags: ${{ matrix.composer }}; PHP Extensions: ${{ matrix.phpExtensions }})'
         runs-on: ubuntu-latest
         # Share the bash between the steps:
         defaults:
@@ -54,12 +54,14 @@ jobs:
             matrix:
                 sqlite: ['3.16.0', 'default']
                 php: ['8.1', '8.2', '8.3', '8.4']
+                phpExtensions: ['', ':pdo_sqlite', ':sqlite3']
                 composer: ['--prefer-stable', '--prefer-lowest']
         steps:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php }}
+                  extensions: ${{ matrix.phpExtensions }}
                   coverage: none
 
             - name: Checkout
