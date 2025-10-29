@@ -217,7 +217,7 @@ class StateSetTest extends TestCase
         $configuration = Configuration::create()->withSearchableAttributes(['content']);
 
         $connection = DriverManager::getConnection(
-            (new DsnParser())->parse((class_exists(\SQLite3::class) ? 'sqlite3' : 'pdo_sqlite') . '://notused:inthis@case/' . $path)
+            (new DsnParser())->parse((class_exists(\SQLite3::class) ? 'sqlite3' : 'pdo-sqlite') . '://notused:inthis@case/' . $path)
         );
 
         $engine = new Engine($connection, $configuration, $dir);
