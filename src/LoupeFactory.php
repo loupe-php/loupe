@@ -7,7 +7,6 @@ namespace Loupe\Loupe;
 use Doctrine\DBAL\Configuration as DbalConfiguration;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
-use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Logging\Middleware;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
@@ -56,17 +55,25 @@ final class LoupeFactory implements LoupeFactoryInterface
 
         // Try sqlite3 first, it seems way faster than the pdo-sqlite driver
         try {
+            if (!class_exists(\SQLite3::class)) {
+                throw new \RuntimeException('sqlite3 not installed.');
+            }
+
             $connection = DriverManager::getConnection(
                 $dsnParser->parse('sqlite3://' . $dsnPart),
                 $this->getDbalConfiguration($configuration)
             );
-        } catch (Exception) {
+        } catch (\Throwable) {
+            if (!class_exists(\PDO::class)) {
+                throw new \RuntimeException('pdo_sqlite not installed.');
+            }
+
             try {
                 $connection = DriverManager::getConnection(
                     $dsnParser->parse('pdo-sqlite://' . $dsnPart),
                     $this->getDbalConfiguration($configuration)
                 );
-            } catch (Exception) {
+            } catch (\Throwable) {
                 // Noop
             }
         }
