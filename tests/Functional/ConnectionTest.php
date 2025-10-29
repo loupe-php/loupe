@@ -61,7 +61,7 @@ class ConnectionTest extends TestCase
 
     private function createConnection(string $dir): \Doctrine\DBAL\Connection
     {
-        return DriverManager::getConnection((new DsnParser())->parse('sqlite3://notused:inthis@case/' . $dir . '/loupe.db'));
+        return DriverManager::getConnection((new DsnParser())->parse((class_exists(\SQLite3::class) ? 'sqlite3' : 'pdo-sqlite') . '://notused:inthis@case/' . $dir . '/loupe.db'));
     }
 
     /**
