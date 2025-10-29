@@ -64,11 +64,11 @@ final class LoupeFactory implements LoupeFactoryInterface
                 $this->getDbalConfiguration($configuration)
             );
         } catch (\Throwable) {
-            if (!class_exists(\PDO::class)) {
-                throw new \RuntimeException('pdo_sqlite not installed.');
-            }
-
             try {
+                if (!class_exists(\PDO::class)) {
+                    throw new \RuntimeException('pdo_sqlite not installed.');
+                }
+
                 $connection = DriverManager::getConnection(
                     $dsnParser->parse('pdo-sqlite://' . $dsnPart),
                     $this->getDbalConfiguration($configuration)
