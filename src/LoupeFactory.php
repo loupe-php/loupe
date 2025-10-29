@@ -55,11 +55,19 @@ final class LoupeFactory implements LoupeFactoryInterface
 
         // Try sqlite3 first, it seems way faster than the pdo-sqlite driver
         try {
+            if (!class_exists(\SQLite3::class)) {
+                throw new \RuntimeException('sqlite3 not installed.');
+            }
+
             $connection = DriverManager::getConnection(
                 $dsnParser->parse('sqlite3://' . $dsnPart),
                 $this->getDbalConfiguration($configuration)
             );
         } catch (\Throwable) {
+            if (!class_exists(\PDO::class)) {
+                throw new \RuntimeException('pdo_sqlite not installed.');
+            }
+
             try {
                 $connection = DriverManager::getConnection(
                     $dsnParser->parse('pdo-sqlite://' . $dsnPart),
@@ -76,8 +84,8 @@ final class LoupeFactory implements LoupeFactoryInterface
 
         $sqliteVersion = match (true) {
             \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
-            (class_exists(\SQLite3::class) && ($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
-            (class_exists(\PDO::class) &&($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
+            ($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3 => $nativeConnection->version()['versionString'],
+            ($nativeConnection = $connection->getNativeConnection()) instanceof \PDO => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
         };
 
         if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
