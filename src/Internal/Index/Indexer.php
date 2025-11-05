@@ -125,7 +125,7 @@ class Indexer
         }
 
         $this->engine->getConnection()
-            ->executeStatement(sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
+            ->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
         $this->reviseStorage();
 
@@ -143,7 +143,7 @@ class Indexer
 
         $this->engine->getConnection()
             ->executeStatement(
-                sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                \sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
                 [
                     'ids' => LoupeTypes::convertToArrayOfStrings($ids),
                 ],
@@ -436,7 +436,7 @@ class Indexer
     private function removeDocumentData(int $documentId): void
     {
         // Remove term relations of this document
-        $query = sprintf(
+        $query = \sprintf(
             'DELETE FROM %s WHERE document = %d',
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             $documentId
@@ -445,7 +445,7 @@ class Indexer
         $this->engine->getConnection()->executeStatement($query);
 
         // Remove multi-attribute relations of this document
-        $query = sprintf(
+        $query = \sprintf(
             'DELETE FROM %s WHERE document = %d',
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
             $documentId
@@ -459,7 +459,7 @@ class Indexer
     private function removeOrphanedDocuments(): void
     {
         // Clean up term-document relations of documents which no longer exist
-        $query = sprintf(
+        $query = \sprintf(
             'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
@@ -468,7 +468,7 @@ class Indexer
         $this->engine->getConnection()->executeStatement($query);
 
         // Clean up multi-attribute-document relations of documents which no longer exist
-        $query = sprintf(
+        $query = \sprintf(
             'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
@@ -480,7 +480,7 @@ class Indexer
     private function removeOrphanedPrefixes(): void
     {
         // Clean up prefix-term relations of terms which no longer exist
-        $query = sprintf(
+        $query = \sprintf(
             'DELETE FROM %s WHERE term NOT IN (SELECT id FROM %s)',
             IndexInfo::TABLE_NAME_PREFIXES_TERMS,
             IndexInfo::TABLE_NAME_TERMS,
@@ -517,7 +517,7 @@ class Indexer
     {
         // Iterate over all terms of documents which no longer exist
         // and remove them from the state set index
-        $query = sprintf(
+        $query = \sprintf(
             'SELECT %s FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
             $column,
             $table,
@@ -545,7 +545,7 @@ class Indexer
         }
 
         // Remove all orphaned terms from the terms table
-        $query = sprintf(
+        $query = \sprintf(
             'DELETE FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
             $table,
             $column,

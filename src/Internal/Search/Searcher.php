@@ -107,7 +107,7 @@ class Searcher
         $unions = [];
 
         foreach ($this->getCtesByTag('attribute:' . $attribute) as $cte) {
-            $unions[] = sprintf('SELECT document_id, %s FROM %s', $alias, $cte->getName());
+            $unions[] = \sprintf('SELECT document_id, %s FROM %s', $alias, $cte->getName());
         }
 
         if ($unions === []) {
@@ -142,7 +142,7 @@ class Searcher
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
+                \sprintf(
                     '%s.attribute=%s AND %s.id = %s.attribute',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $this->createNamedParameter($attribute),
@@ -154,7 +154,7 @@ class Searcher
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                 self::CTE_MATCHES,
                 self::CTE_MATCHES,
-                sprintf(
+                \sprintf(
                     '%s.document_id = %s.document',
                     self::CTE_MATCHES,
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
@@ -174,7 +174,7 @@ class Searcher
         $qb = $this->engine->getConnection()->createQueryBuilder()
             ->select($documentAlias . '.id AS document_id')
             ->addSelect(
-                sprintf(
+                \sprintf(
                     'loupe_geo_distance(%f, %f, %s, %s) AS distance',
                     $latitude,
                     $longitude,
@@ -199,7 +199,7 @@ class Searcher
 
     public function createNamedParameter(mixed $value, mixed $type = ParameterType::STRING): string
     {
-        if ($type === ParameterType::STRING && \is_scalar($value)) {
+        if ($type === ParameterType::STRING && (\is_string($value) || \is_int($value))) {
             if (isset($this->namedParameters[$value])) {
                 return $this->namedParameters[$value];
             }
@@ -373,7 +373,7 @@ class Searcher
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                     self::CTE_MATCHES,
                     self::CTE_MATCHES,
-                    sprintf(
+                    \sprintf(
                         '%s.document_id = %s.id',
                         self::CTE_MATCHES,
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
@@ -392,14 +392,14 @@ class Searcher
 
         $addFacetCte = function (string $cteName, QueryBuilder $qb): void {
             $this->addCTE(new Cte($cteName, ['facet_group', 'facet_value'], $qb));
-            $this->queryBuilder->addSelect(sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $cteName));
+            $this->queryBuilder->addSelect(\sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $cteName));
         };
 
         foreach ($facets as $facet) {
             $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($facet);
 
             if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($facet)) {
-                $facetAlias = sprintf(
+                $facetAlias = \sprintf(
                     '%s.%s',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $isNumeric ? 'numeric_value' : 'string_value',
@@ -409,18 +409,18 @@ class Searcher
 
                 // Count facet, always needed
                 $qb = clone $commonQb;
-                $qb->select($facetAlias, sprintf('COUNT(DISTINCT %s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
+                $qb->select($facetAlias, \sprintf('COUNT(DISTINCT %s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
                 $qb->groupBy($facetAlias);
                 $addFacetCte(self::FACET_ALIAS_COUNT_PREFIX . $facet, $qb);
 
                 // MinMax facet for numeric fields
                 if ($isNumeric) {
                     $qb = clone $commonQb;
-                    $qb->select(sprintf('MIN(%s)', $facetAlias), sprintf('MAX(%s)', $facetAlias));
+                    $qb->select(\sprintf('MIN(%s)', $facetAlias), \sprintf('MAX(%s)', $facetAlias));
                     $addFacetCte(self::FACET_ALIAS_MIN_MAX_PREFIX . $facet, $qb);
                 }
             } else {
-                $facetAlias = sprintf(
+                $facetAlias = \sprintf(
                     '%s.%s',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                     $facet,
@@ -437,7 +437,7 @@ class Searcher
                 // MinMax facet for numeric fields
                 if ($isNumeric) {
                     $qb = clone $commonQb;
-                    $qb->select(sprintf('MIN(%s)', $facetAlias), sprintf('MAX(%s)', $facetAlias));
+                    $qb->select(\sprintf('MIN(%s)', $facetAlias), \sprintf('MAX(%s)', $facetAlias));
                     $addFacetCte(self::FACET_ALIAS_MIN_MAX_PREFIX . $facet, $qb);
                 }
             }
@@ -521,7 +521,7 @@ class Searcher
         foreach ($tokenCollection->all() as $token) {
             $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
-            $this->queryBuilder->addSelect(sprintf(
+            $this->queryBuilder->addSelect(\sprintf(
                 "(SELECT GROUP_CONCAT(attribute || ':' || position) FROM %s WHERE %s.id = %s.document) AS %s",
                 $cteName,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
@@ -534,7 +534,7 @@ class Searcher
                     self::CTE_MATCHES,
                     self::CTE_MATCHES,
                     $cteName,
-                    sprintf(
+                    \sprintf(
                         '%s.document_id = %s.document_id',
                         $cteName,
                         self::CTE_MATCHES
@@ -561,7 +561,7 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
 
         if ($this->needsTypoCount()) {
-            $cteSelectQb->addSelect(sprintf(
+            $cteSelectQb->addSelect(\sprintf(
                 'loupe_levensthein(%s.term, %s, %s) AS typos',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
                 $this->createNamedParameter($token->getTerm()),
@@ -571,7 +571,7 @@ class Searcher
                 $termsDocumentsAlias,
                 IndexInfo::TABLE_NAME_TERMS,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                sprintf('%s.id = %s.term', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS), $termsDocumentsAlias)
+                \sprintf('%s.id = %s.term', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS), $termsDocumentsAlias)
             );
         } else {
             $cteSelectQb->addSelect('0 AS typos');
@@ -586,7 +586,7 @@ class Searcher
             if (!$this->hasCTE($cteName)) {
                 continue;
             }
-            $documentConditions[] = sprintf('%s.document IN (SELECT document FROM %s)', $termsDocumentsAlias, $cteName);
+            $documentConditions[] = \sprintf('%s.document IN (SELECT document FROM %s)', $termsDocumentsAlias, $cteName);
         }
 
         if ($documentConditions === []) {
@@ -594,10 +594,10 @@ class Searcher
         }
 
         $cteSelectQb->where('(' . implode(' OR ', $documentConditions) . ')');
-        $cteSelectQb->andWhere(sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $termMatchesCTE));
+        $cteSelectQb->andWhere(\sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $termMatchesCTE));
 
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
-            $cteSelectQb->andWhere(sprintf(
+            $cteSelectQb->andWhere(\sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
                 $this->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
             ));
@@ -605,7 +605,7 @@ class Searcher
 
         // Ensure phrase positions if any
         if ($token->isPartOfPhrase() && $previousPhraseToken) {
-            $cteSelectQb->andWhere(sprintf(
+            $cteSelectQb->andWhere(\sprintf(
                 '%s.position = (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
                 $termsDocumentsAlias,
                 $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken),
@@ -651,10 +651,10 @@ class Searcher
         $cteSelectQb->select($termsDocumentsAlias . '.document')->distinct();
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
-        $cteSelectQb->where(sprintf('%s.term IN (SELECT id FROM %s)', $termsDocumentsAlias, $termMatchesCTE));
+        $cteSelectQb->where(\sprintf('%s.term IN (SELECT id FROM %s)', $termsDocumentsAlias, $termMatchesCTE));
 
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
-            $cteSelectQb->andWhere(sprintf(
+            $cteSelectQb->andWhere(\sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
                 $this->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
             ));
@@ -707,7 +707,7 @@ class Searcher
                 $ors[] = $this->createWherePartForTerm($token->getTerm(), true);
             } else {
                 // Otherwise, prefix search is just a simple LIKE <token>% for better performance
-                $ors[] = sprintf(
+                $ors[] = \sprintf(
                     '%s.term LIKE %s',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
                     $this->createNamedParameter($token->getTerm() . '%')
@@ -855,28 +855,28 @@ class Searcher
          *     AND
          *     loupe_max_levenshtein(<term>, $termColumnName, <distance>)
          */
-        $where[] = sprintf(
+        $where[] = \sprintf(
             '%s.state IN (%s)',
             $this->engine->getIndexInfo()
                 ->getAliasForTable($table),
             implode(',', $states)
         );
         $where[] = 'AND';
-        $where[] = sprintf(
+        $where[] = \sprintf(
             '%s.length >= %d',
             $this->engine->getIndexInfo()
                 ->getAliasForTable($table),
             mb_strlen($term, 'UTF-8') - 1
         );
         $where[] = 'AND';
-        $where[] = sprintf(
+        $where[] = \sprintf(
             '%s.length <= %d',
             $this->engine->getIndexInfo()
                 ->getAliasForTable($table),
             mb_strlen($term, 'UTF-8') + 1
         );
         $where[] = 'AND';
-        $where[] = sprintf(
+        $where[] = \sprintf(
             'loupe_max_levenshtein(%s, %s.%s, %d, %s)',
             $this->createNamedParameter($term),
             $this->engine->getIndexInfo()->getAliasForTable($table),
@@ -896,7 +896,7 @@ class Searcher
             return null;
         }
 
-        return sprintf(
+        return \sprintf(
             '%s.id %s (SELECT DISTINCT document FROM %s)',
             $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
             $token->isNegated() ? 'NOT IN' : 'IN',
@@ -925,7 +925,7 @@ class Searcher
             $where[] = '(';
         }
 
-        $where[] = sprintf(
+        $where[] = \sprintf(
             '%s.term = %s',
             $this->engine->getIndexInfo()
                 ->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
@@ -934,7 +934,7 @@ class Searcher
 
         if ($prefix) {
             $where[] = 'OR';
-            $where[] = sprintf(
+            $where[] = \sprintf(
                 '%s.term LIKE %s',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
                 $this->createNamedParameter($term . '%')
@@ -981,7 +981,7 @@ class Searcher
 
         if ($prefix) {
             $where[] = 'OR';
-            $where[] = sprintf(
+            $where[] = \sprintf(
                 '%s.id IN (SELECT %s.term FROM %s %s WHERE %s.prefix IN (SELECT %s.id FROM %s %s WHERE %s))',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_PREFIXES_TERMS),
@@ -1023,7 +1023,7 @@ class Searcher
 
         // Not filtered by either filters or user query, fetch everything
         if ($froms === []) {
-            $froms[] = sprintf(
+            $froms[] = \sprintf(
                 '(SELECT %s.id AS document_id FROM %s %s)',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 IndexInfo::TABLE_NAME_DOCUMENTS,
@@ -1216,7 +1216,7 @@ class Searcher
         if ($this->ctesByName !== []) {
             $queryParts[] = 'WITH';
             foreach ($this->ctesByName as $name => $cte) {
-                $queryParts[] = sprintf(
+                $queryParts[] = \sprintf(
                     '%s (%s) AS (%s)',
                     $name,
                     implode(',', $cte->getColumnAliasList()),
@@ -1261,7 +1261,7 @@ class Searcher
                         self::CTE_MATCHES,
                         $cteName,
                         $cteName,
-                        sprintf(
+                        \sprintf(
                             '%s.document_id = %s.document_id',
                             $cteName,
                             self::CTE_MATCHES
@@ -1281,7 +1281,7 @@ class Searcher
                 $documentsAlias,
                 self::CTE_MATCHES,
                 self::CTE_MATCHES,
-                sprintf(
+                \sprintf(
                     '%s.id = %s.document_id',
                     $documentsAlias,
                     self::CTE_MATCHES
@@ -1293,7 +1293,7 @@ class Searcher
     {
         // Only apply max total hits to search queries
         if ($this->queryParameters instanceof SearchParameters) {
-            $select = sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->engine->getConfiguration()->getMaxTotalHits());
+            $select = \sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->engine->getConfiguration()->getMaxTotalHits());
         } else {
             $select = 'COUNT() OVER() AS totalHits';
         }

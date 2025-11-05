@@ -154,7 +154,7 @@ class IndexInfo
             self::TABLE_NAME_TERMS_DOCUMENTS => 'td',
             self::TABLE_NAME_PREFIXES => 'p',
             self::TABLE_NAME_PREFIXES_TERMS => 'tp',
-            default => throw new \LogicException(sprintf('Forgot to define an alias for %s.', $table))
+            default => throw new \LogicException(\sprintf('Forgot to define an alias for %s.', $table))
         } . $suffix;
     }
 
@@ -226,7 +226,7 @@ class IndexInfo
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
         if (!\array_key_exists($attributeName, $this->getDocumentSchema())) {
-            throw new InvalidConfigurationException(sprintf(
+            throw new InvalidConfigurationException(\sprintf(
                 'The attribute "%s" does not exist on the document schema.',
                 $attributeName
             ));

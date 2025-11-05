@@ -14,7 +14,7 @@ class InvalidDocumentException extends \InvalidArgumentException implements Loup
     {
         if ($primaryKey !== null) {
             return new self(
-                sprintf(
+                \sprintf(
                     'Document ID "%s" ("%s") does not match schema: %s',
                     $primaryKey,
                     json_encode($document),
@@ -24,7 +24,7 @@ class InvalidDocumentException extends \InvalidArgumentException implements Loup
         }
 
         return new self(
-            sprintf('Document ("%s") does not match schema: %s', json_encode($document), json_encode($schema))
+            \sprintf('Document ("%s") does not match schema: %s', json_encode($document), json_encode($schema))
         );
     }
 }

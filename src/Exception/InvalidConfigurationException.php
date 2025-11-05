@@ -11,7 +11,7 @@ class InvalidConfigurationException extends \InvalidArgumentException implements
     public static function becauseCouldNotCreateDataDir(string $folder): self
     {
         return new self(
-            sprintf(
+            \sprintf(
                 'Could not create data directory at "%s".',
                 $folder
             )
@@ -21,7 +21,7 @@ class InvalidConfigurationException extends \InvalidArgumentException implements
     public static function becauseInvalidAttributeName(string $attributeName): self
     {
         return new self(
-            sprintf(
+            \sprintf(
                 'A valid attribute name starts with a letter, followed by any number of letters, numbers, or underscores. It must not exceed %d characters. "%s" given.',
                 Configuration::MAX_ATTRIBUTE_NAME_LENGTH,
                 $attributeName

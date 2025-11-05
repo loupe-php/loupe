@@ -97,7 +97,7 @@ class IndexTest extends TestCase
                     'gender' => LoupeTypes::VALUE_NULL,
                 ]),
             ],
-            sprintf("gender = '%s'", LoupeTypes::VALUE_NULL),
+            \sprintf("gender = '%s'", LoupeTypes::VALUE_NULL),
             // Should only return Uta as this is the one document that really has the <internal value> assigned
             [[
                 'id' => 2,
@@ -133,7 +133,7 @@ class IndexTest extends TestCase
                     'gender' => LoupeTypes::VALUE_EMPTY,
                 ]),
             ],
-            sprintf("gender = '%s'", LoupeTypes::VALUE_EMPTY),
+            \sprintf("gender = '%s'", LoupeTypes::VALUE_EMPTY),
             // Should only return Uta as this is the one document that really has the <internal value> assigned
             [[
                 'id' => 2,

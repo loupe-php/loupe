@@ -13,6 +13,6 @@ class SortFormatException extends \InvalidArgumentException implements LoupeExce
 
     public static function becauseNotSortable(string $sort): self
     {
-        return new self(sprintf('Cannot sort by "%s". It must be defined as sortable attribute.', $sort));
+        return new self(\sprintf('Cannot sort by "%s". It must be defined as sortable attribute.', $sort));
     }
 }

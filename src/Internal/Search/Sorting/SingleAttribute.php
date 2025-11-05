@@ -43,7 +43,7 @@ class SingleAttribute extends AbstractSorter
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 Searcher::CTE_MATCHES,
                 Searcher::CTE_MATCHES,
-                sprintf(
+                \sprintf(
                     '%s.document_id = %s.id',
                     Searcher::CTE_MATCHES,
                     $engine->getIndexInfo()->getAliasForTable(
