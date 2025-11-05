@@ -52,7 +52,7 @@ trait FunctionalTestTrait
         $contents = file_get_contents(Util::fixturesPath('Data/' . $indexFixture . '.json'));
 
         if ($contents === false) {
-            throw new \InvalidArgumentException(sprintf('Fixture "%s" does not exist.', $indexFixture));
+            throw new \InvalidArgumentException(\sprintf('Fixture "%s" does not exist.', $indexFixture));
         }
 
         $loupe->addDocuments(json_decode($contents, true));

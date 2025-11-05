@@ -68,7 +68,7 @@ class Relevance extends AbstractSorter
                     Searcher::CTE_MATCHES,
                     $cteName,
                     'dm',
-                    sprintf('dm.document = %s.document_id', Searcher::CTE_MATCHES)
+                    \sprintf('dm.document = %s.document_id', Searcher::CTE_MATCHES)
                 )
                 ->groupBy(Searcher::CTE_MATCHES . '.document_id');
 
@@ -91,7 +91,7 @@ class Relevance extends AbstractSorter
         ;
 
         foreach ($ctes as $cte) {
-            $qb->leftJoin(Searcher::CTE_MATCHES, $cte, $cte, sprintf('%s.document_id = %s.document_id', $cte, Searcher::CTE_MATCHES));
+            $qb->leftJoin(Searcher::CTE_MATCHES, $cte, $cte, \sprintf('%s.document_id = %s.document_id', $cte, Searcher::CTE_MATCHES));
         }
 
         $searcher->addCTE(new Cte(self::CTE_NAME, ['document_id', 'relevance_per_term'], $qb));
@@ -101,13 +101,13 @@ class Relevance extends AbstractSorter
             Searcher::CTE_MATCHES,
             self::CTE_NAME,
             self::CTE_NAME,
-            sprintf('%s.document_id = %s.document_id', self::CTE_NAME, Searcher::CTE_MATCHES)
+            \sprintf('%s.document_id = %s.document_id', self::CTE_NAME, Searcher::CTE_MATCHES)
         );
 
         // Searchable attributes to determine attribute weight
         $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
 
-        $select = sprintf(
+        $select = \sprintf(
             "loupe_relevance('%s', '%s', %s) AS %s",
             implode(':', $searchableAttributes),
             implode(':', $engine->getConfiguration()->getRankingRules()),

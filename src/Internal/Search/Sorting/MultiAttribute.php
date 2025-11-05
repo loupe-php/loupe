@@ -108,8 +108,8 @@ class MultiAttribute extends AbstractSorter
         $qb = $engine->getConnection()->createQueryBuilder();
         $qb
             ->addSelect(
-                sprintf('%s.document_id AS document_id', $cteName),
-                sprintf('%s AS sort_order', $this->getFilterSelectAlias()),
+                \sprintf('%s.document_id AS document_id', $cteName),
+                \sprintf('%s AS sort_order', $this->getFilterSelectAlias()),
             )
             ->from($cteName)
         ;

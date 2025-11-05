@@ -89,7 +89,7 @@ final class LoupeFactory implements LoupeFactoryInterface
         };
 
         if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
-            throw new \InvalidArgumentException(sprintf(
+            throw new \InvalidArgumentException(\sprintf(
                 'You need at least version "%s" of SQLite.',
                 self::MIN_SQLITE_VERSION
             ));

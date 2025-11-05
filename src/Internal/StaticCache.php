@@ -40,11 +40,7 @@ final class StaticCache
     {
         self::ensureCurrentContext();
 
-        if (self::has($key)) {
-            return self::$cache[self::$currentContextObjectId][$key];
-        }
-
-        return null;
+        return self::$cache[self::$currentContextObjectId][$key] ?? null;
     }
 
     public static function has(string $key): bool
@@ -52,6 +48,7 @@ final class StaticCache
         self::ensureCurrentContext();
 
         return isset(self::$cache[self::$currentContextObjectId]) &&
+            isset(self::$referenceMap[self::$currentContextObjectId]) &&
             self::$referenceMap[self::$currentContextObjectId]->get() !== null &&
             \array_key_exists($key, self::$cache[self::$currentContextObjectId]);
     }

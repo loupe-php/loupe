@@ -149,7 +149,7 @@ class Engine
 
         $document = $this->getConnection()
             ->fetchOne(
-                sprintf('SELECT document FROM %s WHERE user_id = :id', IndexInfo::TABLE_NAME_DOCUMENTS),
+                \sprintf('SELECT document FROM %s WHERE user_id = :id', IndexInfo::TABLE_NAME_DOCUMENTS),
                 [
                     'id' => LoupeTypes::convertToString($identifier),
                 ]

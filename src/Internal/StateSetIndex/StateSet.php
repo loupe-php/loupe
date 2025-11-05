@@ -55,7 +55,7 @@ class StateSet implements StateSetInterface
         }
 
         if ($values !== []) {
-            $this->engine->getConnection()->executeStatement(sprintf('INSERT INTO ' . IndexInfo::TABLE_NAME_STATE_SET . ' (state) VALUES %s', implode(',', $values)));
+            $this->engine->getConnection()->executeStatement(\sprintf('INSERT INTO ' . IndexInfo::TABLE_NAME_STATE_SET . ' (state) VALUES %s', implode(',', $values)));
         }
 
         $all = $this->inMemoryStateSet->all();
