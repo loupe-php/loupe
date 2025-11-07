@@ -5,7 +5,7 @@
 There are two methods to index documents in Loupe. Either you index only one document like so:
 
 ```php
-$indexResult = $loupe->addDocument([
+$loupe->addDocument([
     'id' => 12,
     'title' => 'Finding Nemo',
     'overview' => 'Nemo, an adventurous young clownfish, …',
@@ -16,7 +16,7 @@ $indexResult = $loupe->addDocument([
 Or you can index multiple documents:
 
 ```php
-$indexResult = $loupe->addDocuments([
+$loupe->addDocuments([
     'id' => 11,
     'title' => 'Star Wars',
     'overview' => 'Princess Leia is captured and held hostage by the evil Imperial forces …',
@@ -34,16 +34,7 @@ time. There are certain tasks like e.g. updating term frequencies and cleaning u
 which only have to happen once after all the documents are added. So it is more efficient to use `addDocuments()` 
 instead of calling `addDocument()` multiple times.
 
-Both of the methods return an `IndexResult` which provides the following methods:
-
-* `successfulDocumentsCount()` - contains the number of successfully indexed documents.
-* `erroredDocumentsCount()` - contains the number of errored documents.
-* `exceptionForDocument(int|string $documentId)` - allows you to check if a specific document ID errored and if so, 
-  why. This method returns either `null` (if it was successful) or an exception implementing `LoupeExceptionInterface`.
-* `allDocumentExceptions()` - returns all document related exceptions with the document ID as the key and an 
-  exception implementing `LoupeExceptionInterface` as value.
-* `generalException()` - returns either `null` (if there was no general exception) or an exception implementing 
-  `LoupeExceptionInterface`. A general exception is one that could not be linked to a document ID.
+Both of the methods might throw exceptions in case of invalid data (e.g. documents not matching the schema).
 
 ## Removing documents
 

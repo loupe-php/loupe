@@ -10,7 +10,7 @@ use Loupe\Loupe\BrowseParameters;
 use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\IndexException;
-use Loupe\Loupe\IndexResult;
+use Loupe\Loupe\Exception\InvalidDocumentException;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
@@ -52,8 +52,9 @@ class Engine
     private ?Tokenizer $tokenizer = null;
 
     public function __construct(
-        private Connection $connection,
+        private ConnectionPool $connectionPool,
         private Configuration $configuration,
+        private LoggerInterface $logger,
         private ?string $dataDir = null
     ) {
         $this->indexInfo = new IndexInfo($this);
@@ -66,23 +67,30 @@ class Engine
             new StateSet($this),
             new NullDataStore()
         );
-        $this->indexer = new Indexer($this);
+        $this->indexer = new Indexer($this, new TicketHandler($this->connectionPool, $this->getLogger()));
         $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
         $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->stopwords));
         $this->filterParser = new Parser($this);
         $this->sqliteVersion = match (true) {
-            \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
-            (($nativeConnection = $this->connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
-            (($nativeConnection = $this->connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
+            \is_callable([$this->getConnection(), 'getServerVersion']) => $this->getConnection()->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
+            (($nativeConnection = $this->getConnection()->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
+            (($nativeConnection = $this->getConnection()->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
         };
     }
 
     /**
      * @param array<array<string, mixed>> $documents
+     * @throws InvalidDocumentException
      */
-    public function addDocuments(array $documents): IndexResult
+    public function addDocuments(array $documents): self
     {
-        return $this->indexer->addDocuments($documents);
+        if ($documents === []) {
+            return $this;
+        }
+
+        $this->indexer->addDocuments($documents);
+
+        return $this;
     }
 
     public function browse(BrowseParameters $parameters): BrowseResult
@@ -100,7 +108,7 @@ class Engine
             return 0;
         }
 
-        return (int) $this->connection->createQueryBuilder()
+        return (int) $this->getConnection()->createQueryBuilder()
             ->select('COUNT(*)')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS)
             ->fetchOne();
@@ -130,7 +138,7 @@ class Engine
 
     public function getConnection(): Connection
     {
-        return $this->connection;
+        return $this->connectionPool->loupeConnection;
     }
 
     public function getDataDir(): ?string
@@ -167,14 +175,19 @@ class Engine
         return $this->formatter;
     }
 
+    public function getIndexer(): Indexer
+    {
+        return $this->indexer;
+    }
+
     public function getIndexInfo(): IndexInfo
     {
         return $this->indexInfo;
     }
 
-    public function getLogger(): ?LoggerInterface
+    public function getLogger(): LoggerInterface
     {
-        return $this->getConfiguration()->getLogger();
+        return $this->logger;
     }
 
     public function getStateSetIndex(): StateSetIndex
@@ -237,7 +250,7 @@ class Engine
      */
     public function size(): int
     {
-        return (int) $this->connection
+        return (int) $this->getConnection()
             ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
             ->fetchOne();
     }

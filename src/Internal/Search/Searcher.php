@@ -63,7 +63,7 @@ class Searcher
     private FilterBuilder $filterBuilder;
 
     /**
-     * @var array<int|float|string, string>
+     * @var array<int|string, string>
      */
     private array $namedParameters = [];
 

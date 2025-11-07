@@ -72,17 +72,17 @@ class IndexInfo
 
         $this->updateDocumentSchema($documentSchema);
 
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
+        $this->engine->getIndexer()->recordChange(function () {
+            $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
                 'key' => 'engineVersion',
                 'value' => Engine::VERSION,
-            ]);
+            ], ['key']);
 
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
+            $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
                 'key' => 'configHash',
                 'value' => $this->engine->getConfiguration()->getIndexHash(),
-            ]);
+            ], ['key']);
+        });
 
         $this->needsSetup = false;
     }
@@ -561,12 +561,14 @@ class IndexInfo
     {
         $this->documentSchema = $documentSchema;
 
-        $this->updateSchema();
+        $this->engine->getIndexer()->recordChange(function () use ($documentSchema) {
+            $this->updateSchema();
 
-        $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
-            'key' => 'documentSchema',
-            'value' => json_encode($documentSchema),
-        ], ['key']);
+            $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
+                'key' => 'documentSchema',
+                'value' => json_encode($documentSchema),
+            ], ['key']);
+        });
     }
 
     private function updateSchema(): void
