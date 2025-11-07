@@ -33,17 +33,19 @@
         "loupe/matcher": "^0.2"
     },
     "require-dev": {
-        "symfony/var-dumper": "^7.0",
-        "symfony/filesystem": "^7.0",
-        "symplify/easy-coding-standard": "^12.6",
-        "symfony/finder": "^7.0",
+        "phpstan/phpstan": "^2.0",
         "phpunit/phpunit": "^10.5",
-        "phpstan/phpstan": "^2.0"
+        "symfony/filesystem": "^7.0",
+        "symfony/finder": "^7.0",
+        "symfony/process": "^7.0",
+        "symfony/var-dumper": "^7.0",
+        "symplify/easy-coding-standard": "^12.6"
     },
     "scripts": {
         "tests": "@php vendor/bin/phpunit",
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
+        "slow-tests": "@php vendor/bin/phpunit --testsuite=slow",
         "cs-fixer": "@php vendor/bin/ecs check --fix",
         "ci-cs-fixer": "@php vendor/bin/ecs check",
         "phpstan": "@php vendor/bin/phpstan analyse"

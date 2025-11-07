@@ -20,6 +20,9 @@
         <testsuite name="functional">
             <directory>tests/Functional</directory>
         </testsuite>
+        <testsuite name="slow">
+            <directory>tests/Slow</directory>
+        </testsuite>
     </testsuites>
 
     <source restrictDeprecations="true"
