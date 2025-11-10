@@ -96,7 +96,7 @@ jobs:
             - name: Run the slow tests
               timeout-minutes: 5
               env:
-                  OUTPUT_WORKER_LOG: worker.log
+                  LOUPE_OUTPUT_WORKER_LOG: worker.log
               run: php vendor/bin/phpunit --testsuite=slow --debug
 
             - name: Output worker.log on failure
