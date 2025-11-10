@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\LoupeFactory;
+use Loupe\Loupe\Tests\WorkerLogger;
 
 require __DIR__ . '/../../vendor/autoload.php';
 
@@ -53,6 +54,7 @@ if (!$configuration || !$tempDir) {
 
 try {
     $configuration = Configuration::fromString($configuration);
+    $configuration = $configuration->withLogger(new WorkerLogger($configuration->getProcessName()));
 } catch (\Throwable $exception) {
     echo 'Could not instantiate the configuration for this test: ' . $exception->getMessage();
     exit(1);

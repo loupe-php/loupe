@@ -7,7 +7,9 @@ namespace Loupe\Loupe\Tests\Slow;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Tests\Functional\FunctionalTestTrait;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
+use Loupe\Loupe\Tests\WorkerLogger;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LogLevel;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
@@ -37,7 +39,7 @@ class ConcurrencyTest extends TestCase
         // Run all processes, then kill worker-2 and assert that the stuff from worker-3 still make it into Loupe
         $this->runAndWaitForProcesses($processes, 'worker-2');
 
-        $loupe = $this->createLoupe(self::getConfiguration(), $this->tempDir);
+        $loupe = $this->createLoupe($this->getConfiguration('parent'), $this->tempDir);
 
         $this->assertSame('Content of worker-3', $loupe->getDocument('the-one-in-question')['content'] ?? null);
     }
@@ -55,7 +57,7 @@ class ConcurrencyTest extends TestCase
 
         $this->runAndWaitForProcesses($processes);
 
-        $loupe = $this->createLoupe(self::getConfiguration(), $this->tempDir);
+        $loupe = $this->createLoupe($this->getConfiguration('parent'), $this->tempDir);
 
         $this->assertSame(500, $loupe->countDocuments());
     }
@@ -84,7 +86,7 @@ class ConcurrencyTest extends TestCase
 
         $this->runAndWaitForProcesses($processes);
 
-        $loupe = $this->createLoupe(self::getConfiguration(), $this->tempDir);
+        $loupe = $this->createLoupe($this->getConfiguration('parent'), $this->tempDir);
 
         // Should have 1501 documents because 1500 random plus "the-one-in-question"
         $this->assertSame(1501, $loupe->countDocuments());
@@ -103,7 +105,7 @@ class ConcurrencyTest extends TestCase
         $command = [(new PhpExecutableFinder())->find(), __DIR__ . '/../bin/worker.php'];
         $env = [
             'LOUPE_FUNCTIONAL_TEST_TEMP_DIR' => $this->tempDir,
-            'LOUPE_FUNCTIONAL_TEST_CONFIGURATION' => self::getConfiguration()->withProcessName($workerName)->toString(),
+            'LOUPE_FUNCTIONAL_TEST_CONFIGURATION' => $this->getConfiguration($this->prefixWorkerNameWithTest($workerName))->toString(),
             'LOUPE_FUNCTIONAL_TEST_NUMBER_OF_RANDOM_DOCUMENTS' => $numberOfRandomDocuments,
             'LOUPE_FUNCTIONAL_TEST_PRE_DOCUMENTS' => json_encode($preDocuments),
             'LOUPE_FUNCTIONAL_TEST_POST_DOCUMENTS' => json_encode($postDocuments),
@@ -113,12 +115,24 @@ class ConcurrencyTest extends TestCase
         return new Process($command, env: $env, timeout: null);
     }
 
-    private static function getConfiguration(): Configuration
+    private function getConfiguration(string $processName): Configuration
     {
         return Configuration::create()
             ->withSearchableAttributes(['content'])
             ->withLanguages(['en'])
-        ;
+            ->withProcessName($processName)
+            ->withLogger($this->getWorkerLogger($processName));
+
+    }
+
+    private function getWorkerLogger(string $workerName): WorkerLogger
+    {
+        return new WorkerLogger($this->prefixWorkerNameWithTest($workerName));
+    }
+
+    private function prefixWorkerNameWithTest(string $workerName): string
+    {
+        return \sprintf('%s %s', $this->toString(), $workerName);
     }
 
     /**
@@ -126,8 +140,9 @@ class ConcurrencyTest extends TestCase
      */
     private function runAndWaitForProcesses(array $processes, string|null $processToKill = null): void
     {
-        foreach ($processes as $process) {
+        foreach ($processes as $processName => $process) {
             usleep(500000); // 0.5 seconds to simulate incoming workers one after the other
+            $this->getWorkerLogger($processName)->log(LogLevel::INFO, 'Starting worker ' . $processName);
             $process->start();
         }
 
