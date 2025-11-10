@@ -76,28 +76,38 @@ class TicketHandler
                     // of the current ticket has not been deleted/acknowledged or it just happened now. We need to check
                     // if it's our turn now anyway or if not, delete the non-acknowledged ticket number and then continue in
                     // our loop - because maybe it's still not our turn
-                    $currentTicket = $this->getCurrentTicket();
+                    $observedCurrent = $this->getCurrentTicket();
 
-                    $this->log('No other writer is active. Current ticket: ' . $currentTicket);
+                    $this->log('No other writer is active. Current ticket (observed): ' . $observedCurrent);
 
                     // It's our turn now, do not delete but continue the loop which will do that.
-                    if ($currentTicket === $this->currentTicket) {
+                    if ($observedCurrent === $this->currentTicket) {
                         $this->log('Detected that it is our own process, continuing');
                         continue;
                     }
 
+                    // Re-validate and delete atomically inside an exclusive transaction on the ticket connection.
+                    // This prevents deleting the next ticket if the head changed between observe and delete.
                     try {
-                        $this->log('Deleting the current ticket');
+                        $this->log('Failsafe: Attempting atomic cleanup of stale current ticket');
                         $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
-                        $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
-                            'id' => $currentTicket,
-                        ]);
+
+                        // Re-check the true current ticket inside (!) the transaction
+                        $freshCurrent = $this->getCurrentTicket();
+
+                        if ($freshCurrent !== null && $freshCurrent === $observedCurrent && $freshCurrent !== $this->currentTicket) {
+                            $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
+                                'id' => $freshCurrent,
+                            ]);
+                            $this->log('Failsafe: Deleted ticket ' . $freshCurrent);
+                        } else {
+                            $this->log('Failsafe: current ticket changed or became ours. Skipping delete');
+                        }
+
                         $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
                     } catch (LockWaitTimeoutException $e) {
-                        $this->log('Could not delete the current ticket: ' . $e->getMessage());
-
-                        // noop - maybe two or more processes detected no other process was active at the same time so
-                        // only one will be able to reset the ticket.
+                        $this->log('Failsafe: could not acquire exclusive ticket lock: ' . $e->getMessage());
+                        // noop — another process is probably advancing things
                     }
                 }
 
@@ -114,7 +124,8 @@ class TicketHandler
                 $this->beginExclusiveTransaction($this->connectionPool->loupeConnection);
             } catch (LockWaitTimeoutException $e) {
                 $this->log('Acquiring lock failed: ' . $e->getMessage());
-
+                // FIX: Avoid hot loop on contention.
+                usleep(200_000);
                 continue;
             }
 
@@ -124,14 +135,25 @@ class TicketHandler
 
                 // Acknowledge our ticket to mark it done
                 $this->log('Done with my work. Deleting my ticket');
-                $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
-                    'id' => $this->currentTicket,
-                ]);
+
+                // Do the ticket delete inside a short exclusive transaction on the ticket connection,
+                // so the queue head is advanced atomically from this process' perspective
+                try {
+                    $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
+                    $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
+                        'id' => $this->currentTicket,
+                    ]);
+                    $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
+                } catch (LockWaitTimeoutException $e) {
+                    // If we can't get the ticket lock immediately, log and let the failsafe eventually clean up
+                    $this->log('Could not acquire ticket lock to delete my ticket: ' . $e->getMessage());
+                }
+
                 $this->currentTicket = 0;
                 $this->commitExclusiveTransaction($this->connectionPool->loupeConnection);
                 return;
             } catch (\Throwable $e) {
-                $this->log('Could not delete my ticket: ' . $e->getMessage());
+                $this->log('Work failed / cleanup path: ' . $e->getMessage());
 
                 $this->rollbackExclusiveTransaction($this->connectionPool->loupeConnection);
                 throw $e;
