@@ -17,11 +17,22 @@ class TicketHandler
 {
     public const TABLE_NAME = 'tickets';
 
-    private const FAILSAFE_TRIGGER_THRESHOLD = 5; // Every 5 SLEEP_BETWEEN_TURNS we also trigger our failsafe detection
+    /**
+     * Require the same head to be observed in this many consecutive
+     * failsafe runs (with no active writer) before we try to delete it.
+     * This gives the rightful next worker a grace window to start.
+     */
+    private const FAILSAFE_STABLE_CYCLES = 2;
 
-    private const SLEEP_BETWEEN_TURNS = 2;
+    private const FAILSAFE_TRIGGER_THRESHOLD = 5; // every 5 sleeps we trigger failsafe
+
+    private const SLEEP_BETWEEN_TURNS = 2; // seconds
 
     private int $currentTicket = 0;
+
+    private ?int $failsafeObservedId = null;
+
+    private int $failsafeStableCount = 0;
 
     public function __construct(
         private ConnectionPool $connectionPool,
@@ -65,10 +76,12 @@ class TicketHandler
                 // we continue in our loop, otherwise it is now our turn!
                 if ($i === self::FAILSAFE_TRIGGER_THRESHOLD) {
                     $this->log('Failsafe process started');
-
                     $i = 0;
+
                     if ($this->isOtherWriterActive()) {
                         $this->log('Some other writer is active, continue');
+                        $this->failsafeObservedId = null;
+                        $this->failsafeStableCount = 0;
                         continue;
                     }
 
@@ -77,12 +90,47 @@ class TicketHandler
                     // if it's our turn now anyway or if not, delete the non-acknowledged ticket number and then continue in
                     // our loop - because maybe it's still not our turn
                     $observedCurrent = $this->getCurrentTicket();
+                    $this->log('No other writer is active. Current ticket (observed): ' . ($observedCurrent ?? 'null'));
 
-                    $this->log('No other writer is active. Current ticket (observed): ' . $observedCurrent);
+                    // Nothing to delete or it's our turn already
+                    if ($observedCurrent === null) {
+                        $this->failsafeObservedId = null;
+                        $this->failsafeStableCount = 0;
+                        continue;
+                    }
 
-                    // It's our turn now, do not delete but continue the loop which will do that.
                     if ($observedCurrent === $this->currentTicket) {
                         $this->log('Detected that it is our own process, continuing');
+                        $this->failsafeObservedId = null;
+                        $this->failsafeStableCount = 0;
+                        continue;
+                    }
+
+                    // Head must be stable for N consecutive failsafe cycles
+                    if ($this->failsafeObservedId === $observedCurrent) {
+                        $this->failsafeStableCount++;
+                    } else {
+                        $this->failsafeObservedId = $observedCurrent;
+                        $this->failsafeStableCount = 1;
+                    }
+
+                    if ($this->failsafeStableCount < self::FAILSAFE_STABLE_CYCLES) {
+                        $this->log(\sprintf(
+                            'Failsafe: Head (%d) seen (%d/%d) cycles with no writer - deferring failsafe take-over',
+                            $observedCurrent,
+                            $this->failsafeStableCount,
+                            self::FAILSAFE_STABLE_CYCLES
+                        ));
+                        continue;
+                    }
+
+                    $this->log('Failsafe: Max defer cycles reached. Starting take-over process now');
+                    $this->log('Failsafe: Check again, if another writer is active for some reason');
+
+                    if ($this->isOtherWriterActive()) {
+                        $this->log('Failsafe: Some other writer became active. Skipping take-over process');
+                        $this->failsafeObservedId = null;
+                        $this->failsafeStableCount = 0;
                         continue;
                     }
 
@@ -108,6 +156,10 @@ class TicketHandler
                     } catch (LockWaitTimeoutException $e) {
                         $this->log('Failsafe: could not acquire exclusive ticket lock: ' . $e->getMessage());
                         // noop — another process is probably advancing things
+                    } finally {
+                        // reset for the next head
+                        $this->failsafeObservedId = null;
+                        $this->failsafeStableCount = 0;
                     }
                 }
 
@@ -124,7 +176,7 @@ class TicketHandler
                 $this->beginExclusiveTransaction($this->connectionPool->loupeConnection);
             } catch (LockWaitTimeoutException $e) {
                 $this->log('Acquiring lock failed: ' . $e->getMessage());
-                // FIX: Avoid hot loop on contention.
+                // Avoid hot loop on contention
                 usleep(200_000);
                 continue;
             }
