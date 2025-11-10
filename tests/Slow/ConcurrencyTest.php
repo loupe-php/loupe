@@ -112,7 +112,7 @@ class ConcurrencyTest extends TestCase
             'LOUPE_OUTPUT_WORKER_LOG' => getenv('LOUPE_OUTPUT_WORKER_LOG'),
         ];
 
-        return new Process($command, env: $env, timeout: null);
+        return new Process($command, env: $env, timeout: 120);
     }
 
     private static function getConfiguration(): Configuration
