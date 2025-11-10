@@ -26,6 +26,8 @@ final class LoupeFactory implements LoupeFactoryInterface
 
     private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
 
+    private string|null $sqliteVersion = null;
+
     public function create(string $dataDir, Configuration $configuration): Loupe
     {
         $dataDir = (string) realpath($dataDir);
@@ -97,13 +99,7 @@ final class LoupeFactory implements LoupeFactoryInterface
             throw new InvalidConfigurationException('You need either the sqlite3 (recommended) or pdo_sqlite PHP extension.');
         }
 
-        $sqliteVersion = match (true) {
-            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
-            (($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
-            (($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
-        };
-
-        if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
+        if (version_compare($this->getSqliteVersion($connection), self::MIN_SQLITE_VERSION, '<')) {
             throw new \InvalidArgumentException(\sprintf(
                 'You need at least version "%s" of SQLite.',
                 self::MIN_SQLITE_VERSION
@@ -118,16 +114,15 @@ final class LoupeFactory implements LoupeFactoryInterface
     private function createConnectionPool(Configuration $configuration, ?string $dataDir = null): ConnectionPool
     {
         if ($dataDir === null) {
-            return new ConnectionPool(
-                $this->createConnection('loupe', $configuration),
-                $this->createConnection('tickets', $configuration),
-            );
+            $loupeConnection = $this->createConnection('loupe', $configuration);
+            $ticketsConnection = $this->createConnection('tickets', $configuration);
+        } else {
+            $loupeConnection = $this->createConnection('loupe', $configuration, $dataDir . '/loupe.db');
+            $ticketsConnection = $this->createConnection('loupe', $configuration, $dataDir . '/tickets.db');
+
         }
 
-        return new ConnectionPool(
-            $this->createConnection('loupe', $configuration, $dataDir . '/loupe.db'),
-            $this->createConnection('tickets', $configuration, $dataDir . '/tickets.db')
-        );
+        return new ConnectionPool($loupeConnection, $ticketsConnection, $this->getSqliteVersion($loupeConnection));
     }
 
     private function createFromConnectionPool(ConnectionPool $connectionPool, Configuration $configuration, ?string $dataDir = null): Loupe
@@ -166,6 +161,20 @@ final class LoupeFactory implements LoupeFactoryInterface
         $config->setMiddlewares($middlewares);
 
         return $config;
+    }
+
+    private function getSqliteVersion(Connection $connection): string
+    {
+        // No need to query this multiple times, it's the same for all connections
+        if ($this->sqliteVersion !== null) {
+            return $this->sqliteVersion;
+        }
+
+        return $this->sqliteVersion = match (true) {
+            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
+            (($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
+            (($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
+        };
     }
 
     private function optimizeSQLiteConnection(Connection $connection): void
