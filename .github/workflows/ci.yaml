@@ -87,4 +87,18 @@ jobs:
               run: composer update --no-interaction ${{ matrix.composer }}
 
             - name: Run the unit tests
-              run: composer tests
+              run: composer unit-tests
+
+            - name: Run the functional tests
+              run: composer functional-tests
+
+            # Run the slow tests with a maximum of 5 minutes which should be enough to complete.
+            - name: Run the slow tests
+              timeout-minutes: 5
+              env:
+                  OUTPUT_WORKER_LOG: worker.log
+              run: php vendor/bin/phpunit --testsuite=slow --debug
+
+            - name: Output worker.log on failure
+              if: ${{ failure() }}
+              run: cat worker.log

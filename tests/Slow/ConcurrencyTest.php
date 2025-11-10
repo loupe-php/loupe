@@ -100,6 +100,7 @@ class ConcurrencyTest extends TestCase
      */
     private function createWorkerProcess(string $workerName, int $numberOfRandomDocuments, array $preDocuments = [], array $postDocuments = [], int $numberOfWordsPerDocument = 100): Process
     {
+        $workerName = \sprintf('%s %s', $this->toString(), $workerName);
         $command = [(new PhpExecutableFinder())->find(), __DIR__ . '/../bin/worker.php'];
         $env = [
             'LOUPE_FUNCTIONAL_TEST_TEMP_DIR' => $this->tempDir,
@@ -108,6 +109,7 @@ class ConcurrencyTest extends TestCase
             'LOUPE_FUNCTIONAL_TEST_PRE_DOCUMENTS' => json_encode($preDocuments),
             'LOUPE_FUNCTIONAL_TEST_POST_DOCUMENTS' => json_encode($postDocuments),
             'LOUPE_FUNCTIONAL_TEST_NUMBER_OF_WORDS_PER_DOCUMENT' => $numberOfWordsPerDocument,
+            'LOUPE_OUTPUT_WORKER_LOG' => getenv('LOUPE_OUTPUT_WORKER_LOG'),
         ];
 
         return new Process($command, env: $env, timeout: null);
