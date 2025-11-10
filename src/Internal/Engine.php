@@ -43,8 +43,6 @@ class Engine
 
     private IndexInfo $indexInfo;
 
-    private string $sqliteVersion = '';
-
     private StateSetIndex $stateSetIndex;
 
     private StopwordsInterface $stopwords;
@@ -71,11 +69,6 @@ class Engine
         $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
         $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->stopwords));
         $this->filterParser = new Parser($this);
-        $this->sqliteVersion = match (true) {
-            \is_callable([$this->getConnection(), 'getServerVersion']) => $this->getConnection()->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
-            (($nativeConnection = $this->getConnection()->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
-            (($nativeConnection = $this->getConnection()->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
-        };
     }
 
     /**
@@ -275,7 +268,7 @@ class Engine
         }
 
         // Use native UPSERT if possible
-        if (version_compare($this->sqliteVersion, '3.35.0', '>=')) {
+        if (version_compare($this->connectionPool->sqliteVersion, '3.35.0', '>=')) {
             $columns = [];
             $set = [];
             $values = [];
