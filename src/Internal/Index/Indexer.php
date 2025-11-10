@@ -5,16 +5,21 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Index;
 
 use Doctrine\DBAL\ArrayParameterType;
-use Loupe\Loupe\Exception\IndexException;
-use Loupe\Loupe\Exception\LoupeExceptionInterface;
-use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\PreparedDocument\MultiAttribute;
+use Loupe\Loupe\Internal\Index\PreparedDocument\SingleAttribute;
+use Loupe\Loupe\Internal\Index\PreparedDocument\Term;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
-use Loupe\Loupe\Internal\Util;
+use Loupe\Loupe\Internal\TicketHandler;
 
 class Indexer
 {
+    /**
+     * @var array<int, callable>
+     */
+    private array $changes = [];
+
     /**
      * @var array<string, int>
      */
@@ -26,195 +31,109 @@ class Indexer
     private array $prefixTermCache = [];
 
     public function __construct(
-        private Engine $engine
+        private Engine $engine,
+        private TicketHandler $ticketHandler
     ) {
     }
 
     /**
-     * @param array<array<string, mixed>> $documents
-     * @throws IndexException In case something really went wrong - this shouldn't happen and should be reported as a bug
+     * @param non-empty-array<array<string,mixed>> $documents
      */
-    public function addDocuments(array $documents): IndexResult
+    public function addDocuments(array $documents): void
     {
-        if ($documents === []) {
-            return new IndexResult(0);
-        }
+        $this->ticketHandler->claimTicket();
 
         $firstDocument = reset($documents);
 
-        $indexInfo = $this->engine->getIndexInfo();
-
-        if ($indexInfo->needsSetup()) {
-            $indexInfo->setup($firstDocument);
+        // Prepare setup if needed
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            $this->engine->getIndexInfo()->setup($firstDocument);
         }
 
-        // Fix and validate all documents first to update the document schema if needed.
-        // Updating the schema locks the database so we don't want to do this while indexing (which can take quite a while)
-        $documentExceptions = [];
-
-        foreach ($documents as &$document) {
-            try {
-                $indexInfo->fixAndValidateDocument($document);
-            } catch (\Throwable $exception) {
-                if ($exception instanceof LoupeExceptionInterface) {
-                    $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null;
-
-                    // We cannot report this exception on the document because the key is missing - we have to
-                    // abort early here.
-                    if ($primaryKey === null) {
-                        return new IndexResult(0, $documentExceptions, $exception);
-                    }
-
-                    $documentExceptions[$primaryKey] = $exception;
-                    continue;
-                }
-
-                throw new IndexException($exception->getMessage(), 0, $exception);
-            }
+        // Fix, validate and record schema updates if needed
+        foreach ($documents as $document) {
+            $this->engine->getIndexInfo()->fixAndValidateDocument($document);
         }
-        if ($documentExceptions !== []) {
-            return new IndexResult(0, $documentExceptions);
+
+        // Now prepare the documents
+        $preparedDocuments = [];
+        foreach ($documents as $document) {
+            $preparedDocuments[] = $this->prepareDocument($document);
         }
-        unset($document);
 
-        $documentExceptions = [];
-        $successfulCount = 0;
+        $this->recordChange(function () use ($preparedDocuments) {
+            $this->writePreparedDocuments($preparedDocuments);
 
-        try {
-            foreach ($documents as $document) {
-                try {
-                    $this->engine->getConnection()
-                        ->transactional(function () use ($document) {
-                            $documentId = $this->createDocument($document);
-                            $this->removeDocumentData($documentId);
-                            $this->indexMultiAttributes($document, $documentId);
-                            $this->indexTerms($document, $documentId);
-                        });
-
-                    $successfulCount++;
-                } catch (LoupeExceptionInterface $exception) {
-                    $primaryKey = $document[$this->engine->getConfiguration()->getPrimaryKey()] ?? null;
-
-                    // We cannot report this exception on the document because the key is missing - we have to
-                    // abort early here.
-                    if ($primaryKey === null) {
-                        return new IndexResult($successfulCount, $documentExceptions, $exception);
-                    }
-
-                    $documentExceptions[$primaryKey] = $exception;
-                }
-            }
-
-            // Update storage only once
             $this->reviseStorage();
-        } catch (\Throwable $e) {
-            if ($e instanceof LoupeExceptionInterface) {
-                return new IndexResult($successfulCount, $documentExceptions, $e);
-            }
+        });
 
-            throw new IndexException($e->getMessage(), 0, $e);
-        }
-
-        return new IndexResult($successfulCount, $documentExceptions);
+        $this->commitChanges();
     }
 
-    public function deleteAllDocuments(): self
+    public function deleteAllDocuments(): void
     {
         if ($this->engine->getIndexInfo()->needsSetup()) {
-            return $this;
+            return;
         }
 
-        $this->engine->getConnection()
-            ->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
+        $this->ticketHandler->claimTicket();
 
-        $this->reviseStorage();
+        $this->recordChange(function () {
+            $this->engine->getConnection()->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
-        return $this;
+            $this->reviseStorage();
+        });
+
+        $this->commitChanges();
     }
 
     /**
      * @param array<int|string> $ids
      */
-    public function deleteDocuments(array $ids, bool $reviseStorage = true): self
+    public function deleteDocuments(array $ids): self
     {
         if ($this->engine->getIndexInfo()->needsSetup()) {
             return $this;
         }
 
-        $this->engine->getConnection()
-            ->executeStatement(
-                \sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
-                [
-                    'ids' => LoupeTypes::convertToArrayOfStrings($ids),
-                ],
-                [
-                    'ids' => ArrayParameterType::STRING,
-                ]
-            );
+        $this->ticketHandler->claimTicket();
 
-        if ($reviseStorage) {
+        $this->recordChange(function () use ($ids): void {
+            $this->engine->getConnection()
+                ->executeStatement(
+                    \sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                    [
+                        'ids' => LoupeTypes::convertToArrayOfStrings($ids),
+                    ],
+                    [
+                        'ids' => ArrayParameterType::STRING,
+                    ]
+                );
+
             $this->reviseStorage();
-        }
+        });
+
+        $this->commitChanges();
 
         return $this;
     }
 
-    /**
-     * @param array<string, mixed> $document
-     * @return int The document ID
-     */
-    private function createDocument(array $document): int
+    public function recordChange(callable $change): void
     {
-        if ($this->engine->getConfiguration()->getDisplayedAttributes() !== ['*']) {
-            $documentData = array_intersect_key($document, array_flip($this->engine->getConfiguration()->getDisplayedAttributes()));
-        } else {
-            $documentData = $document;
-        }
+        $this->changes[] = $change;
+    }
 
-        $data = [
-            'user_id' => (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
-            'document' => Util::encodeJson($documentData),
-        ];
-
-        foreach ($this->engine->getIndexInfo()->getSingleFilterableAndSortableAttributes() as $attribute) {
-            if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {
-                continue;
+    private function commitChanges(): void
+    {
+        $this->ticketHandler->waitForTicket(function () {
+            // Apply changes one by one
+            foreach ($this->changes as $change) {
+                $change();
             }
 
-            $loupeType = $this->engine->getIndexInfo()
-                ->getLoupeTypeForAttribute($attribute);
-
-            if ($loupeType === LoupeTypes::TYPE_GEO) {
-                if (!isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
-                    continue;
-                }
-
-                $data[$attribute . '_geo_lat'] = $document[$attribute]['lat'];
-                $data[$attribute . '_geo_lng'] = $document[$attribute]['lng'];
-                continue;
-            }
-
-            $data[$attribute] = LoupeTypes::convertValueToType($document[$attribute] ?? null, $loupeType);
-        }
-
-        // Markers for IS EMPTY and IS NULL filters on multi attributes
-        foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
-            $loupeType = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute);
-            $value = LoupeTypes::convertValueToType($document[$attribute], $loupeType);
-
-            if (\is_array($value)) {
-                $data[$attribute] = \count($value);
-            } else {
-                $data[$attribute] = $value;
-            }
-        }
-
-        return (int) $this->engine->upsert(
-            IndexInfo::TABLE_NAME_DOCUMENTS,
-            $data,
-            ['user_id'],
-            'id'
-        );
+            // Reset changes
+            $this->changes = [];
+        });
     }
 
     private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void
@@ -245,30 +164,6 @@ class Indexer
             ],
             ['attribute', 'document']
         );
-    }
-
-    /**
-     * @param array<string, mixed> $document
-     */
-    private function indexMultiAttributes(array $document, int $documentId): void
-    {
-        foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
-            $attributeValue = $document[$attribute];
-
-            $convertedValue = LoupeTypes::convertValueToType(
-                $attributeValue,
-                $this->engine->getIndexInfo()
-                    ->getLoupeTypeForAttribute($attribute)
-            );
-
-            if (\is_array($convertedValue)) {
-                foreach ($convertedValue as $value) {
-                    $this->indexAttributeValue($attribute, $value, $documentId);
-                }
-            } else {
-                $this->indexAttributeValue($attribute, $convertedValue, $documentId);
-            }
-        }
     }
 
     private function indexPrefix(string $prefix, int $termId): void
@@ -375,43 +270,6 @@ class Indexer
         return $termId;
     }
 
-    /**
-     * @param array<string, mixed> $document
-     */
-    private function indexTerms(array $document, int $documentId): void
-    {
-        $cleanedDocument = [];
-        $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
-
-        foreach ($document as $attributeName => $attributeValue) {
-            if (['*'] !== $searchableAttributes && !\in_array($attributeName, $searchableAttributes, true)) {
-                continue;
-            }
-
-            $cleanedDocument[$attributeName] = LoupeTypes::convertToString($attributeValue);
-        }
-
-        $tokensPerAttribute = $this->engine->getTokenizer()->tokenizeDocument($cleanedDocument);
-
-        foreach ($tokensPerAttribute as $attributeName => $tokenCollection) {
-            $termPosition = 1;
-            foreach ($tokenCollection->all() as $token) {
-                // Index the main term
-                $termId = $this->indexTerm($token->getTerm(), $documentId, $attributeName, $termPosition);
-
-                // Index prefixes for the main term (not for variants though)
-                $this->indexPrefixes($token->getTerm(), $termId);
-
-                // Index variants
-                foreach ($token->getVariants() as $termVariant) {
-                    $this->indexTerm($termVariant, $documentId, $attributeName, $termPosition);
-                }
-
-                ++$termPosition;
-            }
-        }
-    }
-
     private function needsVacuum(): bool
     {
         if ($this->engine->getIndexInfo()->needsSetup()) {
@@ -431,6 +289,115 @@ class Indexer
         /** @var StateSet $stateSet */
         $stateSet = $this->engine->getStateSetIndex()->getStateSet();
         $stateSet->persist();
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    private function prepareDocument(array $document): PreparedDocument
+    {
+        if ($this->engine->getConfiguration()->getDisplayedAttributes() !== ['*']) {
+            $documentData = array_intersect_key($document, array_flip($this->engine->getConfiguration()->getDisplayedAttributes()));
+        } else {
+            $documentData = $document;
+        }
+
+        $preparedDocument = new PreparedDocument(
+            (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
+            $documentData
+        );
+
+        $singleAttributes = [];
+        $multiAttributes = [];
+
+        foreach ($this->engine->getIndexInfo()->getSingleFilterableAndSortableAttributes() as $attribute) {
+            if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {
+                continue;
+            }
+
+            $loupeType = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute);
+
+            if ($loupeType === LoupeTypes::TYPE_GEO) {
+                if (!isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
+                    continue;
+                }
+
+                $singleAttributes[] = new SingleAttribute($attribute . '_geo_lat', $document[$attribute]['lat']);
+                $singleAttributes[] = new SingleAttribute($attribute . '_geo_lng', $document[$attribute]['lng']);
+                continue;
+            }
+
+            $value = LoupeTypes::convertValueToType($document[$attribute] ?? null, $loupeType);
+
+            if (!\is_scalar($value)) {
+                throw new \LogicException('This should not happen.');
+            }
+
+            $singleAttributes[] = new SingleAttribute($attribute, $value);
+        }
+
+        // Markers for IS EMPTY and IS NULL filters on multi attributes
+        foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
+            $loupeType = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute);
+            $value = LoupeTypes::convertValueToType($document[$attribute] ?? null, $loupeType);
+
+            if (\is_array($value)) {
+                $singleAttributes[] = new SingleAttribute($attribute, \count($value));
+            } else {
+                $singleAttributes[] = new SingleAttribute($attribute, $value);
+            }
+        }
+
+        foreach ($this->engine->getIndexInfo()->getMultiFilterableAttributes() as $attribute) {
+            $attributeValue = $document[$attribute] ?? null;
+
+            $convertedValue = LoupeTypes::convertValueToType(
+                $attributeValue,
+                $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute)
+            );
+
+            if (\is_bool($convertedValue)) {
+                throw new \LogicException('This should not happen.');
+            }
+
+            $multiAttributes[] = new MultiAttribute($attribute, (array) $convertedValue);
+        }
+
+        // Terms
+        $terms = [];
+        $cleanedDocument = [];
+        $searchableAttributes = $this->engine->getConfiguration()->getSearchableAttributes();
+
+        foreach ($document as $attributeName => $attributeValue) {
+            if (['*'] !== $searchableAttributes && !\in_array($attributeName, $searchableAttributes, true)) {
+                continue;
+            }
+
+            $cleanedDocument[$attributeName] = LoupeTypes::convertToString($attributeValue);
+        }
+
+        $tokensPerAttribute = $this->engine->getTokenizer()->tokenizeDocument($cleanedDocument);
+
+        foreach ($tokensPerAttribute as $attributeName => $tokenCollection) {
+            $termPosition = 1;
+            foreach ($tokenCollection->all() as $token) {
+                // Index the main term
+                $terms[] = new Term($token->getTerm(), $attributeName, $termPosition, false);
+
+                // Index variants
+                foreach ($token->getVariants() as $termVariant) {
+                    $terms[] = new Term($termVariant, $attributeName, $termPosition, false);
+                }
+
+                ++$termPosition;
+            }
+        }
+
+        return $preparedDocument
+            ->withSingleAttributes($singleAttributes)
+            ->withMultiAttributes($multiAttributes)
+            ->withTerms($terms)
+        ;
     }
 
     private function removeDocumentData(int $documentId): void
@@ -557,11 +524,9 @@ class Indexer
 
     private function reviseStorage(): void
     {
-        $this->engine->getConnection()->transactional(function () {
-            $this->removeOrphans();
-            $this->persistStateSet();
-            $this->vacuumDatabase();
-        });
+        $this->removeOrphans();
+        $this->persistStateSet();
+        $this->vacuumDatabase();
     }
 
     private function vacuumDatabase(): void
@@ -571,5 +536,56 @@ class Indexer
         }
 
         $this->engine->getConnection()->executeStatement('PRAGMA incremental_vacuum');
+    }
+
+    /**
+     * @param array<PreparedDocument> $documents
+     */
+    private function writePreparedDocuments(array $documents): void
+    {
+        // TODO: optimize this entire logic for bulk inserts
+        foreach ($documents as $document) {
+            $data = [
+                'user_id' => $document->getUserId(),
+                'document' => $document->getJsonEncodedDocumentData(),
+            ];
+
+            foreach ($document->getSingleAttributes() as $attribute) {
+                $data[$attribute->getName()] = $attribute->getValue();
+            }
+
+            $documentId = (int) $this->engine->upsert(
+                IndexInfo::TABLE_NAME_DOCUMENTS,
+                $data,
+                ['user_id'],
+                'id'
+            );
+
+            // TODO: This can be optimized for sure
+            $this->removeDocumentData($documentId);
+
+            // TODO: optimize me
+            foreach ($document->getMultiAttributes() as $attribute) {
+                foreach ($attribute->getValues() as $value) {
+                    $this->indexAttributeValue($attribute->getName(), $value, $documentId);
+                }
+            }
+
+            // TODO: optimize me
+            foreach ($document->getTerms() as $term) {
+                // Main terms
+                if (!$term->isVariant()) {
+                    $termId = $this->indexTerm($term->getTerm(), $documentId, $term->getAttribute(), $term->getPosition());
+
+                    // Index prefixes for the main term (not for variants though)
+                    $this->indexPrefixes($term->getTerm(), $termId);
+
+                    continue;
+                }
+
+                // Variants
+                $this->indexTerm($term->getTerm(), $documentId, $term->getAttribute(), $term->getPosition());
+            }
+        }
     }
 }

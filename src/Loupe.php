@@ -23,19 +23,19 @@ final class Loupe
     /**
      * @param array<string, mixed> $document
      */
-    public function addDocument(array $document): IndexResult
+    public function addDocument(array $document): void
     {
         StaticCache::enterContext($this);
-        return $this->addDocuments([$document]);
+        $this->addDocuments([$document]);
     }
 
     /**
      * @param array<int, array<string, mixed>> $documents
      */
-    public function addDocuments(array $documents): IndexResult
+    public function addDocuments(array $documents): void
     {
         StaticCache::enterContext($this);
-        return $this->engine->addDocuments($documents);
+        $this->engine->addDocuments($documents);
     }
 
     public function browse(BrowseParameters $parameters): BrowseResult

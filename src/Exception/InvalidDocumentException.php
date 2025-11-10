@@ -12,6 +12,10 @@ class InvalidDocumentException extends \InvalidArgumentException implements Loup
      */
     public static function becauseDoesNotMatchSchema(array $schema, array $document, ?string $primaryKey = null): self
     {
+        // Sort keys alphabetically to help comparing the values
+        ksort($schema);
+        ksort($document);
+
         if ($primaryKey !== null) {
             return new self(
                 \sprintf(

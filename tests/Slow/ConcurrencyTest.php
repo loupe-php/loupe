@@ -26,9 +26,9 @@ class ConcurrencyTest extends TestCase
     public function testLoupeDoesNotGetStuckIfProcessIsKilled(): void
     {
         $processes = [
-            'worker-1' => $this->createWorkerProcess(500),
-            'worker-2' => $this->createWorkerProcess(500),
-            'worker-3' => $this->createWorkerProcess(0, [[
+            'worker-1' => $this->createWorkerProcess('worker-1', 500),
+            'worker-2' => $this->createWorkerProcess('worker-2', 500),
+            'worker-3' => $this->createWorkerProcess('worker-3', 0, [[
                 'id' => 'the-one-in-question',
                 'content' => 'Content of worker-3',
             ]]),
@@ -50,7 +50,7 @@ class ConcurrencyTest extends TestCase
         // takes longer, showcasing that simply indexing one document after the other within its own transaction
         // is not sufficient if there are too many concurrent processes.
         for ($i = 1; $i <= 5; $i++) {
-            $processes['worker-' . $i] = $this->createWorkerProcess(100, [], [], 1000);
+            $processes['worker-' . $i] = $this->createWorkerProcess('worker-' . $i, 100, [], [], 1000);
         }
 
         $this->runAndWaitForProcesses($processes);
@@ -64,19 +64,19 @@ class ConcurrencyTest extends TestCase
     {
         $processes = [
             // Worker 1 creates 500 random documents
-            'worker-1' => $this->createWorkerProcess(500),
+            'worker-1' => $this->createWorkerProcess('worker-1', 500),
             // Worker 2 creates one specific document
-            'worker-2' => $this->createWorkerProcess(0, [[
+            'worker-2' => $this->createWorkerProcess('worker-2', 0, [[
                 'id' => 'the-one-in-question',
                 'content' => 'Content of worker-2',
             ]]),
             // Worker 3 overrides that specific document but first, it creates 1000 other documents so overriding happens last
-            'worker-3' => $this->createWorkerProcess(1000, [], [[
+            'worker-3' => $this->createWorkerProcess('worker-3', 1000, [], [[
                 'id' => 'the-one-in-question',
                 'content' => 'Content of worker-3',
             ]]),
             // Worker 4 also wants to override that document, but it does it at the beginning
-            'worker-4' => $this->createWorkerProcess(0, [[
+            'worker-4' => $this->createWorkerProcess('worker-4', 0, [[
                 'id' => 'the-one-in-question',
                 'content' => 'Content of worker-4',
             ]]),
@@ -98,12 +98,12 @@ class ConcurrencyTest extends TestCase
      * @param array<array<string, mixed>> $preDocuments
      * @param array<array<string, mixed>> $postDocuments
      */
-    private function createWorkerProcess(int $numberOfRandomDocuments, array $preDocuments = [], array $postDocuments = [], int $numberOfWordsPerDocument = 100): Process
+    private function createWorkerProcess(string $workerName, int $numberOfRandomDocuments, array $preDocuments = [], array $postDocuments = [], int $numberOfWordsPerDocument = 100): Process
     {
         $command = [(new PhpExecutableFinder())->find(), __DIR__ . '/../bin/worker.php'];
         $env = [
             'LOUPE_FUNCTIONAL_TEST_TEMP_DIR' => $this->tempDir,
-            'LOUPE_FUNCTIONAL_TEST_CONFIGURATION' => self::getConfiguration()->toString(),
+            'LOUPE_FUNCTIONAL_TEST_CONFIGURATION' => self::getConfiguration()->withProcessName($workerName)->toString(),
             'LOUPE_FUNCTIONAL_TEST_NUMBER_OF_RANDOM_DOCUMENTS' => $numberOfRandomDocuments,
             'LOUPE_FUNCTIONAL_TEST_PRE_DOCUMENTS' => json_encode($preDocuments),
             'LOUPE_FUNCTIONAL_TEST_POST_DOCUMENTS' => json_encode($postDocuments),

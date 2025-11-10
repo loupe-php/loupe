@@ -68,7 +68,7 @@ class DocumentHandlingTest extends TestCase
 
         $loupe = $this->createLoupe($configuration);
         $sizeBefore = $loupe->size();
-        $this->assertGreaterThan(0, $sizeBefore);
+        $this->assertSame(0, $sizeBefore);
 
         $this->indexFixture($loupe, 'departments');
 

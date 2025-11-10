@@ -6,7 +6,6 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
-use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\SearchParameters;
@@ -28,17 +27,8 @@ class IndexTest extends TestCase
                     'departments' => [1, 3, 8],
                 ]),
             ],
-            function (IndexResult $indexResult) {
-                self::assertSame(0, $indexResult->successfulDocumentsCount());
-                self::assertSame(1, $indexResult->erroredDocumentsCount());
-                self::assertCount(1, $indexResult->allDocumentExceptions());
-                self::assertNull($indexResult->generalException());
-                self::assertInstanceOf(InvalidDocumentException::class, $indexResult->exceptionForDocument(2));
-                self::assertSame(
-                    'Document ID "2" ("{"id":2,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
-                    $indexResult->exceptionForDocument(2)->getMessage()
-                );
-            },
+            InvalidDocumentException::class,
+            'Document ID "2" ("{"age":29,"colors":["Red","Orange"],"departments":[1,3,8],"firstname":"Uta","gender":"female","id":2,"lastname":"Koertig"}") does not match schema: {"departments":"array<string>","firstname":"string","gender":"string","id":"number"}',
         ];
 
         yield 'Wrong array values when narrowed down' => [
@@ -52,18 +42,8 @@ class IndexTest extends TestCase
                     'departments' => [1, 3, 8],
                 ]),
             ],
-
-            function (IndexResult $indexResult) {
-                self::assertSame(0, $indexResult->successfulDocumentsCount());
-                self::assertSame(1, $indexResult->erroredDocumentsCount());
-                self::assertCount(1, $indexResult->allDocumentExceptions());
-                self::assertNull($indexResult->generalException());
-                self::assertInstanceOf(InvalidDocumentException::class, $indexResult->exceptionForDocument(3));
-                self::assertSame(
-                    'Document ID "3" ("{"id":3,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
-                    $indexResult->exceptionForDocument(3)->getMessage()
-                );
-            },
+            InvalidDocumentException::class,
+            'Document ID "3" ("{"age":29,"colors":["Red","Orange"],"departments":[1,3,8],"firstname":"Uta","gender":"female","id":3,"lastname":"Koertig"}") does not match schema: {"departments":"array<string>","firstname":"string","gender":"string","id":"number"}',
         ];
     }
 
@@ -302,20 +282,21 @@ class IndexTest extends TestCase
 
     /**
      * @param array<array<string, mixed>> $documents
-     * @param \Closure(IndexResult):void $assert
+     * @param class-string<\Throwable> $expectedException
      */
     #[DataProvider('invalidSchemaChangesProvider')]
-    public function testInvalidSchemaChanges(array $documents, \Closure $assert): void
+    public function testInvalidSchemaChanges(array $documents, string $expectedException, string $expectedExceptionMessage): void
     {
+        $this->expectException($expectedException);
+        $this->expectExceptionMessage($expectedExceptionMessage);
+
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
             ->withSortableAttributes(['firstname'])
         ;
 
         $loupe = $this->createLoupe($configuration);
-        $indexResult = $loupe->addDocuments($documents);
-
-        $assert($indexResult);
+        $loupe->addDocuments($documents);
     }
 
     public function testLogging(): void
