@@ -90,7 +90,7 @@ class TicketHandler
                         $this->log('Deleting the current ticket');
                         $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
                         $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
-                            'id' => $this->getCurrentTicket(),
+                            'id' => $currentTicket,
                         ]);
                         $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
                     } catch (LockWaitTimeoutException $e) {
