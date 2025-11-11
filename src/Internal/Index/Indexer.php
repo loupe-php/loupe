@@ -41,8 +41,6 @@ class Indexer
      */
     public function addDocuments(array $documents): void
     {
-        $this->ticketHandler->claimTicket();
-
         $firstDocument = reset($documents);
 
         // Prepare setup if needed
@@ -76,8 +74,6 @@ class Indexer
             return;
         }
 
-        $this->ticketHandler->claimTicket();
-
         $this->recordChange(function () {
             $this->engine->getConnection()->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
@@ -95,8 +91,6 @@ class Indexer
         if ($this->engine->getIndexInfo()->needsSetup()) {
             return $this;
         }
-
-        $this->ticketHandler->claimTicket();
 
         $this->recordChange(function () use ($ids): void {
             $this->engine->getConnection()
@@ -125,15 +119,16 @@ class Indexer
 
     private function commitChanges(): void
     {
-        $this->ticketHandler->waitForTicket(function () {
-            // Apply changes one by one
-            foreach ($this->changes as $change) {
-                $change();
-            }
+        // Wait for our process to acquire the lock
+        $this->ticketHandler->acquire();
 
-            // Reset changes
-            $this->changes = [];
-        });
+        // Apply changes one by one
+        foreach ($this->changes as $change) {
+            $change();
+        }
+
+        // Reset changes
+        $this->changes = [];
     }
 
     private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void

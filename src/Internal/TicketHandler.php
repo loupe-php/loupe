@@ -26,7 +26,7 @@ class TicketHandler
 
     private const FAILSAFE_TRIGGER_THRESHOLD = 5; // every 5 sleeps we trigger failsafe
 
-    private const SLEEP_BETWEEN_TURNS = 2; // seconds
+    private const SLEEP_BETWEEN_TURNS = 2;       // seconds
 
     private int $currentTicket = 0;
 
@@ -34,10 +34,57 @@ class TicketHandler
 
     private int $failsafeStableCount = 0;
 
+    private bool $signalHandlerInstalled = false;
+
+    private bool $writeLockAlreadyAcquired = false;
+
     public function __construct(
         private ConnectionPool $connectionPool,
         private LoggerInterface $logger
     ) {
+        $this->installSignalHandlerOnce();
+    }
+
+    /**
+     * Block until it's our turn, then acquire and keep the write lock.
+     * Call release() to delete the ticket and free the lock.
+     */
+    public function acquire(): void
+    {
+        if ($this->writeLockAlreadyAcquired) {
+            return;
+        }
+
+        // Claim ticket if not already done - usually done beforehand (as early as possible in the process)
+        $this->claimTicket();
+
+        $i = 0;
+        while (true) {
+            $i++;
+            $this->log('Acquire loop: checking if it is my turn');
+
+            if ($this->isMyTurn()) {
+                try {
+                    $this->log('Acquiring writer lock (BEGIN EXCLUSIVE)');
+                    $this->beginExclusiveTransaction($this->connectionPool->loupeConnection);
+                    $this->writeLockAlreadyAcquired = true;
+                    $this->log('Writer lock acquired');
+                    return;
+                } catch (LockWaitTimeoutException $e) {
+                    $this->log('Acquire lock failed: ' . $e->getMessage());
+                    usleep(200_000); // 200ms backoff
+                    continue;
+                }
+            }
+
+            $this->log('Not my turn, sleeping');
+            sleep(self::SLEEP_BETWEEN_TURNS);
+
+            if ($i === self::FAILSAFE_TRIGGER_THRESHOLD) {
+                $i = 0;
+                $this->runFailsafe();
+            }
+        }
     }
 
     public function claimTicket(): int
@@ -48,168 +95,46 @@ class TicketHandler
 
         return $this->currentTicket = (int) $this->connectionPool->ticketConnection->transactional(function () {
             try {
-                $this->connectionPool->ticketConnection->executeStatement(\sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME));
+                $this->connectionPool->ticketConnection->executeStatement(
+                    \sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME)
+                );
             } catch (TableNotFoundException) {
                 $this->updateSchema();
-                $this->connectionPool->ticketConnection->executeStatement(\sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME));
+                $this->connectionPool->ticketConnection->executeStatement(
+                    \sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME)
+                );
             }
 
             return $this->connectionPool->ticketConnection->lastInsertId();
         });
     }
 
-    public function waitForTicket(\Closure $closure): void
+    /**
+     * Delete our ticket and release the writer lock.
+     */
+    public function release(): void
     {
-        $this->claimTicket();
-        $i = 0;
-
-        while (true) {
-            $i++;
-            $this->log('Starting new loop');
-
-            if (!$this->isMyTurn()) {
-                $this->log('Not my turn, sleeping');
-
-                sleep(self::SLEEP_BETWEEN_TURNS);
-
-                // After n turns where it's not our turn, we check if there is even another writer active. If so,
-                // we continue in our loop, otherwise it is now our turn!
-                if ($i === self::FAILSAFE_TRIGGER_THRESHOLD) {
-                    $this->log('Failsafe process started');
-                    $i = 0;
-
-                    if ($this->isOtherWriterActive()) {
-                        $this->log('Some other writer is active, continue');
-                        $this->failsafeObservedId = null;
-                        $this->failsafeStableCount = 0;
-                        continue;
-                    }
-
-                    // Okay, so it's not our turn but also no other worker is active anymore. That means the process
-                    // of the current ticket has not been deleted/acknowledged or it just happened now. We need to check
-                    // if it's our turn now anyway or if not, delete the non-acknowledged ticket number and then continue in
-                    // our loop - because maybe it's still not our turn
-                    $observedCurrent = $this->getCurrentTicket();
-                    $this->log('No other writer is active. Current ticket (observed): ' . ($observedCurrent ?? 'null'));
-
-                    // Nothing to delete or it's our turn already
-                    if ($observedCurrent === null) {
-                        $this->failsafeObservedId = null;
-                        $this->failsafeStableCount = 0;
-                        continue;
-                    }
-
-                    if ($observedCurrent === $this->currentTicket) {
-                        $this->log('Detected that it is our own process, continuing');
-                        $this->failsafeObservedId = null;
-                        $this->failsafeStableCount = 0;
-                        continue;
-                    }
-
-                    // Head must be stable for N consecutive failsafe cycles
-                    if ($this->failsafeObservedId === $observedCurrent) {
-                        $this->failsafeStableCount++;
-                    } else {
-                        $this->failsafeObservedId = $observedCurrent;
-                        $this->failsafeStableCount = 1;
-                    }
-
-                    if ($this->failsafeStableCount < self::FAILSAFE_STABLE_CYCLES) {
-                        $this->log(\sprintf(
-                            'Failsafe: Head (%d) seen (%d/%d) cycles with no writer - deferring failsafe take-over',
-                            $observedCurrent,
-                            $this->failsafeStableCount,
-                            self::FAILSAFE_STABLE_CYCLES
-                        ));
-                        continue;
-                    }
-
-                    $this->log('Failsafe: Max defer cycles reached. Starting take-over process now');
-                    $this->log('Failsafe: Check again, if another writer is active for some reason');
-
-                    if ($this->isOtherWriterActive()) {
-                        $this->log('Failsafe: Some other writer became active. Skipping take-over process');
-                        $this->failsafeObservedId = null;
-                        $this->failsafeStableCount = 0;
-                        continue;
-                    }
-
-                    // Re-validate and delete atomically inside an exclusive transaction on the ticket connection.
-                    // This prevents deleting the next ticket if the head changed between observe and delete.
-                    try {
-                        $this->log('Failsafe: Attempting atomic cleanup of stale current ticket');
-                        $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
-
-                        // Re-check the true current ticket inside (!) the transaction
-                        $freshCurrent = $this->getCurrentTicket();
-
-                        if ($freshCurrent !== null && $freshCurrent === $observedCurrent && $freshCurrent !== $this->currentTicket) {
-                            $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
-                                'id' => $freshCurrent,
-                            ]);
-                            $this->log('Failsafe: Deleted ticket ' . $freshCurrent);
-                        } else {
-                            $this->log('Failsafe: current ticket changed or became ours. Skipping delete');
-                        }
-
-                        $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
-                    } catch (LockWaitTimeoutException $e) {
-                        $this->log('Failsafe: could not acquire exclusive ticket lock: ' . $e->getMessage());
-                        // noop — another process is probably advancing things
-                    } finally {
-                        // reset for the next head
-                        $this->failsafeObservedId = null;
-                        $this->failsafeStableCount = 0;
-                    }
-                }
-
-                continue;
-            }
-
-            // Try to acquire our exclusive lock now so that we can start working on our stuff. Should not fail but
-            // still could if multiple workers concurrently decided it's not their turn but there's also no other writer
-            // active. In this case they could make it to this point at the very same time, causing all but one of them
-            // to not being able to start the transaction. In this case, we just stay in the loop and wait again until
-
+        // Acknowledge/delete our ticket under ticket DB exclusive transaction
+        if ($this->currentTicket !== 0) {
             try {
-                $this->log('Acquiring lock for my work');
-                $this->beginExclusiveTransaction($this->connectionPool->loupeConnection);
+                $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
+                $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
+                    'id' => $this->currentTicket,
+                ]);
+                $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
+                $this->log('Released ticket ' . $this->currentTicket);
             } catch (LockWaitTimeoutException $e) {
-                $this->log('Acquiring lock failed: ' . $e->getMessage());
-                // Avoid hot loop on contention
-                usleep(200_000);
-                continue;
-            }
-
-            try {
-                $this->log('Doing my work now');
-                $closure();
-
-                // Acknowledge our ticket to mark it done
-                $this->log('Done with my work. Deleting my ticket');
-
-                // Do the ticket delete inside a short exclusive transaction on the ticket connection,
-                // so the queue head is advanced atomically from this process' perspective
-                try {
-                    $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
-                    $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
-                        'id' => $this->currentTicket,
-                    ]);
-                    $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
-                } catch (LockWaitTimeoutException $e) {
-                    // If we can't get the ticket lock immediately, log and let the failsafe eventually clean up
-                    $this->log('Could not acquire ticket lock to delete my ticket: ' . $e->getMessage());
-                }
-
+                $this->log('Could not acquire ticket DB lock to delete my ticket: ' . $e->getMessage());
+                // If this fails, another worker's failsafe will eventually clean up.
+            } finally {
                 $this->currentTicket = 0;
-                $this->commitExclusiveTransaction($this->connectionPool->loupeConnection);
-                return;
-            } catch (\Throwable $e) {
-                $this->log('Work failed / cleanup path: ' . $e->getMessage());
-
-                $this->rollbackExclusiveTransaction($this->connectionPool->loupeConnection);
-                throw $e;
             }
+        }
+
+        if ($this->writeLockAlreadyAcquired) {
+            $this->commitExclusiveTransaction($this->connectionPool->loupeConnection);
+            $this->writeLockAlreadyAcquired = false;
+            $this->log('Writer lock released');
         }
     }
 
@@ -222,33 +147,88 @@ class TicketHandler
         $connection->executeStatement('BEGIN EXCLUSIVE'); // acquire writer lock if possible
     }
 
+    private function cleanupAndExit(int $signal): void
+    {
+        $this->log('Signal received: ' . $signal . ' — cleaning up');
+
+        // Try to release our own lock if we held it (ignore errors if we didn't)
+        try {
+            $this->rollbackExclusiveTransaction($this->connectionPool->loupeConnection);
+        } catch (\Throwable) {
+        }
+
+        // If we had no ticket, no need to do anything
+        if ($this->currentTicket === 0) {
+            return;
+        }
+
+        // Delete our own ticket so others can progress
+        try {
+            $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
+            $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
+                'id' => $this->currentTicket,
+            ]);
+            $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
+            $this->log('Deleted my ticket on shutdown: ' . $this->currentTicket);
+        } catch (\Throwable $e) {
+            $this->log('Failed to delete my ticket on shutdown: ' . $e->getMessage());
+            try {
+                $this->rollbackExclusiveTransaction($this->connectionPool->ticketConnection);
+            } catch (\Throwable) {
+            }
+        } finally {
+            $this->currentTicket = 0;
+        }
+
+        exit($signal === SIGINT ? 130 : 143);
+    }
+
     private function commitExclusiveTransaction(Connection $connection): void
     {
-        // cannot use Doctrine's commit() here because this tracks the transaction level internally so when you
-        // use native BEGIN EXCLUSIVE queries, Doctrine won't know there's actually one running.
         $connection->executeStatement('COMMIT');
     }
 
     private function getCurrentTicket(): ?int
     {
-        $current = $this->connectionPool->ticketConnection->fetchOne(\sprintf('SELECT id FROM %s ORDER BY id LIMIT 1', self::TABLE_NAME));
+        $current = $this->connectionPool->ticketConnection->fetchOne(
+            \sprintf('SELECT id FROM %s ORDER BY id LIMIT 1', self::TABLE_NAME)
+        );
         return $current ? (int) $current : null;
     }
 
     private function getSchema(): Schema
     {
         $schema = new Schema();
-
         $table = $schema->createTable(self::TABLE_NAME);
 
         $table->addColumn('id', Types::INTEGER)
             ->setNotnull(true)
-            ->setAutoincrement(true)
-        ;
+            ->setAutoincrement(true);
 
         $table->setPrimaryKey(['id']);
 
         return $schema;
+    }
+
+    private function installSignalHandlerOnce(): void
+    {
+        if ($this->signalHandlerInstalled) {
+            return;
+        }
+
+        $this->signalHandlerInstalled = true;
+
+        if (!\function_exists('pcntl_signal')) {
+            $this->log('Signal handling unavailable (pcntl extension not available)');
+            return;
+        }
+
+        if (\function_exists('pcntl_async_signals')) {
+            pcntl_async_signals(true);
+        }
+
+        pcntl_signal(SIGTERM, fn () => $this->cleanupAndExit(SIGTERM));
+        pcntl_signal(SIGINT, fn () => $this->cleanupAndExit(SIGINT));
     }
 
     private function isMyTurn(): bool
@@ -258,17 +238,20 @@ class TicketHandler
 
     private function isOtherWriterActive(): bool
     {
-        $this->connectionPool->loupeConnection->executeStatement('PRAGMA busy_timeout = 0'); // try immediately
+        // Try to acquire writer lock immediately
+        $this->connectionPool->loupeConnection->executeStatement('PRAGMA busy_timeout = 0');
 
         try {
-            $this->beginExclusiveTransaction($this->connectionPool->loupeConnection); // acquire writer lock if possible
+            $this->beginExclusiveTransaction($this->connectionPool->loupeConnection);
             $this->rollbackExclusiveTransaction($this->connectionPool->loupeConnection);
             return false;
         } catch (LockWaitTimeoutException) {
-            return true; // we have another worker
+            return true;
         } finally {
-            // Reset to previous set busy timeout
-            $this->connectionPool->loupeConnection->executeStatement('PRAGMA busy_timeout = ' . LoupeFactory::SQLITE_BUSY_TIMEOUT);
+            // Reset busy timeout
+            $this->connectionPool->loupeConnection->executeStatement(
+                'PRAGMA busy_timeout = ' . LoupeFactory::SQLITE_BUSY_TIMEOUT
+            );
         }
     }
 
@@ -284,6 +267,85 @@ class TicketHandler
         $connection->executeStatement('ROLLBACK');
     }
 
+    private function runFailsafe(): void
+    {
+        $this->log('Failsafe: Started');
+
+        if ($this->isOtherWriterActive()) {
+            $this->log('Failsafe: Another writer is active. Skipping');
+            $this->failsafeObservedId = null;
+            $this->failsafeStableCount = 0;
+            return;
+        }
+
+        $observedCurrent = $this->getCurrentTicket();
+        $this->log('Failsafe: No writer active. Observed: ' . ($observedCurrent ?? 'null'));
+
+        if ($observedCurrent === null) {
+            $this->failsafeObservedId = null;
+            $this->failsafeStableCount = 0;
+            return;
+        }
+
+        if ($observedCurrent === $this->currentTicket) {
+            $this->log('Failsafe: Head is my ticket. Skipping');
+            $this->failsafeObservedId = null;
+            $this->failsafeStableCount = 0;
+            return;
+        }
+
+        if ($this->failsafeObservedId === $observedCurrent) {
+            $this->failsafeStableCount++;
+        } else {
+            $this->failsafeObservedId = $observedCurrent;
+            $this->failsafeStableCount = 1;
+        }
+
+        if ($this->failsafeStableCount < self::FAILSAFE_STABLE_CYCLES) {
+            $this->log(\sprintf(
+                'Failsafe: Deferring cleanup (Observed: %d, Failsafe Stable Count: %d)',
+                $observedCurrent,
+                $this->failsafeStableCount,
+            ));
+            return;
+        }
+
+        // Re-check writer activity just before taking the ticket lock
+        if ($this->isOtherWriterActive()) {
+            $this->log('Failsafe: Writer became active. Skipping delete');
+            $this->failsafeObservedId = null;
+            $this->failsafeStableCount = 0;
+            return;
+        }
+
+        // Atomic cleanup: delete exactly the observed head if it is still the head
+        try {
+            $this->log('Failsafe: Attempting atomic cleanup');
+            $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
+
+            $freshCurrent = $this->getCurrentTicket();
+            if (
+                $freshCurrent !== null &&
+                $freshCurrent === $observedCurrent &&
+                $freshCurrent !== $this->currentTicket
+            ) {
+                $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
+                    'id' => $freshCurrent,
+                ]);
+                $this->log('Failsafe: Deleted ticket ' . $freshCurrent);
+            } else {
+                $this->log('Failsafe: Head changed or became my own. Skipping delete');
+            }
+
+            $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
+        } catch (LockWaitTimeoutException $e) {
+            $this->log('Failsafe: Could not acquire ticket lock: ' . $e->getMessage());
+        } finally {
+            $this->failsafeObservedId = null;
+            $this->failsafeStableCount = 0;
+        }
+    }
+
     private function updateSchema(): void
     {
         $schemaManager = $this->connectionPool->ticketConnection->createSchemaManager();
@@ -292,8 +354,8 @@ class TicketHandler
         $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
         try {
             $schemaManager->alterSchema($schemaDiff);
-        } catch (TableExistsException|LockWaitTimeoutException $e) {
-            // noop - either it's already here or another process is creating it at the very same time
+        } catch (TableExistsException|LockWaitTimeoutException) {
+            // noop - already exists or being created concurrently
         }
     }
 }
