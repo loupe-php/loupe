@@ -47,6 +47,8 @@ class Engine
 
     private StopwordsInterface $stopwords;
 
+    private TicketHandler $ticketHandler;
+
     private ?Tokenizer $tokenizer = null;
 
     public function __construct(
@@ -65,7 +67,8 @@ class Engine
             new StateSet($this),
             new NullDataStore()
         );
-        $this->indexer = new Indexer($this, new TicketHandler($this->connectionPool, $this->getLogger()));
+        $this->ticketHandler = new TicketHandler($this->connectionPool, $this->getLogger());
+        $this->indexer = new Indexer($this, $this->ticketHandler);
         $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
         $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->stopwords));
         $this->filterParser = new Parser($this);
@@ -81,7 +84,13 @@ class Engine
             return $this;
         }
 
-        $this->indexer->addDocuments($documents);
+        $this->ticketHandler->claimTicket();
+
+        try {
+            $this->indexer->addDocuments($documents);
+        } finally {
+            $this->ticketHandler->release();
+        }
 
         return $this;
     }
@@ -109,7 +118,13 @@ class Engine
 
     public function deleteAllDocuments(): self
     {
-        $this->indexer->deleteAllDocuments();
+        $this->ticketHandler->claimTicket();
+
+        try {
+            $this->indexer->deleteAllDocuments();
+        } finally {
+            $this->ticketHandler->release();
+        }
 
         return $this;
     }
@@ -119,7 +134,13 @@ class Engine
      */
     public function deleteDocuments(array $ids): self
     {
-        $this->indexer->deleteDocuments($ids);
+        $this->ticketHandler->claimTicket();
+
+        try {
+            $this->indexer->deleteDocuments($ids);
+        } finally {
+            $this->ticketHandler->release();
+        }
 
         return $this;
     }
