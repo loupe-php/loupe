@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Index;
 
 use Doctrine\DBAL\ArrayParameterType;
+use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpsertConfig;
+use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpserter;
+use Loupe\Loupe\Internal\Index\BulkUpserter\ConflictMode;
 use Loupe\Loupe\Internal\Index\PreparedDocument\MultiAttribute;
 use Loupe\Loupe\Internal\Index\PreparedDocument\SingleAttribute;
 use Loupe\Loupe\Internal\Index\PreparedDocument\Term;
@@ -16,19 +20,15 @@ use Loupe\Loupe\Internal\TicketHandler;
 class Indexer
 {
     /**
+     * Tests showed that batching more than 1000 documents rarely leads to better results.
+     * Can be adjusted though if anyone finds a reason to do so.
+     */
+    public const MAX_DOCS_PER_BATCH = 500;
+
+    /**
      * @var array<int, callable>
      */
     private array $changes = [];
-
-    /**
-     * @var array<string, int>
-     */
-    private array $prefixCache = [];
-
-    /**
-     * @var array<string,bool>
-     */
-    private array $prefixTermCache = [];
 
     public function __construct(
         private Engine $engine,
@@ -53,18 +53,35 @@ class Indexer
             $this->engine->getIndexInfo()->fixAndValidateDocument($document);
         }
 
-        // Now prepare the documents
-        $preparedDocuments = [];
-        foreach ($documents as $document) {
-            $preparedDocuments[] = $this->prepareDocument($document);
+        $processBatch = function (PreparedDocumentCollection $preparedDocuments): void {
+            if ($preparedDocuments->empty()) {
+                return;
+            }
+
+            $this->recordChange(function () use ($preparedDocuments) {
+                $prepared = $this->bulkInsertDocuments($preparedDocuments);
+                $this->removeCurrentDocumentData($prepared);
+                $this->bulkInsertMultiAttributes($prepared);
+                $this->bulkInsertTerms($prepared);
+            });
+
+            $this->commitChanges();
+        };
+
+        // Now index the documents in chunks as preparing too many documents and keeping it all in memory before
+        // inserting would result in too much memory usage.
+        foreach (array_chunk($documents, self::MAX_DOCS_PER_BATCH) as $batch) {
+            $preparedDocuments = new PreparedDocumentCollection();
+            foreach ($batch as $document) {
+                $preparedDocuments->add($this->prepareDocument($document));
+            }
+            $processBatch($preparedDocuments);
         }
 
-        $this->recordChange(function () use ($preparedDocuments) {
-            $this->writePreparedDocuments($preparedDocuments);
-
+        // Finally, revise storage once
+        $this->recordChange(function () {
             $this->reviseStorage();
         });
-
         $this->commitChanges();
     }
 
@@ -117,6 +134,334 @@ class Indexer
         $this->changes[] = $change;
     }
 
+    private function bulkInsertDocuments(PreparedDocumentCollection $preparedDocuments): PreparedDocumentCollection
+    {
+        $rows = [];
+        foreach ($preparedDocuments->all() as $document) {
+            $row = [
+                'user_id' => $document->getUserId(),
+                'document' => $document->getJsonEncodedDocumentData(),
+            ];
+
+            foreach ($document->getSingleAttributes() as $attribute) {
+                $row[$attribute->getName()] = $attribute->getValue();
+            }
+
+            $rows[] = $row;
+        }
+
+        if ($rows === []) {
+            return new PreparedDocumentCollection();
+        }
+
+        $results = $this->engine->getBulkUpserterFactory()
+            ->create(BulkUpsertConfig::create(IndexInfo::TABLE_NAME_DOCUMENTS, $rows, ['user_id'], ConflictMode::Update)
+                ->withReturningColumns(['user_id', 'id']))
+            ->execute();
+
+        $mapper = BulkUpserter::convertResultsToKeyValueArray($results);
+        $adjustedDocuments = new PreparedDocumentCollection();
+        foreach ($preparedDocuments->all() as $document) {
+            if (!isset($mapper[$document->getUserId()])) {
+                throw new IndexException('Something went wrong while trying to insert document. This should not happen.');
+            }
+
+            $adjustedDocuments->add($document->withInternalId($mapper[$document->getUserId()]));
+        }
+
+        return $adjustedDocuments;
+    }
+
+    private function bulkInsertMultiAttributes(PreparedDocumentCollection $preparedDocuments): void
+    {
+        $documentsMapper = [];
+        $stringRows = [];
+        $numericRows = [];
+        foreach ($preparedDocuments->all() as $document) {
+            $documentsMapper[$document->getInternalId()] = [];
+
+            foreach ($document->getMultiAttributes() as $attribute) {
+                if (!isset($documentsMapper[$document->getInternalId()][$attribute->getName()])) {
+                    $documentsMapper[$document->getInternalId()][$attribute->getName()] = [
+                        'string_value' => [],
+                        'numeric_value' => [],
+                    ];
+                }
+
+                foreach ($attribute->getValues() as $value) {
+                    if (\is_float($value) || \is_bool($value)) {
+                        $documentsMapper[$document->getInternalId()][$attribute->getName()]['numeric_value'][] = (float) $value;
+
+                        $numericRows[] = [
+                            'attribute' => $attribute->getName(),
+                            'numeric_value' => $value,
+                        ];
+                    } else {
+                        $documentsMapper[$document->getInternalId()][$attribute->getName()]['string_value'][] = (string) $value;
+
+                        $stringRows[] = [
+                            'attribute' => $attribute->getName(),
+                            'string_value' => $value,
+                        ];
+                    }
+                }
+            }
+        }
+
+        $documentIdsToAttributeIdsMapper = [];
+
+        /**
+         * @param non-empty-list<array<mixed>> $rows
+         */
+        $bulkInsert = function (string $columnName, array $rows, array $documentsMapper, array &$documentIdsToAttributeIdsMapper) {
+            if ($rows === [] || !array_is_list($rows)) {
+                return;
+            }
+
+            $results = $this->engine->getBulkUpserterFactory()
+                ->create(
+                    BulkUpsertConfig::create(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES, $rows, ['attribute', $columnName], ConflictMode::Ignore)
+                        ->withReturningColumns(['id', 'attribute', $columnName])
+                )
+                ->execute();
+
+            $resultMapper = [];
+            foreach (BulkUpserter::convertResultsToIndexedArray($results, 'id') as $attributeId => $row) {
+                $resultMapper[$row['attribute']][json_encode($row[$columnName])] = $attributeId;
+            }
+
+            foreach ($documentsMapper as $documentId => $documentData) {
+                foreach ($documentData as $attributeName => $attributeData) {
+                    foreach ($attributeData[$columnName] as $value) {
+                        if (!isset($resultMapper[$attributeName][json_encode($value)])) {
+                            throw new IndexException('Could not map attribute ' . $attributeName . ' to ' . $value . '. This should not happen.');
+                        }
+
+                        $documentIdsToAttributeIdsMapper[$documentId][] = $resultMapper[$attributeName][json_encode($value)];
+                    }
+                }
+            }
+        };
+
+        // Bulk insert string and numeric values separately
+        $bulkInsert('string_value', $stringRows, $documentsMapper, $documentIdsToAttributeIdsMapper);
+        $bulkInsert('numeric_value', $numericRows, $documentsMapper, $documentIdsToAttributeIdsMapper);
+
+        // Now bulk insert the relations to the documents
+        $rows = [];
+        foreach ($documentIdsToAttributeIdsMapper as $documentId => $attributeIds) {
+            foreach ($attributeIds as $attributeId) {
+                $rows[] = [
+                    'attribute' => $attributeId,
+                    'document' => $documentId,
+                ];
+            }
+        }
+
+        if ($rows === []) {
+            return;
+        }
+
+        $this->engine->getBulkUpserterFactory()
+            ->create(new BulkUpsertConfig(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $rows, ['attribute', 'document'], ConflictMode::Ignore))
+            ->execute();
+    }
+
+    /**
+     * @param array<string|int, array<int>> $prefixRelevantTerms An array of terms as key and matching document IDs as value
+     * @param array<string, int> $termsIdMapper An
+     */
+    private function bulkInsertPrefixTerms(array $prefixRelevantTerms, array $termsIdMapper): void
+    {
+        if ($prefixRelevantTerms === []) {
+            return;
+        }
+
+        $prefixToTermMapper = [];
+        $termsLengthCache = [];
+        $rows = [];
+
+        // Generate prefixes
+        foreach ($prefixRelevantTerms as $term => $documentIds) {
+            $term = (string) $term; // Unfortunately PHP auto-converts string numbers to integers ('1234' -> 1234)
+
+            $chars = mb_str_split($term, 1, 'UTF-8');
+            // We don't need to index anything after our max index length because for prefix search, we do not have
+            // to index the entire word as there's no such thing as exact match or phrase search.
+            $chars = \array_slice($chars, 0, $this->engine->getConfiguration()->getTypoTolerance()->getIndexLength());
+
+            $prefix = [];
+            for ($i = 0; $i < \count($chars); $i++) {
+                $prefix[] = $chars[$i];
+
+                // First n characters can be skipped as they are not relevant for prefix search
+                if ($i < $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch() - 1) {
+                    continue;
+                }
+
+                // The entire word does not need to be indexed again either
+                if (\count($prefix) === \count($chars)) {
+                    continue;
+                }
+
+                $asString = implode('', $prefix);
+
+                if (!isset($termsLengthCache[$asString])) {
+                    $termsLengthCache[$asString] = mb_strlen($asString, 'UTF-8');
+                }
+
+                $rows[] = [
+                    'prefix' => $asString,
+                    'length' => $termsLengthCache[$asString],
+                    'state' => 0,
+                ];
+
+                if (!isset($termsIdMapper[$term])) {
+                    throw new IndexException('Could not find term ' . $term . '. This should not happen.');
+                }
+
+                $prefixToTermMapper[$asString][] = $termsIdMapper[$term];
+            }
+        }
+
+        if ($rows === []) {
+            return;
+        }
+
+        // States
+        if (!$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+            $allStates = $this->engine->getStateSetIndex()->index(array_map(function (array $row) {
+                return $row['prefix'];
+            }, $rows));
+
+            foreach ($rows as $i => $row) {
+                if (!isset($allStates[$row['prefix']])) {
+                    throw new IndexException('Could not find state for prefix. This should not happen.');
+                }
+                $rows[$i]['state'] = $allStates[$row['prefix']];
+            }
+        }
+
+        // Bulk insert prefixes
+        $results = $this->engine->getBulkUpserterFactory()
+            ->create(
+                BulkUpsertConfig::create(IndexInfo::TABLE_NAME_PREFIXES, $rows, ['prefix', 'state', 'length'], ConflictMode::Ignore)
+                    ->withReturningColumns(['prefix', 'id'])
+            )
+            ->execute();
+
+        $prefixIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
+        $relationRows = [];
+
+        foreach ($prefixToTermMapper as $prefix => $termIds) {
+            if (!isset($prefixIdMapper[$prefix])) {
+                throw new IndexException('Could not find prefix ' . $prefix . '. This should not happen.');
+            }
+
+            foreach ($termIds as $termId) {
+                $relationRows[] = [
+                    'prefix' => $prefixIdMapper[$prefix],
+                    'term' => $termId,
+                ];
+            }
+        }
+
+        if ($relationRows === []) {
+            return;
+        }
+
+        // Now bulk insert the relations to the terms
+        $this->engine->getBulkUpserterFactory()
+            ->create(new BulkUpsertConfig(IndexInfo::TABLE_NAME_PREFIXES_TERMS, $relationRows, ['prefix', 'term'], ConflictMode::Ignore))
+            ->execute();
+
+    }
+
+    private function bulkInsertTerms(PreparedDocumentCollection $preparedDocuments): void
+    {
+        $termsMapper = [];
+        $rows = [];
+        $termsLengthCache = [];
+        $prefixRelevantTerms = [];
+        $indexPrefixes = $this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch();
+
+        foreach ($preparedDocuments->all() as $document) {
+            foreach ($document->getTerms() as $term) {
+                if (!isset($termsLengthCache[$term->getTerm()])) {
+                    $termsLengthCache[$term->getTerm()] = mb_strlen($term->getTerm(), 'UTF-8');
+                }
+
+                $rows[] = [
+                    'term' => $term->getTerm(),
+                    'length' => $termsLengthCache[$term->getTerm()],
+                    'state' => 0,
+                ];
+
+                $termsMapper[$term->getTerm()][] = [
+                    'document' => $document->getInternalId(),
+                    'attribute' => $term->getAttribute(),
+                    'position' => $term->getPosition(),
+                ];
+
+                // Prefix relevant terms must not be variants
+                if ($indexPrefixes && !$term->isVariant()) {
+                    $prefixRelevantTerms[$term->getTerm()][] = $document->getInternalId();
+                }
+            }
+        }
+
+        if ($rows === []) {
+            return;
+        }
+
+        // States
+        if (!$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+            $allStates = $this->engine->getStateSetIndex()->index(array_map(function (array $row) {
+                return $row['term'];
+            }, $rows));
+
+            foreach ($rows as $i => $row) {
+                if (!isset($allStates[$row['term']])) {
+                    throw new IndexException('Could not find state for term. This should not happen.');
+                }
+                $rows[$i]['state'] = $allStates[$row['term']];
+            }
+        }
+
+        // Bulk insert terms
+        $relationRows = [];
+        $results = $this->engine->getBulkUpserterFactory()
+            ->create(
+                BulkUpsertConfig::create(IndexInfo::TABLE_NAME_TERMS, $rows, ['term', 'state', 'length'], ConflictMode::Ignore)
+                    ->withReturningColumns(['term', 'id'])
+            )
+            ->execute();
+
+        $termsIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
+        foreach ($termsMapper as $term => $occurrences) {
+            if (!isset($termsIdMapper[$term])) {
+                throw new IndexException('Could not find term ' . $term . '. This should not happen.');
+            }
+
+            foreach ($occurrences as $occurrence) {
+                $occurrence['term'] = $termsIdMapper[$term];
+                $relationRows[] = $occurrence;
+            }
+        }
+
+        if ($relationRows === []) {
+            return;
+        }
+
+        // Now bulk insert the relations to the documents
+        $this->engine->getBulkUpserterFactory()
+            ->create(new BulkUpsertConfig(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $relationRows, ['term', 'document', 'attribute', 'position'], ConflictMode::Ignore))
+            ->execute();
+
+        // Index prefixes if needed
+        $this->bulkInsertPrefixTerms($prefixRelevantTerms, $termsIdMapper);
+    }
+
     private function commitChanges(): void
     {
         // Wait for our process to acquire the lock
@@ -129,140 +474,6 @@ class Indexer
 
         // Reset changes
         $this->changes = [];
-    }
-
-    private function indexAttributeValue(string $attribute, string|float|bool|null $value, int $documentId): void
-    {
-        if ($value === null) {
-            return;
-        }
-
-        $valueColumn = (\is_float($value) || \is_bool($value)) ? 'numeric_value' : 'string_value';
-
-        $data = [
-            'attribute' => $attribute,
-            $valueColumn => $value,
-        ];
-
-        $attributeId = $this->engine->upsert(
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
-            $data,
-            ['attribute', $valueColumn],
-            'id'
-        );
-
-        $this->engine->upsert(
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-            [
-                'attribute' => $attributeId,
-                'document' => $documentId,
-            ],
-            ['attribute', 'document']
-        );
-    }
-
-    private function indexPrefix(string $prefix, int $termId): void
-    {
-        $cacheKey = $prefix . ';' . $termId;
-
-        if (isset($this->prefixTermCache[$cacheKey])) {
-            return;
-        }
-
-        if (!isset($this->prefixCache[$prefix])) {
-            if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
-                $state = 0;
-            } else {
-                $state = $this->engine->getStateSetIndex()->index([$prefix])[$prefix];
-            }
-
-            $this->prefixCache[$prefix] = (int) $this->engine->upsert(
-                IndexInfo::TABLE_NAME_PREFIXES,
-                [
-                    'prefix' => $prefix,
-                    'length' => mb_strlen($prefix, 'UTF-8'),
-                    'state' => $state,
-                ],
-                ['prefix', 'length'],
-                'id'
-            );
-        }
-
-        $this->engine->upsert(
-            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
-            [
-                'prefix' => $this->prefixCache[$prefix],
-                'term' => $termId,
-            ],
-            ['prefix', 'term'],
-            ''
-        );
-
-        $this->prefixTermCache[$cacheKey] = true;
-    }
-
-    private function indexPrefixes(string $term, int $termId): void
-    {
-        // Prefix typo search disabled = we don't need to index them
-        if (!$this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
-            return;
-        }
-
-        $chars = mb_str_split($term, 1, 'UTF-8');
-        // We don't need to index anything after our max index length because for prefix search, we do not have
-        // to index the entire word as there's no such thing as exact match or phrase search.
-        $chars = \array_slice($chars, 0, $this->engine->getConfiguration()->getTypoTolerance()->getIndexLength());
-
-        $prefix = [];
-        for ($i = 0; $i < \count($chars); $i++) {
-            $prefix[] = $chars[$i];
-
-            // First n characters can be skipped as they are not relevant for prefix search
-            if ($i < $this->engine->getConfiguration()->getMinTokenLengthForPrefixSearch() - 1) {
-                continue;
-            }
-
-            // The entire word does not need to be indexed again either
-            if (\count($prefix) === \count($chars)) {
-                continue;
-            }
-
-            $this->indexPrefix(implode('', $prefix), $termId);
-        }
-    }
-
-    private function indexTerm(string $term, int $documentId, string $attributeName, int $termPosition): int
-    {
-        if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
-            $state = 0;
-        } else {
-            $state = $this->engine->getStateSetIndex()->index([$term])[$term];
-        }
-
-        $termId = (int) $this->engine->upsert(
-            IndexInfo::TABLE_NAME_TERMS,
-            [
-                'term' => $term,
-                'state' => $state,
-                'length' => mb_strlen($term, 'UTF-8'),
-            ],
-            ['term', 'state', 'length'],
-            'id'
-        );
-
-        $this->engine->upsert(
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            [
-                'term' => $termId,
-                'document' => $documentId,
-                'attribute' => $attributeName,
-                'position' => $termPosition,
-            ],
-            ['term', 'document', 'attribute', 'position'],
-            ''
-        );
-
-        return $termId;
     }
 
     private function needsVacuum(): bool
@@ -313,12 +524,8 @@ class Indexer
             $loupeType = $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute);
 
             if ($loupeType === LoupeTypes::TYPE_GEO) {
-                if (!isset($document[$attribute]['lat'], $document[$attribute]['lng'])) {
-                    continue;
-                }
-
-                $singleAttributes[] = new SingleAttribute($attribute . '_geo_lat', $document[$attribute]['lat']);
-                $singleAttributes[] = new SingleAttribute($attribute . '_geo_lng', $document[$attribute]['lng']);
+                $singleAttributes[] = new SingleAttribute($attribute . '_geo_lat', isset($document[$attribute]['lat']) ? LoupeTypes::convertToFloat($document[$attribute]['lat']) : LoupeTypes::TYPE_NULL);
+                $singleAttributes[] = new SingleAttribute($attribute . '_geo_lng', isset($document[$attribute]['lng']) ? LoupeTypes::convertToFloat($document[$attribute]['lng']) : LoupeTypes::TYPE_NULL);
                 continue;
             }
 
@@ -395,25 +602,23 @@ class Indexer
         ;
     }
 
-    private function removeDocumentData(int $documentId): void
+    private function removeCurrentDocumentData(PreparedDocumentCollection $preparedDocuments): void
     {
-        // Remove term relations of this document
-        $query = \sprintf(
-            'DELETE FROM %s WHERE document = %d',
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            $documentId
-        );
+        $allDocumentIds = $preparedDocuments->allInternalIds();
 
-        $this->engine->getConnection()->executeStatement($query);
+        // Remove term relations of this document
+        $this->engine->getConnection()->executeStatement(
+            \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+            [$allDocumentIds],
+            [ArrayParameterType::INTEGER]
+        );
 
         // Remove multi-attribute relations of this document
-        $query = \sprintf(
-            'DELETE FROM %s WHERE document = %d',
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-            $documentId
+        $this->engine->getConnection()->executeStatement(
+            \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+            [$allDocumentIds],
+            [ArrayParameterType::INTEGER]
         );
-
-        $this->engine->getConnection()->executeStatement($query);
 
         // The rest (prefixes, state set, etc) is handled by reviseStorage()
     }
@@ -531,56 +736,5 @@ class Indexer
         }
 
         $this->engine->getConnection()->executeStatement('PRAGMA incremental_vacuum');
-    }
-
-    /**
-     * @param array<PreparedDocument> $documents
-     */
-    private function writePreparedDocuments(array $documents): void
-    {
-        // TODO: optimize this entire logic for bulk inserts
-        foreach ($documents as $document) {
-            $data = [
-                'user_id' => $document->getUserId(),
-                'document' => $document->getJsonEncodedDocumentData(),
-            ];
-
-            foreach ($document->getSingleAttributes() as $attribute) {
-                $data[$attribute->getName()] = $attribute->getValue();
-            }
-
-            $documentId = (int) $this->engine->upsert(
-                IndexInfo::TABLE_NAME_DOCUMENTS,
-                $data,
-                ['user_id'],
-                'id'
-            );
-
-            // TODO: This can be optimized for sure
-            $this->removeDocumentData($documentId);
-
-            // TODO: optimize me
-            foreach ($document->getMultiAttributes() as $attribute) {
-                foreach ($attribute->getValues() as $value) {
-                    $this->indexAttributeValue($attribute->getName(), $value, $documentId);
-                }
-            }
-
-            // TODO: optimize me
-            foreach ($document->getTerms() as $term) {
-                // Main terms
-                if (!$term->isVariant()) {
-                    $termId = $this->indexTerm($term->getTerm(), $documentId, $term->getAttribute(), $term->getPosition());
-
-                    // Index prefixes for the main term (not for variants though)
-                    $this->indexPrefixes($term->getTerm(), $termId);
-
-                    continue;
-                }
-
-                // Variants
-                $this->indexTerm($term->getTerm(), $documentId, $term->getAttribute(), $term->getPosition());
-            }
-        }
     }
 }
