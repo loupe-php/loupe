@@ -52,7 +52,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                sqlite: ['3.16.0', 'default']
+                sqlite: ['3.35.0', 'default']
                 php: ['8.3', '8.4']
                 phpExtensions: ['', ':pdo_sqlite', ':sqlite3']
                 composer: ['--prefer-stable', '--prefer-lowest']

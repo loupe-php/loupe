@@ -24,7 +24,7 @@ final class LoupeFactory implements LoupeFactoryInterface
 {
     public const SQLITE_BUSY_TIMEOUT = 5000;
 
-    private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
+    private const MIN_SQLITE_VERSION = '3.35.0'; // Introduction of RETURNING which is needed for fast upserts
 
     private string|null $sqliteVersion = null;
 

@@ -11,6 +11,8 @@ use Loupe\Loupe\Internal\Util;
 
 final class PreparedDocument
 {
+    private int|null $internalId = null;
+
     /**
      * @var array<MultiAttribute>
      */
@@ -41,6 +43,15 @@ final class PreparedDocument
     public function getDocument(): array
     {
         return $this->document;
+    }
+
+    public function getInternalId(): int
+    {
+        if ($this->internalId === null) {
+            throw new \LogicException('Must set the internal ID first, this should not happen.');
+        }
+
+        return $this->internalId;
     }
 
     public function getJsonEncodedDocumentData(): string
@@ -75,6 +86,13 @@ final class PreparedDocument
     public function getUserId(): string
     {
         return $this->userId;
+    }
+
+    public function withInternalId(int $internalId): self
+    {
+        $clone = clone $this;
+        $clone->internalId = $internalId;
+        return $clone;
     }
 
     /**

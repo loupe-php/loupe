@@ -16,14 +16,10 @@ $config['loupe']->deleteAllDocuments();
 
 $startTime = microtime(true);
 
-foreach (array_chunk($movies, 10000) as $moviesChunk) {
-    $config['loupe']->addDocuments($moviesChunk);
-}
+$config['loupe']->addDocuments($movies);
 
-foreach (array_chunk($movies, 10000) as $moviesChunk) {
-    if ($update) {
-        $config['loupe']->addDocuments($moviesChunk);
-    }
+if ($update) {
+    $config['loupe']->addDocuments($movies);
 }
 
 echo sprintf('Indexed in %.2F s using %.2F MiB', microtime(true) - $startTime, memory_get_peak_usage(true) / 1024 / 1024);

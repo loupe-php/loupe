@@ -11,6 +11,8 @@ use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Exception\InvalidDocumentException;
 use Loupe\Loupe\Exception\PrimaryKeyNotFoundException;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpsertConfig;
+use Loupe\Loupe\Internal\Index\BulkUpserter\ConflictMode;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Util;
 
@@ -73,15 +75,18 @@ class IndexInfo
         $this->updateDocumentSchema($documentSchema);
 
         $this->engine->getIndexer()->recordChange(function () {
-            $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'engineVersion',
-                'value' => Engine::VERSION,
-            ], ['key']);
-
-            $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'configHash',
-                'value' => $this->engine->getConfiguration()->getIndexHash(),
-            ], ['key']);
+            $this->engine->getBulkUpserterFactory()
+                ->create(new BulkUpsertConfig(self::TABLE_NAME_INDEX_INFO, [
+                    [
+                        'key' => 'engineVersion',
+                        'value' => Engine::VERSION,
+                    ],
+                    [
+                        'key' => 'configHash',
+                        'value' => $this->engine->getConfiguration()->getIndexHash(),
+                    ],
+                ], ['key'], ConflictMode::Update))
+                ->execute();
         });
 
         $this->needsSetup = false;
@@ -463,7 +468,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['id']);
-        $table->addUniqueIndex(['prefix', 'length']);
+        $table->addUniqueIndex(['prefix', 'state', 'length']);
         $table->addIndex(['state']);
         $table->addIndex(['length']);
     }
@@ -564,10 +569,12 @@ class IndexInfo
         $this->engine->getIndexer()->recordChange(function () use ($documentSchema) {
             $this->updateSchema();
 
-            $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'documentSchema',
-                'value' => json_encode($documentSchema),
-            ], ['key']);
+            $this->engine->getBulkUpserterFactory()
+                ->create(new BulkUpsertConfig(self::TABLE_NAME_INDEX_INFO, [[
+                    'key' => 'documentSchema',
+                    'value' => json_encode($documentSchema),
+                ]], ['key'], ConflictMode::Update))
+                ->execute();
         });
     }
 
