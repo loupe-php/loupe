@@ -10,11 +10,10 @@ use Doctrine\DBAL\Result;
 
 class BulkUpserter
 {
-    private const ROW_LIMIT = 1000;
-
     public function __construct(
         private Connection $connection,
-        private BulkUpsertConfig $bulkUpsertConfig
+        private BulkUpsertConfig $bulkUpsertConfig,
+        private int $variableLimit,
     ) {
 
     }
@@ -62,10 +61,10 @@ class BulkUpserter
         $rows = $this->bulkUpsertConfig->getRows();
         $insertColumns = $this->collectColumns($rows);
         $updateColumns = array_values(array_diff($insertColumns, $this->bulkUpsertConfig->getUniqueColumns()));
-
+        $chunkSize = max((int) round($this->variableLimit / \count($insertColumns), 0, PHP_ROUND_HALF_DOWN), 1);
         $results = [];
 
-        foreach (array_chunk($rows, self::ROW_LIMIT) as $chunk) {
+        foreach (array_chunk($rows, $chunkSize) as $chunk) {
             $rows = $this->normalizeRows($chunk, $insertColumns);
 
             // Modern path: INSERT .. ON CONFLICT .. DO UPDATE [RETURNING]
