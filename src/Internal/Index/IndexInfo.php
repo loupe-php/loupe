@@ -351,8 +351,12 @@ class IndexInfo
         $table->addColumn('_document', Types::TEXT)
             ->setNotnull(true);
 
+        $table->addColumn('_hash', Types::STRING)
+            ->setNotnull(true);
+
         $table->setPrimaryKey(['_id']);
         $table->addUniqueIndex(['_user_id']);
+        $table->addUniqueIndex(['_hash']);
 
         $columns = [];
 

@@ -70,33 +70,21 @@ final class LoupeFactory implements LoupeFactoryInterface
         $dsnPart = $databasePath === null ? '/:memory:' : ('notused:inthis@case/' . $databasePath);
         $dsnParser = new DsnParser();
 
-        // Try sqlite3 first, it seems way faster than the pdo-sqlite driver
         try {
-            if (!class_exists(\SQLite3::class)) {
-                throw new \RuntimeException('sqlite3 not installed.');
+            if (!class_exists(\PDO::class)) {
+                throw new \RuntimeException('pdo_sqlite not installed.');
             }
 
             $connection = DriverManager::getConnection(
-                $dsnParser->parse('sqlite3://' . $dsnPart),
+                $dsnParser->parse('pdo-sqlite://' . $dsnPart),
                 $this->getDbalConfiguration($connectionName, $configuration)
             );
         } catch (\Throwable) {
-            try {
-                if (!class_exists(\PDO::class)) {
-                    throw new \RuntimeException('pdo_sqlite not installed.');
-                }
-
-                $connection = DriverManager::getConnection(
-                    $dsnParser->parse('pdo-sqlite://' . $dsnPart),
-                    $this->getDbalConfiguration($connectionName, $configuration)
-                );
-            } catch (\Throwable) {
-                // Noop
-            }
+            // Noop
         }
 
         if ($connection === null) {
-            throw new InvalidConfigurationException('You need either the sqlite3 (recommended) or pdo_sqlite PHP extension.');
+            throw new InvalidConfigurationException('You need the pdo_sqlite PHP extension.');
         }
 
         if (version_compare($this->getSqliteVersion($connection), self::MIN_SQLITE_VERSION, '<')) {
@@ -171,8 +159,8 @@ final class LoupeFactory implements LoupeFactoryInterface
         }
 
         return $this->sqliteVersion = match (true) {
-            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
-            (($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
+            /** @phpstan-ignore-next-line */
+            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(),
             (($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
         };
     }
@@ -248,11 +236,9 @@ final class LoupeFactory implements LoupeFactoryInterface
             ],
         ];
 
-        $method = $connection->getNativeConnection() instanceof \PDO ? 'sqliteCreateFunction' : 'createFunction';
-
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->{$method}(
+            $connection->getNativeConnection()->sqliteCreateFunction(
                 $functionName,
                 self::wrapSQLiteMethodForStaticCache($functionName, $function['callback']),
                 $function['numArgs']

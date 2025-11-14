@@ -7,10 +7,11 @@ namespace Loupe\Loupe\Internal\Index;
 use Loupe\Loupe\Internal\Index\PreparedDocument\MultiAttribute;
 use Loupe\Loupe\Internal\Index\PreparedDocument\SingleAttribute;
 use Loupe\Loupe\Internal\Index\PreparedDocument\Term;
-use Loupe\Loupe\Internal\Util;
 
 final class PreparedDocument
 {
+    private string|null $contentHash = null;
+
     private int|null $internalId = null;
 
     /**
@@ -28,21 +29,19 @@ final class PreparedDocument
      */
     private array $terms = [];
 
-    /**
-     * @param array<string, mixed> $document
-     */
     public function __construct(
         private string $userId,
-        private array $document
+        private string $jsonDocument,
     ) {
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function getDocument(): array
+    public function getContentHash(): string
     {
-        return $this->document;
+        if ($this->contentHash !== null) {
+            return $this->contentHash;
+        }
+
+        return $this->contentHash = hash('xxh3', $this->jsonDocument);
     }
 
     public function getInternalId(): int
@@ -54,9 +53,9 @@ final class PreparedDocument
         return $this->internalId;
     }
 
-    public function getJsonEncodedDocumentData(): string
+    public function getJsonDocument(): string
     {
-        return Util::encodeJson($this->document);
+        return $this->jsonDocument;
     }
 
     /**
