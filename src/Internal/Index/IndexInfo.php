@@ -340,19 +340,19 @@ class IndexInfo
     {
         $table = $schema->createTable(self::TABLE_NAME_DOCUMENTS);
 
-        $table->addColumn('id', Types::INTEGER)
+        $table->addColumn('_id', Types::INTEGER)
             ->setNotnull(true)
             ->setAutoincrement(true)
         ;
 
-        $table->addColumn('user_id', Types::STRING)
+        $table->addColumn('_user_id', Types::STRING)
             ->setNotnull(true);
 
-        $table->addColumn('document', Types::TEXT)
+        $table->addColumn('_document', Types::TEXT)
             ->setNotnull(true);
 
-        $table->setPrimaryKey(['id']);
-        $table->addUniqueIndex(['user_id']);
+        $table->setPrimaryKey(['_id']);
+        $table->addUniqueIndex(['_user_id']);
 
         $columns = [];
 

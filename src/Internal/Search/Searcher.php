@@ -172,7 +172,7 @@ class Searcher
 
         $documentAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
         $qb = $this->engine->getConnection()->createQueryBuilder()
-            ->select($documentAlias . '.id AS document_id')
+            ->select($documentAlias . '._id AS document_id')
             ->addSelect(
                 \sprintf(
                     'loupe_geo_distance(%f, %f, %s, %s) AS distance',
@@ -189,7 +189,7 @@ class Searcher
             // BBOX may not be as precise so when searching for the e.g. 3rd decimal floating point, we might exclude
             // locations we shouldn't.
             ->andWhere(implode(' ', $this->filterBuilder->createGeoBoundingBoxWhereStatement($attribute, $bounds)))
-            ->groupBy($documentAlias . '.id')
+            ->groupBy($documentAlias . '._id')
         ;
 
         $this->addCTE(new Cte($cteName, ['document_id', 'distance'], $qb));
@@ -241,7 +241,7 @@ class Searcher
         $hits = [];
 
         foreach ($this->query()->iterateAssociative() as $result) {
-            $document = Util::decodeJson($result['document']);
+            $document = Util::decodeJson($result['_document']);
 
             foreach ($result as $k => $v) {
                 if (str_starts_with($k, self::DISTANCE_ALIAS)) {
@@ -374,7 +374,7 @@ class Searcher
                     self::CTE_MATCHES,
                     self::CTE_MATCHES,
                     \sprintf(
-                        '%s.document_id = %s.id',
+                        '%s.document_id = %s._id',
                         self::CTE_MATCHES,
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
                     )
@@ -522,7 +522,7 @@ class Searcher
             $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
             $this->queryBuilder->addSelect(\sprintf(
-                "(SELECT GROUP_CONCAT(attribute || ':' || position) FROM %s WHERE %s.id = %s.document) AS %s",
+                "(SELECT GROUP_CONCAT(attribute || ':' || position) FROM %s WHERE %s._id = %s.document) AS %s",
                 $cteName,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 $cteName,
@@ -776,7 +776,7 @@ class Searcher
 
         $qb = $this->engine->getConnection()->createQueryBuilder()
             ->select(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id AS document_id'
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '._id AS document_id'
             )
             ->from(
                 IndexInfo::TABLE_NAME_DOCUMENTS,
@@ -897,7 +897,7 @@ class Searcher
         }
 
         return \sprintf(
-            '%s.id %s (SELECT DISTINCT document FROM %s)',
+            '%s._id %s (SELECT DISTINCT document FROM %s)',
             $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
             $token->isNegated() ? 'NOT IN' : 'IN',
             $cteName
@@ -1024,7 +1024,7 @@ class Searcher
         // Not filtered by either filters or user query, fetch everything
         if ($froms === []) {
             $froms[] = \sprintf(
-                '(SELECT %s.id AS document_id FROM %s %s)',
+                '(SELECT %s._id AS document_id FROM %s %s)',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 IndexInfo::TABLE_NAME_DOCUMENTS,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
@@ -1275,14 +1275,14 @@ class Searcher
     {
         $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
         $this->queryBuilder
-            ->addSelect($documentsAlias . '.document')
+            ->addSelect($documentsAlias . '._document')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
             ->innerJoin(
                 $documentsAlias,
                 self::CTE_MATCHES,
                 self::CTE_MATCHES,
                 \sprintf(
-                    '%s.id = %s.document_id',
+                    '%s._id = %s.document_id',
                     $documentsAlias,
                     self::CTE_MATCHES
                 )

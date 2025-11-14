@@ -204,6 +204,23 @@ class IndexTest extends TestCase
         ]);
     }
 
+    public function testCanUseUserIdAndDocumentProperties(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['user_id', 'document'])
+        ;
+        $loupe = $this->createLoupe($configuration);
+
+        $document = [
+            'id' => 42,
+            'user_id' => 'my-id',
+            'document' => 'A38',
+        ];
+        $loupe->addDocument($document);
+
+        $this->assertSame($document, $loupe->getDocument(42));
+    }
+
     public function testDeleteAllDocuments(): void
     {
         $configuration = Configuration::create()
