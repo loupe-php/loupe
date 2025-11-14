@@ -112,7 +112,7 @@ class Indexer
         $this->recordChange(function () use ($ids): void {
             $this->engine->getConnection()
                 ->executeStatement(
-                    \sprintf('DELETE FROM %s WHERE user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                    \sprintf('DELETE FROM %s WHERE _user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
                     [
                         'ids' => LoupeTypes::convertToArrayOfStrings($ids),
                     ],
@@ -139,8 +139,8 @@ class Indexer
         $rows = [];
         foreach ($preparedDocuments->all() as $document) {
             $row = [
-                'user_id' => $document->getUserId(),
-                'document' => $document->getJsonEncodedDocumentData(),
+                '_user_id' => $document->getUserId(),
+                '_document' => $document->getJsonEncodedDocumentData(),
             ];
 
             foreach ($document->getSingleAttributes() as $attribute) {
@@ -155,8 +155,8 @@ class Indexer
         }
 
         $results = $this->engine->getBulkUpserterFactory()
-            ->create(BulkUpsertConfig::create(IndexInfo::TABLE_NAME_DOCUMENTS, $rows, ['user_id'], ConflictMode::Update)
-                ->withReturningColumns(['user_id', 'id']))
+            ->create(BulkUpsertConfig::create(IndexInfo::TABLE_NAME_DOCUMENTS, $rows, ['_user_id'], ConflictMode::Update)
+                ->withReturningColumns(['_user_id', '_id']))
             ->execute();
 
         $mapper = BulkUpserter::convertResultsToKeyValueArray($results);
@@ -627,7 +627,7 @@ class Indexer
     {
         // Clean up term-document relations of documents which no longer exist
         $query = \sprintf(
-            'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
+            'DELETE FROM %s WHERE document NOT IN (SELECT _id FROM %s)',
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
         );
@@ -636,7 +636,7 @@ class Indexer
 
         // Clean up multi-attribute-document relations of documents which no longer exist
         $query = \sprintf(
-            'DELETE FROM %s WHERE document NOT IN (SELECT id FROM %s)',
+            'DELETE FROM %s WHERE document NOT IN (SELECT _id FROM %s)',
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
             IndexInfo::TABLE_NAME_DOCUMENTS,
         );
