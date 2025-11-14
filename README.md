@@ -55,8 +55,8 @@ I even took the liberty to copy some of their test data to feed Loupe for functi
 
 ## Installation
 
-1. Make sure you have `pdo_sqlite` available and your installed SQLite version is at least 3.16.0. This is when 
-   PRAGMA functions have been added without which no schema comparisons are possible. For best performance it is of
+1. Make sure you have `pdo_sqlite` available and your installed SQLite version is at least 3.35.0. This is when 
+   RETURNING functions have been added without which no bulk inserts are possible. For best performance it is of
    course better to run a more recent version to benefit from improvements within SQLite.
 2. Run `composer require loupe/loupe`.
 
