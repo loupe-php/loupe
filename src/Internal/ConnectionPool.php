@@ -11,7 +11,6 @@ class ConnectionPool
     public function __construct(
         public Connection $loupeConnection,
         public Connection $ticketConnection,
-        public string $sqliteVersion,
     ) {
 
     }

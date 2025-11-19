@@ -22,6 +22,7 @@
     "require": {
         "php": "^8.1",
         "ext-pdo_sqlite": "*",
+        "lib-pdo_sqlite-sqlite": ">= 3.35.0",
         "ext-intl": "*",
         "ext-mbstring": "*",
         "doctrine/dbal": "^3.9 || ^4.0",
