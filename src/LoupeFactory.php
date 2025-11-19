@@ -24,10 +24,6 @@ final class LoupeFactory implements LoupeFactoryInterface
 {
     public const SQLITE_BUSY_TIMEOUT = 5000;
 
-    private const MIN_SQLITE_VERSION = '3.35.0'; // Introduction of RETURNING which is needed for fast upserts
-
-    private string|null $sqliteVersion = null;
-
     public function create(string $dataDir, Configuration $configuration): Loupe
     {
         $dataDir = (string) realpath($dataDir);
@@ -53,46 +49,15 @@ final class LoupeFactory implements LoupeFactoryInterface
         );
     }
 
-    public function isSupported(): bool
-    {
-        try {
-            $this->createConnection('general', Configuration::create());
-        } catch (\Throwable) {
-            return false;
-        }
-
-        return true;
-    }
-
     private function createConnection(string $connectionName, Configuration $configuration, ?string $databasePath = null): Connection
     {
-        $connection = null;
         $dsnPart = $databasePath === null ? '/:memory:' : ('notused:inthis@case/' . $databasePath);
         $dsnParser = new DsnParser();
 
-        try {
-            if (!class_exists(\PDO::class)) {
-                throw new \RuntimeException('pdo_sqlite not installed.');
-            }
-
-            $connection = DriverManager::getConnection(
-                $dsnParser->parse('pdo-sqlite://' . $dsnPart),
-                $this->getDbalConfiguration($connectionName, $configuration)
-            );
-        } catch (\Throwable) {
-            // Noop
-        }
-
-        if ($connection === null) {
-            throw new InvalidConfigurationException('You need the pdo_sqlite PHP extension.');
-        }
-
-        if (version_compare($this->getSqliteVersion($connection), self::MIN_SQLITE_VERSION, '<')) {
-            throw new \InvalidArgumentException(\sprintf(
-                'You need at least version "%s" of SQLite.',
-                self::MIN_SQLITE_VERSION
-            ));
-        }
+        $connection = DriverManager::getConnection(
+            $dsnParser->parse('pdo-sqlite://' . $dsnPart),
+            $this->getDbalConfiguration($connectionName, $configuration)
+        );
 
         $this->registerSQLiteFunctions($connection);
 
@@ -110,7 +75,7 @@ final class LoupeFactory implements LoupeFactoryInterface
 
         }
 
-        return new ConnectionPool($loupeConnection, $ticketsConnection, $this->getSqliteVersion($loupeConnection));
+        return new ConnectionPool($loupeConnection, $ticketsConnection);
     }
 
     private function createFromConnectionPool(ConnectionPool $connectionPool, Configuration $configuration, ?string $dataDir = null): Loupe
@@ -149,20 +114,6 @@ final class LoupeFactory implements LoupeFactoryInterface
         $config->setMiddlewares($middlewares);
 
         return $config;
-    }
-
-    private function getSqliteVersion(Connection $connection): string
-    {
-        // No need to query this multiple times, it's the same for all connections
-        if ($this->sqliteVersion !== null) {
-            return $this->sqliteVersion;
-        }
-
-        return $this->sqliteVersion = match (true) {
-            /** @phpstan-ignore-next-line */
-            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(),
-            (($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
-        };
     }
 
     private function optimizeSQLiteConnection(Connection $connection): void
