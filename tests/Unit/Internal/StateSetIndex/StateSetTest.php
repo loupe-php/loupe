@@ -226,7 +226,7 @@ class StateSetTest extends TestCase
             (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $ticketPath)
         );
 
-        $engine = new Engine(new ConnectionPool($connection, $ticketConnection, '3.35.0'), $configuration, new NullLogger(), $dir);
+        $engine = new Engine(new ConnectionPool($connection, $ticketConnection), $configuration, new NullLogger(), $dir);
         $indexInfo = $engine->getIndexInfo();
         if ($indexInfo->needsSetup()) {
             $indexInfo->setup([
