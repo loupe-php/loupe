@@ -142,6 +142,15 @@ class BulkUpserter
             ConflictMode::Ignore => 'NOTHING',
         };
 
+        if ($this->bulkUpsertConfig->getChangeDetectingColumn()) {
+            $sql .= \sprintf(
+                ' WHERE %s.%s IS NOT excluded.%s',
+                $this->bulkUpsertConfig->getTable(),
+                $this->bulkUpsertConfig->getChangeDetectingColumn(),
+                $this->bulkUpsertConfig->getChangeDetectingColumn()
+            );
+        }
+
         if ($returningColumns === []) {
             return $this->executeQuery($sql, $parameters)->fetchAllAssociative();
         }

@@ -16,6 +16,7 @@ use Loupe\Loupe\Internal\Index\PreparedDocument\Term;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\TicketHandler;
+use Loupe\Loupe\Internal\Util;
 
 class Indexer
 {
@@ -140,7 +141,8 @@ class Indexer
         foreach ($preparedDocuments->all() as $document) {
             $row = [
                 '_user_id' => $document->getUserId(),
-                '_document' => $document->getJsonEncodedDocumentData(),
+                '_document' => $document->getJsonDocument(),
+                '_hash' => $document->getContentHash(),
             ];
 
             foreach ($document->getSingleAttributes() as $attribute) {
@@ -155,15 +157,20 @@ class Indexer
         }
 
         $results = $this->engine->getBulkUpserterFactory()
-            ->create(BulkUpsertConfig::create(IndexInfo::TABLE_NAME_DOCUMENTS, $rows, ['_user_id'], ConflictMode::Update)
-                ->withReturningColumns(['_user_id', '_id']))
+            ->create(
+                BulkUpsertConfig::create(IndexInfo::TABLE_NAME_DOCUMENTS, $rows, ['_user_id'], ConflictMode::Update)
+                    ->withReturningColumns(['_user_id', '_id'])
+                    ->withChangeDetectingColumn('_hash')
+            )
             ->execute();
 
         $mapper = BulkUpserter::convertResultsToKeyValueArray($results);
         $adjustedDocuments = new PreparedDocumentCollection();
         foreach ($preparedDocuments->all() as $document) {
+            // Document not part of the RETURNING means there was no update because the _hash matched. We don't need
+            // to do anything with that document then, it's unchanged.
             if (!isset($mapper[$document->getUserId()])) {
-                throw new IndexException('Something went wrong while trying to insert document. This should not happen.');
+                continue;
             }
 
             $adjustedDocuments->add($document->withInternalId($mapper[$document->getUserId()]));
@@ -510,7 +517,7 @@ class Indexer
 
         $preparedDocument = new PreparedDocument(
             (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
-            $documentData
+            Util::encodeJson($documentData)
         );
 
         $singleAttributes = [];

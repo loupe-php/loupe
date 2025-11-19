@@ -220,10 +220,10 @@ class StateSetTest extends TestCase
         $configuration = Configuration::create()->withSearchableAttributes(['content']);
 
         $connection = DriverManager::getConnection(
-            (new DsnParser())->parse((class_exists(\SQLite3::class) ? 'sqlite3' : 'pdo-sqlite') . '://notused:inthis@case/' . $loupePath)
+            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $loupePath)
         );
         $ticketConnection = DriverManager::getConnection(
-            (new DsnParser())->parse((class_exists(\SQLite3::class) ? 'sqlite3' : 'pdo-sqlite') . '://notused:inthis@case/' . $ticketPath)
+            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $ticketPath)
         );
 
         $engine = new Engine(new ConnectionPool($connection, $ticketConnection, '3.35.0'), $configuration, new NullLogger(), $dir);
