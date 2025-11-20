@@ -54,13 +54,15 @@ class Indexer
             $this->engine->getIndexInfo()->fixAndValidateDocument($document);
         }
 
-        $processBatch = function (PreparedDocumentCollection $preparedDocuments): void {
+        $needsReindex = $this->engine->needsReindex();
+
+        $processBatch = function (PreparedDocumentCollection $preparedDocuments) use ($needsReindex): void {
             if ($preparedDocuments->empty()) {
                 return;
             }
 
-            $this->recordChange(function () use ($preparedDocuments) {
-                $prepared = $this->bulkInsertDocuments($preparedDocuments);
+            $this->recordChange(function () use ($preparedDocuments, $needsReindex) {
+                $prepared = $this->bulkInsertDocuments($preparedDocuments, $needsReindex);
                 $this->removeCurrentDocumentData($prepared);
                 $this->bulkInsertMultiAttributes($prepared);
                 $this->bulkInsertTerms($prepared);
@@ -135,7 +137,7 @@ class Indexer
         $this->changes[] = $change;
     }
 
-    private function bulkInsertDocuments(PreparedDocumentCollection $preparedDocuments): PreparedDocumentCollection
+    private function bulkInsertDocuments(PreparedDocumentCollection $preparedDocuments, bool $needsReindex): PreparedDocumentCollection
     {
         $rows = [];
         foreach ($preparedDocuments->all() as $document) {
@@ -156,12 +158,19 @@ class Indexer
             return new PreparedDocumentCollection();
         }
 
+        $bulkUpsertConfig = BulkUpsertConfig::create(IndexInfo::TABLE_NAME_DOCUMENTS, $rows, ['_user_id'], ConflictMode::Update)
+            ->withReturningColumns(['_user_id', '_id'])
+        ;
+
+        // Enable change detection so we do not insert all the terms, prefixes, attributes etc. if the document did not
+        // change at all (1:1 replacement -> noop). However, we must only do this if a reindex is not needed (config is
+        // unchanged).
+        if (!$needsReindex) {
+            $bulkUpsertConfig = $bulkUpsertConfig->withChangeDetectingColumn('_hash');
+        }
+
         $results = $this->engine->getBulkUpserterFactory()
-            ->create(
-                BulkUpsertConfig::create(IndexInfo::TABLE_NAME_DOCUMENTS, $rows, ['_user_id'], ConflictMode::Update)
-                    ->withReturningColumns(['_user_id', '_id'])
-                    ->withChangeDetectingColumn('_hash')
-            )
+            ->create($bulkUpsertConfig)
             ->execute();
 
         $mapper = BulkUpserter::convertResultsToKeyValueArray($results);

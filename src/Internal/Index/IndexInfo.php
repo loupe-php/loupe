@@ -87,9 +87,9 @@ class IndexInfo
                     ],
                 ], ['key'], ConflictMode::Update))
                 ->execute();
-        });
 
-        $this->needsSetup = false;
+            $this->needsSetup = false;
+        });
     }
 
     /**
