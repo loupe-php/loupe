@@ -297,6 +297,52 @@ class IndexTest extends TestCase
         $this->assertNull($loupe->getDocument('not_existing_identifier'));
     }
 
+    public function testIndexingIdenticalDocumentWorksIfConfigChanges(): void
+    {
+        $dir = $this->createTemporaryDirectory();
+
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['lastname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration, $dir);
+        $loupe->addDocument(self::getSandraDocument());
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('maier')
+            ->withAttributesToRetrieve(['id', 'lastname'])
+        ;
+
+        // We indexed sandra, that should match and return a hit
+        $this->assertSame(1, $loupe->search($searchParameters)->getTotalHits());
+
+        // We replaced the exact same document, that should still work
+        $loupe->addDocument(self::getSandraDocument());
+        $this->assertSame(1, $loupe->search($searchParameters)->getTotalHits());
+
+        // Now our configuration changes, and "lastname" is suddenly not searchable anymore but "firstname" is
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname'])
+        ;
+        $loupe = $this->createLoupe($configuration, $dir);
+
+        // Loupe should tell us now that a re-index is needed because the configuration changed
+        $this->assertTrue($loupe->needsReindex());
+
+        // Searching for maier again, still returns the document because nobody reindexed. That's just what it is.
+        $searchParameters = SearchParameters::create()
+            ->withQuery('maier')
+            ->withAttributesToRetrieve(['id', 'lastname'])
+        ;
+        $this->assertSame(1, $loupe->search($searchParameters)->getTotalHits());
+
+        // However, we now do re-index but the document is unchanged!
+        // This should then result in 0 results, so we test here that Loupe does not work with identical data if a
+        // reindex is necessary
+        $loupe->addDocument(self::getSandraDocument());
+        $this->assertSame(0, $loupe->search($searchParameters)->getTotalHits());
+    }
+
     /**
      * @param array<array<string, mixed>> $documents
      * @param class-string<\Throwable> $expectedException
