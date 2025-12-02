@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Internal\Index\PreparedDocument;
 class MultiAttribute
 {
     /**
-     * @param array<string|float> $values
+     * @param array<string|float|bool> $values
      */
     public function __construct(
         private string $name,
@@ -21,7 +21,7 @@ class MultiAttribute
     }
 
     /**
-     * @return float[]|string[]
+     * @return float[]|string[]|bool[]
      */
     public function getValues(): array
     {

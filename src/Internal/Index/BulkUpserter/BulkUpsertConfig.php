@@ -14,11 +14,13 @@ class BulkUpsertConfig
     private array $returningColumns = [];
 
     /**
-     * @param non-empty-list<array<mixed>> $rows
+     * @param non-empty-list<string> $rowColumns
+     * @param non-empty-list<array<int, mixed>> $rows
      * @param non-empty-array<string> $uniqueColumns
      */
-    public function __construct(
+    private function __construct(
         private string $table,
+        private array $rowColumns,
         private array $rows,
         private array $uniqueColumns,
         private ConflictMode $conflictMode
@@ -28,12 +30,13 @@ class BulkUpsertConfig
     }
 
     /**
-     * @param non-empty-list<array<mixed>> $rows
+     * @param non-empty-list<string> $rowColumns
+     * @param non-empty-list<array<int, mixed>> $rows
      * @param non-empty-array<string> $uniqueColumns
      */
-    public static function create(string $table, array $rows, array $uniqueColumns, ConflictMode $conflictMode): self
+    public static function create(string $table, array $rowColumns, array $rows, array $uniqueColumns, ConflictMode $conflictMode): self
     {
-        return new self($table, $rows, $uniqueColumns, $conflictMode);
+        return new self($table, $rowColumns, $rows, $uniqueColumns, $conflictMode);
     }
 
     public function getChangeDetectingColumn(): ?string
@@ -55,7 +58,15 @@ class BulkUpsertConfig
     }
 
     /**
-     * @return non-empty-list<array<mixed>>
+     * @return non-empty-list<string>
+     */
+    public function getRowColumns(): array
+    {
+        return $this->rowColumns;
+    }
+
+    /**
+     * @return non-empty-list<array<int, mixed>>
      */
     public function getRows(): array
     {

@@ -76,16 +76,16 @@ class IndexInfo
 
         $this->engine->getIndexer()->recordChange(function () {
             $this->engine->getBulkUpserterFactory()
-                ->create(new BulkUpsertConfig(self::TABLE_NAME_INDEX_INFO, [
+                ->create(BulkUpsertConfig::create(
+                    self::TABLE_NAME_INDEX_INFO,
+                    ['key', 'value'],
                     [
-                        'key' => 'engineVersion',
-                        'value' => Engine::VERSION,
+                        ['engineVersion', Engine::VERSION],
+                        ['configHash', $this->engine->getConfiguration()->getIndexHash()],
                     ],
-                    [
-                        'key' => 'configHash',
-                        'value' => $this->engine->getConfiguration()->getIndexHash(),
-                    ],
-                ], ['key'], ConflictMode::Update))
+                    ['key'],
+                    ConflictMode::Update
+                ))
                 ->execute();
 
             $this->needsSetup = false;
@@ -574,10 +574,15 @@ class IndexInfo
             $this->updateSchema();
 
             $this->engine->getBulkUpserterFactory()
-                ->create(new BulkUpsertConfig(self::TABLE_NAME_INDEX_INFO, [[
-                    'key' => 'documentSchema',
-                    'value' => json_encode($documentSchema),
-                ]], ['key'], ConflictMode::Update))
+                ->create(BulkUpsertConfig::create(
+                    self::TABLE_NAME_INDEX_INFO,
+                    ['key', 'value'],
+                    [
+                        ['documentSchema', json_encode($documentSchema)],
+                    ],
+                    ['key'],
+                    ConflictMode::Update
+                ))
                 ->execute();
         });
     }
