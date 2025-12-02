@@ -75,7 +75,7 @@ class BulkUpserter
     }
 
     /**
-     * @param non-empty-list<array<mixed>> $rows
+     * @param array<array<string, mixed>> $rows
      * @param array<string> $columns
      * @param array<int<0, max>|string, mixed> $parameters
      */
@@ -93,7 +93,7 @@ class BulkUpserter
     }
 
     /**
-     * @param non-empty-list<array<mixed>> $rows
+     * @param array<array<string, mixed>> $rows
      * @param array<string> $updateColumns
      * @return array<mixed>
      */
@@ -169,8 +169,8 @@ class BulkUpserter
     }
 
     /**
-     * @param non-empty-list<array<mixed>> $rows
-     * @return non-empty-list<array<string, mixed>>
+     * @param array<array<mixed>> $rows
+     * @return array<array<string, mixed>>
      */
     private function normalizeRows(array $rows): array
     {

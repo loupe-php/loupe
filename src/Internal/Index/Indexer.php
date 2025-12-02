@@ -21,10 +21,17 @@ use Loupe\Loupe\Internal\Util;
 class Indexer
 {
     /**
-     * Tests showed that batching more than 1000 documents rarely leads to better results.
+     * Tests showed that batching more than 500 documents rarely leads to better results.
      * Can be adjusted though if anyone finds a reason to do so.
      */
     public const MAX_DOCS_PER_BATCH = 500;
+
+    /**
+     * Every document can consist of thousands of terms which will lead to the Indexer creating mapping arrays
+     * of thousands and thousands of terms and mapping array entries. Hence, we keep those batches lower than
+     * the documents itself and also index those in batches.
+     */
+    public const MAX_DOCS_PER_TERMS_BATCH = 100;
 
     /**
      * @var array<int, callable>
@@ -403,88 +410,98 @@ class Indexer
 
     private function bulkInsertTerms(PreparedDocumentCollection $preparedDocuments): void
     {
-        // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position" - need to optimize for memory here
-        $termsMapper = [];
-        // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
-        $rows = [];
-        $termsLengthCache = [];
-        $prefixRelevantTerms = [];
-        $indexPrefixes = $this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch();
+        $processBatch = function (PreparedDocumentCollection $preparedDocuments): void {
+            if ($preparedDocuments->empty()) {
+                return;
+            }
 
-        foreach ($preparedDocuments->all() as $document) {
-            foreach ($document->getTerms() as $term) {
-                if (!isset($termsLengthCache[$term->getTerm()])) {
-                    $termsLengthCache[$term->getTerm()] = mb_strlen($term->getTerm(), 'UTF-8');
+            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position" - need to optimize for memory here
+            $termsMapper = [];
+            // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
+            $rows = [];
+            $termsLengthCache = [];
+            $prefixRelevantTerms = [];
+            $indexPrefixes = $this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch();
+
+            foreach ($preparedDocuments->all() as $document) {
+                foreach ($document->getTerms() as $term) {
+                    if (!isset($termsLengthCache[$term->getTerm()])) {
+                        $termsLengthCache[$term->getTerm()] = mb_strlen($term->getTerm(), 'UTF-8');
+                    }
+
+                    $rows[] = [$term->getTerm(), $termsLengthCache[$term->getTerm()], 0];
+                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition()];
+
+                    // Prefix relevant terms must not be variants
+                    if ($indexPrefixes && !$term->isVariant()) {
+                        $prefixRelevantTerms[$term->getTerm()][] = $document->getInternalId();
+                    }
+                }
+            }
+
+            if ($rows === []) {
+                return;
+            }
+
+            // States
+            if (!$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+                $allStates = $this->engine->getStateSetIndex()->index(array_map(function (array $row) {
+                    return $row[0];
+                }, $rows));
+
+                foreach ($rows as $i => $row) {
+                    if (!isset($allStates[$row[0]])) {
+                        throw new IndexException('Could not find state for term. This should not happen.');
+                    }
+                    $rows[$i][2] = $allStates[$row[0]];
+                }
+            }
+
+            // Bulk insert terms
+            $relationRows = [];
+            $results = $this->engine->getBulkUpserterFactory()
+                ->create(BulkUpsertConfig::create(
+                    IndexInfo::TABLE_NAME_TERMS,
+                    ['term', 'length', 'state'],
+                    $rows,
+                    ['term', 'state', 'length'],
+                    ConflictMode::Ignore
+                )->withReturningColumns(['term', 'id']))
+                ->execute();
+
+            $termsIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
+            foreach ($termsMapper as $term => $occurrences) {
+                if (!isset($termsIdMapper[$term])) {
+                    throw new IndexException('Could not find term ' . $term . '. This should not happen.');
                 }
 
-                $rows[] = [$term->getTerm(), $termsLengthCache[$term->getTerm()], 0];
-                $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition()];
-
-                // Prefix relevant terms must not be variants
-                if ($indexPrefixes && !$term->isVariant()) {
-                    $prefixRelevantTerms[$term->getTerm()][] = $document->getInternalId();
+                foreach ($occurrences as $occurrence) {
+                    $relationRows[] = [...$occurrence, $termsIdMapper[$term]];
                 }
             }
-        }
 
-        if ($rows === []) {
-            return;
-        }
-
-        // States
-        if (!$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
-            $allStates = $this->engine->getStateSetIndex()->index(array_map(function (array $row) {
-                return $row[0];
-            }, $rows));
-
-            foreach ($rows as $i => $row) {
-                if (!isset($allStates[$row[0]])) {
-                    throw new IndexException('Could not find state for term. This should not happen.');
-                }
-                $rows[$i][2] = $allStates[$row[0]];
-            }
-        }
-
-        // Bulk insert terms
-        $relationRows = [];
-        $results = $this->engine->getBulkUpserterFactory()
-            ->create(BulkUpsertConfig::create(
-                IndexInfo::TABLE_NAME_TERMS,
-                ['term', 'length', 'state'],
-                $rows,
-                ['term', 'state', 'length'],
-                ConflictMode::Ignore
-            )->withReturningColumns(['term', 'id']))
-            ->execute();
-
-        $termsIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
-        foreach ($termsMapper as $term => $occurrences) {
-            if (!isset($termsIdMapper[$term])) {
-                throw new IndexException('Could not find term ' . $term . '. This should not happen.');
+            if ($relationRows === []) {
+                return;
             }
 
-            foreach ($occurrences as $occurrence) {
-                $relationRows[] = [...$occurrence, $termsIdMapper[$term]];
-            }
+            // Now bulk insert the relations to the documents
+            $this->engine->getBulkUpserterFactory()
+                ->create(BulkUpsertConfig::create(
+                    IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                    ['document', 'attribute', 'position', 'term'],
+                    $relationRows,
+                    ['term', 'document', 'attribute', 'position'],
+                    ConflictMode::Ignore
+                ))
+                ->execute();
+
+            // Index prefixes if needed
+            $this->bulkInsertPrefixTerms($prefixRelevantTerms, $termsIdMapper);
+        };
+
+        foreach ($preparedDocuments->chunk(self::MAX_DOCS_PER_TERMS_BATCH) as $batch) {
+            $processBatch($batch);
         }
-
-        if ($relationRows === []) {
-            return;
-        }
-
-        // Now bulk insert the relations to the documents
-        $this->engine->getBulkUpserterFactory()
-            ->create(BulkUpsertConfig::create(
-                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                ['document', 'attribute', 'position', 'term'],
-                $relationRows,
-                ['term', 'document', 'attribute', 'position'],
-                ConflictMode::Ignore
-            ))
-            ->execute();
-
-        // Index prefixes if needed
-        $this->bulkInsertPrefixTerms($prefixRelevantTerms, $termsIdMapper);
     }
 
     private function commitChanges(): void

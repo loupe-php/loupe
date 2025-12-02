@@ -10,8 +10,10 @@ class Util
 {
     /**
      * This is a slightly more memory-efficient alternative to array_chunk().
-     * @param non-empty-array<array<mixed>> $array
-     * @return \Generator<non-empty-list<array<mixed>>>
+     *
+     * @template T
+     * @param array<T> $array
+     * @return \Generator<array<T>>
      */
     public static function arrayChunk(array $array, int $size): \Generator
     {
