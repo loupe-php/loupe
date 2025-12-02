@@ -73,7 +73,7 @@ class Indexer
 
         // Now index the documents in chunks as preparing too many documents and keeping it all in memory before
         // inserting would result in too much memory usage.
-        foreach (array_chunk($documents, self::MAX_DOCS_PER_BATCH) as $batch) {
+        foreach (Util::arrayChunk($documents, self::MAX_DOCS_PER_BATCH) as $batch) {
             $preparedDocuments = new PreparedDocumentCollection();
             foreach ($batch as $document) {
                 $preparedDocuments->add($this->prepareDocument($document));
