@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Index;
 
+use Loupe\Loupe\Internal\Util;
+
 class PreparedDocumentCollection
 {
     /**
@@ -16,8 +18,8 @@ class PreparedDocumentCollection
      */
     public function __construct(array $documents = [])
     {
-        foreach ($documents as $token) {
-            $this->add($token);
+        foreach ($documents as $document) {
+            $this->add($document);
         }
     }
 
@@ -44,6 +46,16 @@ class PreparedDocumentCollection
         return array_map(static function (PreparedDocument $document) {
             return $document->getInternalId();
         }, $this->documents);
+    }
+
+    /**
+     * @return \Generator<PreparedDocumentCollection>
+     */
+    public function chunk(int $size): \Generator
+    {
+        foreach (Util::arrayChunk($this->documents, $size) as $documents) {
+            yield new self($documents);
+        }
     }
 
     public function count(): int
