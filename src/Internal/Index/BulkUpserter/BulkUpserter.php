@@ -58,17 +58,14 @@ class BulkUpserter
      */
     public function execute(): array
     {
-        $rows = $this->bulkUpsertConfig->getRows();
-        $insertColumns = $this->bulkUpsertConfig->getRowColumns();
-
-        $updateColumns = array_values(array_diff($insertColumns, $this->bulkUpsertConfig->getUniqueColumns()));
-        $chunkSize = max((int) round($this->variableLimit / \count($insertColumns), 0, PHP_ROUND_HALF_DOWN), 1);
+        $updateColumns = array_values(array_diff($this->bulkUpsertConfig->getRowColumns(), $this->bulkUpsertConfig->getUniqueColumns()));
+        $chunkSize = max((int) round($this->variableLimit / \count($this->bulkUpsertConfig->getRowColumns()), 0, PHP_ROUND_HALF_DOWN), 1);
         $results = [];
 
-        foreach (array_chunk($rows, $chunkSize) as $chunk) {
-            $rows = $this->normalizeRows($chunk, $insertColumns);
+        foreach (array_chunk($this->bulkUpsertConfig->getRows(), $chunkSize) as $chunk) {
+            $rows = $this->normalizeRows($chunk);
             // Modern path: INSERT .. ON CONFLICT .. DO UPDATE [RETURNING]
-            $results = [...$results, ...$this->executeModern($rows, $insertColumns, $updateColumns)];
+            $results = [...$results, ...$this->executeModern($rows, $updateColumns)];
 
             // Depending on the version, we could introduce fallback solutions here
         }
@@ -96,14 +93,13 @@ class BulkUpserter
 
     /**
      * @param non-empty-list<array<mixed>> $rows
-     * @param array<string> $insertColumns
      * @param array<string> $updateColumns
      * @return array<mixed>
      */
-    private function executeModern(array $rows, array $insertColumns, array $updateColumns): array
+    private function executeModern(array $rows, array $updateColumns): array
     {
         $parameters = [];
-        $values = $this->buildValuesClause($rows, $insertColumns, $parameters);
+        $values = $this->buildValuesClause($rows, $this->bulkUpsertConfig->getRowColumns(), $parameters);
         $conflictMode = $this->bulkUpsertConfig->getConflictMode();
         $returningColumns = $this->bulkUpsertConfig->getReturningColumns();
 
@@ -117,7 +113,7 @@ class BulkUpserter
         $sql = \sprintf(
             'INSERT INTO %s (%s) VALUES %s ON CONFLICT (%s) DO ',
             $this->bulkUpsertConfig->getTable(),
-            implode(', ', $insertColumns),
+            implode(', ', $this->bulkUpsertConfig->getRowColumns()),
             $values,
             implode(', ', $this->bulkUpsertConfig->getUniqueColumns()),
         );
@@ -173,15 +169,14 @@ class BulkUpserter
 
     /**
      * @param non-empty-list<array<mixed>> $rows
-     * @param array<string> $insertColumns
      * @return non-empty-list<array<string, mixed>>
      */
-    private function normalizeRows(array $rows, array $insertColumns): array
+    private function normalizeRows(array $rows): array
     {
         $normalized = [];
         foreach ($rows as $row) {
             $normalizedRow = [];
-            foreach ($insertColumns as $k => $insertColumn) {
+            foreach ($this->bulkUpsertConfig->getRowColumns() as $k => $insertColumn) {
                 $normalizedRow[$insertColumn] = $row[$k] ?? null;
             }
             $normalized[] = $normalizedRow;
