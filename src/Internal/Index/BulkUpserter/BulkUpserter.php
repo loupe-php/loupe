@@ -7,6 +7,7 @@ namespace Loupe\Loupe\Internal\Index\BulkUpserter;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Result;
+use Loupe\Loupe\Internal\Util;
 
 class BulkUpserter
 {
@@ -62,7 +63,7 @@ class BulkUpserter
         $chunkSize = max((int) round($this->variableLimit / \count($this->bulkUpsertConfig->getRowColumns()), 0, PHP_ROUND_HALF_DOWN), 1);
         $results = [];
 
-        foreach (array_chunk($this->bulkUpsertConfig->getRows(), $chunkSize) as $chunk) {
+        foreach (Util::arrayChunk($this->bulkUpsertConfig->getRows(), $chunkSize) as $chunk) {
             $rows = $this->normalizeRows($chunk);
             // Modern path: INSERT .. ON CONFLICT .. DO UPDATE [RETURNING]
             $results = [...$results, ...$this->executeModern($rows, $updateColumns)];
