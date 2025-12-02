@@ -12,10 +12,6 @@ use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\ConnectionPool;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Geo;
-use Loupe\Loupe\Internal\Levenshtein;
-use Loupe\Loupe\Internal\Search\Sorting\Relevance;
-use Loupe\Loupe\Internal\StaticCache;
 use Loupe\Loupe\Logger\PrefixDecoratedLogger;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -54,14 +50,10 @@ final class LoupeFactory implements LoupeFactoryInterface
         $dsnPart = $databasePath === null ? '/:memory:' : ('notused:inthis@case/' . $databasePath);
         $dsnParser = new DsnParser();
 
-        $connection = DriverManager::getConnection(
+        return DriverManager::getConnection(
             $dsnParser->parse('pdo-sqlite://' . $dsnPart),
             $this->getDbalConfiguration($connectionName, $configuration)
         );
-
-        $this->registerSQLiteFunctions($connection);
-
-        return $connection;
     }
 
     private function createConnectionPool(Configuration $configuration, ?string $dataDir = null): ConnectionPool
@@ -164,51 +156,5 @@ final class LoupeFactory implements LoupeFactoryInterface
             $configuration->getProcessName(),
             $logger
         );
-    }
-
-    private function registerSQLiteFunctions(Connection $connection): void
-    {
-        $functions = [
-            'loupe_max_levenshtein' => [
-                'callback' => [Levenshtein::class, 'maxLevenshtein'],
-                'numArgs' => 4,
-            ],
-            'loupe_levensthein' => [
-                'callback' => [Levenshtein::class, 'damerauLevenshtein'],
-                'numArgs' => 3,
-            ],
-            'loupe_geo_distance' => [
-                'callback' => [Geo::class, 'geoDistance'],
-                'numArgs' => 4,
-            ],
-            'loupe_relevance' => [
-                'callback' => [Relevance::class, 'fromQuery'],
-                'numArgs' => 3,
-            ],
-        ];
-
-        foreach ($functions as $functionName => $function) {
-            /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->sqliteCreateFunction(
-                $functionName,
-                self::wrapSQLiteMethodForStaticCache($functionName, $function['callback']),
-                $function['numArgs']
-            );
-        }
-    }
-
-    private static function wrapSQLiteMethodForStaticCache(string $prefix, callable $callback): \Closure
-    {
-        return function () use ($prefix, $callback) {
-            $args = \func_get_args();
-            $cacheKey = $prefix . ':' . implode('--', $args);
-            $cachedValue = StaticCache::get($cacheKey);
-
-            if ($cachedValue !== null) {
-                return $cachedValue;
-            }
-
-            return StaticCache::set($cacheKey, \call_user_func_array($callback, $args));
-        };
     }
 }

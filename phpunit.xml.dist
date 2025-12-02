@@ -33,9 +33,4 @@
             <directory>tests</directory>
         </include>
     </source>
-
-    <extensions>
-        <bootstrap class="Loupe\Loupe\Tests\PhpUnit\Extension\LoupeTestsExtension">
-        </bootstrap>
-    </extensions>
 </phpunit>
