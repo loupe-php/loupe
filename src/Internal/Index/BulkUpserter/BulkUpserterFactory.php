@@ -8,9 +8,15 @@ use Loupe\Loupe\Internal\ConnectionPool;
 
 class BulkUpserterFactory
 {
-    public const FALLBACK_VARIABLE_LIMIT = 999;
-
-    private int|null $variableLimit = null;
+    /**
+     * We tried using a higher variable limit fetching it dynamically using
+     * > SELECT * FROM pragma_compile_options WHERE compile_options LIKE 'MAX_VARIABLE_NUMBER=%'
+     * but there's no real positive effect. Longer UPSERT queries will be faster indeed but only by
+     * a neglectable amount of time. They will, however, use a lot more memory for the prepared
+     * statements. Hence, we hard code it to 999 which is also a limit that is supported in all
+     * SQLite configurations.
+     */
+    public const VARIABLE_LIMIT = 999;
 
     public function __construct(
         private ConnectionPool $connectionPool
@@ -20,28 +26,6 @@ class BulkUpserterFactory
 
     public function create(BulkUpsertConfig $bulkUpsertConfig): BulkUpserter
     {
-        return new BulkUpserter($this->connectionPool->loupeConnection, $bulkUpsertConfig, $this->getVariableLimit());
-    }
-
-    private function getVariableLimit(): int
-    {
-        if ($this->variableLimit !== null) {
-            return $this->variableLimit;
-        }
-
-        try {
-            $pragma = $this->connectionPool->loupeConnection
-                ->executeQuery("SELECT * FROM pragma_compile_options WHERE compile_options LIKE 'MAX_VARIABLE_NUMBER=%'")
-                ->fetchOne()
-            ;
-
-            preg_match('/^MAX_VARIABLE_NUMBER=(\d+)$/', (string) $pragma, $matches);
-
-            return $this->variableLimit = isset($matches[1]) ? ((int) $matches[1]) : self::FALLBACK_VARIABLE_LIMIT;
-        } catch (\Throwable) {
-            // noop
-        }
-
-        return $this->variableLimit = self::FALLBACK_VARIABLE_LIMIT;
+        return new BulkUpserter($this->connectionPool->loupeConnection, $bulkUpsertConfig, self::VARIABLE_LIMIT);
     }
 }
