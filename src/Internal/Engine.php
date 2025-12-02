@@ -16,6 +16,7 @@ use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use Loupe\Loupe\Internal\LanguageDetection\PreselectedLanguageDetector;
 use Loupe\Loupe\Internal\Search\Searcher;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
@@ -35,6 +36,11 @@ class Engine
     public const VERSION = '0.13.0'; // Increase this whenever a re-index of all documents is needed
 
     private BulkUpserterFactory $bulkUpserterFactory;
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $cache = [];
 
     private Parser $filterParser;
 
@@ -74,6 +80,8 @@ class Engine
         $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->stopwords));
         $this->filterParser = new Parser($this);
         $this->bulkUpserterFactory = new BulkUpserterFactory($this->connectionPool);
+
+        $this->registerSQLiteFunctions($this->connectionPool->loupeConnection);
     }
 
     /**
@@ -274,5 +282,51 @@ class Engine
         return (int) $this->getConnection()
             ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
             ->fetchOne();
+    }
+
+    private function registerSQLiteFunctions(Connection $connection): void
+    {
+        $functions = [
+            'loupe_max_levenshtein' => [
+                'callback' => [Levenshtein::class, 'maxLevenshtein'],
+                'numArgs' => 4,
+            ],
+            'loupe_levensthein' => [
+                'callback' => [Levenshtein::class, 'damerauLevenshtein'],
+                'numArgs' => 3,
+            ],
+            'loupe_geo_distance' => [
+                'callback' => [Geo::class, 'geoDistance'],
+                'numArgs' => 4,
+            ],
+            'loupe_relevance' => [
+                'callback' => [Relevance::class, 'fromQuery'],
+                'numArgs' => 3,
+            ],
+        ];
+
+        foreach ($functions as $functionName => $function) {
+            /** @phpstan-ignore-next-line */
+            $connection->getNativeConnection()->sqliteCreateFunction(
+                $functionName,
+                $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
+                $function['numArgs']
+            );
+        }
+    }
+
+    private function wrapSQLiteMethodForCache(string $prefix, callable $callback): \Closure
+    {
+        return function () use ($prefix, $callback) {
+            $args = \func_get_args();
+            $cacheKey = $prefix . ':' . implode('--', $args);
+            $cachedValue = $this->cache[$cacheKey] ?? null;
+
+            if ($cachedValue !== null) {
+                return $cachedValue;
+            }
+
+            return $this->cache[$cacheKey] = \call_user_func_array($callback, $args);
+        };
     }
 }

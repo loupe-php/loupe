@@ -65,7 +65,6 @@ trait FunctionalTestTrait
     {
         $results = $loupe->search($searchParameters)->toArray();
         unset($results['processingTimeMs']);
-        unset($loupe);
         $this->assertSame($expectedResults, $results);
     }
 

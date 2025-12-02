@@ -127,8 +127,6 @@ $searchParameters = SearchParameters::create()
 ;
 
 $results = $loupe->search($searchParameters);
-
-Loupe::freeMemory($loupe); // Force freeing memory and garbage collection, only needed in certain use cases (see performance docs)
 ```
 
 The `$results` array contains a list of search hits and metadata about the query.
