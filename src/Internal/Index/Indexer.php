@@ -139,16 +139,20 @@ class Indexer
 
     private function bulkInsertDocuments(PreparedDocumentCollection $preparedDocuments, bool $needsReindex): PreparedDocumentCollection
     {
+        $rowColumns = ['_user_id', '_document', '_hash'];
         $rows = [];
         foreach ($preparedDocuments->all() as $document) {
-            $row = [
-                '_user_id' => $document->getUserId(),
-                '_document' => $document->getJsonDocument(),
-                '_hash' => $document->getContentHash(),
-            ];
+            $row = [$document->getUserId(), $document->getJsonDocument(), $document->getContentHash()];
 
             foreach ($document->getSingleAttributes() as $attribute) {
-                $row[$attribute->getName()] = $attribute->getValue();
+                $columnIndex = array_search($attribute->getName(), $rowColumns, true);
+
+                if ($columnIndex === false) {
+                    $rowColumns[] = $attribute->getName();
+                    $row[] = $attribute->getValue();
+                    continue;
+                }
+                $row[$columnIndex] = $attribute->getValue();
             }
 
             $rows[] = $row;
@@ -158,9 +162,13 @@ class Indexer
             return new PreparedDocumentCollection();
         }
 
-        $bulkUpsertConfig = BulkUpsertConfig::create(IndexInfo::TABLE_NAME_DOCUMENTS, $rows, ['_user_id'], ConflictMode::Update)
-            ->withReturningColumns(['_user_id', '_id'])
-        ;
+        $bulkUpsertConfig = BulkUpsertConfig::create(
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+            $rowColumns,
+            $rows,
+            ['_user_id'],
+            ConflictMode::Update
+        )->withReturningColumns(['_user_id', '_id']);
 
         // Enable change detection so we do not insert all the terms, prefixes, attributes etc. if the document did not
         // change at all (1:1 replacement -> noop). However, we must only do this if a reindex is not needed (config is
@@ -207,18 +215,10 @@ class Indexer
                 foreach ($attribute->getValues() as $value) {
                     if (\is_float($value) || \is_bool($value)) {
                         $documentsMapper[$document->getInternalId()][$attribute->getName()]['numeric_value'][] = (float) $value;
-
-                        $numericRows[] = [
-                            'attribute' => $attribute->getName(),
-                            'numeric_value' => $value,
-                        ];
+                        $numericRows[] = [$attribute->getName(), $value];
                     } else {
-                        $documentsMapper[$document->getInternalId()][$attribute->getName()]['string_value'][] = (string) $value;
-
-                        $stringRows[] = [
-                            'attribute' => $attribute->getName(),
-                            'string_value' => $value,
-                        ];
+                        $documentsMapper[$document->getInternalId()][$attribute->getName()]['string_value'][] = $value;
+                        $stringRows[] = [$attribute->getName(), $value];
                     }
                 }
             }
@@ -235,10 +235,13 @@ class Indexer
             }
 
             $results = $this->engine->getBulkUpserterFactory()
-                ->create(
-                    BulkUpsertConfig::create(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES, $rows, ['attribute', $columnName], ConflictMode::Ignore)
-                        ->withReturningColumns(['id', 'attribute', $columnName])
-                )
+                ->create(BulkUpsertConfig::create(
+                    IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                    ['attribute', $columnName],
+                    $rows,
+                    ['attribute', $columnName],
+                    ConflictMode::Ignore
+                )->withReturningColumns(['id', 'attribute', $columnName]))
                 ->execute();
 
             $resultMapper = [];
@@ -267,10 +270,7 @@ class Indexer
         $rows = [];
         foreach ($documentIdsToAttributeIdsMapper as $documentId => $attributeIds) {
             foreach ($attributeIds as $attributeId) {
-                $rows[] = [
-                    'attribute' => $attributeId,
-                    'document' => $documentId,
-                ];
+                $rows[] = [$attributeId, $documentId];
             }
         }
 
@@ -279,7 +279,13 @@ class Indexer
         }
 
         $this->engine->getBulkUpserterFactory()
-            ->create(new BulkUpsertConfig(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $rows, ['attribute', 'document'], ConflictMode::Ignore))
+            ->create(BulkUpsertConfig::create(
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+                ['attribute', 'document'],
+                $rows,
+                ['attribute', 'document'],
+                ConflictMode::Ignore
+            ))
             ->execute();
     }
 
@@ -326,11 +332,7 @@ class Indexer
                     $termsLengthCache[$asString] = mb_strlen($asString, 'UTF-8');
                 }
 
-                $rows[] = [
-                    'prefix' => $asString,
-                    'length' => $termsLengthCache[$asString],
-                    'state' => 0,
-                ];
+                $rows[] = [$asString, $termsLengthCache[$asString], 0];
 
                 if (!isset($termsIdMapper[$term])) {
                     throw new IndexException('Could not find term ' . $term . '. This should not happen.');
@@ -347,23 +349,26 @@ class Indexer
         // States
         if (!$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
             $allStates = $this->engine->getStateSetIndex()->index(array_map(function (array $row) {
-                return $row['prefix'];
+                return $row[0];
             }, $rows));
 
             foreach ($rows as $i => $row) {
-                if (!isset($allStates[$row['prefix']])) {
+                if (!isset($allStates[$row[0]])) {
                     throw new IndexException('Could not find state for prefix. This should not happen.');
                 }
-                $rows[$i]['state'] = $allStates[$row['prefix']];
+                $rows[$i][2] = $allStates[$row[0]];
             }
         }
 
         // Bulk insert prefixes
         $results = $this->engine->getBulkUpserterFactory()
-            ->create(
-                BulkUpsertConfig::create(IndexInfo::TABLE_NAME_PREFIXES, $rows, ['prefix', 'state', 'length'], ConflictMode::Ignore)
-                    ->withReturningColumns(['prefix', 'id'])
-            )
+            ->create(BulkUpsertConfig::create(
+                IndexInfo::TABLE_NAME_PREFIXES,
+                ['prefix', 'length', 'state'],
+                $rows,
+                ['prefix', 'state', 'length'],
+                ConflictMode::Ignore
+            )->withReturningColumns(['prefix', 'id']))
             ->execute();
 
         $prefixIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
@@ -375,10 +380,7 @@ class Indexer
             }
 
             foreach ($termIds as $termId) {
-                $relationRows[] = [
-                    'prefix' => $prefixIdMapper[$prefix],
-                    'term' => $termId,
-                ];
+                $relationRows[] = [$prefixIdMapper[$prefix], $termId];
             }
         }
 
@@ -388,14 +390,22 @@ class Indexer
 
         // Now bulk insert the relations to the terms
         $this->engine->getBulkUpserterFactory()
-            ->create(new BulkUpsertConfig(IndexInfo::TABLE_NAME_PREFIXES_TERMS, $relationRows, ['prefix', 'term'], ConflictMode::Ignore))
+            ->create(BulkUpsertConfig::create(
+                IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+                ['prefix', 'term'],
+                $relationRows,
+                ['prefix', 'term'],
+                ConflictMode::Ignore
+            ))
             ->execute();
 
     }
 
     private function bulkInsertTerms(PreparedDocumentCollection $preparedDocuments): void
     {
+        // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position" - need to optimize for memory here
         $termsMapper = [];
+        // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
         $rows = [];
         $termsLengthCache = [];
         $prefixRelevantTerms = [];
@@ -407,17 +417,8 @@ class Indexer
                     $termsLengthCache[$term->getTerm()] = mb_strlen($term->getTerm(), 'UTF-8');
                 }
 
-                $rows[] = [
-                    'term' => $term->getTerm(),
-                    'length' => $termsLengthCache[$term->getTerm()],
-                    'state' => 0,
-                ];
-
-                $termsMapper[$term->getTerm()][] = [
-                    'document' => $document->getInternalId(),
-                    'attribute' => $term->getAttribute(),
-                    'position' => $term->getPosition(),
-                ];
+                $rows[] = [$term->getTerm(), $termsLengthCache[$term->getTerm()], 0];
+                $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition()];
 
                 // Prefix relevant terms must not be variants
                 if ($indexPrefixes && !$term->isVariant()) {
@@ -433,24 +434,27 @@ class Indexer
         // States
         if (!$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
             $allStates = $this->engine->getStateSetIndex()->index(array_map(function (array $row) {
-                return $row['term'];
+                return $row[0];
             }, $rows));
 
             foreach ($rows as $i => $row) {
-                if (!isset($allStates[$row['term']])) {
+                if (!isset($allStates[$row[0]])) {
                     throw new IndexException('Could not find state for term. This should not happen.');
                 }
-                $rows[$i]['state'] = $allStates[$row['term']];
+                $rows[$i][2] = $allStates[$row[0]];
             }
         }
 
         // Bulk insert terms
         $relationRows = [];
         $results = $this->engine->getBulkUpserterFactory()
-            ->create(
-                BulkUpsertConfig::create(IndexInfo::TABLE_NAME_TERMS, $rows, ['term', 'state', 'length'], ConflictMode::Ignore)
-                    ->withReturningColumns(['term', 'id'])
-            )
+            ->create(BulkUpsertConfig::create(
+                IndexInfo::TABLE_NAME_TERMS,
+                ['term', 'length', 'state'],
+                $rows,
+                ['term', 'state', 'length'],
+                ConflictMode::Ignore
+            )->withReturningColumns(['term', 'id']))
             ->execute();
 
         $termsIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
@@ -460,8 +464,7 @@ class Indexer
             }
 
             foreach ($occurrences as $occurrence) {
-                $occurrence['term'] = $termsIdMapper[$term];
-                $relationRows[] = $occurrence;
+                $relationRows[] = [...$occurrence, $termsIdMapper[$term]];
             }
         }
 
@@ -471,7 +474,13 @@ class Indexer
 
         // Now bulk insert the relations to the documents
         $this->engine->getBulkUpserterFactory()
-            ->create(new BulkUpsertConfig(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $relationRows, ['term', 'document', 'attribute', 'position'], ConflictMode::Ignore))
+            ->create(BulkUpsertConfig::create(
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                ['document', 'attribute', 'position', 'term'],
+                $relationRows,
+                ['term', 'document', 'attribute', 'position'],
+                ConflictMode::Ignore
+            ))
             ->execute();
 
         // Index prefixes if needed

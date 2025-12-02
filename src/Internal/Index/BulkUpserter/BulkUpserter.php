@@ -59,14 +59,14 @@ class BulkUpserter
     public function execute(): array
     {
         $rows = $this->bulkUpsertConfig->getRows();
-        $insertColumns = $this->collectColumns($rows);
+        $insertColumns = $this->bulkUpsertConfig->getRowColumns();
+
         $updateColumns = array_values(array_diff($insertColumns, $this->bulkUpsertConfig->getUniqueColumns()));
         $chunkSize = max((int) round($this->variableLimit / \count($insertColumns), 0, PHP_ROUND_HALF_DOWN), 1);
         $results = [];
 
         foreach (array_chunk($rows, $chunkSize) as $chunk) {
             $rows = $this->normalizeRows($chunk, $insertColumns);
-
             // Modern path: INSERT .. ON CONFLICT .. DO UPDATE [RETURNING]
             $results = [...$results, ...$this->executeModern($rows, $insertColumns, $updateColumns)];
 
@@ -92,21 +92,6 @@ class BulkUpserter
         }
 
         return implode(',', $tuples);
-    }
-
-    /**
-     * @param non-empty-list<array<mixed>> $rows
-     * @return array<string>
-     */
-    private function collectColumns(array $rows): array
-    {
-        return array_keys(array_fill_keys(
-            array_merge(
-                $this->bulkUpsertConfig->getUniqueColumns(),
-                array_keys(reset($rows))
-            ),
-            true
-        ));
     }
 
     /**
@@ -196,8 +181,8 @@ class BulkUpserter
         $normalized = [];
         foreach ($rows as $row) {
             $normalizedRow = [];
-            foreach ($insertColumns as $insertColumn) {
-                $normalizedRow[$insertColumn] = \array_key_exists($insertColumn, $row) ? $row[$insertColumn] : null;
+            foreach ($insertColumns as $k => $insertColumn) {
+                $normalizedRow[$insertColumn] = $row[$k] ?? null;
             }
             $normalized[] = $normalizedRow;
         }
