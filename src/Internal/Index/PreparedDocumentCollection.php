@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Index;
 
-use Loupe\Loupe\Internal\Util;
-
 class PreparedDocumentCollection
 {
     /**
      * @var PreparedDocument[]
      */
     private array $documents = [];
+
+    private int $termsCount = 0;
 
     /**
      * @param PreparedDocument[] $documents
@@ -26,6 +26,7 @@ class PreparedDocumentCollection
     public function add(PreparedDocument $document): self
     {
         $this->documents[] = $document;
+        $this->termsCount += $document->getTermsCount();
 
         return $this;
     }
@@ -51,10 +52,30 @@ class PreparedDocumentCollection
     /**
      * @return \Generator<PreparedDocumentCollection>
      */
-    public function chunk(int $size): \Generator
+    public function chunkByNumberOfTerms(int $size): \Generator
     {
-        foreach (Util::arrayChunk($this->documents, $size) as $documents) {
-            yield new self($documents);
+        if ($size <= 0) {
+            throw new \InvalidArgumentException('Chunk size must be greater than 0.');
+        }
+
+        $chunk = [];
+        $count = 0;
+
+        foreach ($this->documents as $document) {
+            $termsCount = $document->getTermsCount();
+
+            if ($count + $termsCount >= $size) {
+                yield new self($chunk);
+                $chunk = [];
+                $count = 0;
+            }
+
+            $chunk[] = $document;
+            $count += $termsCount;
+        }
+
+        if ($count > 0) {
+            yield new self($chunk);
         }
     }
 
@@ -66,5 +87,10 @@ class PreparedDocumentCollection
     public function empty(): bool
     {
         return $this->documents === [];
+    }
+
+    public function getTermsCount(): int
+    {
+        return $this->termsCount;
     }
 }

@@ -21,17 +21,16 @@ use Loupe\Loupe\Internal\Util;
 class Indexer
 {
     /**
-     * Tests showed that batching more than 500 documents rarely leads to better results.
-     * Can be adjusted though if anyone finds a reason to do so.
+     * Documents can be of arbitrary configurations. You might have a lot of documents with very little content or only
+     * a little amount of documents but each one of them with huge amounts of content. Hence, splitting by the number
+     * of documents does not make any sense. We need to batch indexing by the number of terms because those generate the
+     * heaviest queries. Technically, we might also do this for the number of other attributes that people want to filter
+     * for, but it is rather unrealistic to have documents with thousands of values people want to filter (not search!) for.
+     * The higher this number is, the faster the indexing process is going to be but the more memory is required. For now,
+     * tests have shown a good result with 2000 terms, but we might want to make this configurable one day.
+     * However, it's also a bit hard to document and understand so for now, let's keep this internal.
      */
-    public const MAX_DOCS_PER_BATCH = 500;
-
-    /**
-     * Every document can consist of thousands of terms which will lead to the Indexer creating mapping arrays
-     * of thousands and thousands of terms and mapping array entries. Hence, we keep those batches lower than
-     * the documents itself and also index those in batches.
-     */
-    public const MAX_DOCS_PER_TERMS_BATCH = 100;
+    private const MAX_TERMS_PER_BATCH = 2000;
 
     /**
      * @var array<int, callable>
@@ -80,11 +79,18 @@ class Indexer
 
         // Now index the documents in chunks as preparing too many documents and keeping it all in memory before
         // inserting would result in too much memory usage.
-        foreach (Util::arrayChunk($documents, self::MAX_DOCS_PER_BATCH) as $batch) {
+        while (!empty($documents)) {
             $preparedDocuments = new PreparedDocumentCollection();
-            foreach ($batch as $document) {
+
+            foreach ($documents as $k => $document) {
                 $preparedDocuments->add($this->prepareDocument($document));
+                unset($documents[$k]);
+
+                if ($preparedDocuments->getTermsCount() >= self::MAX_TERMS_PER_BATCH) {
+                    break;
+                }
             }
+
             $processBatch($preparedDocuments);
         }
 
@@ -494,7 +500,7 @@ class Indexer
             $this->bulkInsertPrefixTerms($prefixRelevantTerms, $termsIdMapper);
         };
 
-        foreach ($preparedDocuments->chunk(self::MAX_DOCS_PER_TERMS_BATCH) as $batch) {
+        foreach ($preparedDocuments->chunkByNumberOfTerms(self::MAX_TERMS_PER_BATCH) as $batch) {
             $processBatch($batch);
         }
     }

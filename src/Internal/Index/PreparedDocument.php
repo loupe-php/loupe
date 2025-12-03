@@ -82,6 +82,11 @@ final class PreparedDocument
         return $this->terms;
     }
 
+    public function getTermsCount(): int
+    {
+        return \count($this->terms);
+    }
+
     public function getUserId(): string
     {
         return $this->userId;
