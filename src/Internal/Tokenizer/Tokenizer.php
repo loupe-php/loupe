@@ -18,6 +18,13 @@ use Wamania\Snowball\StemmerFactory;
 class Tokenizer implements TokenizerInterface
 {
     /**
+     * @var array<string,TokenizerInterface>
+     */
+    private array $languageTokenizers = [];
+
+    private TokenizerInterface $noLanguageTokenizer;
+
+    /**
      * @var array<string,array<string,string>>
      */
     private array $stemmerCache = [];
@@ -27,15 +34,11 @@ class Tokenizer implements TokenizerInterface
      */
     private array $stemmers = [];
 
-    /**
-     * @var array<string,?TokenizerInterface>
-     */
-    private array $tokenizers = [];
-
     public function __construct(
         private Engine $engine,
         private LanguageDetectorInterface $languageDetector,
     ) {
+        $this->noLanguageTokenizer = new LoupeMatcherTokenizer();
     }
 
     public function matches(Token $token, TokenCollection $tokens): bool
@@ -118,11 +121,15 @@ class Tokenizer implements TokenizerInterface
 
     private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
     {
-        if (!isset($this->tokenizers[$language])) {
-            $this->tokenizers[$language] = new LoupeMatcherTokenizer($language);
+        if ($language === null) {
+            $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $maxTokens);
+        } else {
+            if (!isset($this->languageTokenizers[$language])) {
+                $this->languageTokenizers[$language] = new LoupeMatcherTokenizer($language);
+            }
+            $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $maxTokens);
         }
 
-        $tokenCollection = $this->tokenizers[$language]->tokenize($string, $maxTokens);
         $tokenCollectionWithVariants = new TokenCollection();
 
         foreach ($tokenCollection->all() as $token) {

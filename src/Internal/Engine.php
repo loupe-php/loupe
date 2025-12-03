@@ -307,7 +307,7 @@ class Engine
 
         foreach ($functions as $functionName => $function) {
             /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->sqliteCreateFunction(
+            $connection->getNativeConnection()->createFunction(
                 $functionName,
                 $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
                 $function['numArgs']
