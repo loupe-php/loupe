@@ -25,6 +25,7 @@ use Loupe\Matcher\Formatter;
 use Loupe\Matcher\Matcher;
 use Loupe\Matcher\StopWords\InMemoryStopWords;
 use Loupe\Matcher\StopWords\StopWordsInterface;
+use Pdo\Sqlite;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
@@ -306,12 +307,24 @@ class Engine
         ];
 
         foreach ($functions as $functionName => $function) {
-            /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->sqliteCreateFunction(
-                $functionName,
-                $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
-                $function['numArgs']
-            );
+            $nativeConnection = $connection->getNativeConnection();
+
+            // PHP 8.4+
+            if (class_exists(Sqlite::class) && $nativeConnection instanceof Sqlite) {
+                $nativeConnection->createFunction(
+                    $functionName,
+                    $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
+                    $function['numArgs']
+                );
+            } elseif ($nativeConnection instanceof \PDO) {
+                $nativeConnection->sqliteCreateFunction(
+                    $functionName,
+                    $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
+                    $function['numArgs']
+                );
+            } else {
+                throw new \LogicException('This here should not happen.');
+            }
         }
     }
 

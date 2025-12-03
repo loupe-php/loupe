@@ -25,7 +25,7 @@
         "lib-pdo_sqlite-sqlite": ">= 3.35.0",
         "ext-intl": "*",
         "ext-mbstring": "*",
-        "doctrine/dbal": "^3.9 || ^4.0",
+        "doctrine/dbal": "^3.10.2 || ^4.0",
         "wamania/php-stemmer": "^4.0",
         "doctrine/lexer": "^2.0 || ^3.0",
         "mjaschen/phpgeo": "^5.0 || ^6.0",
