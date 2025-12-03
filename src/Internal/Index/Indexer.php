@@ -419,17 +419,12 @@ class Indexer
             $termsMapper = [];
             // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
             $rows = [];
-            $termsLengthCache = [];
             $prefixRelevantTerms = [];
             $indexPrefixes = $this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch();
 
             foreach ($preparedDocuments->all() as $document) {
                 foreach ($document->getTerms() as $term) {
-                    if (!isset($termsLengthCache[$term->getTerm()])) {
-                        $termsLengthCache[$term->getTerm()] = mb_strlen($term->getTerm(), 'UTF-8');
-                    }
-
-                    $rows[] = [$term->getTerm(), $termsLengthCache[$term->getTerm()], 0];
+                    $rows[] = [$term->getTerm(), $term->getTermLength(), 0];
                     $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition()];
 
                     // Prefix relevant terms must not be variants
