@@ -64,9 +64,8 @@ class BulkUpserter
         $results = [];
 
         foreach (Util::arrayChunk($this->bulkUpsertConfig->getRows(), $chunkSize) as $chunk) {
-            $rows = $this->normalizeRows($chunk);
             // Modern path: INSERT .. ON CONFLICT .. DO UPDATE [RETURNING]
-            $results = [...$results, ...$this->executeModern($rows, $updateColumns)];
+            $results = [...$results, ...$this->executeModern($chunk, $updateColumns)];
 
             // Depending on the version, we could introduce fallback solutions here
         }
@@ -75,32 +74,35 @@ class BulkUpserter
     }
 
     /**
-     * @param array<array<string, mixed>> $rows
-     * @param array<string> $columns
+     * @param array<array<int, mixed>> $rows
      * @param array<int<0, max>|string, mixed> $parameters
      */
-    private function buildValuesClause(array $rows, array $columns, array &$parameters): string
+    private function buildValuesClause(array $rows, array &$parameters): string
     {
+        $columnKeys = array_keys($this->bulkUpsertConfig->getRowColumns());
+        $columnsCount = \count($columnKeys);
+
         $tuples = [];
         foreach ($rows as $row) {
-            foreach ($columns as $column) {
-                $parameters[] = $row[$column];
+            foreach ($columnKeys as $columnKey) {
+                $parameters[] = $row[$columnKey] ?? null;
             }
-            $tuples[] = $this->placeholdersRow(\count($columns));
+
+            $tuples[] = $this->placeholdersRow($columnsCount);
         }
 
         return implode(',', $tuples);
     }
 
     /**
-     * @param array<array<string, mixed>> $rows
+     * @param array<array<int, mixed>> $rows
      * @param array<string> $updateColumns
      * @return array<mixed>
      */
     private function executeModern(array $rows, array $updateColumns): array
     {
         $parameters = [];
-        $values = $this->buildValuesClause($rows, $this->bulkUpsertConfig->getRowColumns(), $parameters);
+        $values = $this->buildValuesClause($rows, $parameters);
         $conflictMode = $this->bulkUpsertConfig->getConflictMode();
         $returningColumns = $this->bulkUpsertConfig->getReturningColumns();
 
@@ -166,23 +168,6 @@ class BulkUpserter
         }
 
         return $types;
-    }
-
-    /**
-     * @param array<array<mixed>> $rows
-     * @return array<array<string, mixed>>
-     */
-    private function normalizeRows(array $rows): array
-    {
-        $normalized = [];
-        foreach ($rows as $row) {
-            $normalizedRow = [];
-            foreach ($this->bulkUpsertConfig->getRowColumns() as $k => $insertColumn) {
-                $normalizedRow[$insertColumn] = $row[$k] ?? null;
-            }
-            $normalized[] = $normalizedRow;
-        }
-        return $normalized;
     }
 
     private function placeholdersRow(int $n): string
