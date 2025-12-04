@@ -7,12 +7,16 @@ namespace Loupe\Loupe\Tests\Functional;
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\SearchParameters;
+use Loupe\Loupe\Tests\StorageFixturesTestTrait;
+use Loupe\Loupe\Tests\Util;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Filesystem\Filesystem;
 
 class SearchTest extends TestCase
 {
     use FunctionalTestTrait;
+    use StorageFixturesTestTrait;
 
     /**
      * @return iterable<array{distance: int}>
@@ -2770,6 +2774,29 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    public function testSearchReturnsEmptyResultOnDatabaseSchemaUpdates(): void
+    {
+        // Copy the fixture to a temporary directory to prevent other files being created within our git repository
+        $tempDir = $this->createTemporaryDirectory();
+        (new Filesystem())->copy(Util::fixturesPath('OldDatabaseSchema/v012/loupe.db'), $tempDir . '/loupe.db');
+        $loupe = $this->setupLoupeWithDepartments(null, $tempDir);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter("(departments = 'Backoffice' OR departments = 'Project Management') AND gender = 'female'")
+            ->withSort(['firstname:asc']);
+
+        // Searching now causes exceptions because the schema of the v012 database is wrong
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
         ]);
     }
 

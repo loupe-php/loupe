@@ -68,7 +68,7 @@ trait FunctionalTestTrait
         $this->assertSame($expectedResults, $results);
     }
 
-    protected function setupLoupeWithDepartmentsFixture(Configuration|null $configuration = null, string $dataDir = ''): Loupe
+    protected function setupLoupeWithDepartments(Configuration|null $configuration = null, string $dataDir = ''): Loupe
     {
         if ($configuration === null) {
             $configuration = Configuration::create();
@@ -79,7 +79,12 @@ trait FunctionalTestTrait
             ->withSortableAttributes(['firstname'])
             ->withSearchableAttributes(['firstname', 'lastname']);
 
-        $loupe = $this->createLoupe($configuration, $dataDir);
+        return $this->createLoupe($configuration, $dataDir);
+    }
+
+    protected function setupLoupeWithDepartmentsFixture(Configuration|null $configuration = null, string $dataDir = ''): Loupe
+    {
+        $loupe = $this->setupLoupeWithDepartments($configuration, $dataDir);
         $this->indexFixture($loupe, 'departments');
 
         return $loupe;

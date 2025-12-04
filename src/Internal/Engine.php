@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception;
 use Loupe\Loupe\BrowseParameters;
 use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
@@ -112,7 +113,17 @@ class Engine
             return BrowseResult::createEmptyFromBrowseParameters($parameters);
         }
 
-        return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
+        try {
+            return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
+        } catch (Exception $exception) {
+            // If we need a re-index (e.g. schema has changed via an update from an old to a newer Loupe version)
+            // we return an empty result. Otherwise, we want to see the exception
+            if ($this->needsReindex()) {
+                return BrowseResult::createEmptyFromBrowseParameters($parameters);
+            }
+
+            throw $exception;
+        }
     }
 
     public function countDocuments(): int
@@ -272,7 +283,17 @@ class Engine
             return SearchResult::createEmptyFromSearchParameters($parameters);
         }
 
-        return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
+        try {
+            return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
+        } catch (Exception $exception) {
+            // If we need a re-index (e.g. schema has changed via an update from an old to a newer Loupe version)
+            // we return an empty result. Otherwise, we want to see the exception
+            if ($this->needsReindex()) {
+                return SearchResult::createEmptyFromSearchParameters($parameters);
+            }
+
+            throw $exception;
+        }
     }
 
     /**
