@@ -46,7 +46,7 @@ abstract class AbstractSorter
                 Searcher::CTE_MATCHES,
                 $cteName,
                 $cteName,
-                sprintf(
+                \sprintf(
                     '%s.document_id = %s.document_id',
                     $cteName,
                     Searcher::CTE_MATCHES

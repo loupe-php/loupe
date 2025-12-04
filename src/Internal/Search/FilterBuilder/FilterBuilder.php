@@ -124,8 +124,8 @@ class FilterBuilder
     {
         return $this->engine->getConnection()->createQueryBuilder()
             ->select(
-                sprintf(
-                    '%s.id AS document_id',
+                \sprintf(
+                    '%s._id AS document_id',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
                 )
             )
@@ -140,7 +140,7 @@ class FilterBuilder
         $qb = $this->engine->getConnection()
             ->createQueryBuilder();
         $qb
-            ->select(sprintf('%s.document', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)))
+            ->select(\sprintf('%s.document', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)))
             ->from(
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
                 $this->engine->getIndexInfo()
@@ -152,7 +152,7 @@ class FilterBuilder
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
                 $this->engine->getIndexInfo()
                     ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                sprintf(
+                \sprintf(
                     '%s.attribute=%s AND %s.id = %s.attribute',
                     $this->engine->getIndexInfo()
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
@@ -220,7 +220,7 @@ class FilterBuilder
             if (!\in_array($node->attribute, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 if ($operator->isNegative()) {
                     // If the operator is negative, it means all documents match
-                    $froms[] = 'SELECT id AS document_id, document FROM documents';
+                    $froms[] = 'SELECT _id AS document_id, _document FROM documents';
                 } else {
                     // Otherwise, no document matches
                     $froms[] = 'SELECT document_id FROM (SELECT NULL AS document_id) WHERE 1 = 0';
@@ -228,7 +228,7 @@ class FilterBuilder
             } elseif ($this->engine->getIndexInfo()->isMultiFilterableAttribute($node->attribute)) {
                 $sortingSelects = $this->getSortingSelects($node->attribute);
                 $qb = $this->engine->getConnection()->createQueryBuilder();
-                $qb->select(sprintf('%s.id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)));
+                $qb->select(\sprintf('%s._id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)));
                 foreach ($sortingSelects as $sortingSelect => $alias) {
                     $qb->addSelect($sortingSelect . ' AS ' . $alias);
                 }
@@ -237,7 +237,7 @@ class FilterBuilder
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                     IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    sprintf(
+                    \sprintf(
                         '%s.attribute=%s AND %s.id = %s.attribute',
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                         $this->searcher->createNamedParameter($node->attribute),
@@ -249,8 +249,8 @@ class FilterBuilder
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                         IndexInfo::TABLE_NAME_DOCUMENTS,
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                        sprintf(
-                            '%s.id = %s.document',
+                        \sprintf(
+                            '%s._id = %s.document',
                             $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                             $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                         )
@@ -263,7 +263,7 @@ class FilterBuilder
                 if ($node->operator->isPositive()) {
                     $qb->andWhere($node->operator->buildSql($this->engine->getConnection(), $column, $node->value));
                 } else {
-                    $whereStatement = [$documentAlias . '.id NOT IN ('];
+                    $whereStatement = [$documentAlias . '._id NOT IN ('];
                     $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                     $whereStatement[] = ')';
                     $qb->andWhere(implode(' ', $whereStatement));
@@ -279,7 +279,7 @@ class FilterBuilder
                 $attribute = $node->attribute;
 
                 if ($attribute === $this->engine->getConfiguration()->getPrimaryKey()) {
-                    $attribute = 'user_id';
+                    $attribute = '_user_id';
                 }
 
                 $cteName = $this->addCTEForSingleAttribute($node, $operator->buildSql(
@@ -312,8 +312,8 @@ class FilterBuilder
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 $distanceCte,
                 $distanceCte,
-                sprintf(
-                    '%s.document_id = %s.id',
+                \sprintf(
+                    '%s.document_id = %s._id',
                     $distanceCte,
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 )

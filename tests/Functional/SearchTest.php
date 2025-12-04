@@ -1459,7 +1459,7 @@ class SearchTest extends TestCase
         ];
 
         $searchParameters = SearchParameters::create()
-            ->withFilter(sprintf(
+            ->withFilter(\sprintf(
                 '_geoBoundingBox(location, %s, %s, %s, %s)',
                 $dublin['lat'],
                 $athen['lng'],

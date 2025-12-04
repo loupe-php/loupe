@@ -45,6 +45,12 @@ final class Configuration
     private string $primaryKey = 'id';
 
     /**
+     * Used internally for logging. Can be configured if desired, otherwise just some unique ID
+     * dynamically generated.
+     */
+    private string|null $processName = null;
+
+    /**
      * @var array<string>
      */
     private array $rankingRules = [
@@ -100,6 +106,7 @@ final class Configuration
      *     searchableAttributes?: array<string>,
      *     sortableAttributes?: array<string>,
      *     stopWords?: array<string>,
+     *     processName: ?string,
      *     typoTolerance?: array{
      *         alphabetSize?: int,
      *         firstCharTypoCountsDouble?: bool,
@@ -156,6 +163,10 @@ final class Configuration
 
         if (isset($data['stopWords'])) {
             $instance = $instance->withStopWords($data['stopWords']);
+        }
+
+        if (isset($data['processName'])) {
+            $instance = $instance->withProcessName($data['processName']);
         }
 
         if (isset($data['typoTolerance']) && \is_array($data['typoTolerance'])) {
@@ -255,6 +266,15 @@ final class Configuration
         return $this->primaryKey;
     }
 
+    public function getProcessName(): string
+    {
+        if ($this->processName === null) {
+            $this->processName = 'process-' . uniqid();
+        }
+
+        return $this->processName;
+    }
+
     /**
      * @return array<string>
      */
@@ -315,6 +335,7 @@ final class Configuration
      *     searchableAttributes: array<string>,
      *     sortableAttributes: array<string>,
      *     stopWords: array<string>,
+     *     processName: ?string,
      *     typoTolerance: array{
      *         alphabetSize: int,
      *         firstCharTypoCountsDouble: bool,
@@ -339,6 +360,7 @@ final class Configuration
             'searchableAttributes' => $this->searchableAttributes,
             'sortableAttributes' => $this->sortableAttributes,
             'stopWords' => $this->stopWords,
+            'processName' => $this->processName,
             'typoTolerance' => $this->typoTolerance->toArray(),
         ];
     }
@@ -437,6 +459,13 @@ final class Configuration
         $clone = clone $this;
         $clone->primaryKey = $primaryKey;
 
+        return $clone;
+    }
+
+    public function withProcessName(string $processName): self
+    {
+        $clone = clone $this;
+        $clone->processName = $processName;
         return $clone;
     }
 

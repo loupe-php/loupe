@@ -6,7 +6,6 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
-use Loupe\Loupe\IndexResult;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\SearchParameters;
@@ -28,17 +27,8 @@ class IndexTest extends TestCase
                     'departments' => [1, 3, 8],
                 ]),
             ],
-            function (IndexResult $indexResult) {
-                self::assertSame(0, $indexResult->successfulDocumentsCount());
-                self::assertSame(1, $indexResult->erroredDocumentsCount());
-                self::assertCount(1, $indexResult->allDocumentExceptions());
-                self::assertNull($indexResult->generalException());
-                self::assertInstanceOf(InvalidDocumentException::class, $indexResult->exceptionForDocument(2));
-                self::assertSame(
-                    'Document ID "2" ("{"id":2,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
-                    $indexResult->exceptionForDocument(2)->getMessage()
-                );
-            },
+            InvalidDocumentException::class,
+            'Document ID "2" ("{"age":29,"colors":["Red","Orange"],"departments":[1,3,8],"firstname":"Uta","gender":"female","id":2,"lastname":"Koertig"}") does not match schema: {"departments":"array<string>","firstname":"string","gender":"string","id":"number"}',
         ];
 
         yield 'Wrong array values when narrowed down' => [
@@ -52,18 +42,8 @@ class IndexTest extends TestCase
                     'departments' => [1, 3, 8],
                 ]),
             ],
-
-            function (IndexResult $indexResult) {
-                self::assertSame(0, $indexResult->successfulDocumentsCount());
-                self::assertSame(1, $indexResult->erroredDocumentsCount());
-                self::assertCount(1, $indexResult->allDocumentExceptions());
-                self::assertNull($indexResult->generalException());
-                self::assertInstanceOf(InvalidDocumentException::class, $indexResult->exceptionForDocument(3));
-                self::assertSame(
-                    'Document ID "3" ("{"id":3,"firstname":"Uta","lastname":"Koertig","gender":"female","departments":[1,3,8],"colors":["Red","Orange"],"age":29}") does not match schema: {"id":"number","firstname":"string","gender":"string","departments":"array<string>"}',
-                    $indexResult->exceptionForDocument(3)->getMessage()
-                );
-            },
+            InvalidDocumentException::class,
+            'Document ID "3" ("{"age":29,"colors":["Red","Orange"],"departments":[1,3,8],"firstname":"Uta","gender":"female","id":3,"lastname":"Koertig"}") does not match schema: {"departments":"array<string>","firstname":"string","gender":"string","id":"number"}',
         ];
     }
 
@@ -97,7 +77,7 @@ class IndexTest extends TestCase
                     'gender' => LoupeTypes::VALUE_NULL,
                 ]),
             ],
-            sprintf("gender = '%s'", LoupeTypes::VALUE_NULL),
+            \sprintf("gender = '%s'", LoupeTypes::VALUE_NULL),
             // Should only return Uta as this is the one document that really has the <internal value> assigned
             [[
                 'id' => 2,
@@ -133,7 +113,7 @@ class IndexTest extends TestCase
                     'gender' => LoupeTypes::VALUE_EMPTY,
                 ]),
             ],
-            sprintf("gender = '%s'", LoupeTypes::VALUE_EMPTY),
+            \sprintf("gender = '%s'", LoupeTypes::VALUE_EMPTY),
             // Should only return Uta as this is the one document that really has the <internal value> assigned
             [[
                 'id' => 2,
@@ -224,6 +204,23 @@ class IndexTest extends TestCase
         ]);
     }
 
+    public function testCanUseUserIdAndDocumentProperties(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['user_id', 'document'])
+        ;
+        $loupe = $this->createLoupe($configuration);
+
+        $document = [
+            'id' => 42,
+            'user_id' => 'my-id',
+            'document' => 'A38',
+        ];
+        $loupe->addDocument($document);
+
+        $this->assertSame($document, $loupe->getDocument(42));
+    }
+
     public function testDeleteAllDocuments(): void
     {
         $configuration = Configuration::create()
@@ -300,22 +297,69 @@ class IndexTest extends TestCase
         $this->assertNull($loupe->getDocument('not_existing_identifier'));
     }
 
+    public function testIndexingIdenticalDocumentWorksIfConfigChanges(): void
+    {
+        $dir = $this->createTemporaryDirectory();
+
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['lastname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration, $dir);
+        $loupe->addDocument(self::getSandraDocument());
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('maier')
+            ->withAttributesToRetrieve(['id', 'lastname'])
+        ;
+
+        // We indexed sandra, that should match and return a hit
+        $this->assertSame(1, $loupe->search($searchParameters)->getTotalHits());
+
+        // We replaced the exact same document, that should still work
+        $loupe->addDocument(self::getSandraDocument());
+        $this->assertSame(1, $loupe->search($searchParameters)->getTotalHits());
+
+        // Now our configuration changes, and "lastname" is suddenly not searchable anymore but "firstname" is
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname'])
+        ;
+        $loupe = $this->createLoupe($configuration, $dir);
+
+        // Loupe should tell us now that a re-index is needed because the configuration changed
+        $this->assertTrue($loupe->needsReindex());
+
+        // Searching for maier again, still returns the document because nobody reindexed. That's just what it is.
+        $searchParameters = SearchParameters::create()
+            ->withQuery('maier')
+            ->withAttributesToRetrieve(['id', 'lastname'])
+        ;
+        $this->assertSame(1, $loupe->search($searchParameters)->getTotalHits());
+
+        // However, we now do re-index but the document is unchanged!
+        // This should then result in 0 results, so we test here that Loupe does not work with identical data if a
+        // reindex is necessary
+        $loupe->addDocument(self::getSandraDocument());
+        $this->assertSame(0, $loupe->search($searchParameters)->getTotalHits());
+    }
+
     /**
      * @param array<array<string, mixed>> $documents
-     * @param \Closure(IndexResult):void $assert
+     * @param class-string<\Throwable> $expectedException
      */
     #[DataProvider('invalidSchemaChangesProvider')]
-    public function testInvalidSchemaChanges(array $documents, \Closure $assert): void
+    public function testInvalidSchemaChanges(array $documents, string $expectedException, string $expectedExceptionMessage): void
     {
+        $this->expectException($expectedException);
+        $this->expectExceptionMessage($expectedExceptionMessage);
+
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
             ->withSortableAttributes(['firstname'])
         ;
 
         $loupe = $this->createLoupe($configuration);
-        $indexResult = $loupe->addDocuments($documents);
-
-        $assert($indexResult);
+        $loupe->addDocuments($documents);
     }
 
     public function testLogging(): void

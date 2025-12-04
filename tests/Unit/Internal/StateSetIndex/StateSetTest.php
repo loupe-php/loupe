@@ -8,9 +8,11 @@ use Doctrine\DBAL\Configuration as DbalConfiguration;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Internal\ConnectionPool;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Toflar\StateSetIndex\StateSetIndex;
 
 class StateSetTest extends TestCase
@@ -209,7 +211,8 @@ class StateSetTest extends TestCase
     private function createTestEngine(): Engine
     {
         $dir = $this->createTemporaryDirectory();
-        $path = $dir . '/loupe.db';
+        $loupePath = $dir . '/loupe.db';
+        $ticketPath = $dir . '/ticket.db';
 
         $dbConfig = new DbalConfiguration();
         $dbConfig->setMiddlewares([]);
@@ -217,10 +220,13 @@ class StateSetTest extends TestCase
         $configuration = Configuration::create()->withSearchableAttributes(['content']);
 
         $connection = DriverManager::getConnection(
-            (new DsnParser())->parse((class_exists(\SQLite3::class) ? 'sqlite3' : 'pdo-sqlite') . '://notused:inthis@case/' . $path)
+            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $loupePath)
+        );
+        $ticketConnection = DriverManager::getConnection(
+            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $ticketPath)
         );
 
-        $engine = new Engine($connection, $configuration, $dir);
+        $engine = new Engine(new ConnectionPool($connection, $ticketConnection), $configuration, new NullLogger(), $dir);
         $indexInfo = $engine->getIndexInfo();
         if ($indexInfo->needsSetup()) {
             $indexInfo->setup([

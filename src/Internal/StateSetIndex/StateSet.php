@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\StateSetIndex;
 
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Toflar\StateSetIndex\StateSet\InMemoryStateSet;
@@ -55,7 +56,7 @@ class StateSet implements StateSetInterface
         }
 
         if ($values !== []) {
-            $this->engine->getConnection()->executeStatement(sprintf('INSERT INTO ' . IndexInfo::TABLE_NAME_STATE_SET . ' (state) VALUES %s', implode(',', $values)));
+            $this->engine->getConnection()->executeStatement(\sprintf('INSERT INTO ' . IndexInfo::TABLE_NAME_STATE_SET . ' (state) VALUES %s', implode(',', $values)));
         }
 
         $all = $this->inMemoryStateSet->all();
@@ -123,16 +124,20 @@ class StateSet implements StateSetInterface
     {
         $storage = [];
 
-        foreach ($this->engine->getConnection()
-            ->createQueryBuilder()
-            ->select('state')
-            ->from(IndexInfo::TABLE_NAME_STATE_SET)
-            ->executeQuery()
-            ->iterateAssociative() as $row
-        ) {
-            $storage[(int) $row['state']] = true;
-        }
+        try {
+            foreach ($this->engine->getConnection()
+                ->createQueryBuilder()
+                ->select('state')
+                ->from(IndexInfo::TABLE_NAME_STATE_SET)
+                ->executeQuery()
+                ->iterateAssociative() as $row
+            ) {
+                $storage[(int) $row['state']] = true;
+            }
 
-        return $storage;
+            return $storage;
+        } catch (TableNotFoundException) {
+            return [];
+        }
     }
 }

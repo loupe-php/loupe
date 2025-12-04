@@ -15,6 +15,6 @@ class InvalidSearchParametersException extends \InvalidArgumentException impleme
 
     public static function maxLimit(): self
     {
-        return new self(sprintf('Cannot request more than %d documents per request, use pagination.', SearchParameters::MAX_LIMIT));
+        return new self(\sprintf('Cannot request more than %d documents per request, use pagination.', SearchParameters::MAX_LIMIT));
     }
 }

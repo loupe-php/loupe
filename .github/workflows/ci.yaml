@@ -11,7 +11,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.3'
+                  php-version: '8.4'
                   coverage: none
 
             - name: Checkout
@@ -30,7 +30,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.3'
+                  php-version: '8.4'
                   coverage: none
 
             - name: Checkout
@@ -43,7 +43,7 @@ jobs:
               run: composer phpstan
 
     tests:
-        name: 'PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }} (Composer Flags: ${{ matrix.composer }}; PHP Extensions: ${{ matrix.phpExtensions }})'
+        name: 'PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }} (Composer Flags: ${{ matrix.composer }})'
         runs-on: ubuntu-latest
         # Share the bash between the steps:
         defaults:
@@ -52,16 +52,14 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                sqlite: ['3.16.0', 'default']
-                php: ['8.1', '8.2', '8.3', '8.4']
-                phpExtensions: ['', ':pdo_sqlite', ':sqlite3']
+                sqlite: ['3.35.0', 'default']
+                php: ['8.3', '8.4', '8.5']
                 composer: ['--prefer-stable', '--prefer-lowest']
         steps:
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php }}
-                  extensions: ${{ matrix.phpExtensions }}
                   coverage: none
 
             - name: Checkout
@@ -84,7 +82,21 @@ jobs:
                   source ~/.bash_profile
 
             - name: Install the dependencies
-              run: composer update --no-interaction --no-suggest ${{ matrix.composer }}
+              run: composer update --no-interaction ${{ matrix.composer }}
 
             - name: Run the unit tests
-              run: composer tests
+              run: composer unit-tests
+
+            - name: Run the functional tests
+              run: composer functional-tests
+
+            # Run the slow tests with a maximum of 5 minutes which should be enough to complete.
+            - name: Run the slow tests
+              timeout-minutes: 5
+              env:
+                  LOUPE_OUTPUT_WORKER_LOG: worker.log
+              run: php vendor/bin/phpunit --testsuite=slow --debug
+
+            - name: Output worker.log on failure
+              if: ${{ failure() }}
+              run: cat worker.log

@@ -146,15 +146,17 @@ to large datasets.
 
 Loupe uses SQLite and executes quite heavy queries which require complex computations by SQLite, but there's also quite 
 some stuff going on in PHP. Thus, if you have a long-running process that evaluates e.g. hundreds of queries, make sure
-to instantiate a fresh `Loupe` instance for every iteration so your database is closed and memory can be freed. There's
-a helper method that also calls garbage collection for you, so memory usage should be kept at a consistent level:
+to instantiate a fresh `Loupe` instance for every iteration so your database is closed and memory can be freed.
+Normally, the Garbage Collector of PHP does a good job cleaning up but if you want to release memory immediately, you
+should look into calling `gc_collect_cycles()` right away (do not without profiling the results!):
 
 ```php
 foreach ($thousandsOfQueries as $query) {
     $loupe = $loupeFactory->create(...);
     $result = $loupe->search(SearchParameters::create()->withQuery($query));
     // Do something with the result
-    Loupe::freeMemory($loupe); // $loupe is now null, caches are reset and the garbage collector is called
+    unset($loupe);
+    gc_collect_cycles();
 }
 ```
 

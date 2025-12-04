@@ -20,6 +20,9 @@
         <testsuite name="functional">
             <directory>tests/Functional</directory>
         </testsuite>
+        <testsuite name="slow">
+            <directory>tests/Slow</directory>
+        </testsuite>
     </testsuites>
 
     <source restrictDeprecations="true"
@@ -30,9 +33,4 @@
             <directory>tests</directory>
         </include>
     </source>
-
-    <extensions>
-        <bootstrap class="Loupe\Loupe\Tests\PhpUnit\Extension\LoupeTestsExtension">
-        </bootstrap>
-    </extensions>
 </phpunit>

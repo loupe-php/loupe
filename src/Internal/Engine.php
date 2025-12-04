@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\ParameterType;
 use Loupe\Loupe\BrowseParameters;
 use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
-use Loupe\Loupe\Exception\IndexException;
-use Loupe\Loupe\IndexResult;
+use Loupe\Loupe\Exception\InvalidDocumentException;
 use Loupe\Loupe\Internal\Filter\Parser;
+use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpserterFactory;
 use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use Loupe\Loupe\Internal\LanguageDetection\PreselectedLanguageDetector;
 use Loupe\Loupe\Internal\Search\Searcher;
+use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
@@ -25,6 +25,7 @@ use Loupe\Matcher\Formatter;
 use Loupe\Matcher\Matcher;
 use Loupe\Matcher\StopWords\InMemoryStopWords;
 use Loupe\Matcher\StopWords\StopWordsInterface;
+use Pdo\Sqlite;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
@@ -33,7 +34,14 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '0.12.0'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.13.0'; // Increase this whenever a re-index of all documents is needed
+
+    private BulkUpserterFactory $bulkUpserterFactory;
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $cache = [];
 
     private Parser $filterParser;
 
@@ -43,17 +51,18 @@ class Engine
 
     private IndexInfo $indexInfo;
 
-    private string $sqliteVersion = '';
-
     private StateSetIndex $stateSetIndex;
 
     private StopwordsInterface $stopwords;
 
+    private TicketHandler $ticketHandler;
+
     private ?Tokenizer $tokenizer = null;
 
     public function __construct(
-        private Connection $connection,
+        private ConnectionPool $connectionPool,
         private Configuration $configuration,
+        private LoggerInterface $logger,
         private ?string $dataDir = null
     ) {
         $this->indexInfo = new IndexInfo($this);
@@ -66,23 +75,35 @@ class Engine
             new StateSet($this),
             new NullDataStore()
         );
-        $this->indexer = new Indexer($this);
+        $this->ticketHandler = new TicketHandler($this->connectionPool, $this->getLogger());
+        $this->indexer = new Indexer($this, $this->ticketHandler);
         $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
         $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->stopwords));
         $this->filterParser = new Parser($this);
-        $this->sqliteVersion = match (true) {
-            \is_callable([$this->connection, 'getServerVersion']) => $this->connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
-            (($nativeConnection = $this->connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
-            (($nativeConnection = $this->connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
-        };
+        $this->bulkUpserterFactory = new BulkUpserterFactory($this->connectionPool);
+
+        $this->registerSQLiteFunctions($this->connectionPool->loupeConnection);
     }
 
     /**
      * @param array<array<string, mixed>> $documents
+     * @throws InvalidDocumentException
      */
-    public function addDocuments(array $documents): IndexResult
+    public function addDocuments(array $documents): self
     {
-        return $this->indexer->addDocuments($documents);
+        if ($documents === []) {
+            return $this;
+        }
+
+        $this->ticketHandler->claimTicket();
+
+        try {
+            $this->indexer->addDocuments($documents);
+        } finally {
+            $this->ticketHandler->release();
+        }
+
+        return $this;
     }
 
     public function browse(BrowseParameters $parameters): BrowseResult
@@ -100,7 +121,7 @@ class Engine
             return 0;
         }
 
-        return (int) $this->connection->createQueryBuilder()
+        return (int) $this->getConnection()->createQueryBuilder()
             ->select('COUNT(*)')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS)
             ->fetchOne();
@@ -108,7 +129,13 @@ class Engine
 
     public function deleteAllDocuments(): self
     {
-        $this->indexer->deleteAllDocuments();
+        $this->ticketHandler->claimTicket();
+
+        try {
+            $this->indexer->deleteAllDocuments();
+        } finally {
+            $this->ticketHandler->release();
+        }
 
         return $this;
     }
@@ -118,9 +145,20 @@ class Engine
      */
     public function deleteDocuments(array $ids): self
     {
-        $this->indexer->deleteDocuments($ids);
+        $this->ticketHandler->claimTicket();
+
+        try {
+            $this->indexer->deleteDocuments($ids);
+        } finally {
+            $this->ticketHandler->release();
+        }
 
         return $this;
+    }
+
+    public function getBulkUpserterFactory(): BulkUpserterFactory
+    {
+        return $this->bulkUpserterFactory;
     }
 
     public function getConfiguration(): Configuration
@@ -130,7 +168,7 @@ class Engine
 
     public function getConnection(): Connection
     {
-        return $this->connection;
+        return $this->connectionPool->loupeConnection;
     }
 
     public function getDataDir(): ?string
@@ -149,7 +187,7 @@ class Engine
 
         $document = $this->getConnection()
             ->fetchOne(
-                sprintf('SELECT document FROM %s WHERE user_id = :id', IndexInfo::TABLE_NAME_DOCUMENTS),
+                \sprintf('SELECT _document FROM %s WHERE _user_id = :id', IndexInfo::TABLE_NAME_DOCUMENTS),
                 [
                     'id' => LoupeTypes::convertToString($identifier),
                 ]
@@ -167,14 +205,19 @@ class Engine
         return $this->formatter;
     }
 
+    public function getIndexer(): Indexer
+    {
+        return $this->indexer;
+    }
+
     public function getIndexInfo(): IndexInfo
     {
         return $this->indexInfo;
     }
 
-    public function getLogger(): ?LoggerInterface
+    public function getLogger(): LoggerInterface
     {
-        return $this->getConfiguration()->getLogger();
+        return $this->logger;
     }
 
     public function getStateSetIndex(): StateSetIndex
@@ -237,151 +280,66 @@ class Engine
      */
     public function size(): int
     {
-        return (int) $this->connection
+        return (int) $this->getConnection()
             ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
             ->fetchOne();
     }
 
-    /**
-     * Use native UPSERT if supported and fall back to a regular SELECT and INSERT INTO if not.
-     * We do not use the Doctrine query builder in this method as the method  is heavily used and the query builder
-     * will slow down performance considerably.
-     *
-     * @param array<string, mixed> $insertData
-     * @param array<string> $uniqueIndexColumns
-     * @return int The ID of the $insertIdColumn (either new when INSERT or existing when UPDATE)
-     */
-    public function upsert(
-        string $table,
-        array $insertData,
-        array $uniqueIndexColumns,
-        string $insertIdColumn = ''
-    ): ?int {
-        if (\count($insertData) === 0) {
-            throw new \InvalidArgumentException('Need to provide data to insert.');
-        }
+    private function registerSQLiteFunctions(Connection $connection): void
+    {
+        $functions = [
+            'loupe_max_levenshtein' => [
+                'callback' => [Levenshtein::class, 'maxLevenshtein'],
+                'numArgs' => 4,
+            ],
+            'loupe_levensthein' => [
+                'callback' => [Levenshtein::class, 'damerauLevenshtein'],
+                'numArgs' => 3,
+            ],
+            'loupe_geo_distance' => [
+                'callback' => [Geo::class, 'geoDistance'],
+                'numArgs' => 4,
+            ],
+            'loupe_relevance' => [
+                'callback' => [Relevance::class, 'fromQuery'],
+                'numArgs' => 3,
+            ],
+        ];
 
-        // Use native UPSERT if possible
-        if (version_compare($this->sqliteVersion, '3.35.0', '>=')) {
-            $columns = [];
-            $set = [];
-            $values = [];
-            $updateSet = [];
-            $updateValues = [];
-            foreach ($insertData as $columnName => $value) {
-                $columns[] = $columnName;
-                $set[] = '?';
-                $values[] = $value;
+        foreach ($functions as $functionName => $function) {
+            $nativeConnection = $connection->getNativeConnection();
 
-                if (\in_array($columnName, $uniqueIndexColumns, true)) {
-                    $updateSet[] = $columnName . ' = excluded.' . $columnName;
-                } else {
-                    $updateSet[] = $columnName . ' = ?';
-                    $updateValues[] = $value;
-                }
-            }
-
-            // Make sure the update values are added at the end for correct replacement
-            $values = array_merge($values, $updateValues);
-
-            $query = 'INSERT INTO ' . $table . ' (' . implode(', ', $columns) . ')' .
-                ' VALUES (' . implode(', ', $set) . ')' .
-                ' ON CONFLICT (' . implode(', ', $uniqueIndexColumns) . ')';
-
-            if (\count($updateSet) === 0) {
-                $query .= ' DO NOTHING';
+            // PHP 8.4+
+            if (class_exists(Sqlite::class) && $nativeConnection instanceof Sqlite) {
+                $nativeConnection->createFunction(
+                    $functionName,
+                    $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
+                    $function['numArgs']
+                );
+            } elseif ($nativeConnection instanceof \PDO) {
+                $nativeConnection->sqliteCreateFunction(
+                    $functionName,
+                    $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
+                    $function['numArgs']
+                );
             } else {
-                $query .= ' DO UPDATE SET ' . implode(', ', $updateSet);
+                throw new \LogicException('This here should not happen.');
             }
-
-            if ($insertIdColumn !== '') {
-                $query .= ' RETURNING ' . $insertIdColumn;
-            }
-
-            $insertValue = $this->getConnection()->executeQuery($query, $values, $this->extractDbalTypes($values))->fetchOne();
-
-            if ($insertValue === false) {
-                if ($insertIdColumn !== '') {
-                    throw new IndexException('This should not happen!');
-                }
-
-                return null;
-            }
-
-            return (int) $insertValue;
         }
-
-        // Fallback logic for older SQLite versions
-        $query = 'SELECT ' .
-            implode(', ', array_filter(array_merge([$insertIdColumn], $uniqueIndexColumns))) .
-            ' FROM ' .
-            $table;
-
-        $where = [];
-        $parameters = [];
-        foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
-            $where[] = $uniqueIndexColumn . '=?';
-            $parameters[] = $insertData[$uniqueIndexColumn];
-        }
-
-        if ($where !== []) {
-            $query .= ' WHERE ' . implode(' AND ', $where);
-        }
-
-        $existing = $this->getConnection()->executeQuery($query, $parameters, $this->extractDbalTypes($parameters))->fetchAssociative();
-
-        if ($existing === false) {
-            $this->getConnection()->insert($table, $insertData, $this->extractDbalTypes($insertData));
-
-            if ($insertIdColumn === '') {
-                return null;
-            }
-
-            return (int) $this->getConnection()->lastInsertId();
-        }
-
-        $query = 'UPDATE ' . $table;
-
-        $set = [];
-        $parameters = [];
-        foreach ($insertData as $columnName => $value) {
-            $set[] = $columnName . '=?';
-            $parameters[] = $value;
-        }
-
-        $query .= ' SET ' . implode(',', $set);
-
-        $where = [];
-        foreach ($uniqueIndexColumns as $uniqueIndexColumn) {
-            $where[] = $uniqueIndexColumn . '=?';
-            $parameters[] = $insertData[$uniqueIndexColumn];
-        }
-
-        if ($where !== []) {
-            $query .= ' WHERE ' . implode(' AND ', $where);
-        }
-
-        $this->getConnection()->executeStatement($query, $parameters, $this->extractDbalTypes($parameters));
-
-        return $insertIdColumn !== '' ? (int) $existing[$insertIdColumn] : null;
     }
 
-    /**
-     * @param array<int<0, max>|string, mixed> $data
-     * @return array<int<0, max>|string, \Doctrine\DBAL\ParameterType>
-     */
-    private function extractDbalTypes(array $data): array
+    private function wrapSQLiteMethodForCache(string $prefix, callable $callback): \Closure
     {
-        $types = [];
+        return function () use ($prefix, $callback) {
+            $args = \func_get_args();
+            $cacheKey = $prefix . ':' . implode('--', $args);
+            $cachedValue = $this->cache[$cacheKey] ?? null;
 
-        foreach ($data as $k => $v) {
-            $types[$k] = match (\gettype($v)) {
-                'boolean' => ParameterType::BOOLEAN,
-                'integer' => ParameterType::INTEGER,
-                default => ParameterType::STRING
-            };
-        }
+            if ($cachedValue !== null) {
+                return $cachedValue;
+            }
 
-        return $types;
+            return $this->cache[$cacheKey] = \call_user_func_array($callback, $args);
+        };
     }
 }

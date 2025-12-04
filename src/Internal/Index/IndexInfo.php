@@ -11,6 +11,8 @@ use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Exception\InvalidDocumentException;
 use Loupe\Loupe\Exception\PrimaryKeyNotFoundException;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpsertConfig;
+use Loupe\Loupe\Internal\Index\BulkUpserter\ConflictMode;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Util;
 
@@ -72,19 +74,22 @@ class IndexInfo
 
         $this->updateDocumentSchema($documentSchema);
 
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'engineVersion',
-                'value' => Engine::VERSION,
-            ]);
+        $this->engine->getIndexer()->recordChange(function () {
+            $this->engine->getBulkUpserterFactory()
+                ->create(BulkUpsertConfig::create(
+                    self::TABLE_NAME_INDEX_INFO,
+                    ['key', 'value'],
+                    [
+                        ['engineVersion', Engine::VERSION],
+                        ['configHash', $this->engine->getConfiguration()->getIndexHash()],
+                    ],
+                    ['key'],
+                    ConflictMode::Update
+                ))
+                ->execute();
 
-        $this->engine->getConnection()
-            ->insert(self::TABLE_NAME_INDEX_INFO, [
-                'key' => 'configHash',
-                'value' => $this->engine->getConfiguration()->getIndexHash(),
-            ]);
-
-        $this->needsSetup = false;
+            $this->needsSetup = false;
+        });
     }
 
     /**
@@ -154,7 +159,7 @@ class IndexInfo
             self::TABLE_NAME_TERMS_DOCUMENTS => 'td',
             self::TABLE_NAME_PREFIXES => 'p',
             self::TABLE_NAME_PREFIXES_TERMS => 'tp',
-            default => throw new \LogicException(sprintf('Forgot to define an alias for %s.', $table))
+            default => throw new \LogicException(\sprintf('Forgot to define an alias for %s.', $table))
         } . $suffix;
     }
 
@@ -226,7 +231,7 @@ class IndexInfo
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
         if (!\array_key_exists($attributeName, $this->getDocumentSchema())) {
-            throw new InvalidConfigurationException(sprintf(
+            throw new InvalidConfigurationException(\sprintf(
                 'The attribute "%s" does not exist on the document schema.',
                 $attributeName
             ));
@@ -335,19 +340,23 @@ class IndexInfo
     {
         $table = $schema->createTable(self::TABLE_NAME_DOCUMENTS);
 
-        $table->addColumn('id', Types::INTEGER)
+        $table->addColumn('_id', Types::INTEGER)
             ->setNotnull(true)
             ->setAutoincrement(true)
         ;
 
-        $table->addColumn('user_id', Types::STRING)
+        $table->addColumn('_user_id', Types::STRING)
             ->setNotnull(true);
 
-        $table->addColumn('document', Types::TEXT)
+        $table->addColumn('_document', Types::TEXT)
             ->setNotnull(true);
 
-        $table->setPrimaryKey(['id']);
-        $table->addUniqueIndex(['user_id']);
+        $table->addColumn('_hash', Types::STRING)
+            ->setNotnull(true);
+
+        $table->setPrimaryKey(['_id']);
+        $table->addUniqueIndex(['_user_id']);
+        $table->addUniqueIndex(['_hash']);
 
         $columns = [];
 
@@ -463,7 +472,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['id']);
-        $table->addUniqueIndex(['prefix', 'length']);
+        $table->addUniqueIndex(['prefix', 'state', 'length']);
         $table->addIndex(['state']);
         $table->addIndex(['length']);
     }
@@ -561,12 +570,21 @@ class IndexInfo
     {
         $this->documentSchema = $documentSchema;
 
-        $this->updateSchema();
+        $this->engine->getIndexer()->recordChange(function () use ($documentSchema) {
+            $this->updateSchema();
 
-        $this->engine->upsert(self::TABLE_NAME_INDEX_INFO, [
-            'key' => 'documentSchema',
-            'value' => json_encode($documentSchema),
-        ], ['key']);
+            $this->engine->getBulkUpserterFactory()
+                ->create(BulkUpsertConfig::create(
+                    self::TABLE_NAME_INDEX_INFO,
+                    ['key', 'value'],
+                    [
+                        ['documentSchema', json_encode($documentSchema)],
+                    ],
+                    ['key'],
+                    ConflictMode::Update
+                ))
+                ->execute();
+        });
     }
 
     private function updateSchema(): void

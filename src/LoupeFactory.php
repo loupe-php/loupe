@@ -10,115 +10,97 @@ use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Logging\Middleware;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Internal\ConnectionPool;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Geo;
-use Loupe\Loupe\Internal\Levenshtein;
-use Loupe\Loupe\Internal\Search\Sorting\Relevance;
-use Loupe\Loupe\Internal\StaticCache;
+use Loupe\Loupe\Logger\PrefixDecoratedLogger;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 final class LoupeFactory implements LoupeFactoryInterface
 {
-    private const MIN_SQLITE_VERSION = '3.16.0'; // Introduction of Pragma functions
+    public const SQLITE_BUSY_TIMEOUT = 5000;
 
     public function create(string $dataDir, Configuration $configuration): Loupe
     {
+        $dataDir = (string) realpath($dataDir);
+
         if (!is_dir($dataDir)) {
             if (!mkdir($dataDir, 0777, true)) {
                 throw InvalidConfigurationException::becauseCouldNotCreateDataDir($dataDir);
             }
         }
 
-        return $this->createFromConnection($this->createConnection($configuration, $dataDir), $configuration, $dataDir);
+        return $this->createFromConnectionPool(
+            $this->createConnectionPool($configuration, $dataDir),
+            $configuration,
+            $dataDir
+        );
     }
 
     public function createInMemory(Configuration $configuration): Loupe
     {
-        return $this->createFromConnection($this->createConnection($configuration), $configuration);
+        return $this->createFromConnectionPool(
+            $this->createConnectionPool($configuration),
+            $configuration
+        );
     }
 
-    public function isSupported(): bool
+    private function createConnection(string $connectionName, Configuration $configuration, ?string $databasePath = null): Connection
     {
-        try {
-            $this->createConnection(Configuration::create());
-        } catch (\Throwable) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private function createConnection(Configuration $configuration, ?string $folder = null): Connection
-    {
-        $connection = null;
-        $dsnPart = $folder === null ? '/:memory:' : ('notused:inthis@case/' . realpath($folder) . '/loupe.db');
+        $dsnPart = $databasePath === null ? '/:memory:' : ('notused:inthis@case/' . $databasePath);
         $dsnParser = new DsnParser();
 
-        // Try sqlite3 first, it seems way faster than the pdo-sqlite driver
-        try {
-            if (!class_exists(\SQLite3::class)) {
-                throw new \RuntimeException('sqlite3 not installed.');
-            }
-
-            $connection = DriverManager::getConnection(
-                $dsnParser->parse('sqlite3://' . $dsnPart),
-                $this->getDbalConfiguration($configuration)
-            );
-        } catch (\Throwable) {
-            try {
-                if (!class_exists(\PDO::class)) {
-                    throw new \RuntimeException('pdo_sqlite not installed.');
-                }
-
-                $connection = DriverManager::getConnection(
-                    $dsnParser->parse('pdo-sqlite://' . $dsnPart),
-                    $this->getDbalConfiguration($configuration)
-                );
-            } catch (\Throwable) {
-                // Noop
-            }
-        }
-
-        if ($connection === null) {
-            throw new InvalidConfigurationException('You need either the sqlite3 (recommended) or pdo_sqlite PHP extension.');
-        }
-
-        $sqliteVersion = match (true) {
-            \is_callable([$connection, 'getServerVersion']) => $connection->getServerVersion(), // @phpstan-ignore function.alreadyNarrowedType
-            (($nativeConnection = $connection->getNativeConnection()) instanceof \SQLite3) => $nativeConnection->version()['versionString'],
-            (($nativeConnection = $connection->getNativeConnection()) instanceof \PDO) => $nativeConnection->getAttribute(\PDO::ATTR_SERVER_VERSION),
-        };
-
-        if (version_compare($sqliteVersion, self::MIN_SQLITE_VERSION, '<')) {
-            throw new \InvalidArgumentException(sprintf(
-                'You need at least version "%s" of SQLite.',
-                self::MIN_SQLITE_VERSION
-            ));
-        }
-
-        $this->registerSQLiteFunctions($connection);
-
-        return $connection;
+        return DriverManager::getConnection(
+            $dsnParser->parse('pdo-sqlite://' . $dsnPart),
+            $this->getDbalConfiguration($connectionName, $configuration)
+        );
     }
 
-    private function createFromConnection(Connection $connection, Configuration $configuration, ?string $dataDir = null): Loupe
+    private function createConnectionPool(Configuration $configuration, ?string $dataDir = null): ConnectionPool
     {
-        $engine = new Engine($connection, $configuration, $dataDir);
+        if ($dataDir === null) {
+            $loupeConnection = $this->createConnection('loupe', $configuration);
+            $ticketsConnection = $this->createConnection('tickets', $configuration);
+        } else {
+            $loupeConnection = $this->createConnection('loupe', $configuration, $dataDir . '/loupe.db');
+            $ticketsConnection = $this->createConnection('loupe', $configuration, $dataDir . '/tickets.db');
 
-        if ($engine->getIndexInfo()->needsSetup()) {
-            $this->optimizeSQLiteDatabase($connection);
         }
-        $this->optimizeSQLiteConnection($connection);
+
+        return new ConnectionPool($loupeConnection, $ticketsConnection);
+    }
+
+    private function createFromConnectionPool(ConnectionPool $connectionPool, Configuration $configuration, ?string $dataDir = null): Loupe
+    {
+        // Always decorate the logger with our process name for easier tracking in concurrent environments
+        $logger = $this->prefixLoggerWithProcessName($configuration, $configuration->getLogger() ?? new NullLogger());
+
+        $engine = new Engine($connectionPool, $configuration, $logger, $dataDir);
+
+        if ($dataDir !== null) {
+            $this->optimizeSQLiteDatabase($connectionPool->loupeConnection);
+            $this->optimizeSQLiteDatabase($connectionPool->ticketConnection);
+        }
+
+        $this->optimizeSQLiteConnection($connectionPool->loupeConnection);
+        $this->optimizeSQLiteConnection($connectionPool->ticketConnection);
 
         return new Loupe($engine);
     }
 
-    private function getDbalConfiguration(Configuration $configuration): DbalConfiguration
+    private function getDbalConfiguration(string $connectionName, Configuration $configuration): DbalConfiguration
     {
         $config = new DbalConfiguration();
         $middlewares = [];
 
         if ($configuration->getLogger() !== null) {
-            $middlewares[] = new Middleware($configuration->getLogger());
+            // Prefix logger with connection and process names
+            $logger = $configuration->getLogger();
+            $logger = $this->prefixLoggerWithProcessName($configuration, $logger);
+            $logger = new PrefixDecoratedLogger('db-' . $connectionName, $logger);
+
+            // Prefix logs with connection name
+            $middlewares[] = new Middleware($logger);
         }
 
         $config->setMiddlewares($middlewares);
@@ -136,13 +118,13 @@ final class LoupeFactory implements LoupeFactoryInterface
             // Store temporary tables in memory instead of on disk
             'PRAGMA temp_store = MEMORY',
             // Set timeout to 5 seconds to avoid locking issues
-            'PRAGMA busy_timeout = 5000',
+            'PRAGMA busy_timeout = ' . self::SQLITE_BUSY_TIMEOUT,
         ];
 
         foreach ($optimizations as $optimization) {
             try {
                 $connection->executeStatement($optimization);
-            } catch (\Throwable $th) {
+            } catch (\Throwable) {
                 // Assume that the pragma is not supported
             }
         }
@@ -162,57 +144,17 @@ final class LoupeFactory implements LoupeFactoryInterface
         foreach ($optimizations as $optimization) {
             try {
                 $connection->executeStatement($optimization);
-            } catch (\Throwable $th) {
+            } catch (\Throwable) {
                 // Assume that the pragma is not supported
             }
         }
     }
 
-    private function registerSQLiteFunctions(Connection $connection): void
+    private function prefixLoggerWithProcessName(Configuration $configuration, LoggerInterface $logger): LoggerInterface
     {
-        $functions = [
-            'loupe_max_levenshtein' => [
-                'callback' => [Levenshtein::class, 'maxLevenshtein'],
-                'numArgs' => 4,
-            ],
-            'loupe_levensthein' => [
-                'callback' => [Levenshtein::class, 'damerauLevenshtein'],
-                'numArgs' => 3,
-            ],
-            'loupe_geo_distance' => [
-                'callback' => [Geo::class, 'geoDistance'],
-                'numArgs' => 4,
-            ],
-            'loupe_relevance' => [
-                'callback' => [Relevance::class, 'fromQuery'],
-                'numArgs' => 3,
-            ],
-        ];
-
-        $method = $connection->getNativeConnection() instanceof \PDO ? 'sqliteCreateFunction' : 'createFunction';
-
-        foreach ($functions as $functionName => $function) {
-            /** @phpstan-ignore-next-line */
-            $connection->getNativeConnection()->{$method}(
-                $functionName,
-                self::wrapSQLiteMethodForStaticCache($functionName, $function['callback']),
-                $function['numArgs']
-            );
-        }
-    }
-
-    private static function wrapSQLiteMethodForStaticCache(string $prefix, callable $callback): \Closure
-    {
-        return function () use ($prefix, $callback) {
-            $args = \func_get_args();
-            $cacheKey = $prefix . ':' . implode('--', $args);
-            $cachedValue = StaticCache::get($cacheKey);
-
-            if ($cachedValue !== null) {
-                return $cachedValue;
-            }
-
-            return StaticCache::set($cacheKey, \call_user_func_array($callback, $args));
-        };
+        return new PrefixDecoratedLogger(
+            $configuration->getProcessName(),
+            $logger
+        );
     }
 }

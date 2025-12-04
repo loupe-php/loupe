@@ -37,7 +37,7 @@ class GeoPoint extends AbstractSorter
                 $cteName,
                 Searcher::CTE_MATCHES,
                 Searcher::CTE_MATCHES,
-                sprintf(
+                \sprintf(
                     '%s.document_id = %s.document_id',
                     Searcher::CTE_MATCHES,
                     $cteName

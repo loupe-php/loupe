@@ -26,13 +26,13 @@ class SingleAttribute extends AbstractSorter
         }
 
         if ($attribute === $engine->getConfiguration()->getPrimaryKey()) {
-            $attribute = 'user_id';
+            $attribute = '_user_id';
         }
 
         $qb = $engine->getConnection()->createQueryBuilder();
         $qb
             ->select(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.id AS document_id',
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '._id AS document_id',
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute . ' AS sort_order'
             )
             ->from(
@@ -43,8 +43,8 @@ class SingleAttribute extends AbstractSorter
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 Searcher::CTE_MATCHES,
                 Searcher::CTE_MATCHES,
-                sprintf(
-                    '%s.document_id = %s.id',
+                \sprintf(
+                    '%s.document_id = %s._id',
                     Searcher::CTE_MATCHES,
                     $engine->getIndexInfo()->getAliasForTable(
                         IndexInfo::TABLE_NAME_DOCUMENTS

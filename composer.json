@@ -21,9 +21,11 @@
     ],
     "require": {
         "php": "^8.1",
+        "ext-pdo_sqlite": "*",
+        "lib-pdo_sqlite-sqlite": ">= 3.35.0",
         "ext-intl": "*",
         "ext-mbstring": "*",
-        "doctrine/dbal": "^3.9 || ^4.0",
+        "doctrine/dbal": "^3.10.2 || ^4.0",
         "wamania/php-stemmer": "^4.0",
         "doctrine/lexer": "^2.0 || ^3.0",
         "mjaschen/phpgeo": "^5.0 || ^6.0",
@@ -33,17 +35,19 @@
         "loupe/matcher": "^0.2"
     },
     "require-dev": {
-        "symfony/var-dumper": "^6.2",
-        "symfony/filesystem": "^6.2",
-        "symplify/easy-coding-standard": "11.2.4.72",
-        "symfony/finder": "^6.2",
-        "phpunit/phpunit": "^10.5.44",
-        "phpstan/phpstan": "^2.0"
+        "phpstan/phpstan": "^2.1.31",
+        "phpunit/phpunit": "^10.5.58",
+        "symfony/filesystem": "^7.3.2",
+        "symfony/finder": "^7.3.5",
+        "symfony/process": "^7.3.4",
+        "symfony/var-dumper": "^7.3.5",
+        "symplify/easy-coding-standard": "^12.6.2"
     },
     "scripts": {
         "tests": "@php vendor/bin/phpunit",
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
+        "slow-tests": "@php vendor/bin/phpunit --testsuite=slow",
         "cs-fixer": "@php vendor/bin/ecs check --fix",
         "ci-cs-fixer": "@php vendor/bin/ecs check",
         "phpstan": "@php vendor/bin/phpstan analyse"

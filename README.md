@@ -33,8 +33,9 @@ Note that some implementation details (e.g. libraries used) referenced in this b
 Performance depends on many factors but here are some ballpark numbers based on indexing the 
 [~32k movies fixture][MeiliSearch_Movies] provided by MeiliSearch.
 
-* **Indexing** will take around **230 seconds** (~140 documents per second)
-* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **100 ms**
+* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **70 ms**
+* **Indexing** will take around **60 seconds** (this varies greatly because it depends on how much content per document
+  you want to index
 
 Note that anything above 50k documents is probably not a use case for Loupe. You can run your own benchmarks 
 using the scripts in the `bin/bench` folder: `index.php` for indexing and `search.php` for searching. 
@@ -55,8 +56,8 @@ I even took the liberty to copy some of their test data to feed Loupe for functi
 
 ## Installation
 
-1. Make sure you have `pdo_sqlite` available and your installed SQLite version is at least 3.16.0. This is when 
-   PRAGMA functions have been added without which no schema comparisons are possible. For best performance it is of
+1. Make sure you have `pdo_sqlite` available and your installed SQLite version is at least 3.35.0. This is when 
+   RETURNING functions have been added without which no bulk inserts are possible. For best performance it is of
    course better to run a more recent version to benefit from improvements within SQLite.
 2. Run `composer require loupe/loupe`.
 
@@ -127,8 +128,6 @@ $searchParameters = SearchParameters::create()
 ;
 
 $results = $loupe->search($searchParameters);
-
-Loupe::freeMemory($loupe); // Force freeing memory and garbage collection, only needed in certain use cases (see performance docs)
 ```
 
 The `$results` array contains a list of search hits and metadata about the query.

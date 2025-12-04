@@ -6,7 +6,6 @@ namespace Loupe\Loupe;
 
 use Loupe\Loupe\Exception\IndexException;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\StaticCache;
 
 final class Loupe
 {
@@ -15,44 +14,34 @@ final class Loupe
     ) {
     }
 
-    public function __destruct()
-    {
-        StaticCache::cleanUp($this);
-    }
-
     /**
      * @param array<string, mixed> $document
      */
-    public function addDocument(array $document): IndexResult
+    public function addDocument(array $document): void
     {
-        StaticCache::enterContext($this);
-        return $this->addDocuments([$document]);
+        $this->addDocuments([$document]);
     }
 
     /**
      * @param array<int, array<string, mixed>> $documents
      */
-    public function addDocuments(array $documents): IndexResult
+    public function addDocuments(array $documents): void
     {
-        StaticCache::enterContext($this);
-        return $this->engine->addDocuments($documents);
+        $this->engine->addDocuments($documents);
     }
 
     public function browse(BrowseParameters $parameters): BrowseResult
     {
-        StaticCache::enterContext($this);
         return $this->engine->browse($parameters);
     }
 
     public function countDocuments(): int
     {
-        StaticCache::enterContext($this);
         return $this->engine->countDocuments();
     }
 
     public function deleteAllDocuments(): void
     {
-        StaticCache::enterContext($this);
         $this->engine->deleteAllDocuments();
     }
 
@@ -61,7 +50,6 @@ final class Loupe
      */
     public function deleteDocument(int|string $id): void
     {
-        StaticCache::enterContext($this);
         $this->deleteDocuments([$id]);
     }
 
@@ -70,23 +58,11 @@ final class Loupe
      */
     public function deleteDocuments(array $ids): void
     {
-        StaticCache::enterContext($this);
         $this->engine->deleteDocuments($ids);
-    }
-
-    /**
-     * @param-out null $loupe
-     */
-    public static function freeMemory(self &$loupe): void
-    {
-        StaticCache::cleanUp($loupe);
-        $loupe = null;
-        gc_collect_cycles();
     }
 
     public function getConfiguration(): Configuration
     {
-        StaticCache::enterContext($this);
         return $this->engine->getConfiguration();
     }
 
@@ -95,25 +71,21 @@ final class Loupe
      */
     public function getDocument(int|string $identifier): ?array
     {
-        StaticCache::enterContext($this);
         return $this->engine->getDocument($identifier);
     }
 
     public function needsReindex(): bool
     {
-        StaticCache::enterContext($this);
         return $this->engine->needsReindex();
     }
 
     public function search(SearchParameters $parameters): SearchResult
     {
-        StaticCache::enterContext($this);
         return $this->engine->search($parameters);
     }
 
     public function size(): int
     {
-        StaticCache::enterContext($this);
         return $this->engine->size();
     }
 }

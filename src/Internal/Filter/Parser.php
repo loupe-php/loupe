@@ -400,9 +400,9 @@ class Parser
 
         $tokenPos = $token->position ?? '-1';
 
-        $message = sprintf('Col %d: Error: ', $tokenPos);
-        $message .= $expected !== '' ? sprintf('Expected %s, got ', $expected) : 'Unexpected ';
-        $message .= $this->lexer->lookahead === null ? 'end of string.' : sprintf("'%s'", $token?->value);
+        $message = \sprintf('Col %d: Error: ', $tokenPos);
+        $message .= $expected !== '' ? \sprintf('Expected %s, got ', $expected) : 'Unexpected ';
+        $message .= $this->lexer->lookahead === null ? 'end of string.' : \sprintf("'%s'", $token?->value);
 
         throw new FilterFormatException($message);
     }

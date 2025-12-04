@@ -21,12 +21,6 @@ class LoupeFactoryTest extends TestCase
         $this->assertInstanceOf(Loupe::class, $client);
     }
 
-    public function testIsSupported(): void
-    {
-        $factory = new LoupeFactory();
-        $this->assertTrue($factory->isSupported());
-    }
-
     public function testPersistedClient(): void
     {
         $configuration = Configuration::create();
