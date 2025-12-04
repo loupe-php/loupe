@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\Search;
 
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
@@ -211,6 +212,8 @@ class Searcher
     }
 
     /**
+     * @throws Exception If the schema is not up to date for example.
+     *
      * @return (T is SearchParameters ? SearchResult : BrowseResult)
      */
     public function fetchResult(): AbstractQueryResult
