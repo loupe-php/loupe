@@ -119,6 +119,10 @@ final class LoupeFactory implements LoupeFactoryInterface
             'PRAGMA temp_store = MEMORY',
             // Set timeout to 5 seconds to avoid locking issues
             'PRAGMA busy_timeout = ' . self::SQLITE_BUSY_TIMEOUT,
+            // Loupe is a search index. It contains volatile data by definition so if there's a power outage
+            // that could leave our database in a corrupt state, we don't care. It can always be re-built by
+            // a full re-index. Hence, we set synchronous to OFF which reduces disk writes dramatically.
+            'PRAGMA synchronous = OFF',
         ];
 
         foreach ($optimizations as $optimization) {
