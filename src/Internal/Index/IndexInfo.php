@@ -170,7 +170,11 @@ class IndexInfo
     {
         $tables = [];
         foreach ($this->getSchema()->getTables() as $table) {
-            $tables[] = $table->getObjectName()->toString();
+            if (method_exists($table, 'getObjectName')) {
+                $tables[] = $table->getObjectName()->toString(); // Doctrine 4
+            } else {
+                $tables[] = $table->getName(); // Doctrine 3
+            }
         }
 
         return $tables;

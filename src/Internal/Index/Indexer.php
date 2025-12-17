@@ -523,11 +523,16 @@ class Indexer
     private function migrateDatabase(): void
     {
         $schemaManager = $this->engine->getConnection()->createSchemaManager();
-        if (!$schemaManager->tableExists(IndexInfo::TABLE_NAME_DOCUMENTS)) {
+
+        if (!$schemaManager->tablesExist([IndexInfo::TABLE_NAME_DOCUMENTS])) {
             throw new IndexException('Could not automatically migrate your database because the documents table does not exist. This should not happen.');
         }
 
-        $table = $schemaManager->introspectTableByUnquotedName(IndexInfo::TABLE_NAME_DOCUMENTS);
+        /** @phpstan-ignore-next-line */
+        $table = method_exists($schemaManager, 'introspectTableByUnquotedName') ?
+            $schemaManager->introspectTableByUnquotedName(IndexInfo::TABLE_NAME_DOCUMENTS) :
+            $schemaManager->introspectTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+
         $documentColumn = null;
 
         // As of 0.13 this is "_document", before it was "document"
