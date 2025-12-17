@@ -163,6 +163,19 @@ class IndexInfo
         } . $suffix;
     }
 
+    /**
+     * @return array<string>
+     */
+    public function getAllTableNames(): array
+    {
+        $tables = [];
+        foreach ($this->getSchema()->getTables() as $table) {
+            $tables[] = $table->getObjectName()->toString();
+        }
+
+        return $tables;
+    }
+
     public function getConfigHash(): string
     {
         return (string) $this->engine->getConnection()
@@ -334,6 +347,12 @@ class IndexInfo
             "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
             [self::TABLE_NAME_INDEX_INFO]
         );
+    }
+
+    public function reset(): void
+    {
+        $this->documentSchema = null;
+        $this->needsSetup = null;
     }
 
     private function addDocumentsToSchema(Schema $schema): void

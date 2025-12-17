@@ -55,20 +55,23 @@ class Indexer
             $this->engine->getIndexInfo()->setup($firstDocument);
         }
 
+        // Migrate the data if needed
+        if ($this->engine->needsReindex()) {
+            $this->migrateDatabase();
+        }
+
         // Fix, validate and record schema updates if needed
         foreach ($documents as $document) {
             $this->engine->getIndexInfo()->fixAndValidateDocument($document);
         }
 
-        $needsReindex = $this->engine->needsReindex();
-
-        $processBatch = function (PreparedDocumentCollection $preparedDocuments) use ($needsReindex): void {
+        $processBatch = function (PreparedDocumentCollection $preparedDocuments): void {
             if ($preparedDocuments->empty()) {
                 return;
             }
 
-            $this->recordChange(function () use ($preparedDocuments, $needsReindex) {
-                $prepared = $this->bulkInsertDocuments($preparedDocuments, $needsReindex);
+            $this->recordChange(function () use ($preparedDocuments) {
+                $prepared = $this->bulkInsertDocuments($preparedDocuments);
                 $this->removeCurrentDocumentData($prepared);
                 $this->bulkInsertMultiAttributes($prepared);
                 $this->bulkInsertTerms($prepared);
@@ -150,7 +153,7 @@ class Indexer
         $this->changes[] = $change;
     }
 
-    private function bulkInsertDocuments(PreparedDocumentCollection $preparedDocuments, bool $needsReindex): PreparedDocumentCollection
+    private function bulkInsertDocuments(PreparedDocumentCollection $preparedDocuments): PreparedDocumentCollection
     {
         $rowColumns = ['_user_id', '_document', '_hash'];
         $rows = [];
@@ -181,14 +184,12 @@ class Indexer
             $rows,
             ['_user_id'],
             ConflictMode::Update
-        )->withReturningColumns(['_user_id', '_id']);
-
-        // Enable change detection so we do not insert all the terms, prefixes, attributes etc. if the document did not
-        // change at all (1:1 replacement -> noop). However, we must only do this if a reindex is not needed (config is
-        // unchanged).
-        if (!$needsReindex) {
-            $bulkUpsertConfig = $bulkUpsertConfig->withChangeDetectingColumn('_hash');
-        }
+        )
+            // Enable change detection so we do not insert all the terms, prefixes, attributes etc. if the document did not
+            // change at all (1:1 replacement -> noop).
+            ->withChangeDetectingColumn('_hash')
+            ->withReturningColumns(['_user_id', '_id'])
+        ;
 
         $results = $this->engine->getBulkUpserterFactory()
             ->create($bulkUpsertConfig)
@@ -517,6 +518,55 @@ class Indexer
 
         // Reset changes
         $this->changes = [];
+    }
+
+    private function migrateDatabase(): void
+    {
+        $schemaManager = $this->engine->getConnection()->createSchemaManager();
+        if (!$schemaManager->tableExists(IndexInfo::TABLE_NAME_DOCUMENTS)) {
+            throw new IndexException('Could not automatically migrate your database because the documents table does not exist. This should not happen.');
+        }
+
+        $table = $schemaManager->introspectTableByUnquotedName(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $documentColumn = null;
+
+        // As of 0.13 this is "_document", before it was "document"
+        foreach (['_document', 'document'] as $candidate) {
+            if ($table->hasColumn($candidate)) {
+                $documentColumn = $candidate;
+                break;
+            }
+        }
+
+        if ($documentColumn === null) {
+            throw new IndexException('Could not automatically migrate your database because the document column does not exist. This should not happen.');
+        }
+
+        $this->engine->getConnection()->executeStatement('DROP TABLE IF EXISTS documents_migration');
+        $this->engine->getConnection()->executeStatement('CREATE TABLE documents_migration AS SELECT ' . $documentColumn . ' FROM documents;');
+
+        foreach ($this->engine->getIndexInfo()->getAllTableNames() as $tableName) {
+            $this->engine->getConnection()->executeStatement('DROP TABLE IF EXISTS ' . $tableName);
+        }
+
+        $this->engine->getIndexInfo()->reset();
+
+        $chunk = [];
+
+        foreach ($this->engine->getConnection()->executeQuery('SELECT ' . $documentColumn . ' FROM documents_migration')
+            ->iterateAssociative() as $row) {
+            $chunk[] = json_decode($row[$documentColumn], true);
+
+            if (\count($chunk) >= 100) {
+                $this->addDocuments($chunk);
+            }
+        }
+
+        if ($chunk !== []) {
+            $this->addDocuments($chunk);
+        }
+
+        $this->engine->getConnection()->executeStatement('DROP TABLE IF EXISTS documents_migration');
     }
 
     private function needsVacuum(): bool
