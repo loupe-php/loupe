@@ -564,6 +564,7 @@ class Indexer
 
             if (\count($chunk) >= 100) {
                 $this->addDocuments($chunk);
+                $chunk = [];
             }
         }
 
