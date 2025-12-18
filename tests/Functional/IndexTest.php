@@ -10,8 +10,10 @@ use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
+use Loupe\Loupe\Tests\Util;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Filesystem\Filesystem;
 
 class IndexTest extends TestCase
 {
@@ -341,6 +343,52 @@ class IndexTest extends TestCase
         // reindex is necessary
         $loupe->addDocument(self::getSandraDocument());
         $this->assertSame(0, $loupe->search($searchParameters)->getTotalHits());
+    }
+
+    public function testIndexMigratesExistingDataAndDoesNotFailOnDatabaseSchemaUpdates(): void
+    {
+        // Copy the fixture to a temporary directory to prevent other files being created within our git repository
+        $tempDir = $this->createTemporaryDirectory();
+        (new Filesystem())->copy(Util::fixturesPath('OldDatabaseSchema/v012/loupe.db'), $tempDir . '/loupe.db');
+        $loupe = $this->setupLoupeWithDepartments(null, $tempDir);
+
+        $searchParameters = SearchParameters::create()
+            ->withFilter("departments = 'Development'")
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withSort(['firstname:asc']);
+
+        // Searching now results in 0 results because the schema has not been migrated - can only do that on indexing
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+
+        // Index new data should not fail and migrate existing data
+        $loupe->addDocument(self::getSandraDocument());
+
+        // Should definitely find Sandra now because we've added that, but we should also find the other's of that
+        // department, due to auto-migration
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
     }
 
     /**
