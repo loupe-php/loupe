@@ -82,6 +82,7 @@ class IndexInfo
                     [
                         ['engineVersion', Engine::VERSION],
                         ['configHash', $this->engine->getConfiguration()->getIndexHash()],
+                        ['dependencyHash', $this->engine->getDependencyHash()],
                     ],
                     ['key'],
                     ConflictMode::Update
@@ -187,6 +188,16 @@ class IndexInfo
             ->select('value')
             ->from(self::TABLE_NAME_INDEX_INFO)
             ->where("key = 'configHash'")
+            ->fetchOne();
+    }
+
+    public function getDependencyHash(): string
+    {
+        return (string) $this->engine->getConnection()
+            ->createQueryBuilder()
+            ->select('value')
+            ->from(self::TABLE_NAME_INDEX_INFO)
+            ->where("key = 'dependencyHash'")
             ->fetchOne();
     }
 
