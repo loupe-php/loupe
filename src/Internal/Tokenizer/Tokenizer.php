@@ -177,7 +177,7 @@ class Tokenizer implements TokenizerInterface
                 }
             }
 
-            $tokenCollectionWithVariants->add($token->withVariants($variants));
+            $tokenCollectionWithVariants->add($token->withAddedVariants($variants));
         }
 
         return $tokenCollectionWithVariants;
