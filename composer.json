@@ -32,7 +32,7 @@
         "toflar/state-set-index": "^3.0",
         "psr/log": "^2.0 || ^3.0",
         "nitotm/efficient-language-detector": "^3.1",
-        "loupe/matcher": "^0.2.1"
+        "loupe/matcher": "dev-feature/dictionary-decompound"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.1.31",

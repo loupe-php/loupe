@@ -2825,6 +2825,40 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testSearchWithDecomposition(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['text'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'text' => 'Ich möchte einen Wartungsvertrag verkaufen.',
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Vertrag')
+            ->withAttributesToHighlight(['text'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [[
+                'id' => 42,
+                'text' => 'Ich möchte einen Wartungsvertrag verkaufen.',
+                '_formatted' => [
+                    'id' => 42,
+                    'text' => 'Ich möchte einen <em>Wartungsvertrag</em> verkaufen.',
+                ],
+            ]],
+            'query' => 'Vertrag',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<string> $facets
      * @param array<mixed> $expectedResults
