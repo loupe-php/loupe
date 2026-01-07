@@ -8,6 +8,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\LanguageDetectorInterface;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Matcher\Locale;
+use Loupe\Matcher\Tokenizer\LocaleConfiguration\LocaleConfigurationWithInMemoryCachedDictionary;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 use Loupe\Matcher\Tokenizer\Tokenizer as LoupeMatcherTokenizer;
@@ -126,7 +127,15 @@ class Tokenizer implements TokenizerInterface
             $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $maxTokens);
         } else {
             if (!isset($this->languageTokenizers[$language])) {
-                $this->languageTokenizers[$language] = LoupeMatcherTokenizer::createFromPreconfiguredLocaleConfiguration(Locale::fromString($language));
+                // Take the best preconfigured locale data if available
+                $localeConfiguration = LoupeMatcherTokenizer::getPreconfiguredLocaleConfigurationForLocale(Locale::fromString($language));
+
+                // If available, make sure the directory is wrapped with an in-memory cache for performance reasons
+                if ($localeConfiguration !== null) {
+                    $localeConfiguration = new LocaleConfigurationWithInMemoryCachedDictionary($localeConfiguration);
+                }
+
+                $this->languageTokenizers[$language] = new LoupeMatcherTokenizer($localeConfiguration);
             }
             $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $maxTokens);
         }
