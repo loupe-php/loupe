@@ -520,7 +520,10 @@ class Indexer
         $this->changes = [];
     }
 
-    private function migrateDatabase(array $firstDocument): void
+    /**
+     * @param array<string, mixed> $document
+     */
+    private function migrateDatabase(array $document): void
     {
         $schemaManager = $this->engine->getConnection()->createSchemaManager();
 
@@ -555,7 +558,7 @@ class Indexer
         }
 
         $this->engine->getIndexInfo()->reset();
-        $this->engine->getIndexInfo()->setup($firstDocument);
+        $this->engine->getIndexInfo()->setup($document);
 
         $chunk = [];
 
