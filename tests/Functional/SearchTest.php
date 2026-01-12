@@ -723,6 +723,38 @@ final class SearchTest extends TestCase
     /**
      * @return iterable<array-key, array<mixed>>
      */
+    public static function searchWithDecompositionProvider(): iterable
+    {
+        yield '[German] Test on "Wartungsvertrag"' => [
+            'Ich möchte einen Wartungsvertrag verkaufen.',
+            'Vertrag',
+            [
+                'id' => 42,
+                'text' => 'Ich möchte einen Wartungsvertrag verkaufen.',
+                '_formatted' => [
+                    'id' => 42,
+                    'text' => 'Ich möchte einen <em>Wartungsvertrag</em> verkaufen.',
+                ],
+            ],
+        ];
+
+        yield '[German] Test on "Künstlerinnengespräch"' => [
+            'Ich möchte ein Künstlerinnengespräch führen.',
+            'Gespräch',
+            [
+                'id' => 42,
+                'text' => 'Ich möchte ein Künstlerinnengespräch führen.',
+                '_formatted' => [
+                    'id' => 42,
+                    'text' => 'Ich möchte ein <em>Künstlerinnengespräch</em> führen.',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function searchWithFacetsProvider(): iterable
     {
         yield 'No query and no filters, checking the gender and isActive facet only' => [
@@ -3651,7 +3683,8 @@ final class SearchTest extends TestCase
         );
     }
 
-    public function testSearchWithDecomposition(): void
+    #[DataProvider('searchWithDecompositionProvider')]
+    public function testSearchWithDecomposition(string $text, string $query, array $expectedHit): void
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['text'])
@@ -3660,24 +3693,17 @@ final class SearchTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocument([
             'id' => 42,
-            'text' => 'Ich möchte einen Wartungsvertrag verkaufen.',
+            'text' => $text,
         ]);
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('Vertrag')
+            ->withQuery($query)
             ->withAttributesToHighlight(['text'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [[
-                'id' => 42,
-                'text' => 'Ich möchte einen Wartungsvertrag verkaufen.',
-                '_formatted' => [
-                    'id' => 42,
-                    'text' => 'Ich möchte einen <em>Wartungsvertrag</em> verkaufen.',
-                ],
-            ]],
-            'query' => 'Vertrag',
+            'hits' => [$expectedHit],
+            'query' => $query,
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
