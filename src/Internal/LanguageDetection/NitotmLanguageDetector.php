@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\LanguageDetection;
 
+use Nitotm\Eld\EldDataFile;
+use Nitotm\Eld\EldMode;
+use Nitotm\Eld\EldScheme;
 use Nitotm\Eld\LanguageDetector;
 
 class NitotmLanguageDetector implements LanguageDetectorInterface
@@ -75,7 +78,11 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
     private function getLanguageDetector(): LanguageDetector
     {
         if ($this->languageDetector === null) {
-            $this->languageDetector = new LanguageDetector();
+            $this->languageDetector = new LanguageDetector(
+                EldDataFile::LARGE, // Large is actually faster than small, see https://github.com/nitotm/efficient-language-detector/issues/15
+                EldScheme::ISO639_1,
+                EldMode::MODE_BYTES, // Use bytes mode which requires less memory but is still fast enough for our use case
+            );
             $this->languageDetector->enableTextCleanup(true); // Clean stuff like URLs, domains etc. to improve language detection
             $this->languageDetector->langSubset($this->languages); // Use the subset (unfortunately this is still loading the "small" ngrams set as well, see https://github.com/nitotm/efficient-language-detector/issues/15)
         }
