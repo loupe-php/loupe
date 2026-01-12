@@ -29,10 +29,18 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
         $bestScoresPerLanguage = [];
         $languagePerAttribute = [];
         foreach ($document as $attribute => $value) {
+            if ($value === '') {
+                continue;
+            }
+
             $languageResult = $this->getLanguageDetector()->detect($value);
+            $weight = log(mb_strlen($value) + 1);
 
             // Store the best score per language
             foreach ($languageResult->scores() as $lang => $score) {
+                // Weigh longer texts higher because scores will be more precise
+                $score = $score * $weight;
+
                 if (isset($bestScoresPerLanguage[$lang])) {
                     $bestScoresPerLanguage[$lang] = max($bestScoresPerLanguage[$lang], $score);
                 } else {
@@ -84,7 +92,7 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
                 EldMode::MODE_BYTES, // Use bytes mode which requires less memory but is still fast enough for our use case
             );
             $this->languageDetector->enableTextCleanup(true); // Clean stuff like URLs, domains etc. to improve language detection
-            $this->languageDetector->langSubset($this->languages); // Use the subset (unfortunately this is still loading the "small" ngrams set as well, see https://github.com/nitotm/efficient-language-detector/issues/15)
+            $this->languageDetector->langSubset($this->languages);
         }
 
         return $this->languageDetector;
