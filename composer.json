@@ -31,7 +31,7 @@
         "mjaschen/phpgeo": "^5.0 || ^6.0",
         "toflar/state-set-index": "^3.0",
         "psr/log": "^2.0 || ^3.0",
-        "nitotm/efficient-language-detector": "^3.0",
+        "nitotm/efficient-language-detector": "^3.1",
         "loupe/matcher": "^0.2.1"
     },
     "require-dev": {
