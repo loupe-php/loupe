@@ -3683,6 +3683,9 @@ final class SearchTest extends TestCase
         );
     }
 
+    /**
+     * @param array<string,mixed> $expectedHit
+     */
     #[DataProvider('searchWithDecompositionProvider')]
     public function testSearchWithDecomposition(string $text, string $query, array $expectedHit): void
     {
