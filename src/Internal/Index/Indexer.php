@@ -57,7 +57,7 @@ class Indexer
 
         // Migrate the data if needed
         if ($this->engine->needsReindex()) {
-            $this->migrateDatabase();
+            $this->migrateDatabase($firstDocument);
         }
 
         // Fix, validate and record schema updates if needed
@@ -520,7 +520,10 @@ class Indexer
         $this->changes = [];
     }
 
-    private function migrateDatabase(): void
+    /**
+     * @param array<string, mixed> $document
+     */
+    private function migrateDatabase(array $document): void
     {
         $schemaManager = $this->engine->getConnection()->createSchemaManager();
 
@@ -555,6 +558,7 @@ class Indexer
         }
 
         $this->engine->getIndexInfo()->reset();
+        $this->engine->getIndexInfo()->setup($document);
 
         $chunk = [];
 
