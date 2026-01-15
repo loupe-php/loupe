@@ -698,6 +698,35 @@ class SearchTest extends TestCase
         ];
     }
 
+    public static function searchWithDecompositionProvider(): \Generator
+    {
+        yield '[German] Test on "Wartungsvertrag"' => [
+            'Ich möchte einen Wartungsvertrag verkaufen.',
+            'Vertrag',
+            [
+                'id' => 42,
+                'text' => 'Ich möchte einen Wartungsvertrag verkaufen.',
+                '_formatted' => [
+                    'id' => 42,
+                    'text' => 'Ich möchte einen <em>Wartungsvertrag</em> verkaufen.',
+                ],
+            ],
+        ];
+
+        yield '[German] Test on "Künstlerinnengespräch"' => [
+            'Ich möchte ein Künstlerinnengespräch führen.',
+            'Gespräch',
+            [
+                'id' => 42,
+                'text' => 'Ich möchte ein Künstlerinnengespräch führen.',
+                '_formatted' => [
+                    'id' => 42,
+                    'text' => 'Ich möchte ein <em>Künstlerinnengespräch</em> führen.',
+                ],
+            ],
+        ];
+    }
+
     public static function searchWithFacetsProvider(): \Generator
     {
         yield 'No query and no filters, checking the gender and isActive facet only' => [
@@ -2818,6 +2847,37 @@ class SearchTest extends TestCase
                 ],
             ],
             'query' => 'four',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
+    /**
+     * @param array<string,mixed> $expectedHit
+     */
+    #[DataProvider('searchWithDecompositionProvider')]
+    public function testSearchWithDecomposition(string $text, string $query, array $expectedHit): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['text'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'text' => $text,
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery($query)
+            ->withAttributesToHighlight(['text'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [$expectedHit],
+            'query' => $query,
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
