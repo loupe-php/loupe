@@ -31,6 +31,7 @@
         "mjaschen/phpgeo": "^5.0 || ^6.0",
         "nitotm/efficient-language-detector": "^3.1",
         "psr/log": "^2.0 || ^3.0",
+        "toflar/fast-set": "dev-main",
         "toflar/state-set-index": "^3.0",
         "wamania/php-stemmer": "^4.0"
     },
