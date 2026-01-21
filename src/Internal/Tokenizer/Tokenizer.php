@@ -127,15 +127,7 @@ class Tokenizer implements TokenizerInterface
             $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $maxTokens);
         } else {
             if (!isset($this->languageTokenizers[$language])) {
-                // Take the best preconfigured locale data if available
-                $localeConfiguration = LoupeMatcherTokenizer::getPreconfiguredLocaleConfigurationForLocale(Locale::fromString($language));
-
-                // If available, make sure the directory is wrapped with an in-memory cache for performance reasons
-                if ($localeConfiguration !== null) {
-                    $localeConfiguration = new LocaleConfigurationWithInMemoryCachedDictionary($localeConfiguration);
-                }
-
-                $this->languageTokenizers[$language] = new LoupeMatcherTokenizer($localeConfiguration);
+                $this->languageTokenizers[$language] = LoupeMatcherTokenizer::createFromPreconfiguredLocaleConfiguration(Locale::fromString($language));
             }
             $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $maxTokens);
         }
