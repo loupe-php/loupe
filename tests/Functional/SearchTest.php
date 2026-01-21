@@ -3968,6 +3968,33 @@ final class SearchTest extends TestCase
         );
     }
 
+    public function testStemmingAndDecompositionDoesNotHappenForQueries(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withLanguages(['de'])
+        ;
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'content' => 'Ich bin ein Schiff',
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Dampfschiff')
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => 'Dampfschiff',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
     public function testStopWordSearch(): void
     {
         $searchParameters = SearchParameters::create()
