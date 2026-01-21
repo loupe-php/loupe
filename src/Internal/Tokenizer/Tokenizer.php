@@ -8,7 +8,6 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\LanguageDetectorInterface;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Matcher\Locale;
-use Loupe\Matcher\Tokenizer\LocaleConfiguration\LocaleConfigurationWithInMemoryCachedDictionary;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 use Loupe\Matcher\Tokenizer\Tokenizer as LoupeMatcherTokenizer;
@@ -98,16 +97,16 @@ class Tokenizer implements TokenizerInterface
         return false;
     }
 
-    public function tokenize(string $string, ?int $maxTokens = null): TokenCollection
+    public function tokenize(string $string, bool $withVariants = true, ?int $maxTokens = null): TokenCollection
     {
-        return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens);
+        return $this->doTokenize($string, $withVariants, $this->languageDetector->detectForString($string), $maxTokens);
     }
 
     /**
      * @param array<string, string> $document
      * @return array<string, TokenCollection>
      */
-    public function tokenizeDocument(array $document): array
+    public function tokenizeDocument(array $document, bool $withVariants = true): array
     {
         $languageDetectionResult = $this->languageDetector->detectForDocument($document);
 
@@ -115,21 +114,21 @@ class Tokenizer implements TokenizerInterface
 
         foreach ($document as $attribute => $value) {
             // Tokenize using the language that was either detected for the attribute or the best for the entire document
-            $result[$attribute] = $this->doTokenize($value, $languageDetectionResult->getBestLanguageForAttribute($attribute) ?? $languageDetectionResult->getBestLanguageForDocument());
+            $result[$attribute] = $this->doTokenize($value, $withVariants, $languageDetectionResult->getBestLanguageForAttribute($attribute) ?? $languageDetectionResult->getBestLanguageForDocument());
         }
 
         return $result;
     }
 
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
+    private function doTokenize(string $string, bool $withVariants = true, ?string $language = null, ?int $maxTokens = null): TokenCollection
     {
         if ($language === null) {
-            $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $maxTokens);
+            $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $withVariants, $maxTokens);
         } else {
             if (!isset($this->languageTokenizers[$language])) {
                 $this->languageTokenizers[$language] = LoupeMatcherTokenizer::createFromPreconfiguredLocaleConfiguration(Locale::fromString($language));
             }
-            $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $maxTokens);
+            $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $withVariants, $maxTokens);
         }
 
         $tokenCollectionWithVariants = new TokenCollection();

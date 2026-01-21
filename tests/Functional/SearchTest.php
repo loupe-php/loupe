@@ -1919,7 +1919,7 @@ class SearchTest extends TestCase
         $loupe = $this->setupLoupeWithMoviesFixture();
 
         $searchParametersWithoutNegation = SearchParameters::create()
-            ->withQuery('friendly mother -boy -"depressed suburban father" father')
+            ->withQuery('mother -boy -"depressed suburban father" father')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc']);
 
@@ -1938,7 +1938,7 @@ class SearchTest extends TestCase
                     'title' => 'My Life Without Me',
                 ],
             ],
-            'query' => 'friendly mother -boy -"depressed suburban father" father',
+            'query' => 'mother -boy -"depressed suburban father" father',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
@@ -2105,46 +2105,42 @@ class SearchTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
 
-        // Test with regular Star Wars search should list Star Wars first because of relevance
-        // sorting, but it should also include other movies with the term "war".
+        // Test with regular Great Barrier Reef search should list Finding Nemo first because of relevance
+        // sorting, but it should also include other movies with the term "great".
         $searchParameters = SearchParameters::create()
-            ->withQuery('I like Star Wars')
+            ->withQuery('Great Barrier Reef')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 28,
-                    'title' => 'Apocalypse Now',
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
                 ],
                 [
-                    'id' => 25,
-                    'title' => 'Jarhead',
-                ],
-                [
-                    'id' => 11,
-                    'title' => 'Star Wars',
+                    'id' => 13,
+                    'title' => 'Forrest Gump',
                 ],
             ],
-            'query' => 'I like Star Wars',
+            'query' => 'Great Barrier Reef',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 3,
+            'totalHits' => 2,
         ]);
 
-        // Now let's search for "Star Wars" which should return "Star Wars" only.
-        $searchParameters = $searchParameters->withQuery('I like "Star Wars"');
+        // Now let's search for "Great Barrier Reef" which should return "Finding Nemo" only.
+        $searchParameters = $searchParameters->withQuery('"Great Barrier Reef"');
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 11,
-                    'title' => 'Star Wars',
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
                 ],
             ],
-            'query' => 'I like "Star Wars"',
+            'query' => '"Great Barrier Reef"',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
@@ -3110,6 +3106,33 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    public function testStemmingAndDecompositionDoesNotHappenForQueries(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withLanguages(['de'])
+        ;
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'content' => 'Ich bin ein Schiff',
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Dampfschiff')
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => 'Dampfschiff',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
         ]);
     }
 
