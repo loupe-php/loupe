@@ -223,6 +223,7 @@ class Searcher
         $tokens = $this->getTokens();
         $tokensIncludingStopwords = $this->engine->getTokenizer()->tokenize(
             $this->queryParameters->getQuery(),
+            false, // No variants (no stemming, no decomposition)
             $this->engine->getConfiguration()->getMaxQueryTokens(),
         );
 
@@ -344,6 +345,7 @@ class Searcher
         return $this->tokens = $this->engine->getTokenizer()
             ->tokenize(
                 $this->queryParameters->getQuery(),
+                false, // No variants (no stemming, no decomposition)
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
             )->withoutStopwords($this->engine->getStopWords(), true);
     }

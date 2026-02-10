@@ -21,18 +21,19 @@
     ],
     "require": {
         "php": "^8.1",
-        "ext-pdo_sqlite": "*",
-        "lib-pdo_sqlite-sqlite": ">= 3.35.0",
         "ext-intl": "*",
         "ext-mbstring": "*",
+        "ext-pdo_sqlite": "*",
+        "lib-pdo_sqlite-sqlite": ">= 3.35.0",
         "doctrine/dbal": "^3.10.2 || ^4.0",
-        "wamania/php-stemmer": "^4.0",
         "doctrine/lexer": "^2.0 || ^3.0",
+        "loupe/matcher": "dev-feature/dictionary-decompound",
         "mjaschen/phpgeo": "^5.0 || ^6.0",
-        "toflar/state-set-index": "^3.0",
-        "psr/log": "^2.0 || ^3.0",
         "nitotm/efficient-language-detector": "^3.1",
-        "loupe/matcher": "^0.2.1"
+        "psr/log": "^2.0 || ^3.0",
+        "toflar/fast-set": "dev-main",
+        "toflar/state-set-index": "^3.0",
+        "wamania/php-stemmer": "^4.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.1.31",
