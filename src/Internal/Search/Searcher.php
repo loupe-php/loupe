@@ -694,10 +694,13 @@ class Searcher
         $cteSelectQb->addSelect($termsAlias . '.id');
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
 
-        $ors = [$this->createWherePartForTerm($token->getTerm(), false)];
+        $ors = [$this->createWherePartForTerm($token->getTerm(), false, $token->isPartOfPhrase())];
 
-        foreach ($token->getVariants() as $term) {
-            $ors[] = $this->createWherePartForTerm($term, false);
+        // Consider variants only if not part of a phrase search
+        if (!$token->isPartOfPhrase()) {
+            foreach ($token->getVariants() as $term) {
+                $ors[] = $this->createWherePartForTerm($term, false, false);
+            }
         }
 
         // Prefix search
@@ -707,7 +710,7 @@ class Searcher
         ) {
             // With typo tolerance on prefix search requires searching the prefix tables as well
             if ($this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
-                $ors[] = $this->createWherePartForTerm($token->getTerm(), true);
+                $ors[] = $this->createWherePartForTerm($token->getTerm(), true, false);
             } else {
                 // Otherwise, prefix search is just a simple LIKE <token>% for better performance
                 $ors[] = \sprintf(
@@ -907,13 +910,18 @@ class Searcher
         );
     }
 
-    private function createWherePartForTerm(string $term, bool $prefix): string
+    private function createWherePartForTerm(string $term, bool $prefix, bool $disableTypoTolerance): string
     {
         $where = [];
         $termParameter = $this->createNamedParameter($term);
-        $levenshteinDistance = $this->engine->getConfiguration()
-            ->getTypoTolerance()
-            ->getLevenshteinDistanceForTerm($term);
+
+        if ($disableTypoTolerance) {
+            $levenshteinDistance = 0;
+        } else {
+            $levenshteinDistance = $this->engine->getConfiguration()
+                ->getTypoTolerance()
+                ->getLevenshteinDistanceForTerm($term);
+        }
 
         /*
          * Without prefix:

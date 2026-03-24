@@ -2123,6 +2123,24 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testPhraseSearchDoesNotInvokeTypoTolerance(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('"Taisto Kasrinen"') // Correct would be "Taisto Kasurinen"
+            ->withAttributesToRetrieve(['id', 'title']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => '"Taisto Kasrinen"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
     public function testPhraseSearchOnlyConsidersIdenticalAttributes(): void
     {
         $configuration = Configuration::create()
