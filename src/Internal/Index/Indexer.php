@@ -471,6 +471,7 @@ class Indexer
                 )->withReturningColumns(['term', 'id']))
                 ->execute();
 
+            /** @var array<string, int> $termsIdMapper */
             $termsIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
             foreach ($termsMapper as $term => $occurrences) {
                 if (!isset($termsIdMapper[$term])) {
