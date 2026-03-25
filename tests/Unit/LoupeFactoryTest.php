@@ -15,6 +15,14 @@ class LoupeFactoryTest extends TestCase
 {
     use StorageFixturesTestTrait;
 
+    public function testEmptyStringDataDirThrows(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('Data directory argument is required and cannot be empty.');
+
+        (new LoupeFactory())->create('', Configuration::create());
+    }
+
     public function testInMemoryClient(): void
     {
         $configuration = Configuration::create();
@@ -22,19 +30,15 @@ class LoupeFactoryTest extends TestCase
         $this->assertInstanceOf(Loupe::class, $client);
     }
 
-    public function testPersistedClient(): void
+    public function testNestedDataDirIsCreatedAutomatically(): void
     {
-        $configuration = Configuration::create();
-        $client = (new LoupeFactory())->create($this->createTemporaryDirectory(), $configuration);
-        $this->assertInstanceOf(Loupe::class, $client);
-    }
+        $dataDir = $this->createTemporaryDirectory() . '/' . uniqid() . '/a/b/c';
+        $this->assertDirectoryDoesNotExist($dataDir);
 
-    public function testEmptyStringDataDirThrows(): void
-    {
-        $this->expectException(InvalidConfigurationException::class);
-        $this->expectExceptionMessage('Data directory argument is required and cannot be empty.');
+        $loupe = (new LoupeFactory())->create($dataDir, Configuration::create());
 
-        (new LoupeFactory())->create('', Configuration::create());
+        $this->assertDirectoryExists($dataDir);
+        $this->assertInstanceOf(Loupe::class, $loupe);
     }
 
     public function testNonExistentDataDirIsCreatedAutomatically(): void
@@ -48,15 +52,11 @@ class LoupeFactoryTest extends TestCase
         $this->assertInstanceOf(Loupe::class, $loupe);
     }
 
-    public function testNestedDataDirIsCreatedAutomatically(): void
+    public function testPersistedClient(): void
     {
-        $dataDir = $this->createTemporaryDirectory() . '/' . uniqid() . '/a/b/c';
-        $this->assertDirectoryDoesNotExist($dataDir);
-
-        $loupe = (new LoupeFactory())->create($dataDir, Configuration::create());
-
-        $this->assertDirectoryExists($dataDir);
-        $this->assertInstanceOf(Loupe::class, $loupe);
+        $configuration = Configuration::create();
+        $client = (new LoupeFactory())->create($this->createTemporaryDirectory(), $configuration);
+        $this->assertInstanceOf(Loupe::class, $client);
     }
 
     public function testUncreatableDataDirThrows(): void
