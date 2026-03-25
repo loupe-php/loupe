@@ -8,6 +8,11 @@ use Loupe\Loupe\Configuration;
 
 class InvalidConfigurationException extends \InvalidArgumentException implements LoupeExceptionInterface
 {
+    public static function becauseRequiredDataDirMissing(): self
+    {
+        return new self('Data directory argument is required and cannot be empty.');
+    }
+
     public static function becauseCouldNotCreateDataDir(string $folder): self
     {
         return new self(
