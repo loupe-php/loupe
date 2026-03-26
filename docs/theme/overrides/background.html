@@ -1,0 +1,15 @@
+{% extends "main.html" %}
+
+{% block content %}
+  <div class="loupe-longform-shell">
+    <div class="loupe-longform-shell__intro">
+      <span class="loupe-eyebrow">Background Article</span>
+      <p>
+        This long-form piece captures the original motivation behind Loupe. Some implementation details have
+        evolved since then, but the design intent is still useful context.
+      </p>
+    </div>
+
+    {{ page.content }}
+  </div>
+{% endblock %}
