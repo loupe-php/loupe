@@ -689,18 +689,13 @@ class Searcher
 
     private function addTermMatchesCTE(Token $token, bool $isLastToken): void
     {
-        $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
-
-        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
-        $cteSelectQb->addSelect($termsAlias . '.id');
-        $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
-
-        $ors = [$this->createWherePartForTerm($token->getTerm(), false, $token->isPartOfPhrase())];
+        $selects = [];
+        $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, $token->isPartOfPhrase());
 
         // Consider variants only if not part of a phrase search
         if (!$token->isPartOfPhrase()) {
             foreach ($token->getVariants() as $term) {
-                $ors[] = $this->createWherePartForTerm($term, false, false);
+                $selects[] = $this->createTermMatchesSelect($term, false, false);
             }
         }
 
@@ -711,18 +706,16 @@ class Searcher
         ) {
             // With typo tolerance on prefix search requires searching the prefix tables as well
             if ($this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
-                $ors[] = $this->createWherePartForTerm($token->getTerm(), true, false);
+                $selects[] = $this->createTermMatchesSelect($token->getTerm(), true, false);
             } else {
-                // Otherwise, prefix search is just a simple LIKE <token>% for better performance
-                $ors[] = \sprintf(
-                    '%s.term LIKE %s',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                    $this->createNamedParameter($token->getTerm() . '%')
-                );
+                $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, false, true);
             }
         }
 
-        $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->select('id');
+        $cteSelectQb->from('(' . implode(' UNION ', $selects) . ')');
+
         $this->addCTE(new Cte($this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token), ['id'], $cteSelectQb));
     }
 
@@ -909,6 +902,26 @@ class Searcher
             $token->isNegated() ? 'NOT IN' : 'IN',
             $cteName
         );
+    }
+
+    private function createTermMatchesSelect(string $term, bool $prefix, bool $disableTypoTolerance, bool $prefixLikeOnly = false): string
+    {
+        $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
+        $qb = $this->engine->getConnection()->createQueryBuilder();
+        $qb->select($termsAlias . '.id');
+        $qb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
+
+        if ($prefixLikeOnly) {
+            $qb->where(\sprintf(
+                '%s.term LIKE %s',
+                $termsAlias,
+                $this->createNamedParameter($term . '%')
+            ));
+        } else {
+            $qb->where($this->createWherePartForTerm($term, $prefix, $disableTypoTolerance));
+        }
+
+        return $qb->getSQL();
     }
 
     private function createWherePartForTerm(string $term, bool $prefix, bool $disableTypoTolerance): string
