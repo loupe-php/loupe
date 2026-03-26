@@ -913,9 +913,9 @@ class Searcher
 
         if ($prefixLikeOnly) {
             $qb->where(\sprintf(
-                '%s.term LIKE %s',
+                '%s.term GLOB %s',
                 $termsAlias,
-                $this->createNamedParameter($term . '%')
+                $this->createNamedParameter($term . '*')
             ));
         } else {
             $qb->where($this->createWherePartForTerm($term, $prefix, $disableTypoTolerance));
@@ -944,7 +944,7 @@ class Searcher
          *
          * With prefix:
          *
-         *     (term = '<term>' OR term LIKE '<term>%')
+         *     (term = '<term>' OR term GLOB '<term>*')
          */
         if ($prefix) {
             $where[] = '(';
@@ -960,9 +960,9 @@ class Searcher
         if ($prefix) {
             $where[] = 'OR';
             $where[] = \sprintf(
-                '%s.term LIKE %s',
+                '%s.term GLOB %s',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $this->createNamedParameter($term . '%')
+                $this->createNamedParameter($term . '*')
             );
             $where[] = ')';
         }
