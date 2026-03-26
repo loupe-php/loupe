@@ -412,7 +412,7 @@ class Searcher
 
                 // Count facet, always needed
                 $qb = clone $commonQb;
-                $qb->select($facetAlias, \sprintf('COUNT(DISTINCT %s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
+                $qb->select($facetAlias, \sprintf('COUNT(%s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
                 $qb->groupBy($facetAlias);
                 $addFacetCte(self::FACET_ALIAS_COUNT_PREFIX . $facet, $qb);
 
@@ -559,13 +559,12 @@ class Searcher
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
-        $cteSelectQb->addSelect($termsDocumentsAlias . '.term');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
 
         if ($this->needsTypoCount()) {
             $cteSelectQb->addSelect(\sprintf(
-                'loupe_levensthein(%s.term, %s, %s) AS typos',
+                'MIN(loupe_levensthein(%s.term, %s, %s)) AS typos',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
                 $this->createNamedParameter($token->getTerm()),
                 $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
@@ -615,13 +614,15 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->addOrderBy('position');
+        $cteSelectQb->groupBy($termsDocumentsAlias . '.document');
+        $cteSelectQb->addGroupBy($termsDocumentsAlias . '.attribute');
+        $cteSelectQb->addGroupBy($termsDocumentsAlias . '.position');
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
         $this->addCTE(new Cte(
             $cteName,
-            ['document', 'term', 'attribute', 'position', 'typos'],
+            ['document', 'attribute', 'position', 'typos'],
             $cteSelectQb
         ));
     }
