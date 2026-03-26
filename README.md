@@ -33,7 +33,7 @@ Note that some implementation details (e.g. libraries used) referenced in this b
 Performance depends on many factors but here are some ballpark numbers based on indexing the 
 [~32k movies fixture][MeiliSearch_Movies] provided by MeiliSearch.
 
-* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **58 ms**
+* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **35 ms**
 * **Indexing** will take around **60 seconds** (this varies greatly because it depends on how much content per document
   you want to index
 
