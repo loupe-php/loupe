@@ -24,7 +24,7 @@ abstract class AbstractQueryParameters
 
     private ?int $hitsPerPage = null;
 
-    private int $limit = 20;
+    private int $limit = self::MAX_LIMIT;
 
     private int $offset = 0;
 
