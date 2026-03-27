@@ -1,0 +1,78 @@
+site_name: Loupe
+site_description: An SQLite-based, PHP-only full-text search engine for pragmatic applications.
+site_url: https://loupe-php.github.io/loupe/
+repo_url: https://github.com/loupe-php/loupe
+repo_name: loupe-php/loupe
+docs_dir: .docs-site
+site_dir: _build
+use_directory_urls: true
+strict: true
+
+theme:
+  name: material
+  custom_dir: theme/overrides
+  logo: assets/logo/emblem.svg
+  favicon: assets/logo/emblem.svg
+  font: false
+  features:
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: loupe
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: loupe-dark
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Schema: schema.md
+  - Configuration: configuration.md
+  - Indexing: indexing.md
+  - Searching: searching.md
+  - Browsing: browsing.md
+  - Ranking: ranking.md
+  - Tokenizer: tokenizer.md
+  - Performance: performance.md
+  - Background / Blog Post: blog_post.md

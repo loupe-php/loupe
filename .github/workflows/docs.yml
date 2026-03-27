@@ -1,0 +1,46 @@
+name: Docs
+
+on:
+    push:
+        branches:
+            - 'main'
+        workflow_dispatch:
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        name: Build Docs
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+                  cache: pip
+                  cache-dependency-path: docs/requirements.txt
+
+            - name: Install documentation dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  python -m pip install -r docs/requirements.txt
+
+            - name: Prepare docs sources
+              run: python docs/prepare_docs.py
+
+            - name: Build static documentation
+              run: mkdocs build --strict -f docs/mkdocs.yml
+
+            - name: Deploy
+              if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+              uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4.0.0
+              with:
+                  publish_branch: gh-pages
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: docs/_build
+                  force_orphan: true
