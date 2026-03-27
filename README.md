@@ -5,6 +5,8 @@
 
 <br/>
 
+> Read the documentation: [loupe-php.github.io/loupe](https://loupe-php.github.io/loupe/)
+
 Loupe…
 
 * only requires PHP and SQLite, you don't need anything else - no containers, no nothing
@@ -163,6 +165,8 @@ print_r($results->toArray());
 ```
 
 ## Docs
+
+The documentation is available at [loupe-php.github.io/loupe](https://loupe-php.github.io/loupe/).
 
 * [Schema](./docs/schema.md)
 * [Configuration](./docs/configuration.md)

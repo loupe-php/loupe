@@ -5,3 +5,4 @@
 /docs/.docs-site
 /docs/_build
 /docs/__pycache__
+/.venv
