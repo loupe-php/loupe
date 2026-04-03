@@ -1013,7 +1013,7 @@ class Searcher
     {
         $froms = [];
         $qbMatches = $this->engine->getConnection()->createQueryBuilder();
-        $qbMatches->select('document_id')->distinct();
+        $qbMatches->select('document_id');
 
         // User filters
         $froms[] = $this->filterBuilder->buildFrom();
@@ -1038,6 +1038,13 @@ class Searcher
             $qbMatches->from('(' . $froms[0] . ')');
         } else {
             $qbMatches->from('(' . implode(' INTERSECT ', $froms) . ')');
+        }
+
+        if (!$tokenCollection->empty()) {
+            // Keep DISTINCT here for SQLite performance. Even though the upstream queries already produce one row per
+            // document in practice, making that uniqueness explicit helps SQLite choose a better plan for the final
+            // matches CTE. Removing DISTINCT keeps the results correct, but performs slower.
+            $qbMatches->distinct();
         }
 
         $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id'], $qbMatches));
