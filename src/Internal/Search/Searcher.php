@@ -561,6 +561,8 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.start');
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.end');
 
         if ($this->needsTypoCount()) {
             $cteSelectQb->addSelect(\sprintf(
@@ -622,7 +624,7 @@ class Searcher
 
         $this->addCTE(new Cte(
             $cteName,
-            ['document', 'attribute', 'position', 'typos'],
+            ['document', 'attribute', 'position', 'start', 'end', 'typos'],
             $cteSelectQb
         ));
     }
