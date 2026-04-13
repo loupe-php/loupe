@@ -432,7 +432,7 @@ class Indexer
             foreach ($preparedDocuments->all() as $document) {
                 foreach ($document->getTerms() as $term) {
                     $rows[] = [$term->getTerm(), $term->getTermLength(), 0];
-                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition()];
+                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition(), $term->getStart(), $term->getEnd()];
 
                     // Prefix relevant terms must not be variants
                     if ($indexPrefixes && !$term->isVariant()) {
@@ -688,11 +688,11 @@ class Indexer
             $termPosition = 1;
             foreach ($tokenCollection->all() as $token) {
                 // Index the main term
-                $terms[] = new Term($token->getTerm(), $attributeName, $termPosition, false);
+                $terms[] = new Term($token->getTerm(), $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), false);
 
                 // Index variants
                 foreach ($token->getVariants() as $termVariant) {
-                    $terms[] = new Term($termVariant, $attributeName, $termPosition, false);
+                    $terms[] = new Term($termVariant, $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), false);
                 }
 
                 ++$termPosition;

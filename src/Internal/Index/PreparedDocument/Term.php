@@ -12,6 +12,8 @@ class Term
         private string $term,
         private string $attribute,
         private int $position,
+        private int $start,
+        private int $end,
         private bool $isVariant
     ) {
         $this->termLength = mb_strlen($term, 'UTF-8');
@@ -35,6 +37,16 @@ class Term
     public function getTermLength(): int
     {
         return $this->termLength;
+    }
+
+    public function getStart(): int
+    {
+        return $this->start;
+    }
+
+    public function getEnd(): int
+    {
+        return $this->end;
     }
 
     public function isVariant(): bool
