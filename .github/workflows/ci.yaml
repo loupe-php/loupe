@@ -91,7 +91,7 @@ jobs:
                   $str = "Straßen";
                   echo "mb_strlen: " . mb_strlen($str, "UTF-8") . "\n";
                   echo "strlen: " . strlen($str) . "\n";
-                  $it = IntlBreakIterator::createWordInstance('de_DE');
+                  $it = IntlBreakIterator::createWordInstance("de_DE");
                   $it->setText($str);
                   foreach ($it->getPartsIterator() as $k => $part) {
                     echo "Key: $k, Part: $part, mb_len: " . mb_strlen($part, "UTF-8") . "\n";
