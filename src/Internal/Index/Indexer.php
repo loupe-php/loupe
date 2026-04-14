@@ -422,7 +422,7 @@ class Indexer
                 return;
             }
 
-            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position" - need to optimize for memory here
+            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position", 3 the "start", 4 the "end" of the match - need to optimize for memory here
             $termsMapper = [];
             // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
             $rows = [];
@@ -491,7 +491,7 @@ class Indexer
             $this->engine->getBulkUpserterFactory()
                 ->create(BulkUpsertConfig::create(
                     IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                    ['document', 'attribute', 'position', 'term'],
+                    ['document', 'attribute', 'position', 'start', 'end', 'term'],
                     $relationRows,
                     ['term', 'document', 'attribute', 'position'],
                     ConflictMode::Ignore
