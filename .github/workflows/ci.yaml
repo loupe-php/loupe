@@ -90,18 +90,18 @@ jobs:
                 php -r '
                 require "vendor/autoload.php";
                 use Loupe\Matcher\Tokenizer\Tokenizer;
-                $tokenizer = new Tokenizer();
+                $tokenizer = new Tokenizer("de");
                 $input = "Auf Straße und großer Schiene";
                 $tokens = $tokenizer->tokenize($input);
 
-                echo "Tokens:\n";
-                foreach ($tokens as $token) {
+                echo sprintf("Tokens (%d):\n", count($tokens));
+                foreach ($tokens->all() as $token) {
                     echo sprintf(
-                        "ID:%d | term:\"%s\" | pos:%d | origPos:%d | origLen:%d\n",
+                        "ID:%d | term:\"%s\" | origStart:%d | origEnd:%d | origLegthn:%d\n",
                         $token->getId(),
                         $token->getTerm(),
-                        $token->getPosition(),
-                        $token->getOriginalPosition(),
+                        $token->getOriginalStartPosition(),
+                        $token->getOriginalEndPosition(),
                         $token->getOriginalLength()
                     );
                 }
