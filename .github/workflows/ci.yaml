@@ -88,13 +88,30 @@ jobs:
             - name: Debug ICU
               run: |
                 php -r '
-                  $str = "Straßen";
-                  echo "mb_strlen: " . mb_strlen($str, "UTF-8") . "\n";
-                  echo "strlen: " . strlen($str) . "\n";
+                  $str = "Auf Straße und Schiene";
+                  echo "Input: \"$str\"\n";
+                  echo "mb_strlen: " . mb_strlen($str, "UTF-8") . " chars\n";
+                  echo "strlen: " . strlen($str) . " bytes\n\n";
+
                   $it = IntlBreakIterator::createWordInstance("de_DE");
                   $it->setText($str);
+
+                  echo "=== DEFAULT (KEY_SEQUENTIAL) ===\n";
                   foreach ($it->getPartsIterator() as $k => $part) {
-                    echo "Key: $k, Part: $part, mb_len: " . mb_strlen($part, "UTF-8") . "\n";
+                      $byteLeft = $k;  // Sequential index OR byte offset?
+                      $charPos = mb_strlen(substr($str, 0, $byteLeft), "UTF-8");
+                      echo "Key:$k | Part:\"$part\" | chars:" . mb_strlen($part,"UTF-8") . " | charPos:$charPos\n";
+                  }
+
+                  echo "\n=== KEY_LEFT (Byte offset LEFT) ===\n";
+                  foreach ($it->getPartsIterator(IntlPartsIterator::KEY_LEFT) as $byteLeft => $part) {
+                      $charLeft = mb_strlen(substr($str, 0, $byteLeft), "UTF-8");
+                      echo "ByteLeft:$byteLeft | CharLeft:$charLeft | \"$part\" (chars:" . mb_strlen($part,"UTF-8") . ")\n";
+                  }
+
+                  echo "\n=== KEY_RIGHT (Byte offset RIGHT) ===\n";
+                  foreach ($it->getPartsIterator(IntlPartsIterator::KEY_RIGHT) as $byteRight => $part) {
+                      echo "ByteRight:$byteRight | \"$part\"\n";
                   }
                 '
 
