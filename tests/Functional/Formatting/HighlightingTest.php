@@ -321,16 +321,18 @@ class HighlightingTest extends TestCase
     public function testHighlightingAndMatchPositionsWithNormalizationShift(): void
     {
         // Normalization (ß → ss) potentially adds characters and shifts their positions relative to the original value
-        // Make sure matches reflect the positions in the original document as stored, not the normalized version
+        // Make sure matches use the positions in the original document as stored, not the normalized version
+        // Multi attributes are re-tokenized during highlighting so this should not apply to arrays, just testing for good measure
         $documents = [
             [
                 'id' => 1,
-                'name' => 'Die Straße ist groß und lang',
+                'name' => 'Die Straßen sind groß und lang',
+                'tags' => ['Auf Straße und Schiene'],
             ],
         ];
 
         $configuration = Configuration::create()
-            ->withSearchableAttributes(['name'])
+            ->withSearchableAttributes(['name', 'tags'])
         ;
 
         $loupe = $this->createLoupe($configuration);
@@ -338,29 +340,39 @@ class HighlightingTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withQuery('grosse strasse')
-            ->withAttributesToHighlight(['name'])
+            ->withAttributesToHighlight(['name', 'tags'])
             ->withShowMatchesPosition(true)
-            ->withAttributesToRetrieve(['id', 'name'])
+            ->withAttributesToRetrieve(['id', 'name', 'tags'])
         ;
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
                     'id' => 1,
-                    'name' => 'Die Straße ist groß und lang',
+                    'name' => 'Die Straßen sind groß und lang',
+                    'tags' => ['Auf Straße und Schiene'],
                     '_formatted' => [
                         'id' => 1,
-                        'name' => 'Die <em>Straße</em> ist <em>groß</em> und lang',
+                        'name' => 'Die <em>Straßen</em> sind <em>groß</em> und lang',
+                        'tags' => ['Auf <em>Straße</em> und Schiene'],
                     ],
                     '_matchesPosition' => [
                         'name' => [
                             [
                                 'start' => 4,
-                                'length' => 6,
+                                'length' => 7,
                             ],
                             [
-                                'start' => 15,
+                                'start' => 17,
                                 'length' => 4,
+                            ],
+                        ],
+                        'tags' => [
+                            0 => [
+                                [
+                                    'start' => 4,
+                                    'length' => 6,
+                                ],
                             ],
                         ],
                     ],
