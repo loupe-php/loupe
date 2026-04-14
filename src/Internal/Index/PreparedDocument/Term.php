@@ -24,9 +24,19 @@ class Term
         return $this->attribute;
     }
 
+    public function getEnd(): int
+    {
+        return $this->end;
+    }
+
     public function getPosition(): int
     {
         return $this->position;
+    }
+
+    public function getStart(): int
+    {
+        return $this->start;
     }
 
     public function getTerm(): string
@@ -37,16 +47,6 @@ class Term
     public function getTermLength(): int
     {
         return $this->termLength;
-    }
-
-    public function getStart(): int
-    {
-        return $this->start;
-    }
-
-    public function getEnd(): int
-    {
-        return $this->end;
     }
 
     public function isVariant(): bool
