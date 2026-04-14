@@ -317,4 +317,60 @@ class HighlightingTest extends TestCase
 
         $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
     }
+
+    public function testHighlightingAndMatchPositionsWithNormalizationShift(): void
+    {
+        // Normalization (ß → ss) potentially adds characters and shifts their positions relative to the original value
+        // Make sure matches reflect the positions in the original document as stored, not the normalized version
+        $documents = [
+            [
+                'id' => 1,
+                'name' => 'Die Straße ist groß und lang',
+            ],
+        ];
+
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['name'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments($documents);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('grosse strasse')
+            ->withAttributesToHighlight(['name'])
+            ->withShowMatchesPosition(true)
+            ->withAttributesToRetrieve(['id', 'name'])
+        ;
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'name' => 'Die Straße ist groß und lang',
+                    '_formatted' => [
+                        'id' => 1,
+                        'name' => 'Die <em>Straße</em> ist <em>groß</em> und lang',
+                    ],
+                    '_matchesPosition' => [
+                        'name' => [
+                            [
+                                'start' => 4,
+                                'length' => 6,
+                            ],
+                            [
+                                'start' => 15,
+                                'length' => 4,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'query' => 'grosse strasse',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
 }
