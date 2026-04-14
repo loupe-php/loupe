@@ -84,6 +84,19 @@ jobs:
             - name: Install the dependencies
               run: composer update --no-interaction ${{ matrix.composer }}
 
+            - name: Debug ICU
+              run: |
+                php -r '
+                  $str = "Straßen";
+                  echo "mb_strlen: " . mb_strlen($str, "UTF-8") . "\n";
+                  echo "strlen: " . strlen($str) . "\n";
+                  $it = IntlBreakIterator::createWordInstance(new IntlLocale("de_DE"));
+                  $it->setText($str);
+                  foreach ($it->getPartsIterator() as $k => $part) {
+                    echo "Key: $k, Part: $part, mb_len: " . mb_strlen($part, "UTF-8") . "\n";
+                  }
+                '
+
             - name: Run the unit tests
               run: composer unit-tests
 
