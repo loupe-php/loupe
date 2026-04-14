@@ -89,7 +89,7 @@ jobs:
               run: |
                 php -r '
                 require "vendor/autoload.php";
-                use Loupe\Matcher\Tokenizer;
+                use Loupe\Matcher\Tokenizer\Tokenizer;
                 $tokenizer = new Tokenizer();
                 $input = "Auf Straße und großer Schiene";
                 $tokens = $tokenizer->tokenize($input);
