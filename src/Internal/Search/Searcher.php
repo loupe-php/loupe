@@ -525,7 +525,7 @@ class Searcher
             $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
             $this->queryBuilder->addSelect(\sprintf(
-                "(SELECT GROUP_CONCAT(attribute || ':' || position) FROM %s WHERE %s._id = %s.document) AS %s",
+                "(SELECT GROUP_CONCAT(attribute || ':' || position || ':' || start || ':' || end) FROM %s WHERE %s._id = %s.document) AS %s",
                 $cteName,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 $cteName,
@@ -1075,7 +1075,7 @@ class Searcher
     }
 
     /**
-     * @param array<string, array<int>>|null $matchPositionInfo
+     * @param array<string, list<array{position: int, start: int, end: int}>>|null $matchPositionInfo
      */
     private function formatAttributeForHit(string $attribute, string $value, TokenCollection $queryTerms, FormatterOptions $attributeOptions, ?array $matchPositionInfo = null): FormatterResult
     {
@@ -1087,10 +1087,14 @@ class Searcher
             return new FormatterResult($value, new TokenCollection());
         }
 
+        // Use the stored original start positions to identify matching tokens.
+        // Matching by original character position (rather than word-index position) is necessary because
+        // normalization (e.g. ß → ss) can shift character positions between the indexed form and the display text.
+        $startPositions = array_column($matchPositionInfo[$attribute], 'start');
         $matches = new TokenCollection();
 
-        foreach ($this->engine->getTokenizer()->tokenize($value)->all() as $i => $token) {
-            if (\in_array($i + 1, $matchPositionInfo[$attribute], true)) {
+        foreach ($this->engine->getTokenizer()->tokenize($value)->all() as $token) {
+            if (\in_array($token->getOriginalStartPosition(), $startPositions, true)) {
                 $matches->add($token);
             }
         }
@@ -1139,8 +1143,12 @@ class Searcher
             if (str_starts_with($key, self::MATCH_POSITION_INFO_PREFIX) && $value !== null) {
                 $documentMatches = explode(',', $value);
                 foreach ($documentMatches as $documentMatch) {
-                    $attributeMatches = explode(':', $documentMatch);
-                    $matchPositionInfo[$attributeMatches[0]][] = (int) $attributeMatches[1];
+                    [$attribute, $position, $start, $end] = explode(':', $documentMatch, 4);
+                    $matchPositionInfo[$attribute][] = [
+                        'position' => (int) $position,
+                        'start' => (int) $start,
+                        'end' => (int) $end,
+                    ];
                 }
             }
         }
