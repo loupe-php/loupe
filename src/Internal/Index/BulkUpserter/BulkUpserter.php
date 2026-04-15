@@ -136,7 +136,8 @@ class BulkUpserter
         }
 
         if ($returningColumns === []) {
-            return $this->executeQuery($sql, $parameters)->fetchAllAssociative();
+            $this->executeStatement($sql, $parameters);
+            return [];
         }
 
         $sql .= ' RETURNING ' . implode(', ', $this->bulkUpsertConfig->getReturningColumns());
@@ -149,6 +150,14 @@ class BulkUpserter
     private function executeQuery(string $sql, array $parameters): Result
     {
         return $this->connection->executeQuery($sql, $parameters, $this->extractDbalTypes($parameters));
+    }
+
+    /**
+     * @param array<int<0, max>|string, mixed> $parameters
+     */
+    private function executeStatement(string $sql, array $parameters): int|string
+    {
+        return $this->connection->executeStatement($sql, $parameters, $this->extractDbalTypes($parameters));
     }
 
     /**
