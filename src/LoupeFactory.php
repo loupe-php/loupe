@@ -22,13 +22,17 @@ final class LoupeFactory implements LoupeFactoryInterface
 
     public function create(string $dataDir, Configuration $configuration): Loupe
     {
-        $dataDir = (string) realpath($dataDir);
+        if ($dataDir === '') {
+            throw InvalidConfigurationException::becauseRequiredDataDirMissing();
+        }
 
         if (!is_dir($dataDir)) {
-            if (!mkdir($dataDir, 0777, true)) {
+            if (!@mkdir($dataDir, 0777, true)) {
                 throw InvalidConfigurationException::becauseCouldNotCreateDataDir($dataDir);
             }
         }
+
+        $dataDir = (string) realpath($dataDir);
 
         return $this->createFromConnectionPool(
             $this->createConnectionPool($configuration, $dataDir),

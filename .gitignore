@@ -2,3 +2,7 @@
 /vendor
 /.phpunit.result.cache
 /composer.lock
+/docs/.docs-site
+/docs/_build
+/docs/__pycache__
+/.venv

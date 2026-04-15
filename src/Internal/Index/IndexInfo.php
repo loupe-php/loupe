@@ -550,6 +550,12 @@ class IndexInfo
         $table->addColumn('position', Types::INTEGER)
             ->setNotnull(true);
 
+        $table->addColumn('start', Types::INTEGER)
+            ->setNotnull(true);
+
+        $table->addColumn('end', Types::INTEGER)
+            ->setNotnull(true);
+
         $table->setPrimaryKey(['term', 'document', 'attribute', 'position']);
         $table->addIndex(['document']);
         $table->addIndex(['position']);

@@ -422,7 +422,7 @@ class Indexer
                 return;
             }
 
-            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position" - need to optimize for memory here
+            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position", 3 the "start", 4 the "end" of the match - need to optimize for memory here
             $termsMapper = [];
             // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
             $rows = [];
@@ -432,7 +432,7 @@ class Indexer
             foreach ($preparedDocuments->all() as $document) {
                 foreach ($document->getTerms() as $term) {
                     $rows[] = [$term->getTerm(), $term->getTermLength(), 0];
-                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition()];
+                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition(), $term->getStart(), $term->getEnd()];
 
                     // Prefix relevant terms must not be variants
                     if ($indexPrefixes && !$term->isVariant()) {
@@ -471,6 +471,7 @@ class Indexer
                 )->withReturningColumns(['term', 'id']))
                 ->execute();
 
+            /** @var array<string, int> $termsIdMapper */
             $termsIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
             foreach ($termsMapper as $term => $occurrences) {
                 if (!isset($termsIdMapper[$term])) {
@@ -490,7 +491,7 @@ class Indexer
             $this->engine->getBulkUpserterFactory()
                 ->create(BulkUpsertConfig::create(
                     IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                    ['document', 'attribute', 'position', 'term'],
+                    ['document', 'attribute', 'position', 'start', 'end', 'term'],
                     $relationRows,
                     ['term', 'document', 'attribute', 'position'],
                     ConflictMode::Ignore
@@ -687,11 +688,11 @@ class Indexer
             $termPosition = 1;
             foreach ($tokenCollection->all() as $token) {
                 // Index the main term
-                $terms[] = new Term($token->getTerm(), $attributeName, $termPosition, false);
+                $terms[] = new Term($token->getTerm(), $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), false);
 
                 // Index variants
                 foreach ($token->getVariants() as $termVariant) {
-                    $terms[] = new Term($termVariant, $attributeName, $termPosition, false);
+                    $terms[] = new Term($termVariant, $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), false);
                 }
 
                 ++$termPosition;

@@ -28,4 +28,9 @@ class InvalidConfigurationException extends \InvalidArgumentException implements
             )
         );
     }
+
+    public static function becauseRequiredDataDirMissing(): self
+    {
+        return new self('Data directory argument is required and cannot be empty.');
+    }
 }

@@ -60,6 +60,7 @@ jobs:
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php }}
+                  extensions: intl, mbstring
                   coverage: none
 
             - name: Checkout

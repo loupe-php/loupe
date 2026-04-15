@@ -414,7 +414,7 @@ class Searcher
 
                 // Count facet, always needed
                 $qb = clone $commonQb;
-                $qb->select($facetAlias, \sprintf('COUNT(DISTINCT %s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
+                $qb->select($facetAlias, \sprintf('COUNT(%s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
                 $qb->groupBy($facetAlias);
                 $addFacetCte(self::FACET_ALIAS_COUNT_PREFIX . $facet, $qb);
 
@@ -527,7 +527,7 @@ class Searcher
             $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
             $this->queryBuilder->addSelect(\sprintf(
-                "(SELECT GROUP_CONCAT(attribute || ':' || position) FROM %s WHERE %s._id = %s.document) AS %s",
+                "(SELECT GROUP_CONCAT(attribute || ':' || position || ':' || start || ':' || end) FROM %s WHERE %s._id = %s.document) AS %s",
                 $cteName,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                 $cteName,
@@ -561,13 +561,14 @@ class Searcher
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
-        $cteSelectQb->addSelect($termsDocumentsAlias . '.term');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.start');
+        $cteSelectQb->addSelect($termsDocumentsAlias . '.end');
 
         if ($this->needsTypoCount()) {
             $cteSelectQb->addSelect(\sprintf(
-                'loupe_levensthein(%s.term, %s, %s) AS typos',
+                'MIN(loupe_levensthein(%s.term, %s, %s)) AS typos',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
                 $this->createNamedParameter($token->getTerm()),
                 $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
@@ -617,13 +618,15 @@ class Searcher
             ));
         }
 
-        $cteSelectQb->addOrderBy('position');
+        $cteSelectQb->groupBy($termsDocumentsAlias . '.document');
+        $cteSelectQb->addGroupBy($termsDocumentsAlias . '.attribute');
+        $cteSelectQb->addGroupBy($termsDocumentsAlias . '.position');
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
         $this->addCTE(new Cte(
             $cteName,
-            ['document', 'term', 'attribute', 'position', 'typos'],
+            ['document', 'attribute', 'position', 'start', 'end', 'typos'],
             $cteSelectQb
         ));
     }
@@ -690,16 +693,14 @@ class Searcher
 
     private function addTermMatchesCTE(Token $token, bool $isLastToken): void
     {
-        $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
+        $selects = [];
+        $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, $token->isPartOfPhrase());
 
-        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
-        $cteSelectQb->addSelect($termsAlias . '.id');
-        $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
-
-        $ors = [$this->createWherePartForTerm($token->getTerm(), false)];
-
-        foreach ($token->getVariants() as $term) {
-            $ors[] = $this->createWherePartForTerm($term, false);
+        // Consider variants only if not part of a phrase search
+        if (!$token->isPartOfPhrase()) {
+            foreach ($token->getVariants() as $term) {
+                $selects[] = $this->createTermMatchesSelect($term, false, false);
+            }
         }
 
         // Prefix search
@@ -709,18 +710,16 @@ class Searcher
         ) {
             // With typo tolerance on prefix search requires searching the prefix tables as well
             if ($this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
-                $ors[] = $this->createWherePartForTerm($token->getTerm(), true);
+                $selects[] = $this->createTermMatchesSelect($token->getTerm(), true, false);
             } else {
-                // Otherwise, prefix search is just a simple LIKE <token>% for better performance
-                $ors[] = \sprintf(
-                    '%s.term LIKE %s',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                    $this->createNamedParameter($token->getTerm() . '%')
-                );
+                $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, false, true);
             }
         }
 
-        $cteSelectQb->where('(' . implode(') OR (', $ors) . ')');
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->select('id');
+        $cteSelectQb->from('(' . implode(' UNION ', $selects) . ')');
+
         $this->addCTE(new Cte($this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token), ['id'], $cteSelectQb));
     }
 
@@ -909,13 +908,38 @@ class Searcher
         );
     }
 
-    private function createWherePartForTerm(string $term, bool $prefix): string
+    private function createTermMatchesSelect(string $term, bool $prefix, bool $disableTypoTolerance, bool $prefixLikeOnly = false): string
+    {
+        $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
+        $qb = $this->engine->getConnection()->createQueryBuilder();
+        $qb->select($termsAlias . '.id');
+        $qb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
+
+        if ($prefixLikeOnly) {
+            $qb->where(\sprintf(
+                '%s.term GLOB %s',
+                $termsAlias,
+                $this->createNamedParameter($term . '*')
+            ));
+        } else {
+            $qb->where($this->createWherePartForTerm($term, $prefix, $disableTypoTolerance));
+        }
+
+        return $qb->getSQL();
+    }
+
+    private function createWherePartForTerm(string $term, bool $prefix, bool $disableTypoTolerance): string
     {
         $where = [];
         $termParameter = $this->createNamedParameter($term);
-        $levenshteinDistance = $this->engine->getConfiguration()
-            ->getTypoTolerance()
-            ->getLevenshteinDistanceForTerm($term);
+
+        if ($disableTypoTolerance) {
+            $levenshteinDistance = 0;
+        } else {
+            $levenshteinDistance = $this->engine->getConfiguration()
+                ->getTypoTolerance()
+                ->getLevenshteinDistanceForTerm($term);
+        }
 
         /*
          * Without prefix:
@@ -924,7 +948,7 @@ class Searcher
          *
          * With prefix:
          *
-         *     (term = '<term>' OR term LIKE '<term>%')
+         *     (term = '<term>' OR term GLOB '<term>*')
          */
         if ($prefix) {
             $where[] = '(';
@@ -940,9 +964,9 @@ class Searcher
         if ($prefix) {
             $where[] = 'OR';
             $where[] = \sprintf(
-                '%s.term LIKE %s',
+                '%s.term GLOB %s',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $this->createNamedParameter($term . '%')
+                $this->createNamedParameter($term . '*')
             );
             $where[] = ')';
         }
@@ -1015,7 +1039,7 @@ class Searcher
     {
         $froms = [];
         $qbMatches = $this->engine->getConnection()->createQueryBuilder();
-        $qbMatches->select('document_id')->distinct();
+        $qbMatches->select('document_id');
 
         // User filters
         $froms[] = $this->filterBuilder->buildFrom();
@@ -1042,11 +1066,18 @@ class Searcher
             $qbMatches->from('(' . implode(' INTERSECT ', $froms) . ')');
         }
 
+        if (!$tokenCollection->empty()) {
+            // Keep DISTINCT here for SQLite performance. Even though the upstream queries already produce one row per
+            // document in practice, making that uniqueness explicit helps SQLite choose a better plan for the final
+            // matches CTE. Removing DISTINCT keeps the results correct, but performs slower.
+            $qbMatches->distinct();
+        }
+
         $this->addCTE(new Cte(self::CTE_MATCHES, ['document_id'], $qbMatches));
     }
 
     /**
-     * @param array<string, array<int>>|null $matchPositionInfo
+     * @param array<string, list<array{position: int, start: int, end: int}>>|null $matchPositionInfo
      */
     private function formatAttributeForHit(string $attribute, string $value, TokenCollection $queryTerms, FormatterOptions $attributeOptions, ?array $matchPositionInfo = null): FormatterResult
     {
@@ -1058,10 +1089,14 @@ class Searcher
             return new FormatterResult($value, new TokenCollection());
         }
 
+        // Use the stored original start positions to identify matching tokens.
+        // Matching by original character position (rather than word-index position) is necessary because
+        // normalization (e.g. ß → ss) can shift character positions between the indexed form and the display text.
+        $startPositions = array_column($matchPositionInfo[$attribute], 'start');
         $matches = new TokenCollection();
 
-        foreach ($this->engine->getTokenizer()->tokenize($value)->all() as $i => $token) {
-            if (\in_array($i + 1, $matchPositionInfo[$attribute], true)) {
+        foreach ($this->engine->getTokenizer()->tokenize($value)->all() as $token) {
+            if (\in_array($token->getOriginalStartPosition(), $startPositions, true)) {
                 $matches->add($token);
             }
         }
@@ -1110,8 +1145,12 @@ class Searcher
             if (str_starts_with($key, self::MATCH_POSITION_INFO_PREFIX) && $value !== null) {
                 $documentMatches = explode(',', $value);
                 foreach ($documentMatches as $documentMatch) {
-                    $attributeMatches = explode(':', $documentMatch);
-                    $matchPositionInfo[$attributeMatches[0]][] = (int) $attributeMatches[1];
+                    [$attribute, $position, $start, $end] = explode(':', $documentMatch, 4);
+                    $matchPositionInfo[$attribute][] = [
+                        'position' => (int) $position,
+                        'start' => (int) $start,
+                        'end' => (int) $end,
+                    ];
                 }
             }
         }

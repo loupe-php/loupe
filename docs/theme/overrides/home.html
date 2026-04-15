@@ -1,0 +1,31 @@
+{% extends "main.html" %}
+
+{% block content %}
+  <section class="loupe-hero">
+    <div class="loupe-hero__mesh"></div>
+    <div class="loupe-hero__content">
+      <div class="loupe-hero__copy">
+        <div class="loupe-hero__meta">
+          <span class="loupe-eyebrow">SQLite-native search for PHP applications</span>
+          <div class="loupe-hero__badge">PHP + SQLite</div>
+        </div>
+        <h1 class="loupe-hero__wordmark">
+          <img src="{{ 'assets/logo/logo.svg'|url }}" alt="" aria-hidden="true" />
+          <span class="loupe-sr-only">Loupe</span>
+        </h1>
+        <p>
+          An SQLite-based, PHP-only full-text search engine built for applications that need better than
+          <code>LIKE %...%</code> without the operational weight of running a separate search service.
+        </p>
+        <div class="loupe-hero__actions">
+          <a class="md-button md-button--primary" href="#installation">Get Started</a>
+          <a class="md-button loupe-button--ghost" href="https://github.com/loupe-php/loupe">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="loupe-page-shell loupe-page-shell--home">
+    {{ page.content }}
+  </div>
+{% endblock %}

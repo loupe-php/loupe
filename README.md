@@ -5,6 +5,8 @@
 
 <br/>
 
+> Read the documentation: [loupe-php.github.io/loupe](https://loupe-php.github.io/loupe/)
+
 Loupe…
 
 * only requires PHP and SQLite, you don't need anything else - no containers, no nothing
@@ -33,7 +35,7 @@ Note that some implementation details (e.g. libraries used) referenced in this b
 Performance depends on many factors but here are some ballpark numbers based on indexing the 
 [~32k movies fixture][MeiliSearch_Movies] provided by MeiliSearch.
 
-* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **70 ms**
+* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes about **26 ms**
 * **Indexing** will take around **60 seconds** (this varies greatly because it depends on how much content per document
   you want to index
 
@@ -163,6 +165,8 @@ print_r($results->toArray());
 ```
 
 ## Docs
+
+The documentation is available at [loupe-php.github.io/loupe](https://loupe-php.github.io/loupe/).
 
 * [Schema](./docs/schema.md)
 * [Configuration](./docs/configuration.md)
