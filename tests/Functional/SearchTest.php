@@ -2486,6 +2486,84 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testRelevanceAndRankingScoreForNormalizedSpelling(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['name'])
+            ->withSortableAttributes(['name']);
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Thomas Müller',
+            ],
+            [
+                'id' => 2,
+                'name' => 'Thomas Muller',
+            ],
+            [
+                'id' => 3,
+                'name' => 'Sandra Mûllêr',
+            ],
+            [
+                'id' => 4,
+                'name' => 'Sandra Muller',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('thomas müller')
+            ->withAttributesToRetrieve(['name']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Thomas Müller',
+                ],
+                [
+                    'name' => 'Thomas Muller',
+                ],
+                [
+                    'name' => 'Sandra Mûllêr',
+                ],
+                [
+                    'name' => 'Sandra Muller',
+                ],
+            ],
+            'query' => 'thomas müller',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
+        ]);
+
+        // Test without umlaut
+        $searchParameters = $searchParameters->withQuery('sandra muller');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Sandra Muller',
+                ],
+                [
+                    'name' => 'Sandra Mûllêr',
+                ],
+                [
+                    'name' => 'Thomas Muller',
+                ],
+                [
+                    'name' => 'Thomas Müller',
+                ],
+            ],
+            'query' => 'sandra muller',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
+        ]);
+    }
+
     public function testRelevanceAndRankingScoreWithAttributeWeights(): void
     {
         $documents = [
