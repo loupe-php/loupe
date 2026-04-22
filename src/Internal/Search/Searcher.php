@@ -11,6 +11,7 @@ use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
 use Location\Bounds;
 use Loupe\Loupe\BrowseResult;
+use Loupe\Loupe\Config\MatchingStrategy;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\Internal\Engine;
@@ -821,7 +822,16 @@ class Searcher
             }
         }
 
-        $where = implode(' OR ', array_map(
+        $strategy = $this->queryParameters instanceof SearchParameters
+            ? $this->queryParameters->getMatchingStrategy()
+            : MatchingStrategy::Any;
+
+        $positiveOperator = match ($strategy) {
+            MatchingStrategy::All => ' AND ',
+            MatchingStrategy::Any => ' OR ',
+        };
+
+        $where = implode($positiveOperator, array_map(
             fn ($statements) => '(' . implode(' AND ', $statements) . ')',
             $positiveConditions
         ));
