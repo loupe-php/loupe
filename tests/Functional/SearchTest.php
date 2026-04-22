@@ -1943,6 +1943,37 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testMatchingStrategyAllConsidersPhrase(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('"she is" her daughter')
+            ->withMatchingStrategy(MatchingStrategy::All)
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 17,
+                    'title' => 'The Dark',
+                ],
+            ],
+            'query' => '"she is" her daughter',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testMaxHits(): void
     {
         $configuration = Configuration::create()
