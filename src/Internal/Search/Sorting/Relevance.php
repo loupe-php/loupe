@@ -44,6 +44,7 @@ class Relevance extends AbstractSorter
 
         $ctes = [];
         $relevances = [];
+        $needsFoldingState = \in_array('exactness', $engine->getConfiguration()->getRankingRules(), true);
 
         foreach ($tokens as $token) {
             $cteName = $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
@@ -62,7 +63,6 @@ class Relevance extends AbstractSorter
                 // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
                 // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
                 // because it's just a ";" separated list.
-                ->addSelect("COALESCE(group_concat(DISTINCT dm.position || ':' || dm.attribute || ':' || dm.typos), '0' ) AS relevance")
                 ->from(Searcher::CTE_MATCHES)
                 ->leftJoin(
                     Searcher::CTE_MATCHES,
@@ -71,6 +71,12 @@ class Relevance extends AbstractSorter
                     \sprintf('dm.document = %s.document_id', Searcher::CTE_MATCHES)
                 )
                 ->groupBy(Searcher::CTE_MATCHES . '.document_id');
+
+            if ($needsFoldingState) {
+                $qb->addSelect("COALESCE(group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos), '0') || '|' || COALESCE(MAX(dm.exact_match), 0) AS relevance");
+            } else {
+                $qb->addSelect("COALESCE(group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos), '0' ) AS relevance");
+            }
 
             $searcher->addCTE(new Cte($termRelevanceCTE, ['document_id', 'relevance_per_term'], $qb));
 

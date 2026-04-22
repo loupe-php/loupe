@@ -563,22 +563,38 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.start');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.end');
+        $needsFoldingState = $this->needsFoldingState();
+        $needsTypoCount = $this->needsTypoCount();
+        $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
 
-        if ($this->needsTypoCount()) {
+        if ($needsTypoCount) {
             $cteSelectQb->addSelect(\sprintf(
                 'MIN(loupe_levensthein(%s.term, %s, %s)) AS typos',
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $termsAlias,
                 $this->createNamedParameter($token->getTerm()),
                 $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
             ));
+        } else {
+            $cteSelectQb->addSelect('0 AS typos');
+        }
+
+        if ($needsFoldingState) {
+            $cteSelectQb->addSelect(\sprintf(
+                'MAX(CASE WHEN %s.term = %s AND %s.folded = %s THEN 1 ELSE 0 END) AS exact_match',
+                $termsAlias,
+                $this->createNamedParameter($token->getTerm()),
+                $termsDocumentsAlias,
+                $token->wasFolded() ? '1' : '0'
+            ));
+        }
+
+        if ($needsTypoCount || $needsFoldingState) {
             $cteSelectQb->innerJoin(
                 $termsDocumentsAlias,
                 IndexInfo::TABLE_NAME_TERMS,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                \sprintf('%s.id = %s.term', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS), $termsDocumentsAlias)
+                $termsAlias,
+                \sprintf('%s.id = %s.term', $termsAlias, $termsDocumentsAlias)
             );
-        } else {
-            $cteSelectQb->addSelect('0 AS typos');
         }
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
@@ -624,7 +640,9 @@ class Searcher
 
         $this->addCTE(new Cte(
             $cteName,
-            ['document', 'attribute', 'position', 'start', 'end', 'typos'],
+            $needsFoldingState ?
+                ['document', 'attribute', 'position', 'start', 'end', 'typos', 'exact_match'] :
+                ['document', 'attribute', 'position', 'start', 'end', 'typos'],
             $cteSelectQb
         ));
     }
@@ -1234,6 +1252,11 @@ class Searcher
 
         $this->queryBuilder->setFirstResult($offset);
         $this->queryBuilder->setMaxResults($limit);
+    }
+
+    private function needsFoldingState(): bool
+    {
+        return \in_array('exactness', $this->engine->getConfiguration()->getRankingRules(), true);
     }
 
     /**

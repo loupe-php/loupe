@@ -556,6 +556,9 @@ class IndexInfo
         $table->addColumn('end', Types::INTEGER)
             ->setNotnull(true);
 
+        $table->addColumn('folded', Types::BOOLEAN)
+            ->setNotnull(true);
+
         $table->setPrimaryKey(['term', 'document', 'attribute', 'position']);
         $table->addIndex(['document']);
         $table->addIndex(['position']);
