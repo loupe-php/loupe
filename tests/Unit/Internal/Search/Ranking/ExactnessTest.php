@@ -18,23 +18,28 @@ class ExactnessTest extends TestCase
             0.0,
         ];
 
-        yield 'Zero typos means exact match' => [
-            '1:title:0',
+        yield 'Zero typos without normalization mismatch means exact match' => [
+            '1:title:0:0',
             1.0,
         ];
 
+        yield 'Zero typos with normalization mismatch is not an exact match' => [
+            '1:title:0:1',
+            0,
+        ];
+
         yield 'One typo is not an exact match' => [
-            '1:title:1',
+            '1:title:1:0',
             0,
         ];
 
         yield 'Five typos is also not an exact match' => [
-            '1:title:5',
+            '1:title:5:0',
             0,
         ];
 
         yield 'One term matches exactly, the other does not' => [
-            '1:title:0;3:title:3',
+            '1:title:0:0;3:title:3:0',
             0.5,
         ];
     }

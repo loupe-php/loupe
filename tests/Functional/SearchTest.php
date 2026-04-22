@@ -2424,6 +2424,63 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testRelevanceAndRankingScoreForLengthChangingFolding(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['name'])
+            ->withSortableAttributes(['name']);
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Die große Straße',
+            ],
+            [
+                'id' => 2,
+                'name' => 'Die grosse Strasse',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('die große straße')
+            ->withAttributesToRetrieve(['name']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Die große Straße',
+                ],
+                [
+                    'name' => 'Die grosse Strasse',
+                ],
+            ],
+            'query' => 'die große straße',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+
+        $searchParameters = $searchParameters->withQuery('die grosse strasse');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Die grosse Strasse',
+                ],
+                [
+                    'name' => 'Die große Straße',
+                ],
+            ],
+            'query' => 'die grosse strasse',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
     public function testRelevanceAndRankingScoreForNonExistentQueryTerms(): void
     {
         $configuration = Configuration::create()
@@ -2479,6 +2536,84 @@ class SearchTest extends TestCase
                 ],
             ],
             'query' => 'foobar life learning',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
+        ]);
+    }
+
+    public function testRelevanceAndRankingScoreForNormalizedSpelling(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['name'])
+            ->withSortableAttributes(['name']);
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Thomas Müller',
+            ],
+            [
+                'id' => 2,
+                'name' => 'Thomas Muller',
+            ],
+            [
+                'id' => 3,
+                'name' => 'Sandra Mûllêr',
+            ],
+            [
+                'id' => 4,
+                'name' => 'Sandra Muller',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('thomas müller')
+            ->withAttributesToRetrieve(['name']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Thomas Müller',
+                ],
+                [
+                    'name' => 'Thomas Muller',
+                ],
+                [
+                    'name' => 'Sandra Mûllêr',
+                ],
+                [
+                    'name' => 'Sandra Muller',
+                ],
+            ],
+            'query' => 'thomas müller',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
+        ]);
+
+        // Test without umlaut
+        $searchParameters = $searchParameters->withQuery('sandra muller');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Sandra Muller',
+                ],
+                [
+                    'name' => 'Sandra Mûllêr',
+                ],
+                [
+                    'name' => 'Thomas Muller',
+                ],
+                [
+                    'name' => 'Thomas Müller',
+                ],
+            ],
+            'query' => 'sandra muller',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,

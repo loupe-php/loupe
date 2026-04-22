@@ -26,17 +26,17 @@ class WordCountTest extends TestCase
         ];
 
         yield 'One of three terms matches' => [
-            '1:title:1;0;0',
+            '1:title:1:0;0;0',
             1 / 3,
         ];
 
         yield 'Two of three terms match' => [
-            '1:title:1;2:summary:1;0',
+            '1:title:1:0;2:summary:1:0;0',
             2 / 3,
         ];
 
         yield 'All terms match' => [
-            '1:title:1;2:summary:1;3:summary:1',
+            '1:title:1:0;2:summary:1:0;3:summary:1:0',
             1,
         ];
     }

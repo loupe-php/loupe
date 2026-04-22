@@ -26,17 +26,17 @@ class TypoCountTest extends TestCase
         ];
 
         yield 'Zero typo match' => [
-            '1:title:0',
+            '1:title:0:0',
             1.0,
         ];
 
         yield 'One typo' => [
-            '1:title:1',
+            '1:title:1:0',
             exp(-0.1 * 1),
         ];
 
         yield 'Always lowest amount of typos is considered' => [
-            '1:title:1,2:summary:2;3:summary:1', // Two terms, the first one matched in "title" (1 typo) and "summary" (2 typos), the second in "summary" with 1 typo. So 2 typos in total.
+            '1:title:1:0,2:summary:2:0;3:summary:1:0', // Two terms, the first one matched in "title" (1 typo) and "summary" (2 typos), the second in "summary" with 1 typo. So 2 typos in total.
             exp(-0.1 * 2),
         ];
     }

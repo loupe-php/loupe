@@ -10,7 +10,8 @@ class Term
      * @param array<TermMatch> $termMatches
      */
     public function __construct(
-        private array $termMatches
+        private array $termMatches,
+        private bool $hasExactMatch = false
     ) {
     }
 
@@ -39,6 +40,11 @@ class Term
     public function getMatches(): array
     {
         return $this->termMatches;
+    }
+
+    public function hasExactMatch(): bool
+    {
+        return $this->hasExactMatch;
     }
 
     public function hasMatches(): bool

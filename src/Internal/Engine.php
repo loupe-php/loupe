@@ -36,7 +36,7 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '0.13.0'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.13.1'; // Increase this whenever a re-index of all documents is needed
 
     private const DEPENDENCY_HASH_RELEVANT_PACKAGES = [
         'wamania/php-stemmer', // Stemming algorithms might change
