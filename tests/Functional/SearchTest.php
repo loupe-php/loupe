@@ -2182,6 +2182,40 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testPhraseSearchWorksWithRepeatedTerms(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title']);
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'title' => 'Gone With the Wind: The Wind Blows No More',
+            ],
+        ]);
+
+        // "she" appears multiple times and might throw off a single position check
+        $searchParameters = SearchParameters::create()
+            ->withQuery('"the wind blows"')
+            ->withAttributesToRetrieve(['id', 'title']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Gone With the Wind: The Wind Blows No More',
+                ],
+            ],
+            'query' => '"the wind blows"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<mixed> $expectedResults
      */
