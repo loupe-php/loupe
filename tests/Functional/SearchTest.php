@@ -2196,7 +2196,6 @@ class SearchTest extends TestCase
             ],
         ]);
 
-        // "she" appears multiple times and might throw off a single position check
         $searchParameters = SearchParameters::create()
             ->withQuery('"the wind blows"')
             ->withAttributesToRetrieve(['id', 'title']);
