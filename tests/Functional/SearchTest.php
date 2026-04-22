@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Functional;
 
+use Loupe\Loupe\Config\MatchingStrategy;
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\SearchParameters;
@@ -1834,6 +1835,77 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => \count($expectedHits),
+        ]);
+    }
+
+    public function testMatchingStrategyAll(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview', 'genres'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        // "any" = default = must contain at least one of the terms
+        $anyParameters = SearchParameters::create()
+            ->withQuery('young london glaciologist music')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $anyParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                ],
+            ],
+            'query' => 'young london glaciologist music',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
+        ]);
+
+        // "all" = must contain all terms
+        $allParameters = $anyParameters->withMatchingStrategy(MatchingStrategy::All);
+
+        $this->searchAndAssertResults($loupe, $allParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young london glaciologist music',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $impossibleParameters = $anyParameters->withQuery('young london glaciologist music life things')->withMatchingStrategy(MatchingStrategy::All);
+
+        $this->searchAndAssertResults($loupe, $impossibleParameters, [
+            'hits' => [],
+            'query' => 'young london glaciologist music life things',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
         ]);
     }
 
