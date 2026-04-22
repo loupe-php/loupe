@@ -1909,6 +1909,26 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testMatchingStrategyAllWithNegation(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young london glaciologist -passion')
+            ->withMatchingStrategy(MatchingStrategy::All)
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => 'young london glaciologist -passion',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
     public function testMaxHits(): void
     {
         $configuration = Configuration::create()
