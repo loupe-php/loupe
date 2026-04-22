@@ -1838,7 +1838,7 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testMatchingStrategyAll(): void
+    public function testMatchingStrategyAnyRequiresAnyOneTerm(): void
     {
         $configuration = Configuration::create()
             ->withSortableAttributes(['title'])
@@ -1848,13 +1848,12 @@ class SearchTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
 
-        // "any" = default = must contain at least one of the terms
-        $anyParameters = SearchParameters::create()
+        $searchParameters = SearchParameters::create()
             ->withQuery('young london glaciologist music')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc']);
 
-        $this->searchAndAssertResults($loupe, $anyParameters, [
+        $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
                     'id' => 27,
@@ -1879,11 +1878,25 @@ class SearchTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 4,
         ]);
+    }
 
-        // "all" = must contain all terms
-        $allParameters = $anyParameters->withMatchingStrategy(MatchingStrategy::All);
+    public function testMatchingStrategyAllRequiresAllTerms(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview', 'genres'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
 
-        $this->searchAndAssertResults($loupe, $allParameters, [
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young london glaciologist music')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withMatchingStrategy(MatchingStrategy::All)
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
                     'id' => 27,
@@ -1897,7 +1910,8 @@ class SearchTest extends TestCase
             'totalHits' => 1,
         ]);
 
-        $impossibleParameters = $anyParameters->withQuery('young london glaciologist music life things')->withMatchingStrategy(MatchingStrategy::All);
+        $impossibleParameters = $searchParameters
+            ->withQuery('young london glaciologist music life things');
 
         $this->searchAndAssertResults($loupe, $impossibleParameters, [
             'hits' => [],
@@ -1909,7 +1923,7 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testMatchingStrategyAllWithNegation(): void
+    public function testMatchingStrategyAllConsidersNegation(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
 
