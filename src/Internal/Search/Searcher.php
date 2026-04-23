@@ -627,7 +627,7 @@ class Searcher
         // Ensure phrase positions if any
         if ($token->isPartOfPhrase() && $previousPhraseToken) {
             $cteSelectQb->andWhere(\sprintf(
-                '%s.position = (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
+                '%s.position IN (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
                 $termsDocumentsAlias,
                 $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken),
             ));
