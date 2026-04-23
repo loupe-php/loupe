@@ -1838,91 +1838,6 @@ class SearchTest extends TestCase
         ]);
     }
 
-    public function testMatchingStrategyAnyRequiresAnyOneTerm(): void
-    {
-        $configuration = Configuration::create()
-            ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview', 'genres'])
-            ->withTypoTolerance(TypoTolerance::create()->disable());
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
-
-        $searchParameters = SearchParameters::create()
-            ->withQuery('young london glaciologist music')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withSort(['title:asc']);
-
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 27,
-                    'title' => '9 Songs',
-                ],
-                [
-                    'id' => 16,
-                    'title' => 'Dancer in the Dark',
-                ],
-                [
-                    'id' => 12,
-                    'title' => 'Finding Nemo',
-                ],
-                [
-                    'id' => 18,
-                    'title' => 'The Fifth Element',
-                ],
-            ],
-            'query' => 'young london glaciologist music',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 4,
-        ]);
-    }
-
-    public function testMatchingStrategyAllRequiresAllTerms(): void
-    {
-        $configuration = Configuration::create()
-            ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview', 'genres'])
-            ->withTypoTolerance(TypoTolerance::create()->disable());
-
-        $loupe = $this->createLoupe($configuration);
-        $this->indexFixture($loupe, 'movies');
-
-        $searchParameters = SearchParameters::create()
-            ->withQuery('young london glaciologist music')
-            ->withAttributesToRetrieve(['id', 'title'])
-            ->withMatchingStrategy(MatchingStrategy::All)
-            ->withSort(['title:asc']);
-
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 27,
-                    'title' => '9 Songs',
-                ],
-            ],
-            'query' => 'young london glaciologist music',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 1,
-        ]);
-
-        $impossibleParameters = $searchParameters
-            ->withQuery('young london glaciologist music life things');
-
-        $this->searchAndAssertResults($loupe, $impossibleParameters, [
-            'hits' => [],
-            'query' => 'young london glaciologist music life things',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 0,
-            'totalHits' => 0,
-        ]);
-    }
-
     public function testMatchingStrategyAllConsidersNegation(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
@@ -1973,6 +1888,91 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 1,
+        ]);
+    }
+
+    public function testMatchingStrategyAllRequiresAllTerms(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview', 'genres'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young london glaciologist music')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withMatchingStrategy(MatchingStrategy::All)
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young london glaciologist music',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $impossibleParameters = $searchParameters
+            ->withQuery('young london glaciologist music life things');
+
+        $this->searchAndAssertResults($loupe, $impossibleParameters, [
+            'hits' => [],
+            'query' => 'young london glaciologist music life things',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
+    public function testMatchingStrategyAnyRequiresAnyOneTerm(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview', 'genres'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young london glaciologist music')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                ],
+            ],
+            'query' => 'young london glaciologist music',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
         ]);
     }
 
