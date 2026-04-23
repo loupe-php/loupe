@@ -1953,8 +1953,10 @@ class SearchTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
 
+        // `and the son` would match at least 2 documents
+        // `and "the son"` would only match 1 document
         $searchParameters = SearchParameters::create()
-            ->withQuery('"she is" her daughter')
+            ->withQuery('and "the son"')
             ->withMatchingStrategy(MatchingStrategy::All)
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc']);
@@ -1962,11 +1964,11 @@ class SearchTest extends TestCase
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 17,
-                    'title' => 'The Dark',
+                    'id' => 19,
+                    'title' => 'Metropolis',
                 ],
             ],
-            'query' => '"she is" her daughter',
+            'query' => 'and "the son"',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
