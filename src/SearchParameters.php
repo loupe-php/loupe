@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe;
 
+use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
+use Loupe\Loupe\Internal\Search\MatchingStrategy;
 
 final class SearchParameters extends AbstractQueryParameters
 {
@@ -32,6 +34,8 @@ final class SearchParameters extends AbstractQueryParameters
     private string $highlightEndTag = '</em>';
 
     private string $highlightStartTag = '<em>';
+
+    private MatchingStrategy $matchingStrategy = MatchingStrategy::Any;
 
     private float $rankingScoreThreshold = 0.0;
 
@@ -63,6 +67,7 @@ final class SearchParameters extends AbstractQueryParameters
      *     page?: ?int,
      *     offset?: int,
      *     limit?: int,
+     *     matchingStrategy?: string,
      *     query?: string,
      *     rankingScoreThreshold?: float,
      *     showMatchesPosition?: bool,
@@ -93,6 +98,10 @@ final class SearchParameters extends AbstractQueryParameters
 
         if (isset($data['facets'])) {
             $instance = $instance->withFacets($data['facets']);
+        }
+
+        if (isset($data['matchingStrategy'])) {
+            $instance = $instance->withMatchingStrategy($data['matchingStrategy']);
         }
 
         if (isset($data['rankingScoreThreshold'])) {
@@ -176,6 +185,7 @@ final class SearchParameters extends AbstractQueryParameters
         $hash[] = json_encode($this->getHitsPerPage());
         $hash[] = json_encode($this->getPage());
         $hash[] = json_encode($this->getLimit());
+        $hash[] = json_encode($this->getMatchingStrategy());
         $hash[] = json_encode($this->getOffset());
         $hash[] = json_encode($this->getQuery());
         $hash[] = json_encode($this->showMatchesPosition());
@@ -192,6 +202,11 @@ final class SearchParameters extends AbstractQueryParameters
     public function getHighlightStartTag(): string
     {
         return $this->highlightStartTag;
+    }
+
+    public function getMatchingStrategy(): string
+    {
+        return $this->matchingStrategy->value;
     }
 
     public function getRankingScoreThreshold(): float
@@ -231,6 +246,7 @@ final class SearchParameters extends AbstractQueryParameters
      *     page: ?int,
      *     offset: int,
      *     limit: int,
+     *     matchingStrategy: string,
      *     query: string,
      *     attributesToRetrieve: array<string>,
      *     attributesToSearchOn: array<string>,
@@ -251,6 +267,7 @@ final class SearchParameters extends AbstractQueryParameters
             'cropMarker' => $this->cropMarker,
             'highlightEndTag' => $this->highlightEndTag,
             'highlightStartTag' => $this->highlightStartTag,
+            'matchingStrategy' => $this->getMatchingStrategy(),
             'rankingScoreThreshold' => $this->rankingScoreThreshold,
             'showMatchesPosition' => $this->showMatchesPosition,
             'showRankingScore' => $this->showRankingScore,
@@ -319,6 +336,23 @@ final class SearchParameters extends AbstractQueryParameters
     {
         $clone = clone $this;
         $clone->facets = $facets;
+
+        return $clone;
+    }
+
+    public function withMatchingStrategy(string $matchingStrategy): self
+    {
+        $strategy = MatchingStrategy::tryFrom($matchingStrategy);
+
+        if ($strategy === null) {
+            throw InvalidSearchParametersException::invalidMatchingStrategy(
+                $matchingStrategy,
+                array_column(MatchingStrategy::cases(), 'value'),
+            );
+        }
+
+        $clone = clone $this;
+        $clone->matchingStrategy = $strategy;
 
         return $clone;
     }
