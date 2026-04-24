@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Unit;
 
-use Loupe\Loupe\Config\MatchingStrategy;
 use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\TestCase;
@@ -33,7 +32,7 @@ class SearchParametersTest extends TestCase
 
     public function testMatchingStrategyDefaultsToAny(): void
     {
-        $this->assertSame(MatchingStrategy::Any, SearchParameters::create()->getMatchingStrategy());
+        $this->assertSame('any', SearchParameters::create()->getMatchingStrategy());
     }
 
     public function testMatchingStrategyFromArrayRejectsUnknownValue(): void
@@ -60,7 +59,7 @@ class SearchParametersTest extends TestCase
             ->withQuery('hello world')
             ->withPage(3)
             ->withHitsPerPage(50)
-            ->withMatchingStrategy(MatchingStrategy::All)
+            ->withMatchingStrategy('all')
             ->withRankingScoreThreshold(0.25)
             ->withFilter("status = 'active'")
             ->withAttributesToRetrieve(['title', 'author'])
@@ -74,7 +73,7 @@ class SearchParametersTest extends TestCase
         $reconstructed = SearchParameters::fromArray($array);
 
         $this->assertSame($original->toArray(), $reconstructed->toArray());
-        $this->assertSame(MatchingStrategy::All, $reconstructed->getMatchingStrategy());
+        $this->assertSame('all', $reconstructed->getMatchingStrategy());
     }
 
     public function testToStringAndFromString(): void
@@ -84,5 +83,13 @@ class SearchParametersTest extends TestCase
         $parsed = SearchParameters::fromString($json);
 
         $this->assertSame($params->toArray(), $parsed->toArray());
+    }
+
+    public function testWithMatchingStrategyRejectsUnknownValue(): void
+    {
+        $this->expectException(InvalidSearchParametersException::class);
+        $this->expectExceptionMessage('Invalid matching strategy "bogus"');
+
+        SearchParameters::create()->withMatchingStrategy('bogus');
     }
 }

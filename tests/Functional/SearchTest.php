@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Functional;
 
-use Loupe\Loupe\Config\MatchingStrategy;
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\SearchParameters;
@@ -1844,7 +1843,7 @@ class SearchTest extends TestCase
 
         $searchParameters = SearchParameters::create()
             ->withQuery('young london glaciologist -passion')
-            ->withMatchingStrategy(MatchingStrategy::All)
+            ->withMatchingStrategy('all')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc']);
 
@@ -1872,7 +1871,7 @@ class SearchTest extends TestCase
         // `and "the son"` would only match 1 document
         $searchParameters = SearchParameters::create()
             ->withQuery('and "the son"')
-            ->withMatchingStrategy(MatchingStrategy::All)
+            ->withMatchingStrategy('all')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc']);
 
@@ -1904,7 +1903,7 @@ class SearchTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('young london glaciologist music')
             ->withAttributesToRetrieve(['id', 'title'])
-            ->withMatchingStrategy(MatchingStrategy::All)
+            ->withMatchingStrategy('all')
             ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Loupe\Loupe\Config;
+namespace Loupe\Loupe\Internal\Search;
 
 enum MatchingStrategy: string
 {

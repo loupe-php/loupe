@@ -53,7 +53,7 @@ By default, a search will match any documents that match at least one of the que
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withQuery('all of these words must match')
-    ->withMatchingStrategy(\Loupe\Config\MatchingStrategy::All)
+    ->withMatchingStrategy('all')
 ;
 ```
 
