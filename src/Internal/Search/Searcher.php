@@ -821,7 +821,16 @@ class Searcher
             }
         }
 
-        $where = implode(' OR ', array_map(
+        $strategy = $this->queryParameters instanceof SearchParameters
+            ? MatchingStrategy::from($this->queryParameters->getMatchingStrategy())
+            : MatchingStrategy::Any;
+
+        $positiveOperator = match ($strategy) {
+            MatchingStrategy::All => ' AND ',
+            MatchingStrategy::Any => ' OR ',
+        };
+
+        $where = implode($positiveOperator, array_map(
             fn ($statements) => '(' . implode(' AND ', $statements) . ')',
             $positiveConditions
         ));

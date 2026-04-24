@@ -30,6 +30,21 @@ class SearchParametersTest extends TestCase
         $this->assertSame(2, $newParams->getPage());
     }
 
+    public function testMatchingStrategyDefaultsToAny(): void
+    {
+        $this->assertSame('any', SearchParameters::create()->getMatchingStrategy());
+    }
+
+    public function testMatchingStrategyFromArrayRejectsUnknownValue(): void
+    {
+        $this->expectException(InvalidSearchParametersException::class);
+        $this->expectExceptionMessage('Invalid matching strategy "bogus"');
+
+        SearchParameters::fromArray([
+            'matchingStrategy' => 'bogus',
+        ]);
+    }
+
     public function testMaxHitsPerPage(): void
     {
         $this->expectException(InvalidSearchParametersException::class);
@@ -44,6 +59,7 @@ class SearchParametersTest extends TestCase
             ->withQuery('hello world')
             ->withPage(3)
             ->withHitsPerPage(50)
+            ->withMatchingStrategy('all')
             ->withRankingScoreThreshold(0.25)
             ->withFilter("status = 'active'")
             ->withAttributesToRetrieve(['title', 'author'])
@@ -57,6 +73,7 @@ class SearchParametersTest extends TestCase
         $reconstructed = SearchParameters::fromArray($array);
 
         $this->assertSame($original->toArray(), $reconstructed->toArray());
+        $this->assertSame('all', $reconstructed->getMatchingStrategy());
     }
 
     public function testToStringAndFromString(): void
@@ -66,5 +83,13 @@ class SearchParametersTest extends TestCase
         $parsed = SearchParameters::fromString($json);
 
         $this->assertSame($params->toArray(), $parsed->toArray());
+    }
+
+    public function testWithMatchingStrategyRejectsUnknownValue(): void
+    {
+        $this->expectException(InvalidSearchParametersException::class);
+        $this->expectExceptionMessage('Invalid matching strategy "bogus"');
+
+        SearchParameters::create()->withMatchingStrategy('bogus');
     }
 }

@@ -42,6 +42,21 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 Hint: Note that your query is stripped if it's very long. See the section about [maximum query tokens in the 
 configuration settings][Config].
 
+## Matching strategy
+
+By default, a search will match any documents that match at least one of the query terms. You can change this behavior by configuring a matching strategy.
+
+`any`: A document is returned if it matches at least one of the query terms. This is the default matching strategy.
+
+`all`: A document is only returned if it matches all query terms.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withQuery('all of these words must match')
+    ->withMatchingStrategy('all')
+;
+```
+
 ## Attributes to receive
 
 By default, Loupe returns all the attributes of the documents you've indexed. If you are interested in only a subset 
