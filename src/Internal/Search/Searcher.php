@@ -43,6 +43,12 @@ class Searcher
 
     public const DISTANCE_ALIAS = '_distance';
 
+    public const DISTINCT_RANK_ALIAS = '_distinct_rank';
+
+    public const DISTINCT_VALUE_ALIAS = '_distinct_value';
+
+    public const DOCUMENT_ID_ALIAS = '_document_id';
+
     public const FACET_ALIAS_COUNT_PREFIX = '_facet_count_';
 
     public const FACET_ALIAS_MIN_MAX_PREFIX = '_facet_minmax_';
@@ -67,6 +73,11 @@ class Searcher
      * @var array<int|string, string>
      */
     private array $namedParameters = [];
+
+    /**
+     * @var array<array{sort: string, order: string, needsMaterialization: bool}>
+     */
+    private array $orderByParts = [];
 
     private QueryBuilder $queryBuilder;
 
@@ -198,6 +209,17 @@ class Searcher
         return $cteName;
     }
 
+    public function addOrderBy(string $sort, string $order, bool $needsMaterialization = false): void
+    {
+        $this->orderByParts[] = [
+            'sort' => $sort,
+            'order' => $order,
+            'needsMaterialization' => $needsMaterialization,
+        ];
+
+        $this->queryBuilder->addOrderBy($sort, $order);
+    }
+
     public function createNamedParameter(mixed $value, mixed $type = ParameterType::STRING): string
     {
         if ($type === ParameterType::STRING && (\is_string($value) || \is_int($value))) {
@@ -232,10 +254,10 @@ class Searcher
         $this->addPositionsForFormatting($tokens);
         $this->filterDocuments($tokens); // Then filter the documents (requires the search term CTEs)
         $this->addFacets();
-        $this->selectTotalHits();
         $this->sortDocuments();
         $this->selectDistance();
         $this->applyDistinct();
+        $this->selectTotalHits();
         $this->limitPagination();
 
         $showAllAttributes = \in_array('*', $this->queryParameters->getAttributesToRetrieve(), true);
@@ -767,9 +789,65 @@ class Searcher
         }
 
         $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $this->queryBuilder->addSelect($documentsAlias . '.' . $distinct . ' AS ' . self::DISTINCT_VALUE_ALIAS);
+
+        // We handle DISTINCT by ranking rows within each distinct value and then keeping the top one.
+        // If an ORDER BY part is computed in this query, we first expose it as a select alias so the outer
+        // ranking query can still sort by it.
+        $orderByParts = [];
+        foreach ($this->orderByParts as $index => $orderByPart) {
+            if ($orderByPart['needsMaterialization']) {
+                $alias = '_distinct_order_' . $index;
+                $this->queryBuilder->addSelect($orderByPart['sort'] . ' AS ' . $alias);
+
+                $orderByParts[] = [
+                    'sort' => $alias,
+                    'order' => $orderByPart['order'],
+                ];
+
+                continue;
+            }
+
+            $orderByParts[] = [
+                'sort' => $orderByPart['sort'],
+                'order' => $orderByPart['order'],
+            ];
+        }
+
+        $orderByParts[] = [
+            'sort' => self::DOCUMENT_ID_ALIAS,
+            'order' => 'ASC',
+        ];
+
+        // Now wrap the current query and assign a row number per distinct value using the normalized ORDER BY list.
+        // We add the document id at the end so ties still resolve in a predictable way.
+        $rankedQueryBuilder = $this->engine->getConnection()->createQueryBuilder();
+        $rankedQueryBuilder
+            ->select('*')
+            ->addSelect(\sprintf(
+                'ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s) AS %s',
+                self::DISTINCT_VALUE_ALIAS,
+                implode(', ', array_map(static fn (array $orderByPart): string => $orderByPart['sort'] . ' ' . $orderByPart['order'], $orderByParts)),
+                self::DISTINCT_RANK_ALIAS,
+            ))
+            ->from('(' . $this->queryBuilder->getSQL() . ')')
+            ->setParameters($this->queryBuilder->getParameters(), $this->queryBuilder->getParameterTypes())
+        ;
+
+        // Replace the original builder with the ranked subquery and keep only the first row from each distinct group.
+        // After that we re-apply the normalized ORDER BY parts to the final query builder below.
+        $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
         $this->queryBuilder
-            ->addSelect($documentsAlias . '.' . $distinct)
-            ->groupBy($documentsAlias . '.' . $distinct);
+            ->select('*')
+            ->from('(' . $rankedQueryBuilder->getSQL() . ')')
+            ->where(self::DISTINCT_RANK_ALIAS . ' = 1')
+            ->setParameters($rankedQueryBuilder->getParameters(), $rankedQueryBuilder->getParameterTypes())
+        ;
+
+        $this->orderByParts = [];
+        foreach ($orderByParts as $orderByPart) {
+            $this->addOrderBy($orderByPart['sort'], $orderByPart['order']);
+        }
     }
 
     private function askedForFormattingOrMatchesPosition(): bool
@@ -1340,6 +1418,7 @@ class Searcher
     {
         $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
         $this->queryBuilder
+            ->addSelect($documentsAlias . '._id AS ' . self::DOCUMENT_ID_ALIAS)
             ->addSelect($documentsAlias . '._document')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
             ->innerJoin(
