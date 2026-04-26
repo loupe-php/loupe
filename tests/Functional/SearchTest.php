@@ -1267,6 +1267,56 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testDistinctUsesBestMatchingDocumentForHighlightingContext(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['filename'])
+            ->withSearchableAttributes(['content'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'filename' => 'report.pdf',
+                'page' => 1,
+                'content' => 'needle footer',
+            ],
+            [
+                'id' => 2,
+                'filename' => 'report.pdf',
+                'page' => 2,
+                'content' => 'needle important context footer',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('needle context')
+            ->withDistinct('filename')
+            ->withAttributesToRetrieve(['id', 'filename', 'content'])
+            ->withAttributesToHighlight(['content']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'filename' => 'report.pdf',
+                    'content' => 'needle important context footer',
+                    '_formatted' => [
+                        'id' => 2,
+                        'filename' => 'report.pdf',
+                        'content' => '<em>needle</em> important <em>context</em> footer',
+                    ],
+                ],
+            ],
+            'query' => 'needle context',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
