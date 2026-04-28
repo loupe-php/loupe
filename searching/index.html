@@ -1,0 +1,1435 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="An SQLite-based, PHP-only full-text search engine for pragmatic applications.">
+      
+      
+      
+        <link rel="canonical" href="https://loupe-php.github.io/loupe/searching/">
+      
+      
+        <link rel="prev" href="../indexing/">
+      
+      
+        <link rel="next" href="../browsing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/logo/emblem.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Searching - Loupe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="loupe" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#searching" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Loupe" class="md-header__button md-logo" aria-label="Loupe" data-md-component="logo">
+      
+  <img src="../assets/logo/emblem.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Loupe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Searching
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="loupe" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="loupe-dark" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/loupe-php/loupe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    loupe-php/loupe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Loupe" class="md-nav__button md-logo" aria-label="Loupe" data-md-component="logo">
+      
+  <img src="../assets/logo/emblem.svg" alt="logo">
+
+    </a>
+    Loupe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/loupe-php/loupe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    loupe-php/loupe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../indexing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Indexing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Searching
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Searching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attributes-to-receive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes to receive
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attributes-to-search-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes to search on
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Filter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filtering-on-array-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering on array attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-with-facets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search with facets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sort
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sort">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sorting-on-array-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sorting on array attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pagination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pagination
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grouping-distinct-attribute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grouping / Distinct attribute
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#term-highlighting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Term highlighting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-cropping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context cropping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stop-words" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stop words
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#geo-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Geo search
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../browsing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browsing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ranking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ranking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tokenizer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tokenizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blog_post/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background / Blog Post
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attributes-to-receive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes to receive
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attributes-to-search-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes to search on
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Filter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filtering-on-array-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering on array attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-with-facets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search with facets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sort" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sort
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sort">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sorting-on-array-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sorting on array attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pagination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pagination
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grouping-distinct-attribute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grouping / Distinct attribute
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#term-highlighting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Term highlighting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#context-cropping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context cropping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stop-words" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stop words
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#geo-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Geo search
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="searching">Searching<a class="headerlink" href="#searching" title="Permanent link">&para;</a></h1>
+<p>Searching Loupe is achieved by using the <code>SearchParameters</code> object. That one is passed on to Loupe and you get a 
+<code>SearchResult</code> back:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">();</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">$results</span> <span class="o">=</span> <span class="nv">$loupe</span><span class="o">-&gt;</span><span class="na">search</span><span class="p">(</span><span class="nv">$searchParameters</span><span class="p">);</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nb">print_r</span><span class="p">(</span><span class="nv">$results</span><span class="o">-&gt;</span><span class="na">toArray</span><span class="p">());</span>
+</span></code></pre></div>
+<h2 id="query">Query<a class="headerlink" href="#query" title="Permanent link">&para;</a></h2>
+<p>The one thing you'd expect from a search engine is to search for a query:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="o">-&gt;</span><span class="na">withQuery</span><span class="p">(</span><span class="s1">&#39;Hello World&#39;</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>This will return all documents matching <code>Hello</code> or <code>World</code> while considering the <a href="../configuration/">typo tolerance settings</a>.</p>
+<p>Loupe also supports phrase search, so if you want to query for documents containing exactly <code>Hello World</code>, you'll 
+have to use <code>"</code> to encapsulate your query:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="o">-&gt;</span><span class="na">withQuery</span><span class="p">(</span><span class="s1">&#39;&quot;Hello World&quot;&#39;</span><span class="p">)</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>You can also exclude documents that match to a given keyword. Use <code>-</code> as modifier. You can exclude both, regular keywords as well as phrases:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="o">-&gt;</span><span class="na">withQuery</span><span class="p">(</span><span class="s1">&#39;This but -&quot;not this&quot; or -this&#39;</span><span class="p">)</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>Hint: Note that your query is stripped if it's very long. See the section about <a href="../configuration/">maximum query tokens in the 
+configuration settings</a>.</p>
+<h2 id="attributes-to-receive">Attributes to receive<a class="headerlink" href="#attributes-to-receive" title="Permanent link">&para;</a></h2>
+<p>By default, Loupe returns all the attributes of the documents you've indexed. If you are interested in only a subset 
+of them, you can specify which ones you want to retrieve:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToRetrieve</span><span class="p">([</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;firstname&#39;</span><span class="p">])</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<h2 id="attributes-to-search-on">Attributes to search on<a class="headerlink" href="#attributes-to-search-on" title="Permanent link">&para;</a></h2>
+<p>By default, Loupe searches all <a href="../configuration/">configured <code>searchable attributes</code></a> but you can limit your query to only a 
+subset of those:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToSearchOn</span><span class="p">([</span><span class="s1">&#39;firstname&#39;</span><span class="p">])</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<h2 id="filter">Filter<a class="headerlink" href="#filter" title="Permanent link">&para;</a></h2>
+<p>Loupe provides a powerful way to filter your documents. Know SQL? Then you'll have absolutely no issues filtering 
+with Loupe either. You can combine your filters with <code>AND</code> and <code>OR</code>, nest them the way you want and use the 
+following operators:</p>
+<ul>
+<li><code>=</code></li>
+<li><code>&gt;</code></li>
+<li><code>&lt;</code></li>
+<li><code>&gt;=</code></li>
+<li><code>&lt;=</code></li>
+<li><code>IN ()</code></li>
+<li><code>NOT IN ()</code></li>
+<li><code>IS NULL</code> (takes no value)</li>
+<li><code>IS NOT NULL</code> (takes no value)</li>
+<li><code>IS EMPTY</code> (takes no value, empty values are <code>''</code> and <code>[]</code>)</li>
+<li><code>IS NOT EMPTY</code> (takes no value, empty values are <code>''</code> and <code>[]</code>)</li>
+<li><code>BETWEEN &lt;float&gt; AND &lt;float&gt;</code></li>
+<li><code>NOT BETWEEN &lt;float&gt; AND &lt;float&gt;</code></li>
+</ul>
+<p>Note that you can only filter <a href="../configuration/">on attributes that you have defined to be filerable in the configuration</a>.</p>
+<p><div class="language-php highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="o">-&gt;</span><span class="na">withFilter</span><span class="p">(</span><span class="s2">&quot;(departments = &#39;Backoffice&#39; OR departments = &#39;Project Management&#39;) AND age &gt; 17&quot;</span><span class="p">)</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="p">;</span>
+</span></code></pre></div>
+Loupe can even filter on geo distance! See geo search section for more information.</p>
+<p>To make sure you properly escape the filter values, you can use <code>SearchParameters::escapeFilterValue()</code>.</p>
+<h3 id="filtering-on-array-attributes">Filtering on array attributes<a class="headerlink" href="#filtering-on-array-attributes" title="Permanent link">&para;</a></h3>
+<p>Note the difference of filter handling when working with array attributes (or as Loupe calls them, multi attributes).
+Imagine the following documents:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">[</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">        </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">13</span><span class="p">,</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">        </span><span class="nt">&quot;ratings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">]</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">        </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">        </span><span class="nt">&quot;ratings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">]</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="p">]</span>
+</span></code></pre></div>
+<p>If you filter for <code>ratings &gt;= 2 AND ratings &lt;= 4</code>, you will get <strong>both</strong> documents. That is because <code>ratings</code> is a multi
+attribute and all of its values are evaluated individually. If you want both conditions to apply, use the <code>BETWEEN</code> 
+operator: <code>ratings BETWEEN 2 AND 4</code>.</p>
+<h2 id="search-with-facets">Search with facets<a class="headerlink" href="#search-with-facets" title="Permanent link">&para;</a></h2>
+<p>Yes, you read that right, Loupe even supports facets! Facets are supported on all filterable attributes, so make sure you have defined those first:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nv">$configuration</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\Configuration</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="o">-&gt;</span><span class="na">withFilterableAttributes</span><span class="p">([</span><span class="s1">&#39;departments&#39;</span><span class="p">,</span> <span class="s1">&#39;age&#39;</span><span class="p">])</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>You can then ask Loupe to create facets for the attributes you're interested in:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="o">-&gt;</span><span class="na">withQuery</span><span class="p">(</span><span class="s1">&#39;...&#39;</span><span class="p">)</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="o">-&gt;</span><span class="na">withFilter</span><span class="p">(</span><span class="s1">&#39;...&#39;</span><span class="p">)</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="o">-&gt;</span><span class="na">withFacets</span><span class="p">([</span><span class="s1">&#39;departments&#39;</span><span class="p">,</span> <span class="s1">&#39;age&#39;</span><span class="p">])</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>The result will contain all documents matching the query and the filter. It also returns two fields you can use to create a faceted search interface, <code>facetDistribution</code> and <code>facetStats</code>:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nv">$results</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="s1">&#39;hits&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span><span class="o">...</span><span class="p">],</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    <span class="s1">&#39;facetDistribution&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>        <span class="s1">&#39;departments&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>            <span class="s1">&#39;Backoffice&#39;</span> <span class="o">=&gt;</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>            <span class="s1">&#39;Development&#39;</span> <span class="o">=&gt;</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>            <span class="s1">&#39;Engineering&#39;</span> <span class="o">=&gt;</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>            <span class="s1">&#39;Facility-Management&#39;</span> <span class="o">=&gt;</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>            <span class="s1">&#39;Project Management&#39;</span> <span class="o">=&gt;</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>        <span class="p">],</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    <span class="p">],</span>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>    <span class="s1">&#39;facetStats&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>        <span class="s1">&#39;age&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>            <span class="s1">&#39;min&#39;</span> <span class="o">=&gt;</span> <span class="mf">18.0</span><span class="p">,</span>
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>            <span class="s1">&#39;max&#39;</span> <span class="o">=&gt;</span> <span class="mf">96.0</span><span class="p">,</span>
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>        <span class="p">],</span>
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    <span class="p">],</span>
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="p">];</span>
+</span></code></pre></div>
+<p><code>facetDistribution</code> lists all facets present in your search results, along with the number of documents returned for each facet for attributes containing string values.</p>
+<p><code>facetStats</code> contains the highest and lowest values for all facets containing numeric values.</p>
+<h2 id="sort">Sort<a class="headerlink" href="#sort" title="Permanent link">&para;</a></h2>
+<p>By default, Loupe sorts your results based on relevance. Relevance is determined using a number of factors such as the
+number of matching terms but also their proximity in the document. The relevance attribute is reserved and is
+called <code>_relevance</code>. See <a href="../ranking/">Ranking</a> for details about how relevance is calculated for each result
+and how you can influence the ranking from the configuration.</p>
+<p>You can sort by your own attributes or by multiple ones and specify whether to sort ascending or descending.
+Note that you can only sort <a href="../configuration/">on attributes that you have defined to be sortable in the configuration</a>.</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="o">-&gt;</span><span class="na">withSort</span><span class="p">([</span><span class="s1">&#39;lastname:asc&#39;</span><span class="p">,</span> <span class="s1">&#39;_relevance:desc&#39;</span><span class="p">])</span> <span class="c1">// First by lastname alphabetically and then by best match</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>In case you are interested in the ranking score of the relevance sorting, you can ask Loupe to add the score to the 
+search result hits using</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    <span class="o">-&gt;</span><span class="na">withShowRankingScore</span><span class="p">(</span><span class="k">true</span><span class="p">)</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>In this case, every hit will have an additional <code>_rankingScore</code> attribute with a value between <code>0.0</code> and <code>1.0</code>.</p>
+<p>You can also limit the search results to a <code>rankingScoreThreshold</code> between <code>0.0</code> and <code>1.0</code>:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="o">-&gt;</span><span class="na">withRankingScoreThreshold</span><span class="p">(</span><span class="mf">0.8</span><span class="p">)</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<h3 id="sorting-on-array-attributes">Sorting on array attributes<a class="headerlink" href="#sorting-on-array-attributes" title="Permanent link">&para;</a></h3>
+<p>Sometimes you want to sort by an array attribute, in which case, you need to use an aggregate function. Let's say you
+have two documents with an array of numbers:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="p">[</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    <span class="p">[</span><span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;numbers&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]]],</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    <span class="p">[</span><span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">2</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;numbers&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]]],</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="p">]</span>
+</span></code></pre></div>
+<p>In order to be able to properly sort by those, you need to tell Loupe which one of those to use. Let's say you want
+to sort by the lowest of them:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="o">-&gt;</span><span class="na">withSort</span><span class="p">([</span><span class="s1">&#39;min(numbers):asc&#39;</span><span class="p">])</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>Also note that Loupe will apply filters as well. So in case you used the sorting in combination with the filter like so:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    <span class="o">-&gt;</span><span class="na">withFilter</span><span class="p">(</span><span class="s1">&#39;numbers &gt;= 2 AND numbers &lt;= 4&#39;</span><span class="p">)</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    <span class="o">-&gt;</span><span class="na">withSort</span><span class="p">([</span><span class="s1">&#39;min(numbers):asc&#39;</span><span class="p">])</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>Loupe will return document ID 1 before document ID 2 even though document ID 2 has the lowest number <code>1</code> as attribute value.
+But as you are not interested in these values according to your filter, Loupe will order accordingly.</p>
+<p>Currently, you can use the following aggregate functions:</p>
+<ul>
+<li><code>min(&lt;attribute&gt;)</code></li>
+<li><code>max(&lt;attribute&gt;)</code></li>
+</ul>
+<h2 id="pagination">Pagination<a class="headerlink" href="#pagination" title="Permanent link">&para;</a></h2>
+<p>When searching Loupe, it will always return the current <code>page</code>, <code>totalPages</code> as well as <code>totalHits</code> in its search 
+results. You can navigate through the pages by specifying the desired page in the search parameters:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    <span class="o">-&gt;</span><span class="na">withPage</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+</span></code></pre></div>
+<p>By default, Loupe returns <code>20</code> results per page, but you can configure this as well:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="o">-&gt;</span><span class="na">withHitsPerPage</span><span class="p">(</span><span class="mi">50</span><span class="p">);</span>
+</span></code></pre></div>
+<p>You can also work with offset and limit but be aware that if either <code>withPage()</code> or <code>withHitsPerPage()</code> is given, those
+take precedence:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    <span class="o">-&gt;</span><span class="na">withOffset</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    <span class="o">-&gt;</span><span class="na">withLimit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>Note: You cannot go any higher than <code>1000</code> documents per page. The higher the value you choose, the slower Loupe gets.</p>
+<h2 id="grouping-distinct-attribute">Grouping / Distinct attribute<a class="headerlink" href="#grouping-distinct-attribute" title="Permanent link">&para;</a></h2>
+<p>Sometimes you may want to group search results by a distinct attribute. This might be useful for cases where you want to reduce the final result set for a user, giving them an easier to browse catalog. If you e.g. index all variants of a certain sneaker (same model but exists in red, blue, green, size 10, 11, 12, etc.), you may want to list it only once in the result set, and it doesn't matter which of those variants. </p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="p">[</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">        </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sku-123-red&quot;</span><span class="p">,</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">        </span><span class="nt">&quot;product_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">        </span><span class="nt">&quot;color&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;red&quot;</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="w">    </span><span class="p">},</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">    </span><span class="p">{</span>
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="w">        </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sku-123-blue&quot;</span><span class="p">,</span>
+</span><span id="__span-20-9"><a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="w">        </span><span class="nt">&quot;product_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+</span><span id="__span-20-10"><a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="w">        </span><span class="nt">&quot;color&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;blue&quot;</span>
+</span><span id="__span-20-11"><a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-20-12"><a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a><span class="p">]</span>
+</span></code></pre></div>
+<p>You can do this by using the attribute they have in common. Loupe will then only return one match per <code>product_id</code>:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    <span class="o">-&gt;</span><span class="na">withDistinct</span><span class="p">(</span><span class="s1">&#39;product_id&#39;</span><span class="p">)</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="p">;</span>
+</span></code></pre></div>
+<h2 id="term-highlighting">Term highlighting<a class="headerlink" href="#term-highlighting" title="Permanent link">&para;</a></h2>
+<p>You can enable term highlighting by telling Loupe, which attributes you're interested in:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToHighlight</span><span class="p">([</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;overview&#39;</span><span class="p">])</span>
+</span></code></pre></div>
+<p>Your result hits will then contain a <code>_formatted</code> key where you'll find the matches embedded in <code>&lt;em&gt;</code> and <code>&lt;/em&gt;</code> tags.
+The opening and closing tags can also be configured, in case you need something different from <code>&lt;em&gt;</code> and <code>&lt;/em&gt;</code>. For this,
+use the second and third parameters like so:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToHighlight</span><span class="p">([</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;overview&#39;</span><span class="p">],</span> <span class="s1">&#39;&lt;mark&gt;&#39;</span><span class="p">,</span> <span class="s1">&#39;&lt;/mark&gt;&#39;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>This is how this could look like when having searched for <code>assassin</code>:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="nv">$results</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>    <span class="s1">&#39;hits&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>        <span class="p">[</span>
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>            <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">24</span><span class="p">,</span>
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>            <span class="s1">&#39;title&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;Kill Bill: Vol. 1&#39;</span><span class="p">,</span>
+</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>            <span class="s1">&#39;overview&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.&#39;</span><span class="p">,</span>
+</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>            <span class="s1">&#39;_formatted&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>                <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">24</span><span class="p">,</span>
+</span><span id="__span-24-9"><a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>                <span class="s1">&#39;title&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;Kill Bill: Vol. 1&#39;</span><span class="p">,</span>
+</span><span id="__span-24-10"><a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>                <span class="s1">&#39;overview&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;An &lt;em&gt;assassin&lt;/em&gt; is shot by her ruthless employer, Bill, and other members of their &lt;em&gt;assassination&lt;/em&gt; circle – but she lives to plot her vengeance.&#39;</span><span class="p">,</span>
+</span><span id="__span-24-11"><a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>            <span class="p">],</span>
+</span><span id="__span-24-12"><a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>        <span class="p">],</span>
+</span><span id="__span-24-13"><a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>    <span class="p">],</span>
+</span><span id="__span-24-14"><a id="__codelineno-24-14" name="__codelineno-24-14" href="#__codelineno-24-14"></a><span class="p">];</span>
+</span></code></pre></div>
+<p>If you need to somehow highlight things differently, you can also ask Loupe to return the match positions (or even 
+combine with <code>withAttributesToHighlight()</code> if you need both):</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    <span class="o">-&gt;</span><span class="na">withShowMatchesPosition</span><span class="p">(</span><span class="k">true</span><span class="p">);</span>
+</span></code></pre></div>
+<p>In this case, the result would look something like this:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="nv">$results</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>    <span class="s1">&#39;hits&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>        <span class="p">[</span>
+</span><span id="__span-26-4"><a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>            <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">24</span><span class="p">,</span>
+</span><span id="__span-26-5"><a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>            <span class="s1">&#39;title&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;Kill Bill: Vol. 1&#39;</span><span class="p">,</span>
+</span><span id="__span-26-6"><a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>            <span class="s1">&#39;overview&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.&#39;</span><span class="p">,</span>
+</span><span id="__span-26-7"><a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>            <span class="s1">&#39;_matchesPosition&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-26-8"><a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>                <span class="s1">&#39;overview&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-26-9"><a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>                    <span class="p">[</span>
+</span><span id="__span-26-10"><a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>                        <span class="s1">&#39;start&#39;</span> <span class="o">=&gt;</span> <span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-26-11"><a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>                        <span class="s1">&#39;length&#39;</span> <span class="o">=&gt;</span> <span class="mi">8</span><span class="p">,</span>
+</span><span id="__span-26-12"><a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>                    <span class="p">],</span>
+</span><span id="__span-26-13"><a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>                    <span class="p">[</span>
+</span><span id="__span-26-14"><a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a>                        <span class="s1">&#39;start&#39;</span> <span class="o">=&gt;</span> <span class="mi">79</span><span class="p">,</span>
+</span><span id="__span-26-15"><a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a>                        <span class="s1">&#39;length&#39;</span> <span class="o">=&gt;</span> <span class="mi">13</span><span class="p">,</span>
+</span><span id="__span-26-16"><a id="__codelineno-26-16" name="__codelineno-26-16" href="#__codelineno-26-16"></a>                    <span class="p">],</span>
+</span><span id="__span-26-17"><a id="__codelineno-26-17" name="__codelineno-26-17" href="#__codelineno-26-17"></a>                <span class="p">],</span>
+</span><span id="__span-26-18"><a id="__codelineno-26-18" name="__codelineno-26-18" href="#__codelineno-26-18"></a>            <span class="p">],</span>
+</span><span id="__span-26-19"><a id="__codelineno-26-19" name="__codelineno-26-19" href="#__codelineno-26-19"></a>        <span class="p">],</span>
+</span><span id="__span-26-20"><a id="__codelineno-26-20" name="__codelineno-26-20" href="#__codelineno-26-20"></a>    <span class="p">],</span>
+</span><span id="__span-26-21"><a id="__codelineno-26-21" name="__codelineno-26-21" href="#__codelineno-26-21"></a><span class="p">];</span>
+</span></code></pre></div>
+<h2 id="context-cropping">Context cropping<a class="headerlink" href="#context-cropping" title="Permanent link">&para;</a></h2>
+<p>Loupe can crop selected attributes to a certain length around the search terms. The is useful to
+show as much context as possible around matched words when displaying results.</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToCrop</span><span class="p">([</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;summary&#39;</span><span class="p">]);</span>
+</span></code></pre></div>
+<p>The result of a cropped attribute will look like this:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="nv">$results</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    <span class="s1">&#39;hits&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>        <span class="p">[</span>
+</span><span id="__span-28-4"><a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>            <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">24</span><span class="p">,</span>
+</span><span id="__span-28-5"><a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>            <span class="s1">&#39;title&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;Kill Bill: Vol. 1&#39;</span><span class="p">,</span>
+</span><span id="__span-28-6"><a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>            <span class="s1">&#39;overview&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.&#39;</span><span class="p">,</span>
+</span><span id="__span-28-7"><a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>            <span class="s1">&#39;_formatted&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-28-8"><a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>                <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">24</span><span class="p">,</span>
+</span><span id="__span-28-9"><a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>                <span class="s1">&#39;title&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;Kill Bill: Vol. 1&#39;</span><span class="p">,</span>
+</span><span id="__span-28-10"><a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>                <span class="s1">&#39;overview&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;An assassin is shot by her ruthless … members of their assassination circle …&#39;</span><span class="p">,</span>
+</span><span id="__span-28-11"><a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a>            <span class="p">],</span>
+</span><span id="__span-28-12"><a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a>        <span class="p">],</span>
+</span><span id="__span-28-13"><a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>    <span class="p">],</span>
+</span><span id="__span-28-14"><a id="__codelineno-28-14" name="__codelineno-28-14" href="#__codelineno-28-14"></a><span class="p">];</span>
+</span></code></pre></div>
+<p>The default crop length is 50 characters. You can define a different crop length by passing in an
+integer value.</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToCrop</span><span class="p">([</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;summary&#39;</span><span class="p">],</span> <span class="nx">cropLength</span><span class="o">:</span> <span class="mi">30</span><span class="p">);</span>
+</span></code></pre></div>
+<p>Optionally, define a custom crop length for each attribute by passing in an array of lengths keyed by attribute name.</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToCrop</span><span class="p">([</span><span class="s1">&#39;title&#39;</span> <span class="o">=&gt;</span> <span class="mi">20</span><span class="p">,</span> <span class="s1">&#39;summary&#39;</span> <span class="o">=&gt;</span> <span class="mi">40</span><span class="p">]);</span>
+</span></code></pre></div>
+<p>Crop boundaries are marked with an ellipsis <code>…</code> character by default. You can change this by passing in a custom marker.</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToCrop</span><span class="p">([</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;summary&#39;</span><span class="p">],</span> <span class="nx">cropMarker</span><span class="o">:</span> <span class="s1">&#39;∞&#39;</span><span class="p">);</span>
+</span></code></pre></div>
+<h2 id="stop-words">Stop words<a class="headerlink" href="#stop-words" title="Permanent link">&para;</a></h2>
+<p>When configuring Loupe, you can define a list of stop words to be ignored by the engine when matching and
+ranking search results.</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="nv">$configuration</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\Configuration</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>    <span class="o">-&gt;</span><span class="na">withStopWords</span><span class="p">([</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;by&#39;</span><span class="p">,</span> <span class="s1">&#39;the&#39;</span><span class="p">]);</span>
+</span></code></pre></div>
+<h2 id="caching">Caching<a class="headerlink" href="#caching" title="Permanent link">&para;</a></h2>
+<p>Loupe does not ship with built-in caching, so you are free to choose the caching mechanism of your choice. However,
+you can identify a search parameter combination using the <code>getHash()</code> method:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-33-1"><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="nv">$hash</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-33-2"><a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>    <span class="o">-&gt;</span><span class="na">getHash</span><span class="p">();</span>
+</span></code></pre></div>
+<h2 id="geo-search">Geo search<a class="headerlink" href="#geo-search" title="Permanent link">&para;</a></h2>
+<p>Yes, Loupe also supports geo search! In contrast to MeiliSearch, however, Loupe does not need any special <code>_geo</code> 
+attribute, but you can filter and sort by multiple geo attributes. The only requirement is that your attribute 
+represents the following format:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span id="__span-34-2"><a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>
+</span><span id="__span-34-3"><a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a><span class="nv">$myGeoAttribute</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-34-4"><a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>    <span class="s1">&#39;lat&#39;</span> <span class="o">=&gt;</span> <span class="mf">45.4777599</span><span class="p">,</span>
+</span><span id="__span-34-5"><a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>    <span class="s1">&#39;lng&#39;</span> <span class="o">=&gt;</span> <span class="mf">9.1967508</span><span class="p">,</span>
+</span><span id="__span-34-6"><a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a><span class="p">];</span>
+</span></code></pre></div>
+<p>If your attribute is of this format, and you define it as being filterable and/or sortable, Loupe can both, filter and 
+sort on it. Let's take an example:</p>
+<p>First, we have to index some restaurants. See <a href="https://github.com/loupe-php/loupe/blob/main/tests/Fixtures/Data/locations.json">the <code>restaurants.json</code> from the test fixtures</a>.
+Then we need to define the <code>_location</code> attribute as being <code>filterable</code> and <code>sortable</code>:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-35-1"><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="nv">$configuration</span> <span class="o">=</span> <span class="nx">\Loupe\Loupe\Configuration</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-35-2"><a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>    <span class="o">-&gt;</span><span class="na">withFilterableAttributes</span><span class="p">([</span><span class="s1">&#39;location&#39;</span><span class="p">])</span>
+</span><span id="__span-35-3"><a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>    <span class="o">-&gt;</span><span class="na">withSortableAttributes</span><span class="p">([</span><span class="s1">&#39;location&#39;</span><span class="p">])</span>
+</span><span id="__span-35-4"><a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>We can then filter for all the restaurants within 2km from <code>45.472735, 9.184019</code>. For this, we use the <code>_geoRadius()</code>
+filter. It takes the attribute name, latitude and longitude as  parameters. The fourth parameter 
+defines the distance in meters.
+Then, we also want to sort them by their distance from <code>45.472735, 9.184019</code> so that the closest is listed first. 
+For that, we can use the <code>_geoPoint()</code> sorter.
+We also want to know the distance, so we select the special <code>_geoDistance(location)</code> attribute as well:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-36-2"><a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToRetrieve</span><span class="p">([</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="s1">&#39;_geoDistance(location)&#39;</span><span class="p">])</span>
+</span><span id="__span-36-3"><a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a>    <span class="o">-&gt;</span><span class="na">withFilter</span><span class="p">(</span><span class="s1">&#39;_geoRadius(location, 45.472735, 9.184019, 2000)&#39;</span><span class="p">)</span>
+</span><span id="__span-36-4"><a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a>    <span class="o">-&gt;</span><span class="na">withSort</span><span class="p">([</span><span class="s1">&#39;_geoPoint(location, 45.472735, 9.184019):asc&#39;</span><span class="p">])</span>
+</span><span id="__span-36-5"><a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>This will result in exactly what we want:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-37-1"><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="nv">$results</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-37-2"><a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>    <span class="s1">&#39;hits&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-37-3"><a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>        <span class="p">[</span>
+</span><span id="__span-37-4"><a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a>            <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-37-5"><a id="__codelineno-37-5" name="__codelineno-37-5" href="#__codelineno-37-5"></a>            <span class="s1">&#39;name&#39;</span> <span class="o">=&gt;</span> <span class="s2">&quot;Nàpiz&#39; Milano&quot;</span><span class="p">,</span>
+</span><span id="__span-37-6"><a id="__codelineno-37-6" name="__codelineno-37-6" href="#__codelineno-37-6"></a>            <span class="s1">&#39;location&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-37-7"><a id="__codelineno-37-7" name="__codelineno-37-7" href="#__codelineno-37-7"></a>                <span class="s1">&#39;lat&#39;</span> <span class="o">=&gt;</span> <span class="mf">45.4777599</span><span class="p">,</span>
+</span><span id="__span-37-8"><a id="__codelineno-37-8" name="__codelineno-37-8" href="#__codelineno-37-8"></a>                <span class="s1">&#39;lng&#39;</span> <span class="o">=&gt;</span> <span class="mf">9.1967508</span><span class="p">,</span>
+</span><span id="__span-37-9"><a id="__codelineno-37-9" name="__codelineno-37-9" href="#__codelineno-37-9"></a>            <span class="p">],</span>
+</span><span id="__span-37-10"><a id="__codelineno-37-10" name="__codelineno-37-10" href="#__codelineno-37-10"></a>            <span class="s1">&#39;_geoDistance(location)&#39;</span> <span class="o">=&gt;</span> <span class="mi">1139</span><span class="p">,</span>
+</span><span id="__span-37-11"><a id="__codelineno-37-11" name="__codelineno-37-11" href="#__codelineno-37-11"></a>        <span class="p">],</span>
+</span><span id="__span-37-12"><a id="__codelineno-37-12" name="__codelineno-37-12" href="#__codelineno-37-12"></a>        <span class="p">[</span>
+</span><span id="__span-37-13"><a id="__codelineno-37-13" name="__codelineno-37-13" href="#__codelineno-37-13"></a>            <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-37-14"><a id="__codelineno-37-14" name="__codelineno-37-14" href="#__codelineno-37-14"></a>            <span class="s1">&#39;name&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;Artico Gelateria Tradizionale&#39;</span><span class="p">,</span>
+</span><span id="__span-37-15"><a id="__codelineno-37-15" name="__codelineno-37-15" href="#__codelineno-37-15"></a>            <span class="s1">&#39;location&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-37-16"><a id="__codelineno-37-16" name="__codelineno-37-16" href="#__codelineno-37-16"></a>                <span class="s1">&#39;lat&#39;</span> <span class="o">=&gt;</span> <span class="mf">45.4632046</span><span class="p">,</span>
+</span><span id="__span-37-17"><a id="__codelineno-37-17" name="__codelineno-37-17" href="#__codelineno-37-17"></a>                <span class="s1">&#39;lng&#39;</span> <span class="o">=&gt;</span> <span class="mf">9.1719421</span><span class="p">,</span>
+</span><span id="__span-37-18"><a id="__codelineno-37-18" name="__codelineno-37-18" href="#__codelineno-37-18"></a>            <span class="p">],</span>
+</span><span id="__span-37-19"><a id="__codelineno-37-19" name="__codelineno-37-19" href="#__codelineno-37-19"></a>            <span class="s1">&#39;_geoDistance(location)&#39;</span> <span class="o">=&gt;</span> <span class="mi">1418</span><span class="p">,</span>
+</span><span id="__span-37-20"><a id="__codelineno-37-20" name="__codelineno-37-20" href="#__codelineno-37-20"></a>        <span class="p">],</span>
+</span><span id="__span-37-21"><a id="__codelineno-37-21" name="__codelineno-37-21" href="#__codelineno-37-21"></a>    <span class="p">],</span>
+</span><span id="__span-37-22"><a id="__codelineno-37-22" name="__codelineno-37-22" href="#__codelineno-37-22"></a><span class="p">];</span>
+</span></code></pre></div>
+<p>Additional to a query based on distance we can also search for locations inside a bounding box.
+In this example we have 4 documents and 3 with geo coordinates (New York, London, Vienna).
+We create a bounding box filter which spans from Dublin to Athens which then only matches our documents in London and Vienna.</p>
+<p>Keep in mind that the order of the arguments is important.
+The <code>_geoBoundingBox</code> expects <code>attributeName</code>, <code>north</code> (top), <code>east</code> (right), <code>south</code> (bottom), <code>west</code> (left).
+In this specific example, <code>top</code> is the latitude of Dublin,<code>right</code> is the longitude of Athens,<code>bottom</code> is the latitude of Athens and<code>left</code> equals Dublin's longitude.</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="nv">$searchParameters</span> <span class="o">=</span> <span class="nx">SearchParameters</span><span class="o">::</span><span class="na">create</span><span class="p">()</span>
+</span><span id="__span-38-2"><a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>    <span class="o">-&gt;</span><span class="na">withAttributesToRetrieve</span><span class="p">([</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;location&#39;</span><span class="p">])</span>
+</span><span id="__span-38-3"><a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>    <span class="o">-&gt;</span><span class="na">withFilter</span><span class="p">(</span><span class="s1">&#39;_geoBoundingBox(location, 53.3498, 23.7275, 37.9838, -6.2603)&#39;</span><span class="p">)</span>
+</span><span id="__span-38-4"><a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="p">;</span>
+</span></code></pre></div>
+<p>This is going to be your result:</p>
+<div class="language-php highlight"><pre><span></span><code><span id="__span-39-1"><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="nv">$results</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-39-2"><a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>    <span class="s1">&#39;hits&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-39-3"><a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>        <span class="p">[</span>
+</span><span id="__span-39-4"><a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>            <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;2&#39;</span><span class="p">,</span>
+</span><span id="__span-39-5"><a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a>            <span class="s1">&#39;title&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;London&#39;</span><span class="p">,</span>
+</span><span id="__span-39-6"><a id="__codelineno-39-6" name="__codelineno-39-6" href="#__codelineno-39-6"></a>            <span class="s1">&#39;location&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-39-7"><a id="__codelineno-39-7" name="__codelineno-39-7" href="#__codelineno-39-7"></a>                <span class="s1">&#39;lat&#39;</span> <span class="o">=&gt;</span> <span class="mf">51.5074</span><span class="p">,</span>
+</span><span id="__span-39-8"><a id="__codelineno-39-8" name="__codelineno-39-8" href="#__codelineno-39-8"></a>                <span class="s1">&#39;lng&#39;</span> <span class="o">=&gt;</span> <span class="o">-</span><span class="mf">0.1278</span><span class="p">,</span>
+</span><span id="__span-39-9"><a id="__codelineno-39-9" name="__codelineno-39-9" href="#__codelineno-39-9"></a>            <span class="p">],</span>
+</span><span id="__span-39-10"><a id="__codelineno-39-10" name="__codelineno-39-10" href="#__codelineno-39-10"></a>        <span class="p">],</span>
+</span><span id="__span-39-11"><a id="__codelineno-39-11" name="__codelineno-39-11" href="#__codelineno-39-11"></a>        <span class="p">[</span>
+</span><span id="__span-39-12"><a id="__codelineno-39-12" name="__codelineno-39-12" href="#__codelineno-39-12"></a>            <span class="s1">&#39;id&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;3&#39;</span><span class="p">,</span>
+</span><span id="__span-39-13"><a id="__codelineno-39-13" name="__codelineno-39-13" href="#__codelineno-39-13"></a>            <span class="s1">&#39;title&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;Vienna&#39;</span><span class="p">,</span>
+</span><span id="__span-39-14"><a id="__codelineno-39-14" name="__codelineno-39-14" href="#__codelineno-39-14"></a>            <span class="s1">&#39;location&#39;</span> <span class="o">=&gt;</span> <span class="p">[</span>
+</span><span id="__span-39-15"><a id="__codelineno-39-15" name="__codelineno-39-15" href="#__codelineno-39-15"></a>                <span class="s1">&#39;lat&#39;</span> <span class="o">=&gt;</span> <span class="mf">48.2082</span><span class="p">,</span>
+</span><span id="__span-39-16"><a id="__codelineno-39-16" name="__codelineno-39-16" href="#__codelineno-39-16"></a>                <span class="s1">&#39;lng&#39;</span> <span class="o">=&gt;</span> <span class="mf">16.3738</span><span class="p">,</span>
+</span><span id="__span-39-17"><a id="__codelineno-39-17" name="__codelineno-39-17" href="#__codelineno-39-17"></a>            <span class="p">],</span>
+</span><span id="__span-39-18"><a id="__codelineno-39-18" name="__codelineno-39-18" href="#__codelineno-39-18"></a>        <span class="p">],</span>
+</span><span id="__span-39-19"><a id="__codelineno-39-19" name="__codelineno-39-19" href="#__codelineno-39-19"></a>    <span class="p">],</span>
+</span><span id="__span-39-20"><a id="__codelineno-39-20" name="__codelineno-39-20" href="#__codelineno-39-20"></a>    <span class="s1">&#39;query&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+</span><span id="__span-39-21"><a id="__codelineno-39-21" name="__codelineno-39-21" href="#__codelineno-39-21"></a>    <span class="s1">&#39;hitsPerPage&#39;</span> <span class="o">=&gt;</span> <span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-39-22"><a id="__codelineno-39-22" name="__codelineno-39-22" href="#__codelineno-39-22"></a>    <span class="s1">&#39;page&#39;</span> <span class="o">=&gt;</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-39-23"><a id="__codelineno-39-23" name="__codelineno-39-23" href="#__codelineno-39-23"></a>    <span class="s1">&#39;totalPages&#39;</span> <span class="o">=&gt;</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="__span-39-24"><a id="__codelineno-39-24" name="__codelineno-39-24" href="#__codelineno-39-24"></a>    <span class="s1">&#39;totalHits&#39;</span> <span class="o">=&gt;</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-39-25"><a id="__codelineno-39-25" name="__codelineno-39-25" href="#__codelineno-39-25"></a><span class="p">];</span>
+</span></code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tracking", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
