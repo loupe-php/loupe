@@ -8,9 +8,9 @@ use Doctrine\DBAL\Configuration as DbalConfiguration;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Logging\Middleware;
-use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\ConnectionPool;
+use Loupe\Loupe\Internal\Driver\SqliteDriver;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Logger\PrefixDecoratedLogger;
 use Psr\Log\LoggerInterface;
@@ -55,11 +55,16 @@ final class LoupeFactory implements LoupeFactoryInterface
 
     private function createConnection(string $connectionName, Configuration $configuration, string|null $databasePath = null): Connection
     {
-        $dsnPart = null === $databasePath ? '/:memory:' : 'notused:inthis@case/'.$databasePath;
-        $dsnParser = new DsnParser();
+        $params = ['driverClass' => SqliteDriver::class];
+
+        if (null === $databasePath) {
+            $params['memory'] = true;
+        } else {
+            $params['path'] = $databasePath;
+        }
 
         return DriverManager::getConnection(
-            $dsnParser->parse('pdo-sqlite://'.$dsnPart),
+            $params,
             $this->getDbalConfiguration($connectionName, $configuration),
         );
     }
