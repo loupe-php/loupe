@@ -6,7 +6,9 @@ namespace Loupe\Loupe;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Internal\Cache\ApcuCachePool;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
 final class Configuration
@@ -50,6 +52,8 @@ final class Configuration
      */
     private string|null $processName = null;
 
+    private ?CacheItemPoolInterface $queryCache = null;
+
     /**
      * @var array<string>
      */
@@ -86,6 +90,10 @@ final class Configuration
     public function __construct()
     {
         $this->typoTolerance = new TypoTolerance();
+
+        if (\function_exists('apcu_fetch') && \function_exists('apcu_store')) {
+            $this->queryCache = new ApcuCachePool();
+        }
     }
 
     public static function create(): self
@@ -273,6 +281,11 @@ final class Configuration
         }
 
         return $this->processName;
+    }
+
+    public function getQueryCache(): ?CacheItemPoolInterface
+    {
+        return $this->queryCache;
     }
 
     /**
@@ -466,6 +479,14 @@ final class Configuration
     {
         $clone = clone $this;
         $clone->processName = $processName;
+        return $clone;
+    }
+
+    public function withQueryCache(?CacheItemPoolInterface $queryCache): self
+    {
+        $clone = clone $this;
+        $clone->queryCache = $queryCache;
+
         return $clone;
     }
 

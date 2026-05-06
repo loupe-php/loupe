@@ -58,6 +58,13 @@ class Searcher
     public const RELEVANCE_ALIAS = '_relevance';
 
     /**
+     * Limit how many leading chars we may trim for the last token when looking
+     * up cached snapshots. This improves cache reuse for incremental typing by
+     * allowing matches from a recent shorter suffix (up to 2 chars trimmed).
+     */
+    private const MAX_PREFIX_CHARS_TO_TRIM_FOR_LAST_TOKEN_CACHE_REUSE = 2;
+
+    /**
      * @var array<string, Cte>
      */
     private array $ctesByName = [];
@@ -732,12 +739,12 @@ class Searcher
     private function addTermMatchesCTE(Token $token, bool $isLastToken): void
     {
         $selects = [];
-        $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, $token->isPartOfPhrase());
+        $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, $token->isPartOfPhrase(), $isLastToken);
 
         // Consider variants only if not part of a phrase search
         if (!$token->isPartOfPhrase()) {
             foreach ($token->getVariants() as $term) {
-                $selects[] = $this->createTermMatchesSelect($term, false, false);
+                $selects[] = $this->createTermMatchesSelect($term, false, false, $isLastToken);
             }
         }
 
@@ -748,9 +755,9 @@ class Searcher
         ) {
             // With typo tolerance on prefix search requires searching the prefix tables as well
             if ($this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
-                $selects[] = $this->createTermMatchesSelect($token->getTerm(), true, false);
+                $selects[] = $this->createTermMatchesSelect($token->getTerm(), true, false, $isLastToken);
             } else {
-                $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, false, true);
+                $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, false, $isLastToken, true);
             }
         }
 
@@ -1002,7 +1009,7 @@ class Searcher
         );
     }
 
-    private function createTermMatchesSelect(string $term, bool $prefix, bool $disableTypoTolerance, bool $prefixLikeOnly = false): string
+    private function createTermMatchesSelect(string $term, bool $prefix, bool $disableTypoTolerance, bool $isLastToken, bool $prefixLikeOnly = false): string
     {
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
         $qb = $this->engine->getConnection()->createQueryBuilder();
@@ -1016,13 +1023,13 @@ class Searcher
                 $this->createNamedParameter($term . '*')
             ));
         } else {
-            $qb->where($this->createWherePartForTerm($term, $prefix, $disableTypoTolerance));
+            $qb->where($this->createWherePartForTerm($term, $prefix, $disableTypoTolerance, $isLastToken));
         }
 
         return $qb->getSQL();
     }
 
-    private function createWherePartForTerm(string $term, bool $prefix, bool $disableTypoTolerance): string
+    private function createWherePartForTerm(string $term, bool $prefix, bool $disableTypoTolerance, bool $isLastToken): string
     {
         $where = [];
         $termParameter = $this->createNamedParameter($term);
@@ -1070,7 +1077,12 @@ class Searcher
             return implode(' ', $where);
         }
 
-        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance, 1);
+        $states = $this->engine->getStateSetIndex()->findMatchingStates(
+            $term,
+            $levenshteinDistance,
+            1,
+            $isLastToken ? self::MAX_PREFIX_CHARS_TO_TRIM_FOR_LAST_TOKEN_CACHE_REUSE : 0
+        );
 
         // No result possible, we add AND 1=0 to ensure no results
         if ($states === []) {

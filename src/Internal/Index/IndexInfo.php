@@ -41,6 +41,8 @@ class IndexInfo
      */
     private ?array $documentSchema = null;
 
+    private ?string $indexUid = null;
+
     private ?bool $needsSetup = null;
 
     public function __construct(
@@ -88,6 +90,17 @@ class IndexInfo
                     ConflictMode::Update
                 ))
                 ->execute();
+
+            $this->engine->getConnection()->executeStatement(
+                \sprintf(
+                    "INSERT INTO %s (key, value) VALUES ('%s', :uid) ON CONFLICT(key) DO NOTHING",
+                    self::TABLE_NAME_INDEX_INFO,
+                    'indexUid'
+                ),
+                [
+                    'uid' => $this->generateIndexUid(),
+                ]
+            );
 
             $this->needsSetup = false;
         });
@@ -256,6 +269,47 @@ class IndexInfo
         return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getFilterableAttributes()), $this->getDocumentSchema()));
     }
 
+    public function getIndexUid(): string
+    {
+        if ($this->indexUid !== null) {
+            return $this->indexUid;
+        }
+
+        $uid = $this->engine->getConnection()
+            ->createQueryBuilder()
+            ->select('value')
+            ->from(self::TABLE_NAME_INDEX_INFO)
+            ->where("key = 'indexUid'")
+            ->fetchOne();
+
+        if ($uid === false) {
+            $uid = $this->generateIndexUid();
+            $this->engine->getConnection()->executeStatement(
+                \sprintf(
+                    "INSERT INTO %s (key, value) VALUES ('%s', :uid) ON CONFLICT(key) DO NOTHING",
+                    self::TABLE_NAME_INDEX_INFO,
+                    'indexUid'
+                ),
+                [
+                    'uid' => $uid,
+                ]
+            );
+
+            $uid = $this->engine->getConnection()
+                ->createQueryBuilder()
+                ->select('value')
+                ->from(self::TABLE_NAME_INDEX_INFO)
+                ->where("key = 'indexUid'")
+                ->fetchOne();
+        }
+
+        if (!\is_string($uid) || $uid === '') {
+            throw new \LogicException('Could not determine index UID.');
+        }
+
+        return $this->indexUid = $uid;
+    }
+
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
         if (!\array_key_exists($attributeName, $this->getDocumentSchema())) {
@@ -367,6 +421,7 @@ class IndexInfo
     public function reset(): void
     {
         $this->documentSchema = null;
+        $this->indexUid = null;
         $this->needsSetup = null;
     }
 
@@ -585,6 +640,11 @@ class IndexInfo
         $table->addUniqueIndex(['term', 'state', 'length']);
         $table->addIndex(['state']);
         $table->addIndex(['length']);
+    }
+
+    private function generateIndexUid(): string
+    {
+        return bin2hex(random_bytes(8));
     }
 
     private function getSchema(): Schema

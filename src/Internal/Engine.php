@@ -19,7 +19,10 @@ use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use Loupe\Loupe\Internal\LanguageDetection\PreselectedLanguageDetector;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
+use Loupe\Loupe\Internal\StateSetIndex\CachedStateSetIndex;
+use Loupe\Loupe\Internal\StateSetIndex\DefaultStateSetIndex;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
+use Loupe\Loupe\Internal\StateSetIndex\StateSetIndexInterface;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
@@ -60,7 +63,7 @@ class Engine
 
     private IndexInfo $indexInfo;
 
-    private StateSetIndex $stateSetIndex;
+    private StateSetIndexInterface $stateSetIndex;
 
     private StopwordsInterface $stopwords;
 
@@ -75,7 +78,7 @@ class Engine
         private ?string $dataDir = null
     ) {
         $this->indexInfo = new IndexInfo($this);
-        $this->stateSetIndex = new StateSetIndex(
+        $stateSetIndex = new StateSetIndex(
             new Config(
                 $this->configuration->getTypoTolerance()->getIndexLength(),
                 $this->configuration->getTypoTolerance()->getAlphabetSize(),
@@ -84,6 +87,7 @@ class Engine
             new StateSet($this),
             new NullDataStore()
         );
+        $this->stateSetIndex = new DefaultStateSetIndex($stateSetIndex);
         $this->ticketHandler = new TicketHandler($this->connectionPool, $this->getLogger());
         $this->indexer = new Indexer($this, $this->ticketHandler);
         $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
@@ -120,6 +124,8 @@ class Engine
         if ($this->getIndexInfo()->needsSetup()) {
             return BrowseResult::createEmptyFromBrowseParameters($parameters);
         }
+
+        $this->maybeWrapStateSetIndexWithCache();
 
         try {
             return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
@@ -254,7 +260,7 @@ class Engine
         return $this->logger;
     }
 
-    public function getStateSetIndex(): StateSetIndex
+    public function getStateSetIndex(): StateSetIndexInterface
     {
         return $this->stateSetIndex;
     }
@@ -310,6 +316,8 @@ class Engine
             return SearchResult::createEmptyFromSearchParameters($parameters);
         }
 
+        $this->maybeWrapStateSetIndexWithCache();
+
         try {
             return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
         } catch (Exception $exception) {
@@ -331,6 +339,25 @@ class Engine
         return (int) $this->getConnection()
             ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
             ->fetchOne();
+    }
+
+    private function maybeWrapStateSetIndexWithCache(): void
+    {
+        if ($this->stateSetIndex instanceof CachedStateSetIndex) {
+            return;
+        }
+
+        $queryCache = $this->configuration->getQueryCache();
+        if ($queryCache === null || $this->indexInfo->needsSetup()) {
+            return;
+        }
+
+        $this->stateSetIndex = new CachedStateSetIndex(
+            $this->stateSetIndex,
+            $this->configuration->getTypoTolerance(),
+            $queryCache,
+            $this->indexInfo->getIndexUid(),
+        );
     }
 
     private function registerSQLiteFunctions(Connection $connection): void
