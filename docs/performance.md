@@ -135,6 +135,41 @@ $configuration = \Loupe\Loupe\Configuration::create()
 Note: Attributes you neither want to search or filter for are best kept **outside** of Loupe. Don't bother it with 
 data that doesn't need to be processed.
 
+## Store a separate preview attribute for large content
+
+Cropping in `_formatted` is based on query matches. If an attribute has no match for a hit, it will not appear in
+`_formatted`. For large text fields, avoid loading and truncating the full content on every search request.
+
+Instead, index two attributes:
+
+* A full attribute for relevance (`content`) that is searchable.
+* A short preview attribute (`content_truncated`) that is displayed.
+
+Also keep the full content out of displayed attributes so Loupe does not need to load it from SQLite when returning
+hits:
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withSearchableAttributes(['content'])
+    ->withDisplayedAttributes(['content_truncated'])
+;
+```
+
+At indexing time, provide both values:
+
+```php
+[
+    'content' => '... up to hundreds of KB ...',
+    'content_truncated' => 'First 250 characters...',
+]
+```
+
+At search result rendering time, use the matched/cropped value when available, otherwise fall back to the preview:
+
+```php
+$preview = $hit['_formatted']['content'] ?? $hit['content_truncated'];
+```
+
 ## Avoid highlighting in nested attributes
 
 You should limit the highlighting and cropping of results to top-level string attributes. Loupe optimizes for this case
