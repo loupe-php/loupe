@@ -611,14 +611,19 @@ class Indexer
      */
     private function prepareDocument(array $document): PreparedDocument
     {
+        $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
+
         if ($this->engine->getConfiguration()->getDisplayedAttributes() !== ['*']) {
             $documentData = array_intersect_key($document, array_flip($this->engine->getConfiguration()->getDisplayedAttributes()));
         } else {
             $documentData = $document;
         }
 
+        // Keep the primary key in persisted document data so reindex/migration can always rehydrate documents.
+        $documentData[$primaryKey] = $document[$primaryKey];
+
         $preparedDocument = new PreparedDocument(
-            (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
+            (string) $document[$primaryKey],
             Util::encodeJson($documentData)
         );
 
