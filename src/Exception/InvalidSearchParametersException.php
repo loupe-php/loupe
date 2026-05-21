@@ -25,4 +25,9 @@ class InvalidSearchParametersException extends \InvalidArgumentException impleme
     {
         return new self(\sprintf('Cannot request more than %d documents per request, use pagination.', SearchParameters::MAX_LIMIT));
     }
+
+    public static function maxValuesPerFacetMustBeGreaterThanZero(): self
+    {
+        return new self('The max values per facet must be greater than zero.');
+    }
 }

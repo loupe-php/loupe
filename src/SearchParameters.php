@@ -37,6 +37,8 @@ final class SearchParameters extends AbstractQueryParameters
 
     private MatchingStrategy $matchingStrategy = MatchingStrategy::Any;
 
+    private int $maxValuesPerFacet = 100;
+
     private float $rankingScoreThreshold = 0.0;
 
     private bool $showMatchesPosition = false;
@@ -68,6 +70,7 @@ final class SearchParameters extends AbstractQueryParameters
      *     offset?: int,
      *     limit?: int,
      *     matchingStrategy?: string,
+     *     maxValuesPerFacet?: int,
      *     query?: string,
      *     rankingScoreThreshold?: float,
      *     showMatchesPosition?: bool,
@@ -102,6 +105,10 @@ final class SearchParameters extends AbstractQueryParameters
 
         if (isset($data['matchingStrategy'])) {
             $instance = $instance->withMatchingStrategy($data['matchingStrategy']);
+        }
+
+        if (isset($data['maxValuesPerFacet'])) {
+            $instance = $instance->withMaxValuesPerFacet($data['maxValuesPerFacet']);
         }
 
         if (isset($data['rankingScoreThreshold'])) {
@@ -186,6 +193,7 @@ final class SearchParameters extends AbstractQueryParameters
         $hash[] = json_encode($this->getPage());
         $hash[] = json_encode($this->getLimit());
         $hash[] = json_encode($this->getMatchingStrategy());
+        $hash[] = json_encode($this->getMaxValuesPerFacet());
         $hash[] = json_encode($this->getOffset());
         $hash[] = json_encode($this->getQuery());
         $hash[] = json_encode($this->showMatchesPosition());
@@ -207,6 +215,11 @@ final class SearchParameters extends AbstractQueryParameters
     public function getMatchingStrategy(): string
     {
         return $this->matchingStrategy->value;
+    }
+
+    public function getMaxValuesPerFacet(): int
+    {
+        return $this->maxValuesPerFacet;
     }
 
     public function getRankingScoreThreshold(): float
@@ -247,6 +260,7 @@ final class SearchParameters extends AbstractQueryParameters
      *     offset: int,
      *     limit: int,
      *     matchingStrategy: string,
+     *     maxValuesPerFacet: int,
      *     query: string,
      *     attributesToRetrieve: array<string>,
      *     attributesToSearchOn: array<string>,
@@ -268,6 +282,7 @@ final class SearchParameters extends AbstractQueryParameters
             'highlightEndTag' => $this->highlightEndTag,
             'highlightStartTag' => $this->highlightStartTag,
             'matchingStrategy' => $this->getMatchingStrategy(),
+            'maxValuesPerFacet' => $this->maxValuesPerFacet,
             'rankingScoreThreshold' => $this->rankingScoreThreshold,
             'showMatchesPosition' => $this->showMatchesPosition,
             'showRankingScore' => $this->showRankingScore,
@@ -353,6 +368,18 @@ final class SearchParameters extends AbstractQueryParameters
 
         $clone = clone $this;
         $clone->matchingStrategy = $strategy;
+
+        return $clone;
+    }
+
+    public function withMaxValuesPerFacet(int $maxValuesPerFacet): self
+    {
+        if ($maxValuesPerFacet < 1) {
+            throw InvalidSearchParametersException::maxValuesPerFacetMustBeGreaterThanZero();
+        }
+
+        $clone = clone $this;
+        $clone->maxValuesPerFacet = $maxValuesPerFacet;
 
         return $clone;
     }

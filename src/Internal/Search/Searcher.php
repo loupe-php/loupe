@@ -381,13 +381,14 @@ class Searcher
             return;
         }
 
-        $facets = array_intersect($this->queryParameters->getFacets(), $this->engine->getIndexInfo()->getFilterableAttributes());
+        $searchParameters = $this->queryParameters;
+        $facets = array_intersect($searchParameters->getFacets(), $this->engine->getIndexInfo()->getFilterableAttributes());
 
         if ($facets === []) {
             return;
         }
 
-        $buildCommonQueryBuilder = function (string $attribute, string $facetAlias): QueryBuilder {
+        $buildCommonQueryBuilder = function (string $attribute, string $facetAlias) use ($searchParameters): QueryBuilder {
             $qb = $this->engine->getConnection()->createQueryBuilder();
 
             if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($attribute)) {
@@ -410,7 +411,7 @@ class Searcher
             $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL));
             $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_EMPTY));
 
-            $qb->setMaxResults(100); // Limit the number of facet values
+            $qb->setMaxResults($searchParameters->getMaxValuesPerFacet()); // Limit the number of facet values
 
             return $qb;
         };
