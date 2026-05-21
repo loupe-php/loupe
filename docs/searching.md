@@ -152,6 +152,16 @@ $searchParameters = SearchParameters::create()
 ;
 ```
 
+By default, Loupe returns at most `100` facet values per facet attribute. You can change this limit with
+`maxValuesPerFacet`:
+
+```php
+$searchParameters = SearchParameters::create()
+    ->withFacets(['departments'])
+    ->withMaxValuesPerFacet(250)
+;
+```
+
 The result will contain all documents matching the query and the filter. It also returns two fields you can use to create a faceted search interface, `facetDistribution` and `facetStats`:
 
 ```php
