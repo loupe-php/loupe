@@ -216,6 +216,30 @@ $configuration = \Loupe\Loupe\Configuration::create()
 
 If you need to browse all the documents and ignore this limit, use [the browse API][Browse].
 
+## Query cache
+
+Loupe can cache internal query artifacts (such as state-set lookups during typo tolerant search) through
+a PSR-6 cache pool:
+
+```php
+$cachePool = new \Symfony\Component\Cache\Adapter\RedisAdapter($redisConnection);
+
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withQueryCache($cachePool)
+;
+```
+
+If no query cache is configured and APCu is available, Loupe automatically enables an internal APCu-backed
+PSR-6 cache pool out of the box.
+
+To explicitly disable query caching:
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withQueryCache(null)
+;
+```
+
 ## Debugging
 
 You may pass a PSR-3 logger to Loupe. For the sake of simplicity, Loupe also ships with a very simple 
@@ -242,7 +266,7 @@ $serialized = $configuration->toString();
 $reconstructed = \Loupe\Loupe\Configuration::fromString($serialized);
 ```
 
-Note that this does not work for instances such as the "logger".
+Note that this does not work for instances such as the "logger" or "query cache".
 
 [Browse]: browsing.md
 [Paper]: https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf

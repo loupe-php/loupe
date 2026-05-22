@@ -10,10 +10,10 @@ use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\ConnectionPool;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\StateSetIndex\StateSetIndexInterface;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
-use Toflar\StateSetIndex\StateSetIndex;
 
 class StateSetTest extends TestCase
 {
@@ -86,7 +86,7 @@ class StateSetTest extends TestCase
     {
         $engine = $this->createTestEngine();
 
-        $this->assertInstanceOf(StateSetIndex::class, $engine->getStateSetIndex());
+        $this->assertInstanceOf(StateSetIndexInterface::class, $engine->getStateSetIndex());
     }
 
     public function testStateSetIndexRevisedAfterDocumentDeleted(): void
