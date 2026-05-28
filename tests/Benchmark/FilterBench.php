@@ -10,7 +10,7 @@ use Loupe\Loupe\SearchParameters;
 /**
  * @BeforeClassMethods({"setUpClass"})
  * @BeforeMethods({"setUp"})
- * @Revs(10)
+ * @Revs(3)
  * @Iterations(5)
  * @Warmup(2)
  * @OutputTimeUnit("milliseconds", precision=2)
