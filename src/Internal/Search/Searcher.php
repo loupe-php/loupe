@@ -43,6 +43,12 @@ class Searcher
 
     public const DISTANCE_ALIAS = '_distance';
 
+    public const DISTINCT_RANK_ALIAS = '_distinct_rank';
+
+    public const DISTINCT_VALUE_ALIAS = '_distinct_value';
+
+    public const DOCUMENT_ID_ALIAS = '_document_id';
+
     public const FACET_ALIAS_COUNT_PREFIX = '_facet_count_';
 
     public const FACET_ALIAS_MIN_MAX_PREFIX = '_facet_minmax_';
@@ -50,6 +56,13 @@ class Searcher
     public const MATCH_POSITION_INFO_PREFIX = '_match_position_info_';
 
     public const RELEVANCE_ALIAS = '_relevance';
+
+    /**
+     * Limit how many leading chars we may trim for the last token when looking
+     * up cached snapshots. This improves cache reuse for incremental typing by
+     * allowing matches from a recent shorter suffix (up to 2 chars trimmed).
+     */
+    private const MAX_PREFIX_CHARS_TO_TRIM_FOR_LAST_TOKEN_CACHE_REUSE = 2;
 
     /**
      * @var array<string, Cte>
@@ -67,6 +80,11 @@ class Searcher
      * @var array<int|string, string>
      */
     private array $namedParameters = [];
+
+    /**
+     * @var array<array{sort: string, order: string, needsMaterialization: bool}>
+     */
+    private array $orderByParts = [];
 
     private QueryBuilder $queryBuilder;
 
@@ -198,6 +216,17 @@ class Searcher
         return $cteName;
     }
 
+    public function addOrderBy(string $sort, string $order, bool $needsMaterialization = false): void
+    {
+        $this->orderByParts[] = [
+            'sort' => $sort,
+            'order' => $order,
+            'needsMaterialization' => $needsMaterialization,
+        ];
+
+        $this->queryBuilder->addOrderBy($sort, $order);
+    }
+
     public function createNamedParameter(mixed $value, mixed $type = ParameterType::STRING): string
     {
         if ($type === ParameterType::STRING && (\is_string($value) || \is_int($value))) {
@@ -233,10 +262,10 @@ class Searcher
         $this->addPositionsForFormatting($tokens);
         $this->filterDocuments($tokens); // Then filter the documents (requires the search term CTEs)
         $this->addFacets();
-        $this->selectTotalHits();
         $this->sortDocuments();
         $this->selectDistance();
         $this->applyDistinct();
+        $this->selectTotalHits();
         $this->limitPagination();
 
         $showAllAttributes = \in_array('*', $this->queryParameters->getAttributesToRetrieve(), true);
@@ -361,13 +390,14 @@ class Searcher
             return;
         }
 
-        $facets = array_intersect($this->queryParameters->getFacets(), $this->engine->getIndexInfo()->getFilterableAttributes());
+        $searchParameters = $this->queryParameters;
+        $facets = array_intersect($searchParameters->getFacets(), $this->engine->getIndexInfo()->getFilterableAttributes());
 
         if ($facets === []) {
             return;
         }
 
-        $buildCommonQueryBuilder = function (string $attribute, string $facetAlias): QueryBuilder {
+        $buildCommonQueryBuilder = function (string $attribute, string $facetAlias) use ($searchParameters): QueryBuilder {
             $qb = $this->engine->getConnection()->createQueryBuilder();
 
             if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($attribute)) {
@@ -390,7 +420,7 @@ class Searcher
             $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL));
             $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_EMPTY));
 
-            $qb->setMaxResults(100); // Limit the number of facet values
+            $qb->setMaxResults($searchParameters->getMaxValuesPerFacet()); // Limit the number of facet values
 
             return $qb;
         };
@@ -565,22 +595,38 @@ class Searcher
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.start');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.end');
+        $needsFoldingState = $this->needsFoldingState();
+        $needsTypoCount = $this->needsTypoCount();
+        $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
 
-        if ($this->needsTypoCount()) {
+        if ($needsTypoCount) {
             $cteSelectQb->addSelect(\sprintf(
                 'MIN(loupe_levensthein(%s.term, %s, %s)) AS typos',
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
+                $termsAlias,
                 $this->createNamedParameter($token->getTerm()),
                 $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
             ));
+        } else {
+            $cteSelectQb->addSelect('0 AS typos');
+        }
+
+        if ($needsFoldingState) {
+            $cteSelectQb->addSelect(\sprintf(
+                'MAX(CASE WHEN %s.term = %s AND %s.folded = %s THEN 1 ELSE 0 END) AS exact_match',
+                $termsAlias,
+                $this->createNamedParameter($token->getTerm()),
+                $termsDocumentsAlias,
+                $token->wasFolded() ? '1' : '0'
+            ));
+        }
+
+        if ($needsTypoCount || $needsFoldingState) {
             $cteSelectQb->innerJoin(
                 $termsDocumentsAlias,
                 IndexInfo::TABLE_NAME_TERMS,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                \sprintf('%s.id = %s.term', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS), $termsDocumentsAlias)
+                $termsAlias,
+                \sprintf('%s.id = %s.term', $termsAlias, $termsDocumentsAlias)
             );
-        } else {
-            $cteSelectQb->addSelect('0 AS typos');
         }
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
@@ -612,7 +658,7 @@ class Searcher
         // Ensure phrase positions if any
         if ($token->isPartOfPhrase() && $previousPhraseToken) {
             $cteSelectQb->andWhere(\sprintf(
-                '%s.position = (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
+                '%s.position IN (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
                 $termsDocumentsAlias,
                 $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken),
             ));
@@ -626,7 +672,9 @@ class Searcher
 
         $this->addCTE(new Cte(
             $cteName,
-            ['document', 'attribute', 'position', 'start', 'end', 'typos'],
+            $needsFoldingState ?
+                ['document', 'attribute', 'position', 'start', 'end', 'typos', 'exact_match'] :
+                ['document', 'attribute', 'position', 'start', 'end', 'typos'],
             $cteSelectQb
         ));
     }
@@ -694,12 +742,12 @@ class Searcher
     private function addTermMatchesCTE(Token $token, bool $isLastToken): void
     {
         $selects = [];
-        $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, $token->isPartOfPhrase());
+        $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, $token->isPartOfPhrase(), $isLastToken);
 
         // Consider variants only if not part of a phrase search
         if (!$token->isPartOfPhrase()) {
             foreach ($token->getVariants() as $term) {
-                $selects[] = $this->createTermMatchesSelect($term, false, false);
+                $selects[] = $this->createTermMatchesSelect($term, false, false, $isLastToken);
             }
         }
 
@@ -710,9 +758,9 @@ class Searcher
         ) {
             // With typo tolerance on prefix search requires searching the prefix tables as well
             if ($this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
-                $selects[] = $this->createTermMatchesSelect($token->getTerm(), true, false);
+                $selects[] = $this->createTermMatchesSelect($token->getTerm(), true, false, $isLastToken);
             } else {
-                $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, false, true);
+                $selects[] = $this->createTermMatchesSelect($token->getTerm(), false, false, $isLastToken, true);
             }
         }
 
@@ -751,9 +799,65 @@ class Searcher
         }
 
         $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $this->queryBuilder->addSelect($documentsAlias . '.' . $distinct . ' AS ' . self::DISTINCT_VALUE_ALIAS);
+
+        // We handle DISTINCT by ranking rows within each distinct value and then keeping the top one.
+        // If an ORDER BY part is computed in this query, we first expose it as a select alias so the outer
+        // ranking query can still sort by it.
+        $orderByParts = [];
+        foreach ($this->orderByParts as $index => $orderByPart) {
+            if ($orderByPart['needsMaterialization']) {
+                $alias = '_distinct_order_' . $index;
+                $this->queryBuilder->addSelect($orderByPart['sort'] . ' AS ' . $alias);
+
+                $orderByParts[] = [
+                    'sort' => $alias,
+                    'order' => $orderByPart['order'],
+                ];
+
+                continue;
+            }
+
+            $orderByParts[] = [
+                'sort' => $orderByPart['sort'],
+                'order' => $orderByPart['order'],
+            ];
+        }
+
+        $orderByParts[] = [
+            'sort' => self::DOCUMENT_ID_ALIAS,
+            'order' => 'ASC',
+        ];
+
+        // Now wrap the current query and assign a row number per distinct value using the normalized ORDER BY list.
+        // We add the document id at the end so ties still resolve in a predictable way.
+        $rankedQueryBuilder = $this->engine->getConnection()->createQueryBuilder();
+        $rankedQueryBuilder
+            ->select('*')
+            ->addSelect(\sprintf(
+                'ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s) AS %s',
+                self::DISTINCT_VALUE_ALIAS,
+                implode(', ', array_map(static fn (array $orderByPart): string => $orderByPart['sort'] . ' ' . $orderByPart['order'], $orderByParts)),
+                self::DISTINCT_RANK_ALIAS,
+            ))
+            ->from('(' . $this->queryBuilder->getSQL() . ')')
+            ->setParameters($this->queryBuilder->getParameters(), $this->queryBuilder->getParameterTypes())
+        ;
+
+        // Replace the original builder with the ranked subquery and keep only the first row from each distinct group.
+        // After that we re-apply the normalized ORDER BY parts to the final query builder below.
+        $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
         $this->queryBuilder
-            ->addSelect($documentsAlias . '.' . $distinct)
-            ->groupBy($documentsAlias . '.' . $distinct);
+            ->select('*')
+            ->from('(' . $rankedQueryBuilder->getSQL() . ')')
+            ->where(self::DISTINCT_RANK_ALIAS . ' = 1')
+            ->setParameters($rankedQueryBuilder->getParameters(), $rankedQueryBuilder->getParameterTypes())
+        ;
+
+        $this->orderByParts = [];
+        foreach ($orderByParts as $orderByPart) {
+            $this->addOrderBy($orderByPart['sort'], $orderByPart['order']);
+        }
     }
 
     private function askedForFormattingOrMatchesPosition(): bool
@@ -805,7 +909,16 @@ class Searcher
             }
         }
 
-        $where = implode(' OR ', array_map(
+        $strategy = $this->queryParameters instanceof SearchParameters
+            ? MatchingStrategy::from($this->queryParameters->getMatchingStrategy())
+            : MatchingStrategy::Any;
+
+        $positiveOperator = match ($strategy) {
+            MatchingStrategy::All => ' AND ',
+            MatchingStrategy::Any => ' OR ',
+        };
+
+        $where = implode($positiveOperator, array_map(
             fn ($statements) => '(' . implode(' AND ', $statements) . ')',
             $positiveConditions
         ));
@@ -908,7 +1021,7 @@ class Searcher
         );
     }
 
-    private function createTermMatchesSelect(string $term, bool $prefix, bool $disableTypoTolerance, bool $prefixLikeOnly = false): string
+    private function createTermMatchesSelect(string $term, bool $prefix, bool $disableTypoTolerance, bool $isLastToken, bool $prefixLikeOnly = false): string
     {
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
         $qb = $this->engine->getConnection()->createQueryBuilder();
@@ -922,13 +1035,13 @@ class Searcher
                 $this->createNamedParameter($term . '*')
             ));
         } else {
-            $qb->where($this->createWherePartForTerm($term, $prefix, $disableTypoTolerance));
+            $qb->where($this->createWherePartForTerm($term, $prefix, $disableTypoTolerance, $isLastToken));
         }
 
         return $qb->getSQL();
     }
 
-    private function createWherePartForTerm(string $term, bool $prefix, bool $disableTypoTolerance): string
+    private function createWherePartForTerm(string $term, bool $prefix, bool $disableTypoTolerance, bool $isLastToken): string
     {
         $where = [];
         $termParameter = $this->createNamedParameter($term);
@@ -976,7 +1089,12 @@ class Searcher
             return implode(' ', $where);
         }
 
-        $states = $this->engine->getStateSetIndex()->findMatchingStates($term, $levenshteinDistance, 1);
+        $states = $this->engine->getStateSetIndex()->findMatchingStates(
+            $term,
+            $levenshteinDistance,
+            1,
+            $isLastToken ? self::MAX_PREFIX_CHARS_TO_TRIM_FOR_LAST_TOKEN_CACHE_REUSE : 0
+        );
 
         // No result possible, we add AND 1=0 to ensure no results
         if ($states === []) {
@@ -1238,6 +1356,11 @@ class Searcher
         $this->queryBuilder->setMaxResults($limit);
     }
 
+    private function needsFoldingState(): bool
+    {
+        return \in_array('exactness', $this->engine->getConfiguration()->getRankingRules(), true);
+    }
+
     /**
      * If typo tolerance is disabled or neither, exactness nor typo are part of the ranking rules, we can omit
      * calculating the info for better performance.
@@ -1319,6 +1442,7 @@ class Searcher
     {
         $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
         $this->queryBuilder
+            ->addSelect($documentsAlias . '._id AS ' . self::DOCUMENT_ID_ALIAS)
             ->addSelect($documentsAlias . '._document')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
             ->innerJoin(

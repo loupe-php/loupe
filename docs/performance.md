@@ -108,6 +108,27 @@ $configuration = \Loupe\Loupe\Configuration::create()
 Note: The paper works using the Levenshtein algorithm. Loupe includes adjustments built on top of that paper to support
 Damerau-Levenshtein.
 
+## Query cache backend
+
+Loupe can cache internal query artifacts (especially state-set lookups for typo tolerance) via a PSR-6 cache pool.
+By default, Loupe auto-enables an APCu-backed pool when APCu is available. This is intentionally zero-config and
+gives an immediate speedup in many real-world typeahead/autosubmit setups.
+
+Why APCu is the default:
+
+- no setup or external service required
+- very fast local in-process/shared-memory access
+- good default for single-node deployments
+
+Why Redis or Memcached can be the better fit:
+
+- shared cache across multiple PHP workers/containers/hosts
+- cache survives individual worker restarts better
+- centralized memory and eviction policy control
+
+In short: APCu is used by default because it is better than no cache and requires zero setup. If you already run
+Redis or Memcached, plug a PSR-6 pool into `withQueryCache()` to get cross-process cache reuse.
+
 ## Limit the languages to detect
 
 You can read more about what the tokenizer does in the [respective docs](tokenizer.md) but basically, if you know 
@@ -134,6 +155,41 @@ $configuration = \Loupe\Loupe\Configuration::create()
 
 Note: Attributes you neither want to search or filter for are best kept **outside** of Loupe. Don't bother it with 
 data that doesn't need to be processed.
+
+## Store a separate preview attribute for large content
+
+Cropping in `_formatted` is based on query matches. If an attribute has no match for a hit, it will not appear in
+`_formatted`. For large text fields, avoid loading and truncating the full content on every search request.
+
+Instead, index two attributes:
+
+* A full attribute for relevance (`content`) that is searchable.
+* A short preview attribute (`content_truncated`) that is displayed.
+
+Also keep the full content out of displayed attributes so Loupe does not need to load it from SQLite when returning
+hits:
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withSearchableAttributes(['content'])
+    ->withDisplayedAttributes(['content_truncated'])
+;
+```
+
+At indexing time, provide both values:
+
+```php
+[
+    'content' => '... up to hundreds of KB ...',
+    'content_truncated' => 'First 250 characters...',
+]
+```
+
+At search result rendering time, use the matched/cropped value when available, otherwise fall back to the preview:
+
+```php
+$preview = $hit['_formatted']['content'] ?? $hit['content_truncated'];
+```
 
 ## Avoid highlighting in nested attributes
 

@@ -13,8 +13,21 @@ class InvalidSearchParametersException extends \InvalidArgumentException impleme
         return new self('The distinct attribute must be a single filterable attribute.');
     }
 
+    /**
+     * @param array<string> $allowed
+     */
+    public static function invalidMatchingStrategy(string $given, array $allowed): self
+    {
+        return new self(\sprintf('Invalid matching strategy "%s". Allowed values: %s.', $given, implode(', ', $allowed)));
+    }
+
     public static function maxLimit(): self
     {
         return new self(\sprintf('Cannot request more than %d documents per request, use pagination.', SearchParameters::MAX_LIMIT));
+    }
+
+    public static function maxValuesPerFacetMustBeGreaterThanZero(): self
+    {
+        return new self('The max values per facet must be greater than zero.');
     }
 }

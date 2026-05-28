@@ -35,9 +35,9 @@ class TermPositions
             if ($term->hasMatches()) {
                 $this->totalMatchingTerms++;
 
-                $this->totalNumberOfTypos += $totalNumberOfTypos = $term->getLowestNumberOfTypos();
+                $this->totalNumberOfTypos += $term->getLowestNumberOfTypos();
 
-                if ($totalNumberOfTypos === 0) {
+                if ($term->hasExactMatch()) {
                     $this->totalExactMatchingTerms++;
                 }
 
@@ -68,25 +68,32 @@ class TermPositions
         }
 
         foreach (explode(';', $positionsInDocumentPerTerm) as $termSearchedFor) {
+            [$positionsForTerm, $hasExactMatch] = array_pad(explode('|', $termSearchedFor, 2), 2, null);
+
             // Document did not match this term
-            if ($termSearchedFor === '0') {
+            if ($positionsForTerm === '0') {
                 $terms[] = new Term([]);
                 continue;
             }
 
             $attributePositions = [];
             $termMatches = [];
+            $shouldInferExactMatch = $hasExactMatch === null;
+            $hasExactMatch = $hasExactMatch === '1';
 
-            foreach (explode(',', $termSearchedFor) as $positionAttributeCombination) {
-                [$position, $attribute, $numberOfTypos] = explode(':', $positionAttributeCombination, 3);
+            foreach (explode(',', $positionsForTerm ?? '0') as $positionAttributeCombination) {
+                [$position, $attribute, $numberOfTypos, $foldingMismatch] = array_pad(explode(':', $positionAttributeCombination, 4), 4, '0');
                 $attributePositions[$attribute][] = new Position((int) $position, (int) $numberOfTypos);
+                if ($shouldInferExactMatch) {
+                    $hasExactMatch = $hasExactMatch || ((int) $numberOfTypos === 0 && $foldingMismatch === '0');
+                }
             }
 
             foreach ($attributePositions as $attribute => $positions) {
                 $termMatches[] = new TermMatch($attribute, $positions);
             }
 
-            $terms[] = new Term($termMatches);
+            $terms[] = new Term($termMatches, $hasExactMatch);
         }
 
         return new self($terms);

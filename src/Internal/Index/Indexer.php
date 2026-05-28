@@ -422,8 +422,9 @@ class Indexer
                 return;
             }
 
-            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position", 3 the "start", 4 the "end" of the match - need to optimize for memory here
+            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position", 3 the "start", 4 the "end" of the match, 5 if folded - need to optimize for memory here
             $termsMapper = [];
+            $knownTermRows = [];
             // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
             $rows = [];
             $prefixRelevantTerms = [];
@@ -431,8 +432,12 @@ class Indexer
 
             foreach ($preparedDocuments->all() as $document) {
                 foreach ($document->getTerms() as $term) {
-                    $rows[] = [$term->getTerm(), $term->getTermLength(), 0];
-                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition(), $term->getStart(), $term->getEnd()];
+                    if (!isset($knownTermRows[$term->getTerm()])) {
+                        $knownTermRows[$term->getTerm()] = true;
+                        $rows[] = [$term->getTerm(), $term->getTermLength(), 0];
+                    }
+
+                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition(), $term->getStart(), $term->getEnd(), $term->isVariant()];
 
                     // Prefix relevant terms must not be variants
                     if ($indexPrefixes && !$term->isVariant()) {
@@ -491,7 +496,7 @@ class Indexer
             $this->engine->getBulkUpserterFactory()
                 ->create(BulkUpsertConfig::create(
                     IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                    ['document', 'attribute', 'position', 'start', 'end', 'term'],
+                    ['document', 'attribute', 'position', 'start', 'end', 'folded', 'term'],
                     $relationRows,
                     ['term', 'document', 'attribute', 'position'],
                     ConflictMode::Ignore
@@ -606,14 +611,19 @@ class Indexer
      */
     private function prepareDocument(array $document): PreparedDocument
     {
+        $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
+
         if ($this->engine->getConfiguration()->getDisplayedAttributes() !== ['*']) {
             $documentData = array_intersect_key($document, array_flip($this->engine->getConfiguration()->getDisplayedAttributes()));
         } else {
             $documentData = $document;
         }
 
+        // Keep the primary key in persisted document data so reindex/migration can always rehydrate documents.
+        $documentData[$primaryKey] = $document[$primaryKey];
+
         $preparedDocument = new PreparedDocument(
-            (string) $document[$this->engine->getConfiguration()->getPrimaryKey()],
+            (string) $document[$primaryKey],
             Util::encodeJson($documentData)
         );
 
@@ -688,11 +698,11 @@ class Indexer
             $termPosition = 1;
             foreach ($tokenCollection->all() as $token) {
                 // Index the main term
-                $terms[] = new Term($token->getTerm(), $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), false);
+                $terms[] = new Term($token->getTerm(), $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), $token->wasFolded());
 
                 // Index variants
                 foreach ($token->getVariants() as $termVariant) {
-                    $terms[] = new Term($termVariant, $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), false);
+                    $terms[] = new Term($termVariant, $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), true);
                 }
 
                 ++$termPosition;

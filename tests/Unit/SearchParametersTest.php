@@ -30,6 +30,21 @@ class SearchParametersTest extends TestCase
         $this->assertSame(2, $newParams->getPage());
     }
 
+    public function testMatchingStrategyDefaultsToAny(): void
+    {
+        $this->assertSame('any', SearchParameters::create()->getMatchingStrategy());
+    }
+
+    public function testMatchingStrategyFromArrayRejectsUnknownValue(): void
+    {
+        $this->expectException(InvalidSearchParametersException::class);
+        $this->expectExceptionMessage('Invalid matching strategy "bogus"');
+
+        SearchParameters::fromArray([
+            'matchingStrategy' => 'bogus',
+        ]);
+    }
+
     public function testMaxHitsPerPage(): void
     {
         $this->expectException(InvalidSearchParametersException::class);
@@ -38,12 +53,19 @@ class SearchParametersTest extends TestCase
         SearchParameters::create()->withHitsPerPage(2000);
     }
 
+    public function testMaxValuesPerFacetDefaultsToHundred(): void
+    {
+        $this->assertSame(100, SearchParameters::create()->getMaxValuesPerFacet());
+    }
+
     public function testToArrayAndFromArray(): void
     {
         $original = SearchParameters::create()
             ->withQuery('hello world')
             ->withPage(3)
             ->withHitsPerPage(50)
+            ->withMatchingStrategy('all')
+            ->withMaxValuesPerFacet(42)
             ->withRankingScoreThreshold(0.25)
             ->withFilter("status = 'active'")
             ->withAttributesToRetrieve(['title', 'author'])
@@ -57,6 +79,8 @@ class SearchParametersTest extends TestCase
         $reconstructed = SearchParameters::fromArray($array);
 
         $this->assertSame($original->toArray(), $reconstructed->toArray());
+        $this->assertSame('all', $reconstructed->getMatchingStrategy());
+        $this->assertSame(42, $reconstructed->getMaxValuesPerFacet());
     }
 
     public function testToStringAndFromString(): void
@@ -66,5 +90,21 @@ class SearchParametersTest extends TestCase
         $parsed = SearchParameters::fromString($json);
 
         $this->assertSame($params->toArray(), $parsed->toArray());
+    }
+
+    public function testWithMatchingStrategyRejectsUnknownValue(): void
+    {
+        $this->expectException(InvalidSearchParametersException::class);
+        $this->expectExceptionMessage('Invalid matching strategy "bogus"');
+
+        SearchParameters::create()->withMatchingStrategy('bogus');
+    }
+
+    public function testWithMaxValuesPerFacetRejectsZeroOrNegativeValues(): void
+    {
+        $this->expectException(InvalidSearchParametersException::class);
+        $this->expectExceptionMessage('The max values per facet must be greater than zero.');
+
+        SearchParameters::create()->withMaxValuesPerFacet(0);
     }
 }

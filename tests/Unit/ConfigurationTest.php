@@ -9,6 +9,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Cache\CacheItemPoolInterface;
 
 class ConfigurationTest extends TestCase
 {
@@ -110,5 +111,20 @@ class ConfigurationTest extends TestCase
         );
 
         Configuration::create()->withFilterableAttributes([$attributeName]);
+    }
+
+    public function testQueryCacheCanBeConfigured(): void
+    {
+        $cachePool = $this->createStub(CacheItemPoolInterface::class);
+        $configuration = Configuration::create()->withQueryCache($cachePool);
+
+        $this->assertSame($cachePool, $configuration->getQueryCache());
+    }
+
+    public function testQueryCacheCanBeDisabledExplicitly(): void
+    {
+        $configuration = Configuration::create()->withQueryCache(null);
+
+        $this->assertNull($configuration->getQueryCache());
     }
 }

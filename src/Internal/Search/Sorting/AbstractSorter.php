@@ -58,24 +58,26 @@ abstract class AbstractSorter
         // Because of how Loupe works (SQLite's loosely typed system) we need to always ensure that null and empty values
         // are ordered ascending first.
         // Null and empty values should always come last for Loupe (or generally speaking for any search engine probably).
-        $searcher->getQueryBuilder()->addOrderBy(
+        $searcher->addOrderBy(
             Operator::Equals->buildSql(
                 $engine->getConnection(),
                 $alias,
                 FilterValue::createNull()
             ),
-            Direction::ASC->getSQL()
+            Direction::ASC->getSQL(),
+            true,
         );
 
-        $searcher->getQueryBuilder()->addOrderBy(
+        $searcher->addOrderBy(
             Operator::Equals->buildSql(
                 $engine->getConnection(),
                 $alias,
                 FilterValue::createEmpty()
             ),
-            Direction::ASC->getSQL()
+            Direction::ASC->getSQL(),
+            true,
         );
 
-        $searcher->getQueryBuilder()->addOrderBy($alias, $direction->getSQL());
+        $searcher->addOrderBy($alias, $direction->getSQL(), true);
     }
 }

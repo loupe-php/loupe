@@ -471,6 +471,31 @@ class IndexTest extends TestCase
         $this->assertTrue($loupe->needsReindex());
     }
 
+    public function testReindexWorksWhenPrimaryKeyIsNotDisplayed(): void
+    {
+        $dir = $this->createTemporaryDirectory();
+
+        $configuration = Configuration::create()
+            ->withDisplayedAttributes(['firstname'])
+            ->withSearchableAttributes(['lastname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration, $dir);
+        $loupe->addDocument(self::getSandraDocument());
+
+        $configuration = Configuration::create()
+            ->withDisplayedAttributes(['firstname'])
+            ->withSearchableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration, $dir);
+        $this->assertTrue($loupe->needsReindex());
+
+        // Triggers migration/reindex using previously stored documents.
+        $loupe->addDocument(self::getSandraDocument());
+        $this->assertSame(1, $loupe->countDocuments());
+    }
+
     public function testReplacingTheSameDocumentWorks(): void
     {
         $configuration = Configuration::create()

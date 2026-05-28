@@ -1296,6 +1296,56 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testDistinctUsesBestMatchingDocumentForHighlightingContext(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['filename'])
+            ->withSearchableAttributes(['content'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'filename' => 'report.pdf',
+                'page' => 1,
+                'content' => 'needle footer',
+            ],
+            [
+                'id' => 2,
+                'filename' => 'report.pdf',
+                'page' => 2,
+                'content' => 'needle important context footer',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('needle context')
+            ->withDistinct('filename')
+            ->withAttributesToRetrieve(['id', 'filename', 'content'])
+            ->withAttributesToHighlight(['content']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'filename' => 'report.pdf',
+                    'content' => 'needle important context footer',
+                    '_formatted' => [
+                        'id' => 2,
+                        'filename' => 'report.pdf',
+                        'content' => '<em>needle</em> important <em>context</em> footer',
+                    ],
+                ],
+            ],
+            'query' => 'needle context',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<array<string, mixed>> $expectedHits
      */
@@ -1866,6 +1916,144 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testMatchingStrategyAllConsidersNegation(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young london glaciologist -passion')
+            ->withMatchingStrategy('all')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [],
+            'query' => 'young london glaciologist -passion',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
+    public function testMatchingStrategyAllConsidersPhrase(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        // `and the son` would match at least 2 documents
+        // `and "the son"` would only match 1 document
+        $searchParameters = SearchParameters::create()
+            ->withQuery('and "the son"')
+            ->withMatchingStrategy('all')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 19,
+                    'title' => 'Metropolis',
+                ],
+            ],
+            'query' => 'and "the son"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
+    public function testMatchingStrategyAllRequiresAllTerms(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview', 'genres'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young london glaciologist music')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withMatchingStrategy('all')
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+            ],
+            'query' => 'young london glaciologist music',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $impossibleParameters = $searchParameters
+            ->withQuery('young london glaciologist music life things');
+
+        $this->searchAndAssertResults($loupe, $impossibleParameters, [
+            'hits' => [],
+            'query' => 'young london glaciologist music life things',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
+    }
+
+    public function testMatchingStrategyAnyRequiresAnyOneTerm(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title', 'overview', 'genres'])
+            ->withTypoTolerance(TypoTolerance::create()->disable());
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('young london glaciologist music')
+            ->withAttributesToRetrieve(['id', 'title'])
+            ->withSort(['title:asc']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 27,
+                    'title' => '9 Songs',
+                ],
+                [
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
+                ],
+                [
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
+                ],
+            ],
+            'query' => 'young london glaciologist music',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
+        ]);
+    }
+
     public function testMaxHits(): void
     {
         $configuration = Configuration::create()
@@ -2207,6 +2395,39 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testPhraseSearchWorksWithRepeatedTerms(): void
+    {
+        $configuration = Configuration::create()
+            ->withSortableAttributes(['title'])
+            ->withSearchableAttributes(['title']);
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'title' => 'Gone With the Wind: The Wind Blows No More',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('"the wind blows"')
+            ->withAttributesToRetrieve(['id', 'title']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 1,
+                    'title' => 'Gone With the Wind: The Wind Blows No More',
+                ],
+            ],
+            'query' => '"the wind blows"',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     /**
      * @param array<mixed> $expectedResults
      */
@@ -2449,6 +2670,63 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testRelevanceAndRankingScoreForLengthChangingFolding(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['name'])
+            ->withSortableAttributes(['name']);
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Die große Straße',
+            ],
+            [
+                'id' => 2,
+                'name' => 'Die grosse Strasse',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('die große straße')
+            ->withAttributesToRetrieve(['name']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Die große Straße',
+                ],
+                [
+                    'name' => 'Die grosse Strasse',
+                ],
+            ],
+            'query' => 'die große straße',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+
+        $searchParameters = $searchParameters->withQuery('die grosse strasse');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Die grosse Strasse',
+                ],
+                [
+                    'name' => 'Die große Straße',
+                ],
+            ],
+            'query' => 'die grosse strasse',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ]);
+    }
+
     public function testRelevanceAndRankingScoreForNonExistentQueryTerms(): void
     {
         $configuration = Configuration::create()
@@ -2504,6 +2782,84 @@ class SearchTest extends TestCase
                 ],
             ],
             'query' => 'foobar life learning',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
+        ]);
+    }
+
+    public function testRelevanceAndRankingScoreForNormalizedSpelling(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['name'])
+            ->withSortableAttributes(['name']);
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'name' => 'Thomas Müller',
+            ],
+            [
+                'id' => 2,
+                'name' => 'Thomas Muller',
+            ],
+            [
+                'id' => 3,
+                'name' => 'Sandra Mûllêr',
+            ],
+            [
+                'id' => 4,
+                'name' => 'Sandra Muller',
+            ],
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('thomas müller')
+            ->withAttributesToRetrieve(['name']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Thomas Müller',
+                ],
+                [
+                    'name' => 'Thomas Muller',
+                ],
+                [
+                    'name' => 'Sandra Mûllêr',
+                ],
+                [
+                    'name' => 'Sandra Muller',
+                ],
+            ],
+            'query' => 'thomas müller',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 4,
+        ]);
+
+        // Test without umlaut
+        $searchParameters = $searchParameters->withQuery('sandra muller');
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'name' => 'Sandra Muller',
+                ],
+                [
+                    'name' => 'Sandra Mûllêr',
+                ],
+                [
+                    'name' => 'Thomas Muller',
+                ],
+                [
+                    'name' => 'Thomas Müller',
+                ],
+            ],
+            'query' => 'sandra muller',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
