@@ -10,7 +10,7 @@ use Loupe\Loupe\Loupe;
  * @BeforeClassMethods({"setUpClass"})
  * @BeforeMethods({"setUp"})
  * @Revs(1)
- * @Iterations(3)
+ * @Iterations(1)
  * @Warmup(1)
  * @OutputTimeUnit("milliseconds", precision=2)
  */
