@@ -43,16 +43,13 @@ Note that anything above 50k documents is probably not a use case for Loupe. You
 with [PHPBench][PHPBench]:
 
 ```bash
-composer bench
+composer bench         # SearchBench + FilterBench (query latency)
+composer bench-index   # IndexBench (cold-insert + update; slower)
 ```
 
-This runs the `IndexBench`, `SearchBench` and `FilterBench` suites in `tests/Benchmark` against the
-[~32k movies fixture][MeiliSearch_Movies], which is downloaded automatically into `var/movies.json` on first run.
-A shared search index is built once into `var/bench/` and reused across runs. To target a single suite:
-
-```bash
-vendor/bin/phpbench run --filter=SearchBench
-```
+The benches in `tests/Benchmark` run against the [~32k movies fixture][MeiliSearch_Movies], which is downloaded
+automatically into `var/movies.json` on first run. A shared search index is built once into `var/bench/` and reused
+across `composer bench` runs.
 
 Please, also read the [Performance](./docs/performance.md) chapter in the docs. You may report your own performance
 measurements and more details in the [respective discussion][Performance_Topic].

@@ -13,6 +13,7 @@ use Loupe\Loupe\Loupe;
  * @Iterations(1)
  * @Warmup(1)
  * @OutputTimeUnit("milliseconds", precision=2)
+ * @Groups({"index"})
  */
 class IndexBench extends AbstractBench
 {

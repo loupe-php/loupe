@@ -14,6 +14,7 @@ use Loupe\Loupe\SearchParameters;
  * @Iterations(5)
  * @Warmup(2)
  * @OutputTimeUnit("milliseconds", precision=2)
+ * @Groups({"query"})
  */
 class SearchBench extends AbstractBench
 {

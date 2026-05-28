@@ -53,6 +53,7 @@
         "cs-fixer": "@php vendor/bin/ecs check --fix",
         "ci-cs-fixer": "@php vendor/bin/ecs check",
         "phpstan": "@php vendor/bin/phpstan analyse",
-        "bench": "@php vendor/bin/phpbench run --report=aggregate"
+        "bench": "@php vendor/bin/phpbench run --report=aggregate --group=query",
+        "bench-index": "@php vendor/bin/phpbench run --report=aggregate --group=index"
     }
 }
