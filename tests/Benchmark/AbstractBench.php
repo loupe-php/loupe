@@ -18,7 +18,9 @@ abstract class AbstractBench
             return;
         }
 
-        foreach (new \FilesystemIterator($dir) as $file) {
+        $iterator = new \FilesystemIterator($dir, \FilesystemIterator::CURRENT_AS_FILEINFO);
+        /** @var \SplFileInfo $file */
+        foreach ($iterator as $file) {
             if ($file->isFile()) {
                 unlink($file->getPathname());
             }
@@ -102,12 +104,12 @@ abstract class AbstractBench
      */
     protected static function loadMovies(): array
     {
-        return json_decode(
-            file_get_contents(self::moviesJsonPath()),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
+        $json = file_get_contents(self::moviesJsonPath());
+        if ($json === false) {
+            throw new \RuntimeException('Failed to read ' . self::moviesJsonPath());
+        }
+
+        return json_decode($json, true, 512, JSON_THROW_ON_ERROR);
     }
 
     protected static function loupe(string $dataDir): Loupe
