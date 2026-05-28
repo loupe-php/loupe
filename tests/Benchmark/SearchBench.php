@@ -40,6 +40,15 @@ class SearchBench extends AbstractBench
         );
     }
 
+    public function benchExactQueryWithFacets(): void
+    {
+        $this->loupe->search(
+            SearchParameters::create()
+                ->withQuery('Anakin Skywalker')
+                ->withFacets(['genres'])
+        );
+    }
+
     public static function setUpClass(): void
     {
         self::ensureSearchIndex();
