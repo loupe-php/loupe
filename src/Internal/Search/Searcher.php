@@ -33,6 +33,8 @@ class Searcher
 {
     public const CTE_ALL_MULTI_FILTERS_PREFIX = '_cte_mf_all_';
 
+    public const CTE_CANDIDATE_DOCUMENTS = '_cte_candidate_documents';
+
     public const CTE_MATCHES = '_cte_matches';
 
     public const CTE_TERM_DOCUMENT_MATCHES_PREFIX = '_cte_term_document_matches_';
@@ -630,20 +632,16 @@ class Searcher
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
 
         // Get documents that match any of our terms
-        $documentConditions = [];
-        foreach ($this->getTokens()->all() as $otherToken) {
-            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
-            if (!$this->hasCTE($cteName)) {
-                continue;
-            }
-            $documentConditions[] = \sprintf('%s.document IN (SELECT document FROM %s)', $termsDocumentsAlias, $cteName);
-        }
-
-        if ($documentConditions === []) {
+        if (!$this->ensureCandidateDocumentsCTE()) {
             return;
         }
 
-        $cteSelectQb->where('(' . implode(' OR ', $documentConditions) . ')');
+        $cteSelectQb->where(\sprintf(
+            '%s.document IN (SELECT document FROM %s)',
+            $termsDocumentsAlias,
+            self::CTE_CANDIDATE_DOCUMENTS
+        ));
+
         $cteSelectQb->andWhere(\sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $termMatchesCTE));
 
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
@@ -1149,6 +1147,34 @@ class Searcher
         }
 
         return implode(' ', $where);
+    }
+
+    private function ensureCandidateDocumentsCTE(): bool
+    {
+        if ($this->hasCTE(self::CTE_CANDIDATE_DOCUMENTS)) {
+            return true;
+        }
+
+        $unionParts = [];
+        foreach ($this->getTokens()->all() as $otherToken) {
+            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
+            if (!$this->hasCTE($cteName)) {
+                continue;
+            }
+            $unionParts[] = 'SELECT document FROM ' . $cteName;
+        }
+
+        if ($unionParts === []) {
+            return false;
+        }
+
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->select('document');
+        $cteSelectQb->from('(' . implode(' UNION ', $unionParts) . ')');
+
+        $this->addCTE(new Cte(self::CTE_CANDIDATE_DOCUMENTS, ['document'], $cteSelectQb));
+
+        return true;
     }
 
     private function filterDocuments(TokenCollection $tokenCollection): void
