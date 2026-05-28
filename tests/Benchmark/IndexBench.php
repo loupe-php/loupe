@@ -52,6 +52,27 @@ class IndexBench extends AbstractBench
         $this->loupe->addDocuments($this->movies);
     }
 
+    /**
+     * Re-indexes the same documents on top of an already-populated index,
+     * exercising the upsert path rather than cold insert.
+     *
+     * @BeforeMethods({"setUpForUpdate"})
+     * @ParamProviders({"provideCorpus"})
+     */
+    public function benchUpdateDocuments(): void
+    {
+        $this->loupe->addDocuments($this->movies);
+    }
+
+    /**
+     * @param array{size: int} $params
+     */
+    public function setUpForUpdate(array $params): void
+    {
+        $this->setUp($params);
+        $this->loupe->addDocuments($this->movies);
+    }
+
     public function provideCorpus(): \Generator
     {
         yield '1k' => ['size' => 1_000];
