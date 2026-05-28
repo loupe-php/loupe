@@ -25,6 +25,28 @@ class SearchBench extends AbstractBench
         $this->loupe = self::loupe(self::searchIndexPath());
     }
 
+    /**
+     * @Revs(1)
+     */
+    public function benchMultiWordQueries(): void
+    {
+        $queries = [
+            'dark knight',
+            'lord of the rings',
+            'harry potter',
+            'indiana jones',
+            'jurassic park',
+            'iron man',
+            'back to the future',
+            'the godfather',
+        ];
+
+        foreach ($queries as $q) {
+            $this->loupe->search(SearchParameters::create()->withQuery($q));
+        }
+
+    }
+
     public function benchExactQueryWithFacets(): void
     {
         $this->loupe->search(
