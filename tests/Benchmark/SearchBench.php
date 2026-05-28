@@ -19,14 +19,16 @@ class SearchBench extends AbstractBench
 {
     private Loupe $loupe;
 
-    public static function setUpClass(): void
-    {
-        self::ensureSearchIndex();
-    }
-
     public function setUp(): void
     {
         $this->loupe = self::loupe(self::searchIndexPath());
+    }
+
+    public function benchPlainQuery(): void
+    {
+        $this->loupe->search(
+            SearchParameters::create()->withQuery('star wars')
+        );
     }
 
     public function benchTypoQueryWithFacets(): void
@@ -38,10 +40,8 @@ class SearchBench extends AbstractBench
         );
     }
 
-    public function benchPlainQuery(): void
+    public static function setUpClass(): void
     {
-        $this->loupe->search(
-            SearchParameters::create()->withQuery('star wars')
-        );
+        self::ensureSearchIndex();
     }
 }

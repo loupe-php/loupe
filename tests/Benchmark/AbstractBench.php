@@ -12,24 +12,26 @@ abstract class AbstractBench
 {
     protected const MOVIES_URL = 'https://www.meilisearch.com/movies.json';
 
-    protected static function moviesJsonPath(): string
+    protected static function clearDir(string $dir): void
     {
-        return self::projectRoot() . '/var/movies.json';
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        foreach (new \FilesystemIterator($dir) as $file) {
+            if ($file->isFile()) {
+                unlink($file->getPathname());
+            }
+        }
     }
 
-    protected static function searchIndexPath(): string
+    protected static function configuration(): Configuration
     {
-        return self::projectRoot() . '/var/bench/movies-search';
-    }
-
-    protected static function indexScratchPath(): string
-    {
-        return self::projectRoot() . '/var/bench/movies-index';
-    }
-
-    protected static function projectRoot(): string
-    {
-        return \dirname(__DIR__, 2);
+        return Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withFilterableAttributes(['release_date', 'genres'])
+            ->withSortableAttributes(['release_date'])
+            ->withLanguages(['en']);
     }
 
     protected static function ensureMoviesJson(): void
@@ -44,7 +46,7 @@ abstract class AbstractBench
             mkdir(\dirname($path), 0777, true);
         }
 
-        self::progress(sprintf('Downloading %s ...', self::MOVIES_URL));
+        self::progress(\sprintf('Downloading %s ...', self::MOVIES_URL));
         $start = microtime(true);
 
         $data = file_get_contents(self::MOVIES_URL);
@@ -54,42 +56,11 @@ abstract class AbstractBench
 
         file_put_contents($path, $data);
 
-        self::progress(sprintf(
+        self::progress(\sprintf(
             'Downloaded %.1f MiB in %.1fs',
-            strlen($data) / 1024 / 1024,
+            \strlen($data) / 1024 / 1024,
             microtime(true) - $start
         ));
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    protected static function loadMovies(): array
-    {
-        return json_decode(
-            file_get_contents(self::moviesJsonPath()),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-    }
-
-    protected static function configuration(): Configuration
-    {
-        return Configuration::create()
-            ->withSearchableAttributes(['title', 'overview'])
-            ->withFilterableAttributes(['release_date', 'genres'])
-            ->withSortableAttributes(['release_date'])
-            ->withLanguages(['en']);
-    }
-
-    protected static function loupe(string $dataDir): Loupe
-    {
-        if (!is_dir($dataDir)) {
-            mkdir($dataDir, 0777, true);
-        }
-
-        return (new LoupeFactory())->create($dataDir, self::configuration());
     }
 
     /**
@@ -109,7 +80,7 @@ abstract class AbstractBench
         }
 
         $movies = self::loadMovies();
-        self::progress(sprintf(
+        self::progress(\sprintf(
             'Building shared search index (%d documents, one-time) ...',
             \count($movies)
         ));
@@ -118,24 +89,53 @@ abstract class AbstractBench
         $loupe->deleteAllDocuments();
         $loupe->addDocuments($movies);
 
-        self::progress(sprintf('Index built in %.1fs', microtime(true) - $start));
+        self::progress(\sprintf('Index built in %.1fs', microtime(true) - $start));
+    }
+
+    protected static function indexScratchPath(): string
+    {
+        return self::projectRoot() . '/var/bench/movies-index';
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected static function loadMovies(): array
+    {
+        return json_decode(
+            file_get_contents(self::moviesJsonPath()),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+    }
+
+    protected static function loupe(string $dataDir): Loupe
+    {
+        if (!is_dir($dataDir)) {
+            mkdir($dataDir, 0777, true);
+        }
+
+        return (new LoupeFactory())->create($dataDir, self::configuration());
+    }
+
+    protected static function moviesJsonPath(): string
+    {
+        return self::projectRoot() . '/var/movies.json';
+    }
+
+    protected static function projectRoot(): string
+    {
+        return \dirname(__DIR__, 2);
+    }
+
+    protected static function searchIndexPath(): string
+    {
+        return self::projectRoot() . '/var/bench/movies-search';
     }
 
     private static function progress(string $message): void
     {
         fwrite(STDERR, '[bench] ' . $message . \PHP_EOL);
-    }
-
-    protected static function clearDir(string $dir): void
-    {
-        if (!is_dir($dir)) {
-            return;
-        }
-
-        foreach (new \FilesystemIterator($dir) as $file) {
-            if ($file->isFile()) {
-                unlink($file->getPathname());
-            }
-        }
     }
 }

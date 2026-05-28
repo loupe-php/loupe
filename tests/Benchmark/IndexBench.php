@@ -16,17 +16,12 @@ use Loupe\Loupe\Loupe;
  */
 class IndexBench extends AbstractBench
 {
+    private Loupe $loupe;
+
     /**
      * @var array<int, array<string, mixed>>
      */
     private array $movies;
-
-    private Loupe $loupe;
-
-    public static function setUpClass(): void
-    {
-        self::ensureMoviesJson();
-    }
 
     /**
      * @param array{size: int} $params
@@ -40,7 +35,7 @@ class IndexBench extends AbstractBench
 
         $movies = self::loadMovies();
         $this->movies = $params['size'] > 0
-            ? array_slice($movies, 0, $params['size'])
+            ? \array_slice($movies, 0, $params['size'])
             : $movies;
     }
 
@@ -64,6 +59,22 @@ class IndexBench extends AbstractBench
         $this->loupe->addDocuments($this->movies);
     }
 
+    public function provideCorpus(): \Generator
+    {
+        yield '1k' => [
+            'size' => 1_000,
+        ];
+        yield '10k' => [
+            'size' => 10_000,
+        ];
+        // yield 'all' => ['size' => 0];
+    }
+
+    public static function setUpClass(): void
+    {
+        self::ensureMoviesJson();
+    }
+
     /**
      * @param array{size: int} $params
      */
@@ -71,12 +82,5 @@ class IndexBench extends AbstractBench
     {
         $this->setUp($params);
         $this->loupe->addDocuments($this->movies);
-    }
-
-    public function provideCorpus(): \Generator
-    {
-        yield '1k' => ['size' => 1_000];
-        yield '10k' => ['size' => 10_000];
-        // yield 'all' => ['size' => 0];
     }
 }

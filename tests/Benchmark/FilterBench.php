@@ -19,11 +19,6 @@ class FilterBench extends AbstractBench
 {
     private Loupe $loupe;
 
-    public static function setUpClass(): void
-    {
-        self::ensureSearchIndex();
-    }
-
     public function setUp(): void
     {
         $this->loupe = self::loupe(self::searchIndexPath());
@@ -37,5 +32,10 @@ class FilterBench extends AbstractBench
                 ->withFilter("release_date < 1127433600 AND genres IN ('Drama', 'Western')")
                 ->withSort(['release_date:desc'])
         );
+    }
+
+    public static function setUpClass(): void
+    {
+        self::ensureSearchIndex();
     }
 }
