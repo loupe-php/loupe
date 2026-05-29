@@ -3002,6 +3002,7 @@ final class SearchTest extends TestCase
     public function testRelevanceAndRankingScoreForLengthChangingFolding(): void
     {
         $configuration = Configuration::create()
+            ->withLanguages(['de'])
             ->withSearchableAttributes(['name'])
             ->withSortableAttributes(['name'])
         ;
@@ -3137,6 +3138,7 @@ final class SearchTest extends TestCase
     public function testRelevanceAndRankingScoreForNormalizedSpelling(): void
     {
         $configuration = Configuration::create()
+            ->withLanguages(['de'])
             ->withSearchableAttributes(['name'])
             ->withSortableAttributes(['name'])
         ;
@@ -3684,7 +3686,7 @@ final class SearchTest extends TestCase
     }
 
     /**
-     * @param array<string,mixed> $expectedHit
+     * @param array<string, mixed> $expectedHit
      */
     #[DataProvider('searchWithDecompositionProvider')]
     public function testSearchWithDecomposition(string $text, string $query, array $expectedHit): void
@@ -3704,14 +3706,18 @@ final class SearchTest extends TestCase
             ->withAttributesToHighlight(['text'])
         ;
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [$expectedHit],
-            'query' => $query,
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 1,
-        ]);
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [$expectedHit],
+                'query' => $query,
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        );
     }
 
     /**
@@ -3985,14 +3991,18 @@ final class SearchTest extends TestCase
             ->withQuery('Dampfschiff')
         ;
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [],
-            'query' => 'Dampfschiff',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 0,
-            'totalHits' => 0,
-        ]);
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [],
+                'query' => 'Dampfschiff',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 0,
+                'totalHits' => 0,
+            ],
+        );
     }
 
     public function testStopWordSearch(): void
