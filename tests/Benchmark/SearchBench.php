@@ -53,7 +53,6 @@ class SearchBench extends AbstractBench
         foreach ($queries as $q) {
             $this->loupe->search(SearchParameters::create()->withQuery($q));
         }
-
     }
 
     public function benchPlainQuery(): void
@@ -61,6 +60,28 @@ class SearchBench extends AbstractBench
         $this->loupe->search(
             SearchParameters::create()->withQuery('star wars')
         );
+    }
+
+    /**
+     * @Revs(1)
+     */
+    public function benchSingleWordQueries(): void
+    {
+        $queries = [
+            'batman',
+            'wolf',
+            'vampire',
+            'ghost',
+            'paris',
+            'fire',
+            'christmas',
+            'dark',
+        ];
+
+        foreach ($queries as $q) {
+            $this->loupe->search(SearchParameters::create()->withQuery($q));
+        }
+
     }
 
     public function benchTypoQueryWithFacets(): void
