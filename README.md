@@ -39,10 +39,20 @@ Performance depends on many factors but here are some ballpark numbers based on 
 * **Indexing** will take around **60 seconds** (this varies greatly because it depends on how much content per document
   you want to index
 
-Note that anything above 50k documents is probably not a use case for Loupe. You can run your own benchmarks 
-using the scripts in the `bin/bench` folder: `index.php` for indexing and `search.php` for searching. 
-Please, also read the [Performance](./docs/performance.md) chapter in the docs. You may report your own performance 
-measurements and more details in the [respective discussion][Performance_Topic]. 
+Note that anything above 50k documents is probably not a use case for Loupe. You can run your own benchmarks
+with [PHPBench][PHPBench]:
+
+```bash
+composer bench         # SearchBench + FilterBench (query latency)
+composer bench-index   # IndexBench (cold-insert + update; slower)
+```
+
+The benches in `tests/Benchmark` run against the [~32k movies fixture][MeiliSearch_Movies], which is downloaded
+automatically into `var/movies.json` on first run. A shared search index is built once into `var/bench/` and reused
+across `composer bench` runs.
+
+Please, also read the [Performance](./docs/performance.md) chapter in the docs. You may report your own performance
+measurements and more details in the [respective discussion][Performance_Topic].
 
 ## Acknowledgement
 
@@ -185,3 +195,4 @@ library after having given [my PHP crawler library][Escargot] a French name :-)
 [Blog_Repository]: ./docs/blog_post.md
 [MeiliSearch_Movies]: https://www.meilisearch.com/movies.json
 [Performance_Topic]: https://github.com/loupe-php/loupe/discussions/17
+[PHPBench]: https://github.com/phpbench/phpbench

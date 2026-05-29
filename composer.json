@@ -36,6 +36,7 @@
         "loupe/matcher": "^0.2.3"
     },
     "require-dev": {
+        "phpbench/phpbench": "^1.2",
         "phpstan/phpstan": "^2.1.31",
         "phpunit/phpunit": "^10.5.58",
         "symfony/filesystem": "^7.3.2",
@@ -51,6 +52,8 @@
         "slow-tests": "@php vendor/bin/phpunit --testsuite=slow",
         "cs-fixer": "@php vendor/bin/ecs check --fix",
         "ci-cs-fixer": "@php vendor/bin/ecs check",
-        "phpstan": "@php vendor/bin/phpstan analyse"
+        "phpstan": "@php vendor/bin/phpstan analyse",
+        "bench": "@php vendor/bin/phpbench run --report=aggregate --group=query",
+        "bench-index": "@php vendor/bin/phpbench run --report=aggregate --group=index"
     }
 }
