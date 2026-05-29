@@ -6,15 +6,21 @@ namespace Loupe\Loupe\Tests\Benchmark;
 
 use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
-use PhpBench\Attributes as Bench;
+use PhpBench\Attributes\BeforeClassMethods;
+use PhpBench\Attributes\BeforeMethods;
+use PhpBench\Attributes\Groups;
+use PhpBench\Attributes\Iterations;
+use PhpBench\Attributes\OutputTimeUnit;
+use PhpBench\Attributes\Revs;
+use PhpBench\Attributes\Warmup;
 
-#[Bench\BeforeClassMethods('setUpClass')]
-#[Bench\BeforeMethods('setUp')]
-#[Bench\Revs(3)]
-#[Bench\Iterations(5)]
-#[Bench\Warmup(2)]
-#[Bench\OutputTimeUnit('milliseconds', precision: 2)]
-#[Bench\Groups(['query'])]
+#[BeforeClassMethods('setUpClass')]
+#[BeforeMethods('setUp')]
+#[Revs(3)]
+#[Iterations(5)]
+#[Warmup(2)]
+#[OutputTimeUnit('milliseconds', precision: 2)]
+#[Groups(['query'])]
 class SearchBench extends AbstractBench
 {
     private Loupe $loupe;
@@ -33,7 +39,7 @@ class SearchBench extends AbstractBench
         );
     }
 
-    #[Bench\Revs(1)]
+    #[Revs(1)]
     public function benchMultiWordQueries(): void
     {
         $queries = [
@@ -59,7 +65,7 @@ class SearchBench extends AbstractBench
         );
     }
 
-    #[Bench\Revs(1)]
+    #[Revs(1)]
     public function benchSingleWordQueries(): void
     {
         $queries = [
