@@ -2673,6 +2673,7 @@ class SearchTest extends TestCase
     public function testRelevanceAndRankingScoreForLengthChangingFolding(): void
     {
         $configuration = Configuration::create()
+            ->withLanguages(['de'])
             ->withSearchableAttributes(['name'])
             ->withSortableAttributes(['name']);
 
@@ -2792,6 +2793,7 @@ class SearchTest extends TestCase
     public function testRelevanceAndRankingScoreForNormalizedSpelling(): void
     {
         $configuration = Configuration::create()
+            ->withLanguages(['de'])
             ->withSearchableAttributes(['name'])
             ->withSortableAttributes(['name']);
 
