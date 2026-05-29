@@ -64,7 +64,9 @@ class IndexBench extends AbstractBench
         yield '10k' => [
             'size' => 10_000,
         ];
-        // yield 'all' => ['size' => 0];
+        yield 'all' => [
+            'size' => 0,
+        ];
     }
 
     public static function setUpClass(): void
