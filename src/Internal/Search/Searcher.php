@@ -927,6 +927,16 @@ class Searcher
             MatchingStrategy::Any => ' OR ',
         };
 
+        // Fast path: "any" strategy, only positive single-token groups: use _cte_candidate_documents directly
+        if ($strategy === MatchingStrategy::Any
+            && $negativeConditions === []
+            && $positiveConditions !== []
+            && $this->hasCTE(self::CTE_CANDIDATE_DOCUMENTS)
+            && array_filter($positiveConditions, fn ($s) => \count($s) !== 1) === []
+        ) {
+            return \sprintf('SELECT document AS document_id FROM %s', self::CTE_CANDIDATE_DOCUMENTS);
+        }
+
         $where = implode($positiveOperator, array_map(
             fn ($statements) => '(' . implode(' AND ', $statements) . ')',
             $positiveConditions
