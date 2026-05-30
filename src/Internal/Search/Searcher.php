@@ -631,8 +631,9 @@ class Searcher
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
 
-        // Get documents that match any of our terms
-        if (!$this->ensureCandidateDocumentsCTE()) {
+        // Restrict to documents matching any query term (shared candidate set)
+        $hasCandidateDocuments = $this->ensureSharedCandidateDocumentsCTE();
+        if (!$hasCandidateDocuments) {
             return;
         }
 
@@ -1149,12 +1150,20 @@ class Searcher
         return implode(' ', $where);
     }
 
-    private function ensureCandidateDocumentsCTE(): bool
+    /**
+     * Lazily build the shared "_cte_candidate_documents" CTE: set of documents matching ANY query term
+     * (the UNION of every token's _cte_term_documents_* list), and reports whether such a set exists.
+     * Done so that SQLite can satisfy each token with a single index lookup by computing the union once.
+     *
+     * @return bool true when a candidate set exists, false when no token has a term-documents CTE
+     */
+    private function ensureSharedCandidateDocumentsCTE(): bool
     {
         if ($this->hasCTE(self::CTE_CANDIDATE_DOCUMENTS)) {
             return true;
         }
 
+        // Collect each token's document list (their UNION is the "matches any term" candidate set)
         $unionParts = [];
         foreach ($this->getTokens()->all() as $otherToken) {
             $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
@@ -1170,7 +1179,7 @@ class Searcher
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->select('document');
-        $cteSelectQb->from('(' . implode(' UNION ', $unionParts) . ')');
+        $cteSelectQb->from('(' . implode(' UNION ', $unionParts) . ') candidates');
 
         $this->addCTE(new Cte(self::CTE_CANDIDATE_DOCUMENTS, ['document'], $cteSelectQb));
 
