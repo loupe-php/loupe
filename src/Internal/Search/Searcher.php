@@ -27,6 +27,18 @@ use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 
 /**
+ * Searcher class.
+ *
+ * Builds and runs the search SQL as a chain of CTEs.
+ *
+ * Per-token pipeline:
+ *
+ *   _cte_term_matches_<token> (term ids matching the token, including typo/prefix variants)
+ *     -> _cte_term_documents_<token> (distinct documents containing any of those terms)
+ *          -> _cte_candidate_documents (UNION of every token's term-documents = "matches any term")
+ *               -> _cte_term_document_matches_<token> (per-token positional matches, restricted to candidate documents)
+ *                    -> _cte_matches (final per-document aggregation feeding ranking/selection)
+ *
  * @template T of AbstractQueryParameters
  */
 class Searcher
