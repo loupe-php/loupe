@@ -27,11 +27,25 @@ use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 
 /**
+ * Searcher class.
+ *
+ * Builds and runs the search SQL as a chain of CTEs.
+ *
+ * Per-token pipeline:
+ *
+ *   _cte_term_matches_<token> (term ids matching the token, including typo/prefix variants)
+ *     -> _cte_term_documents_<token> (distinct documents containing any of those terms)
+ *          -> _cte_candidate_documents (UNION of every token's term-documents = "matches any term")
+ *               -> _cte_term_document_matches_<token> (per-token positional matches, restricted to candidate documents)
+ *                    -> _cte_matches (final per-document aggregation feeding ranking/selection)
+ *
  * @template T of AbstractQueryParameters
  */
 class Searcher
 {
     public const CTE_ALL_MULTI_FILTERS_PREFIX = '_cte_mf_all_';
+
+    public const CTE_CANDIDATE_DOCUMENTS = '_cte_candidate_documents';
 
     public const CTE_MATCHES = '_cte_matches';
 
@@ -629,21 +643,18 @@ class Searcher
 
         $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
 
-        // Get documents that match any of our terms
-        $documentConditions = [];
-        foreach ($this->getTokens()->all() as $otherToken) {
-            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
-            if (!$this->hasCTE($cteName)) {
-                continue;
-            }
-            $documentConditions[] = \sprintf('%s.document IN (SELECT document FROM %s)', $termsDocumentsAlias, $cteName);
-        }
-
-        if ($documentConditions === []) {
+        // Restrict to documents matching any query term (shared candidate set)
+        $hasCandidateDocuments = $this->ensureSharedCandidateDocumentsCTE();
+        if (!$hasCandidateDocuments) {
             return;
         }
 
-        $cteSelectQb->where('(' . implode(' OR ', $documentConditions) . ')');
+        $cteSelectQb->where(\sprintf(
+            '%s.document IN (SELECT document FROM %s)',
+            $termsDocumentsAlias,
+            self::CTE_CANDIDATE_DOCUMENTS
+        ));
+
         $cteSelectQb->andWhere(\sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $termMatchesCTE));
 
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
@@ -916,6 +927,16 @@ class Searcher
             MatchingStrategy::Any => ' OR ',
         };
 
+        // Fast path: "any" strategy, only positive single-token groups: use _cte_candidate_documents directly
+        if ($strategy === MatchingStrategy::Any
+            && $negativeConditions === []
+            && $positiveConditions !== []
+            && $this->hasCTE(self::CTE_CANDIDATE_DOCUMENTS)
+            && array_filter($positiveConditions, fn ($s) => \count($s) !== 1) === []
+        ) {
+            return \sprintf('SELECT document AS document_id FROM %s', self::CTE_CANDIDATE_DOCUMENTS);
+        }
+
         $where = implode($positiveOperator, array_map(
             fn ($statements) => '(' . implode(' AND ', $statements) . ')',
             $positiveConditions
@@ -1149,6 +1170,42 @@ class Searcher
         }
 
         return implode(' ', $where);
+    }
+
+    /**
+     * Lazily build the shared "_cte_candidate_documents" CTE: set of documents matching ANY query term
+     * (the UNION of every token's _cte_term_documents_* list), and reports whether such a set exists.
+     * Done so that SQLite can satisfy each token with a single index lookup by computing the union once.
+     *
+     * @return bool true when a candidate set exists, false when no token has a term-documents CTE
+     */
+    private function ensureSharedCandidateDocumentsCTE(): bool
+    {
+        if ($this->hasCTE(self::CTE_CANDIDATE_DOCUMENTS)) {
+            return true;
+        }
+
+        // Collect each token's document list (their UNION is the "matches any term" candidate set)
+        $unionParts = [];
+        foreach ($this->getTokens()->all() as $otherToken) {
+            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
+            if (!$this->hasCTE($cteName)) {
+                continue;
+            }
+            $unionParts[] = 'SELECT document FROM ' . $cteName;
+        }
+
+        if ($unionParts === []) {
+            return false;
+        }
+
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->select('document');
+        $cteSelectQb->from('(' . implode(' UNION ', $unionParts) . ') candidates');
+
+        $this->addCTE(new Cte(self::CTE_CANDIDATE_DOCUMENTS, ['document'], $cteSelectQb));
+
+        return true;
     }
 
     private function filterDocuments(TokenCollection $tokenCollection): void
