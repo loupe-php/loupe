@@ -517,6 +517,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['attribute', 'document'], 'attribute_document');
+        $table->addIndex(['document']);
     }
 
     private function addMultiAttributesToSchema(Schema $schema): void
@@ -577,6 +578,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['prefix', 'term']);
+        $table->addIndex(['term']);
     }
 
     private function addStateSetToSchema(Schema $schema): void
