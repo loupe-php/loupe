@@ -97,8 +97,16 @@ class Indexer
             $preparedDocuments = new PreparedDocumentCollection();
 
             foreach ($documents as $k => $document) {
-                $preparedDocuments->add($this->prepareDocument($document));
+                $preparedDocument = $this->prepareDocument($document);
+                $userId = $preparedDocument->getUserId();
                 unset($documents[$k]);
+
+                // Do not add unchanged documents to the batch: they only contain the base columns and violate NOT NULL constraints
+                if (isset($this->existingHashes[$userId]) && $this->existingHashes[$userId] === $preparedDocument->getContentHash()) {
+                    continue;
+                }
+
+                $preparedDocuments->add($preparedDocument);
 
                 if ($preparedDocuments->getTermsCount() >= self::MAX_TERMS_PER_BATCH) {
                     break;
@@ -677,8 +685,7 @@ class Indexer
             Util::encodeJson($documentData)
         );
 
-        // Unchanged documents (hash matches) are excluded by the SQL change detection
-        // Their terms and attributes are never used so we can skip expensive tokenization and attribute extraction
+        // Terms and attributes of unchanged documents are excluded by the SQL change detection: skip expensive tokenization & attribute extraction
         if (isset($this->existingHashes[$userId]) && $this->existingHashes[$userId] === $preparedDocument->getContentHash()) {
             return $preparedDocument;
         }
