@@ -38,6 +38,13 @@ class Indexer
      */
     private array $changes = [];
 
+    /**
+     * Map of id => content hash loaded once per addDocuments() to skip expensive tokenization for unchanged documents
+     *
+     * @var array<string, string>
+     */
+    private array $existingHashes = [];
+
     public function __construct(
         private Engine $engine,
         private TicketHandler $ticketHandler
@@ -66,6 +73,9 @@ class Indexer
             $this->engine->getIndexInfo()->fixAndValidateDocument($document);
         }
 
+        // Pre-load existing content hashes so unchanged documents can skip tokenization
+        $this->existingHashes = $this->loadExistingHashes($documents);
+
         $processBatch = function (PreparedDocumentCollection $preparedDocuments): void {
             if ($preparedDocuments->empty()) {
                 return;
@@ -87,8 +97,16 @@ class Indexer
             $preparedDocuments = new PreparedDocumentCollection();
 
             foreach ($documents as $k => $document) {
-                $preparedDocuments->add($this->prepareDocument($document));
+                $preparedDocument = $this->prepareDocument($document);
+                $userId = $preparedDocument->getUserId();
                 unset($documents[$k]);
+
+                // Do not add unchanged documents to the batch: they only contain the base columns and violate NOT NULL constraints
+                if (isset($this->existingHashes[$userId]) && $this->existingHashes[$userId] === $preparedDocument->getContentHash()) {
+                    continue;
+                }
+
+                $preparedDocuments->add($preparedDocument);
 
                 if ($preparedDocuments->getTermsCount() >= self::MAX_TERMS_PER_BATCH) {
                     break;
@@ -100,7 +118,7 @@ class Indexer
 
         // Finally, revise storage once
         $this->recordChange(function () {
-            $this->reviseStorage();
+            $this->reviseStorage(false);
         });
         $this->commitChanges();
     }
@@ -114,7 +132,7 @@ class Indexer
         $this->recordChange(function () {
             $this->engine->getConnection()->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
-            $this->reviseStorage();
+            $this->reviseStorage(true);
         });
 
         $this->commitChanges();
@@ -141,7 +159,7 @@ class Indexer
                     ]
                 );
 
-            $this->reviseStorage();
+            $this->reviseStorage(true);
         });
 
         $this->commitChanges();
@@ -549,6 +567,44 @@ class Indexer
     }
 
     /**
+     * @param array<array<string,mixed>> $documents
+     * @return array<string, string>
+     */
+    private function loadExistingHashes(array $documents): array
+    {
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            return [];
+        }
+
+        $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
+        $userIds = [];
+        foreach ($documents as $document) {
+            if (isset($document[$primaryKey])) {
+                $userIds[(string) $document[$primaryKey]] = true;
+            }
+        }
+
+        if ($userIds === []) {
+            return [];
+        }
+
+        $hashes = [];
+        foreach (array_chunk(array_keys($userIds), 5000) as $chunk) {
+            $rows = $this->engine->getConnection()->executeQuery(
+                \sprintf('SELECT _user_id, _hash FROM %s WHERE _user_id IN (?)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                [$chunk],
+                [ArrayParameterType::STRING]
+            )->fetchAllKeyValue();
+
+            foreach ($rows as $userId => $hash) {
+                $hashes[(string) $userId] = $hash;
+            }
+        }
+
+        return $hashes;
+    }
+
+    /**
      * @param array<string, mixed> $document
      */
     private function migrateDatabase(array $document): void
@@ -662,11 +718,17 @@ class Indexer
 
         // Keep the primary key in persisted document data so reindex/migration can always rehydrate documents.
         $documentData[$primaryKey] = $document[$primaryKey];
+        $userId = (string) $document[$primaryKey];
 
         $preparedDocument = new PreparedDocument(
-            (string) $document[$primaryKey],
+            $userId,
             Util::encodeJson($documentData)
         );
+
+        // Terms and attributes of unchanged documents are excluded by the SQL change detection: skip expensive tokenization & attribute extraction
+        if (isset($this->existingHashes[$userId]) && $this->existingHashes[$userId] === $preparedDocument->getContentHash()) {
+            return $preparedDocument;
+        }
 
         $singleAttributes = [];
         $multiAttributes = [];
@@ -828,9 +890,12 @@ class Indexer
         );
     }
 
-    private function removeOrphans(): void
+    private function removeOrphans(bool $removeDocumentOrphans): void
     {
-        $this->removeOrphanedDocuments();
+        if ($removeDocumentOrphans) {
+            $this->removeOrphanedDocuments();
+        }
+
         $this->removeOrphanedTerms();
         $this->removeOrphanedPrefixes();
     }
@@ -877,9 +942,9 @@ class Indexer
         $this->engine->getConnection()->executeStatement($query);
     }
 
-    private function reviseStorage(): void
+    private function reviseStorage(bool $removeDocumentOrphans): void
     {
-        $this->removeOrphans();
+        $this->removeOrphans($removeDocumentOrphans);
         $this->persistStateSet();
         $this->vacuumDatabase();
         $this->analyzeDatabase();
