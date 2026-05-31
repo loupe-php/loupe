@@ -649,8 +649,6 @@ class Searcher
             self::CTE_CANDIDATE_DOCUMENTS
         ));
 
-        $cteSelectQb->andWhere(\sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $termMatchesCTE));
-
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(\sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
