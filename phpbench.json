@@ -3,10 +3,13 @@
     "runner.bootstrap": "vendor/autoload.php",
     "runner.path": "tests/Benchmark",
     "runner.file_pattern": "*Bench.php",
+    "runner.php_env": {
+        "XDEBUG_MODE": "off"
+    },
     "runner.php_config": {
+        "apc.enable_cli": "0",
         "opcache.enable_cli": "1",
-        "opcache.jit": "tracing",
-        "opcache.jit_buffer_size": "64M",
+        "opcache.jit": "disable",
         "memory_limit": "256M"
     }
 }
