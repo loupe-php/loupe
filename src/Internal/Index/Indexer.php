@@ -100,7 +100,7 @@ class Indexer
 
         // Finally, revise storage once
         $this->recordChange(function () {
-            $this->reviseStorage();
+            $this->reviseStorage(false);
         });
         $this->commitChanges();
     }
@@ -114,7 +114,7 @@ class Indexer
         $this->recordChange(function () {
             $this->engine->getConnection()->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
-            $this->reviseStorage();
+            $this->reviseStorage(true);
         });
 
         $this->commitChanges();
@@ -141,7 +141,7 @@ class Indexer
                     ]
                 );
 
-            $this->reviseStorage();
+            $this->reviseStorage(true);
         });
 
         $this->commitChanges();
@@ -788,9 +788,12 @@ class Indexer
         );
     }
 
-    private function removeOrphans(): void
+    private function removeOrphans(bool $removeDocumentOrphans): void
     {
-        $this->removeOrphanedDocuments();
+        if ($removeDocumentOrphans) {
+            $this->removeOrphanedDocuments();
+        }
+
         $this->removeOrphanedTerms();
         $this->removeOrphanedPrefixes();
     }
@@ -837,9 +840,9 @@ class Indexer
         $this->engine->getConnection()->executeStatement($query);
     }
 
-    private function reviseStorage(): void
+    private function reviseStorage(bool $removeDocumentOrphans): void
     {
-        $this->removeOrphans();
+        $this->removeOrphans($removeDocumentOrphans);
         $this->persistStateSet();
         $this->vacuumDatabase();
     }
