@@ -59,23 +59,14 @@ class Relevance extends AbstractSorter
             // Create the relevance CTE
             $qb = $engine->getConnection()->createQueryBuilder();
             $qb
-                ->addSelect(Searcher::CTE_MATCHES . '.document_id AS document')
-                // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
-                // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
-                // because it's just a ";" separated list.
-                ->from(Searcher::CTE_MATCHES)
-                ->leftJoin(
-                    Searcher::CTE_MATCHES,
-                    $cteName,
-                    'dm',
-                    \sprintf('dm.document = %s.document_id', Searcher::CTE_MATCHES)
-                )
-                ->groupBy(Searcher::CTE_MATCHES . '.document_id');
+                ->addSelect('dm.document AS document')
+                ->from($cteName, 'dm')
+                ->groupBy('dm.document');
 
             if ($needsFoldingState) {
-                $qb->addSelect("COALESCE(group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos), '0') || '|' || COALESCE(MAX(dm.exact_match), 0) AS relevance");
+                $qb->addSelect("group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos) || '|' || COALESCE(MAX(dm.exact_match), 0) AS relevance");
             } else {
-                $qb->addSelect("COALESCE(group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos), '0' ) AS relevance");
+                $qb->addSelect("group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos) AS relevance");
             }
 
             $searcher->addCTE(new Cte($termRelevanceCTE, ['document_id', 'relevance_per_term'], $qb));
@@ -90,9 +81,14 @@ class Relevance extends AbstractSorter
 
         // CTE for all documents
         $qb = $engine->getConnection()->createQueryBuilder();
+        $relevancesWithFallback = array_map(
+            static fn (string $relevance): string => \sprintf("COALESCE(%s, '0')", $relevance),
+            $relevances
+        );
+
         $qb
             ->addSelect(Searcher::CTE_MATCHES . '.document_id AS document')
-            ->addSelect(implode(" || ';' || ", $relevances) . ' AS relevance_per_term')
+            ->addSelect(implode(" || ';' || ", $relevancesWithFallback) . ' AS relevance_per_term')
             ->from(Searcher::CTE_MATCHES)
         ;
 
