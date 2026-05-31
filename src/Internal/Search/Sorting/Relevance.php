@@ -37,7 +37,7 @@ class Relevance extends AbstractSorter
     {
         $queryParameters = $searcher->getQueryParameters();
 
-        $tokens = $searcher->getTokens()->all();
+        $tokens = $searcher->getSearchTokens()->all();
         if (!\count($tokens) || !$queryParameters instanceof SearchParameters) {
             return;
         }
