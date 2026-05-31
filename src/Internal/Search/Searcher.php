@@ -88,6 +88,8 @@ class Searcher
      */
     private array $ctesByTag = [];
 
+    private ?TokenCollection $displayTokens = null;
+
     private FilterBuilder $filterBuilder;
 
     /**
@@ -102,9 +104,9 @@ class Searcher
 
     private QueryBuilder $queryBuilder;
 
-    private Sorting $sorting;
+    private ?TokenCollection $searchTokens = null;
 
-    private ?TokenCollection $tokens = null;
+    private Sorting $sorting;
 
     /**
      * @param T $queryParameters
@@ -263,11 +265,9 @@ class Searcher
     {
         $start = (int) floor(microtime(true) * 1000);
 
-        $tokens = $this->getTokens();
-        $tokensIncludingStopwords = $this->engine->getTokenizer()->tokenize(
-            $this->queryParameters->getQuery(),
-            $this->engine->getConfiguration()->getMaxQueryTokens(),
-        );
+        $tokens = $this->getSearchTokens();
+        $needsHitFormatting = $this->askedForFormattingOrMatchesPosition();
+        $displayTokens = $needsHitFormatting ? $this->getDisplayTokens() : null;
 
         // Now it's time to add our CTEs
         $this->selectDocuments();
@@ -302,7 +302,9 @@ class Searcher
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
-            $this->formatHit($hit, $result, $tokensIncludingStopwords);
+            if ($needsHitFormatting && $displayTokens !== null) {
+                $this->formatHit($hit, $result, $displayTokens);
+            }
 
             $hits[] = $hit;
         }
@@ -369,26 +371,26 @@ class Searcher
         return $this->queryParameters;
     }
 
-    public function getSorting(): Sorting
+    public function getSearchTokens(): TokenCollection
     {
-        return $this->sorting;
-    }
-
-    public function getTokens(): TokenCollection
-    {
-        if ($this->tokens instanceof TokenCollection) {
-            return $this->tokens;
+        if ($this->searchTokens instanceof TokenCollection) {
+            return $this->searchTokens;
         }
 
         if ($this->queryParameters->getQuery() === '') {
-            return $this->tokens = new TokenCollection();
+            return $this->searchTokens = new TokenCollection();
         }
 
-        return $this->tokens = $this->engine->getTokenizer()
+        return $this->searchTokens = $this->engine->getTokenizer()
             ->tokenize(
                 $this->queryParameters->getQuery(),
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
             )->withoutStopwords($this->engine->getStopWords(), true);
+    }
+
+    public function getSorting(): Sorting
+    {
+        return $this->sorting;
     }
 
     public function hasCTE(string $cteName): bool
@@ -775,7 +777,7 @@ class Searcher
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->select('id');
-        $cteSelectQb->from('(' . implode(' UNION ', $selects) . ')');
+        $cteSelectQb->from('(' . implode(' UNION ALL ', $selects) . ')');
 
         $this->addCTE(new Cte($this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token), ['id'], $cteSelectQb));
     }
@@ -1026,16 +1028,23 @@ class Searcher
 
     private function createTermDocumentMatchesCTECondition(Token $token): ?string
     {
-        $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+        $usePositionAwareMatches = $token->isPartOfPhrase();
+        $cteName = $this->getCTENameForToken(
+            $usePositionAwareMatches ? self::CTE_TERM_DOCUMENT_MATCHES_PREFIX : self::CTE_TERM_DOCUMENTS_PREFIX,
+            $token
+        );
 
         if (!$this->hasCTE($cteName)) {
             return null;
         }
 
+        $subSelect = $usePositionAwareMatches ? 'SELECT DISTINCT document FROM ' : 'SELECT document FROM ';
+
         return \sprintf(
-            '%s._id %s (SELECT DISTINCT document FROM %s)',
+            '%s._id %s (%s%s)',
             $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
             $token->isNegated() ? 'NOT IN' : 'IN',
+            $subSelect,
             $cteName
         );
     }
@@ -1187,7 +1196,7 @@ class Searcher
 
         // Collect each token's document list (their UNION is the "matches any term" candidate set)
         $unionParts = [];
-        foreach ($this->getTokens()->all() as $otherToken) {
+        foreach ($this->getSearchTokens()->all() as $otherToken) {
             $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
             if (!$this->hasCTE($cteName)) {
                 continue;
@@ -1201,7 +1210,7 @@ class Searcher
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->select('document');
-        $cteSelectQb->from('(' . implode(' UNION ', $unionParts) . ') candidates');
+        $cteSelectQb->from('(' . implode(' UNION ALL ', $unionParts) . ') candidates');
 
         $this->addCTE(new Cte(self::CTE_CANDIDATE_DOCUMENTS, ['document'], $cteSelectQb));
 
@@ -1390,6 +1399,22 @@ class Searcher
         if ($showMatchesPosition) {
             $hit['_matchesPosition'] = $matchesPosition;
         }
+    }
+
+    private function getDisplayTokens(): TokenCollection
+    {
+        if ($this->displayTokens instanceof TokenCollection) {
+            return $this->displayTokens;
+        }
+
+        if ($this->queryParameters->getQuery() === '') {
+            return $this->displayTokens = new TokenCollection();
+        }
+
+        return $this->displayTokens = $this->engine->getTokenizer()->tokenize(
+            $this->queryParameters->getQuery(),
+            $this->engine->getConfiguration()->getMaxQueryTokens(),
+        );
     }
 
     private function limitPagination(): void
