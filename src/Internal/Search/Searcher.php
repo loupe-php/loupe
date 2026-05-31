@@ -637,17 +637,20 @@ class Searcher
             \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias)
         );
 
-        // Restrict to documents matching any query term (shared candidate set)
-        $hasCandidateDocuments = $this->ensureSharedCandidateDocumentsCTE();
-        if (!$hasCandidateDocuments) {
-            return;
-        }
+        // Restrict to shared candidate documents only for real multi-token queries.
+        // For single-token queries this check is redundant and adds avoidable overhead.
+        if ($this->getSearchTokens()->count() > 1) {
+            $hasCandidateDocuments = $this->ensureSharedCandidateDocumentsCTE();
+            if (!$hasCandidateDocuments) {
+                return;
+            }
 
-        $cteSelectQb->where(\sprintf(
-            '%s.document IN (SELECT document FROM %s)',
-            $termsDocumentsAlias,
-            self::CTE_CANDIDATE_DOCUMENTS
-        ));
+            $cteSelectQb->where(\sprintf(
+                '%s.document IN (SELECT document FROM %s)',
+                $termsDocumentsAlias,
+                self::CTE_CANDIDATE_DOCUMENTS
+            ));
+        }
 
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(\sprintf(
