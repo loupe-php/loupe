@@ -14,11 +14,16 @@ use PhpBench\Attributes\ParamProviders;
 use PhpBench\Attributes\Revs;
 use PhpBench\Attributes\Warmup;
 
+/**
+ * Index benchmark.
+ *
+ * Warmup must be disabled here to ensure an empty index during runs.
+ */
 #[BeforeClassMethods('setUpClass')]
 #[BeforeMethods('setUp')]
 #[Revs(1)]
 #[Iterations(1)]
-#[Warmup(1)]
+#[Warmup(0)]
 #[OutputTimeUnit('milliseconds', precision: 2)]
 #[Groups(['index'])]
 class IndexBench extends AbstractBench
@@ -46,6 +51,9 @@ class IndexBench extends AbstractBench
             : $movies;
     }
 
+    /**
+     * Measures a cold insert of new documents into an empty index.
+     */
     #[ParamProviders('provideCorpus')]
     public function benchAddDocuments(): void
     {
@@ -53,8 +61,7 @@ class IndexBench extends AbstractBench
     }
 
     /**
-     * Re-indexes the same documents on top of an already-populated index,
-     * exercising the upsert path rather than cold insert.
+     * Re-indexes the same documents into a populated index.
      */
     #[BeforeMethods('setUpForUpdate')]
     #[ParamProviders('provideCorpus')]
