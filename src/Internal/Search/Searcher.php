@@ -614,36 +614,28 @@ class Searcher
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
 
         if ($needsTypoCount) {
-            $cteSelectQb->addSelect(\sprintf(
-                'MIN(loupe_levensthein(%s.term, %s, %s)) AS typos',
-                $termsAlias,
-                $this->createNamedParameter($token->getTerm()),
-                $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
-            ));
+            $cteSelectQb->addSelect(\sprintf('MIN(%s.typos) AS typos', $termMatchesCTE));
         } else {
             $cteSelectQb->addSelect('0 AS typos');
         }
 
         if ($needsFoldingState) {
             $cteSelectQb->addSelect(\sprintf(
-                'MAX(CASE WHEN %s.term = %s AND %s.folded = %s THEN 1 ELSE 0 END) AS exact_match',
-                $termsAlias,
-                $this->createNamedParameter($token->getTerm()),
+                'MAX(CASE WHEN %s.is_exact_term = 1 AND %s.folded = %s THEN 1 ELSE 0 END) AS exact_match',
+                $termMatchesCTE,
                 $termsDocumentsAlias,
                 $token->wasFolded() ? '1' : '0'
             ));
         }
 
-        if ($needsTypoCount || $needsFoldingState) {
-            $cteSelectQb->innerJoin(
-                $termsDocumentsAlias,
-                IndexInfo::TABLE_NAME_TERMS,
-                $termsAlias,
-                \sprintf('%s.id = %s.term', $termsAlias, $termsDocumentsAlias)
-            );
-        }
-
-        $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
+        // Join from term_matches CTE — not from terms_documents - to force primary key usage
+        $cteSelectQb->from($termMatchesCTE);
+        $cteSelectQb->innerJoin(
+            $termMatchesCTE,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            $termsDocumentsAlias . ' INDEXED BY sqlite_autoindex_terms_documents_1',
+            \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias)
+        );
 
         // Restrict to documents matching any query term (shared candidate set)
         $hasCandidateDocuments = $this->ensureSharedCandidateDocumentsCTE();
@@ -775,11 +767,30 @@ class Searcher
             }
         }
 
-        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
-        $cteSelectQb->select('id');
-        $cteSelectQb->from('(' . implode(' UNION ALL ', $selects) . ')');
+        // Precompute per-term typos + is_exact_term so _cte_term_document_matches_N can join this tiny CTE instead of the big `terms` table
+        $queryTermParam = $this->createNamedParameter($token->getTerm());
+        $firstCharDouble = $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false';
+        $unionSql = implode(' UNION ALL ', $selects);
 
-        $this->addCTE(new Cte($this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token), ['id'], $cteSelectQb));
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->select('inner_terms.id AS id');
+        $cteSelectQb->addSelect(\sprintf(
+            'MIN(loupe_levensthein(inner_terms.term, %s, %s)) AS typos',
+            $queryTermParam,
+            $firstCharDouble,
+        ));
+        $cteSelectQb->addSelect(\sprintf(
+            'MAX(CASE WHEN inner_terms.term = %s THEN 1 ELSE 0 END) AS is_exact_term',
+            $queryTermParam,
+        ));
+        $cteSelectQb->from('(' . $unionSql . ')', 'inner_terms');
+        $cteSelectQb->groupBy('inner_terms.id');
+
+        $this->addCTE(new Cte(
+            $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token),
+            ['id', 'typos', 'is_exact_term'],
+            $cteSelectQb
+        ));
     }
 
     private function addTermMatchesCTEs(TokenCollection $tokenCollection): void
@@ -1053,7 +1064,7 @@ class Searcher
     {
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
         $qb = $this->engine->getConnection()->createQueryBuilder();
-        $qb->select($termsAlias . '.id');
+        $qb->select($termsAlias . '.id', $termsAlias . '.term');
         $qb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
 
         if ($prefixLikeOnly) {
