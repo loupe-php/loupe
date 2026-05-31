@@ -614,14 +614,14 @@ class Searcher
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
 
         if ($needsTypoCount) {
-            $cteSelectQb->addSelect(\sprintf('MIN(%s.typos) AS typos', $termMatchesCTE));
+            $cteSelectQb->addSelect(\sprintf('%s.typos AS typos', $termMatchesCTE));
         } else {
             $cteSelectQb->addSelect('0 AS typos');
         }
 
         if ($needsFoldingState) {
             $cteSelectQb->addSelect(\sprintf(
-                'MAX(CASE WHEN %s.is_exact_term = 1 AND %s.folded = %s THEN 1 ELSE 0 END) AS exact_match',
+                'CASE WHEN %s.is_exact_term = 1 AND %s.folded = %s THEN 1 ELSE 0 END AS exact_match',
                 $termMatchesCTE,
                 $termsDocumentsAlias,
                 $token->wasFolded() ? '1' : '0'
@@ -666,10 +666,6 @@ class Searcher
                 $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken),
             ));
         }
-
-        $cteSelectQb->groupBy($termsDocumentsAlias . '.document');
-        $cteSelectQb->addGroupBy($termsDocumentsAlias . '.attribute');
-        $cteSelectQb->addGroupBy($termsDocumentsAlias . '.position');
 
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
 
