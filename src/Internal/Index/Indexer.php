@@ -27,10 +27,11 @@ class Indexer
      * heaviest queries. Technically, we might also do this for the number of other attributes that people want to filter
      * for, but it is rather unrealistic to have documents with thousands of values people want to filter (not search!) for.
      * The higher this number is, the faster the indexing process is going to be but the more memory is required. For now,
-     * tests have shown a good result with 2000 terms, but we might want to make this configurable one day.
+     * tests have shown a good result with 16_000 terms in our benchmark setup, balancing indexing throughput and
+     * memory usage, but we might want to make this configurable one day.
      * However, it's also a bit hard to document and understand so for now, let's keep this internal.
      */
-    private const MAX_TERMS_PER_BATCH = 2000;
+    private const MAX_TERMS_PER_BATCH = 16000;
 
     /**
      * @var array<int, callable>
