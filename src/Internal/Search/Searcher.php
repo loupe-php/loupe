@@ -628,18 +628,41 @@ class Searcher
             ));
         }
 
-        // Join from term_matches CTE — not from terms_documents - to force primary key usage
-        $cteSelectQb->from($termMatchesCTE);
-        $cteSelectQb->innerJoin(
-            $termMatchesCTE,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            $termsDocumentsAlias . ' INDEXED BY sqlite_autoindex_terms_documents_1',
-            \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias)
-        );
+        $isPhraseContinuation = $token->isPartOfPhrase() && $previousPhraseToken !== null;
+        if ($isPhraseContinuation) {
+            // Continuuing inside "a phrase": drive query from small materialized previous token's match CTE
+            // Use CROSS JOIN instead of INNER JOIN to pin join order and avoid full scans for common words like "his"
+            $previousPhraseCte = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken);
+            $previousPhraseAlias = $previousPhraseCte . '_prev';
+            $cteSelectQb->from(\sprintf(
+                '%1$s %2$s'
+                . ' CROSS JOIN %3$s'
+                . ' CROSS JOIN %4$s %5$s INDEXED BY sqlite_autoindex_terms_documents_1'
+                . ' ON %3$s.id = %5$s.term'
+                . ' AND %5$s.document = %2$s.document'
+                . ' AND %5$s.attribute = %2$s.attribute'
+                . ' AND %5$s.position = %2$s.position + 1',
+                $previousPhraseCte,
+                $previousPhraseAlias,
+                $termMatchesCTE,
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                $termsDocumentsAlias,
+            ));
+        } else {
+            // Join from term_matches CTE — not from terms_documents - to force primary key usage
+            $cteSelectQb->from($termMatchesCTE);
+            $cteSelectQb->innerJoin(
+                $termMatchesCTE,
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                $termsDocumentsAlias . ' INDEXED BY sqlite_autoindex_terms_documents_1',
+                \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias)
+            );
+        }
 
         // Restrict to shared candidate documents only for real multi-token queries.
         // For single-token queries this check is redundant and adds avoidable overhead.
-        if ($this->getSearchTokens()->count() > 1) {
+        // For phrase-continuation tokens, this filter is also redudandant and solved by the cross join above
+        if ($this->getSearchTokens()->count() > 1 && !$isPhraseContinuation) {
             $hasCandidateDocuments = $this->ensureSharedCandidateDocumentsCTE();
             if (!$hasCandidateDocuments) {
                 return;
@@ -659,23 +682,20 @@ class Searcher
             ));
         }
 
-        // Ensure phrase positions if any
-        if ($token->isPartOfPhrase() && $previousPhraseToken) {
-            $cteSelectQb->andWhere(\sprintf(
-                '%s.position IN (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
-                $termsDocumentsAlias,
-                $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken),
-            ));
-        }
-
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+        // loupe_levensthein calls prevent SQLite from materializing phrase-position subqueries
+        // so we force materialization to avoid re-evaluation per row and use temp b-trees instead
+        $materialized = $token->isPartOfPhrase() ? true : null;
 
         $this->addCTE(new Cte(
             $cteName,
             $needsFoldingState ?
                 ['document', 'attribute', 'position', 'start', 'end', 'typos', 'exact_match'] :
                 ['document', 'attribute', 'position', 'start', 'end', 'typos'],
-            $cteSelectQb
+            $cteSelectQb,
+            [],
+            $materialized
         ));
     }
 
