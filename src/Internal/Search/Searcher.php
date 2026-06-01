@@ -640,18 +640,26 @@ class Searcher
             $previousPhraseCte = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken);
             $previousPhraseAlias = $previousPhraseCte . '_prev';
             $cteSelectQb->from(\sprintf(
-                '%1$s %2$s'
-                . ' CROSS JOIN %3$s'
-                . ' CROSS JOIN %4$s %5$s INDEXED BY sqlite_autoindex_terms_documents_1'
-                . ' ON %3$s.id = %5$s.term'
-                . ' AND %5$s.document = %2$s.document'
-                . ' AND %5$s.attribute = %2$s.attribute'
-                . ' AND %5$s.position = %2$s.position + 1',
+                '%s %s'
+                . ' CROSS JOIN %s'
+                . ' CROSS JOIN %s %s INDEXED BY sqlite_autoindex_terms_documents_1'
+                . ' ON %s.id = %s.term'
+                . ' AND %s.document = %s.document'
+                . ' AND %s.attribute = %s.attribute'
+                . ' AND %s.position = %s.position + 1',
                 $previousPhraseCte,
                 $previousPhraseAlias,
                 $termMatchesCTE,
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                 $termsDocumentsAlias,
+                $termMatchesCTE,
+                $termsDocumentsAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
             ));
         } else {
             // Join from term_matches CTE — not from terms_documents - to force primary key usage
