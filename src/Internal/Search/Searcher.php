@@ -1573,5 +1573,8 @@ class Searcher
     private function sortDocuments(): void
     {
         $this->sorting->applySorters($this);
+
+        // Append document id as final stable tiebreaker to ensure deterministic order regardless of query plan
+        $this->addOrderBy(self::DOCUMENT_ID_ALIAS, 'ASC');
     }
 }
