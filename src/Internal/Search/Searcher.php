@@ -1471,10 +1471,16 @@ class Searcher
         if ($this->ctesByName !== []) {
             $queryParts[] = 'WITH';
             foreach ($this->ctesByName as $name => $cte) {
+                $materializedHint = match ($cte->isMaterialized()) {
+                    true => 'MATERIALIZED ',
+                    false => 'NOT MATERIALIZED ',
+                    null => '',
+                };
                 $queryParts[] = \sprintf(
-                    '%s (%s) AS (%s)',
+                    '%s (%s) AS %s(%s)',
                     $name,
                     implode(',', $cte->getColumnAliasList()),
+                    $materializedHint,
                     $cte->getQueryBuilder()->getSQL()
                 );
                 $queryParts[] = ',';
