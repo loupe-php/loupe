@@ -633,18 +633,49 @@ class Searcher
             ));
         }
 
-        // Join from term_matches CTE — not from terms_documents - to force primary key usage
-        $cteSelectQb->from($termMatchesCTE);
-        $cteSelectQb->innerJoin(
-            $termMatchesCTE,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            $termsDocumentsAlias . ' INDEXED BY sqlite_autoindex_terms_documents_1',
-            \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias)
-        );
+        $isPhraseContinuation = $token->isPartOfPhrase() && $previousPhraseToken !== null;
+        if ($isPhraseContinuation) {
+            // Continuing inside "a phrase": drive query from small materialized previous token's match CTE
+            // Use CROSS JOIN instead of INNER JOIN to pin join order and avoid full scans for common words like "his"
+            $previousPhraseCte = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken);
+            $previousPhraseAlias = $previousPhraseCte . '_prev';
+            $cteSelectQb->from(\sprintf(
+                '%s %s'
+                . ' CROSS JOIN %s'
+                . ' CROSS JOIN %s %s INDEXED BY sqlite_autoindex_terms_documents_1'
+                . ' ON %s.id = %s.term'
+                . ' AND %s.document = %s.document'
+                . ' AND %s.attribute = %s.attribute'
+                . ' AND %s.position = %s.position + 1',
+                $previousPhraseCte,
+                $previousPhraseAlias,
+                $termMatchesCTE,
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                $termsDocumentsAlias,
+                $termMatchesCTE,
+                $termsDocumentsAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
+            ));
+        } else {
+            // Join from term_matches CTE — not from terms_documents - to force primary key usage
+            $cteSelectQb->from($termMatchesCTE);
+            $cteSelectQb->innerJoin(
+                $termMatchesCTE,
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                $termsDocumentsAlias . ' INDEXED BY sqlite_autoindex_terms_documents_1',
+                \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias)
+            );
+        }
 
         // Restrict to shared candidate documents only for real multi-token queries.
         // For single-token queries this check is redundant and adds avoidable overhead.
-        if ($this->getSearchTokens()->count() > 1) {
+        // For phrase-continuation tokens, this filter is also redudandant and solved by the cross join above
+        if ($this->getSearchTokens()->count() > 1 && !$isPhraseContinuation) {
             $hasCandidateDocuments = $this->ensureSharedCandidateDocumentsCTE();
             if (!$hasCandidateDocuments) {
                 return;
@@ -664,16 +695,11 @@ class Searcher
             ));
         }
 
-        // Ensure phrase positions if any
-        if ($token->isPartOfPhrase() && $previousPhraseToken) {
-            $cteSelectQb->andWhere(\sprintf(
-                '%s.position IN (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
-                $termsDocumentsAlias,
-                $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken),
-            ));
-        }
-
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+        // loupe_levensthein calls prevent SQLite from materializing phrase-position subqueries
+        // so we force materialization to avoid re-evaluation per row and use temp b-trees instead
+        $materialized = $token->isPartOfPhrase() ? true : null;
 
         $columns = ['document', 'attribute', 'position'];
         if ($needsPositions) {
@@ -688,7 +714,9 @@ class Searcher
         $this->addCTE(new Cte(
             $cteName,
             $columns,
-            $cteSelectQb
+            $cteSelectQb,
+            [],
+            $materialized
         ));
     }
 
@@ -1484,10 +1512,16 @@ class Searcher
         if ($this->ctesByName !== []) {
             $queryParts[] = 'WITH';
             foreach ($this->ctesByName as $name => $cte) {
+                $materializedHint = match ($cte->isMaterialized()) {
+                    true => 'MATERIALIZED ',
+                    false => 'NOT MATERIALIZED ',
+                    null => '',
+                };
                 $queryParts[] = \sprintf(
-                    '%s (%s) AS (%s)',
+                    '%s (%s) AS %s(%s)',
                     $name,
                     implode(',', $cte->getColumnAliasList()),
+                    $materializedHint,
                     $cte->getQueryBuilder()->getSQL()
                 );
                 $queryParts[] = ',';

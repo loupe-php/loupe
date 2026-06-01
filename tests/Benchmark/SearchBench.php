@@ -58,6 +58,36 @@ class SearchBench extends AbstractBench
         }
     }
 
+    #[Revs(1)]
+    public function benchNegatedTermQueries(): void
+    {
+        $queries = [
+            'family -therapist',
+            'duck -duffy',
+            'festival -cannes',
+        ];
+
+        foreach ($queries as $q) {
+            $this->loupe->search(SearchParameters::create()->withQuery($q));
+        }
+    }
+
+    #[Revs(1)]
+    public function benchPhraseGroupQueries(): void
+    {
+        $queries = [
+            '"by her family"',
+            '"every day"',
+            '"involved in"',
+            '"lead role"',
+            '"down on his luck"',
+        ];
+
+        foreach ($queries as $q) {
+            $this->loupe->search(SearchParameters::create()->withQuery($q));
+        }
+    }
+
     public function benchPlainQuery(): void
     {
         $this->loupe->search(
@@ -82,7 +112,6 @@ class SearchBench extends AbstractBench
         foreach ($queries as $q) {
             $this->loupe->search(SearchParameters::create()->withQuery($q));
         }
-
     }
 
     public function benchTypoQueryWithFacets(): void

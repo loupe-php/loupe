@@ -17,6 +17,7 @@ class Cte
         private array $columnAliasList,
         private QueryBuilder $queryBuilder,
         private array $tags = [],
+        private ?bool $materialized = null,
     ) {
     }
 
@@ -44,5 +45,13 @@ class Cte
     public function getTags(): array
     {
         return $this->tags;
+    }
+
+    /**
+     * null = let SQLite decide, true = force MATERIALIZED, false = force NOT MATERIALIZED
+     */
+    public function isMaterialized(): ?bool
+    {
+        return $this->materialized;
     }
 }
