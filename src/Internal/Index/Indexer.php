@@ -172,6 +172,27 @@ class Indexer
         $this->changes[] = $change;
     }
 
+    /**
+     * Refresh SQLite's table statistics so the query planner can pick good join orders and indexes.
+     * Without statistics, the planner misestimates the term_documents joins for queries with common. terms (e.g. "iron man").
+     * The first build is always analyzed, afterwards the statistics are refreshed occasionally
+     * Uses a full ANALYZE (analysis_limit=0) since a sampled ANALYZE (analysis_limit>0) still misleads the planner.
+     */
+    private function analyzeDatabase(): void
+    {
+        if (!$this->needsAnalyze()) {
+            return;
+        }
+
+        try {
+            $connection = $this->engine->getConnection();
+            $connection->executeStatement('PRAGMA analysis_limit=0');
+            $connection->executeStatement('ANALYZE');
+        } catch (\Throwable) {
+            // Ignore failures, analyze is pure optimization
+        }
+    }
+
     private function bulkInsertDocuments(PreparedDocumentCollection $preparedDocuments): PreparedDocumentCollection
     {
         $rowColumns = ['_user_id', '_document', '_hash'];
@@ -642,6 +663,25 @@ class Indexer
         $this->engine->getConnection()->executeStatement('DROP TABLE IF EXISTS documents_migration');
     }
 
+    private function needsAnalyze(): bool
+    {
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            return false;
+        }
+
+        // Always analyze when statistics are missing (usually after initial bulk insert)
+        $hasStats = (bool) $this->engine->getConnection()
+            ->executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='sqlite_stat1'")
+            ->fetchOne();
+
+        if (!$hasStats) {
+            return true;
+        }
+
+        // Otherwise analyze only occasionally, reusing vacuum probability
+        return random_int(1, 100) <= $this->engine->getConfiguration()->getVacuumProbability();
+    }
+
     private function needsVacuum(): bool
     {
         if ($this->engine->getIndexInfo()->needsSetup()) {
@@ -907,6 +947,7 @@ class Indexer
         $this->removeOrphans($removeDocumentOrphans);
         $this->persistStateSet();
         $this->vacuumDatabase();
+        $this->analyzeDatabase();
     }
 
     private function vacuumDatabase(): void

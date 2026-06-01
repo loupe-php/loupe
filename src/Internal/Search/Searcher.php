@@ -603,12 +603,17 @@ class Searcher
 
         $termsDocumentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS);
 
+        // Skip start/end columns unless formatting/highlighting/positions are requested
+        $needsPositions = $this->askedForFormattingOrMatchesPosition();
+
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
-        $cteSelectQb->addSelect($termsDocumentsAlias . '.start');
-        $cteSelectQb->addSelect($termsDocumentsAlias . '.end');
+        if ($needsPositions) {
+            $cteSelectQb->addSelect($termsDocumentsAlias . '.start');
+            $cteSelectQb->addSelect($termsDocumentsAlias . '.end');
+        }
         $needsFoldingState = $this->needsFoldingState();
         $needsTypoCount = $this->needsTypoCount();
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
@@ -688,11 +693,19 @@ class Searcher
         // so we force materialization to avoid re-evaluation per row and use temp b-trees instead
         $materialized = $token->isPartOfPhrase() ? true : null;
 
+        $columns = ['document', 'attribute', 'position'];
+        if ($needsPositions) {
+            $columns[] = 'start';
+            $columns[] = 'end';
+        }
+        $columns[] = 'typos';
+        if ($needsFoldingState) {
+            $columns[] = 'exact_match';
+        }
+
         $this->addCTE(new Cte(
             $cteName,
-            $needsFoldingState ?
-                ['document', 'attribute', 'position', 'start', 'end', 'typos', 'exact_match'] :
-                ['document', 'attribute', 'position', 'start', 'end', 'typos'],
+            $columns,
             $cteSelectQb,
             [],
             $materialized
@@ -1586,5 +1599,8 @@ class Searcher
     private function sortDocuments(): void
     {
         $this->sorting->applySorters($this);
+
+        // Append document id as final stable tiebreaker to ensure deterministic order regardless of query plan
+        $this->addOrderBy(self::DOCUMENT_ID_ALIAS, 'ASC');
     }
 }
