@@ -635,7 +635,7 @@ class Searcher
 
         $isPhraseContinuation = $token->isPartOfPhrase() && $previousPhraseToken !== null;
         if ($isPhraseContinuation) {
-            // Continuuing inside "a phrase": drive query from small materialized previous token's match CTE
+            // Continuing inside "a phrase": drive query from small materialized previous token's match CTE
             // Use CROSS JOIN instead of INNER JOIN to pin join order and avoid full scans for common words like "his"
             $previousPhraseCte = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken);
             $previousPhraseAlias = $previousPhraseCte . '_prev';
