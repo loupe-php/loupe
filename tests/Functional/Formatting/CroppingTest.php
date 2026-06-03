@@ -303,4 +303,37 @@ class CroppingTest extends TestCase
 
         $this->searchAndAssertResults($loupe, $searchParameters, $expectedResults);
     }
+
+    public function testPrioritizeMatchesSelectsDensestFragmentsButKeepsDocumentOrder(): void
+    {
+        $loupe = $this->createLoupe(Configuration::create()->withSearchableAttributes(['text']));
+
+        // Match density increases through the document: 1 term, then 2, then 3 (the densest is last).
+        $filler = ' This part holds no query terms and only pushes the matches far enough apart to form their own separate crop windows. ';
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'text' => 'In the opening the term alpha appears all by itself.'
+                    . $filler . 'Midway through the document the terms alpha bravo appear side by side.'
+                    . $filler . 'Near the very end alpha bravo charlie cluster tightly together.',
+            ],
+        ]);
+
+        $search = static fn (bool $prioritize): SearchParameters => SearchParameters::create()
+            ->withQuery('alpha bravo charlie')
+            ->withAttributesToCrop(['text'], cropLength: 30, cropMaxFragments: 2, prioritizeMatches: $prioritize)
+            ->withAttributesToRetrieve(['id', 'text']);
+
+        $this->assertSame(
+            '…opening the term alpha appears all by…the terms alpha bravo appear side…',
+            $loupe->search($search(false))->toArray()['hits'][0]['_formatted']['text'],
+            'Document order picks the two earliest windows, dropping the densest trailing one'
+        );
+
+        $this->assertSame(
+            '…alpha bravo appear side by side.…end alpha bravo charlie cluster…',
+            $loupe->search($search(true))->toArray()['hits'][0]['_formatted']['text'],
+            'Prioritization picks the two densest windows (2 then 3 terms), so the best fragment is emitted last'
+        );
+    }
 }
