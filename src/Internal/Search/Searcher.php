@@ -1245,9 +1245,14 @@ class Searcher
         $options = (new FormatterOptions())
             ->withCropLength($this->queryParameters->getCropLength())
             ->withCropMarker($this->queryParameters->getCropMarker())
+            ->withCropMaxFragments($this->queryParameters->getCropMaxFragments())
             ->withHighlightStartTag($this->queryParameters->getHighlightStartTag())
             ->withHighlightEndTag($this->queryParameters->getHighlightEndTag())
         ;
+
+        if ($this->queryParameters->shouldPrioritizeMatches()) {
+            $options = $options->withEnableMatchPrioritization();
+        }
 
         $requiresFormatting = \count($attributesToCrop) > 0 || \count($attributesToHighlight) > 0;
         $showMatchesPosition = $this->queryParameters->showMatchesPosition();

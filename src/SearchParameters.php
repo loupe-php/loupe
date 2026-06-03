@@ -24,6 +24,8 @@ final class SearchParameters extends AbstractQueryParameters
 
     private string $cropMarker = '…';
 
+    private int $cropMaxFragments = 5;
+
     private ?string $distinct = null;
 
     /**
@@ -38,6 +40,8 @@ final class SearchParameters extends AbstractQueryParameters
     private MatchingStrategy $matchingStrategy = MatchingStrategy::Any;
 
     private int $maxValuesPerFacet = 100;
+
+    private bool $prioritizeMatches = false;
 
     private float $rankingScoreThreshold = 0.0;
 
@@ -58,6 +62,10 @@ final class SearchParameters extends AbstractQueryParameters
     /**
      * @param array{
      *     attributesToCrop?: array<string>|array<string,int>,
+     *     cropLength?: int,
+     *     cropMarker?: string,
+     *     cropMaxFragments?: int,
+     *     prioritizeMatches?: bool,
      *     attributesToHighlight?: array<string>,
      *     attributesToRetrieve?: array<string>,
      *     attributesToSearchOn?: array<string>,
@@ -88,6 +96,8 @@ final class SearchParameters extends AbstractQueryParameters
                 $data['attributesToCrop'],
                 $data['cropLength'] ?? 50,
                 $data['cropMarker'] ?? '…',
+                $data['cropMaxFragments'] ?? 5,
+                $data['prioritizeMatches'] ?? false,
             );
         }
 
@@ -160,6 +170,11 @@ final class SearchParameters extends AbstractQueryParameters
         return $this->cropMarker;
     }
 
+    public function getCropMaxFragments(): int
+    {
+        return $this->cropMaxFragments;
+    }
+
     public function getDistinct(): ?string
     {
         return $this->distinct;
@@ -184,6 +199,8 @@ final class SearchParameters extends AbstractQueryParameters
         $hash[] = json_encode($this->getAttributesToHighlight());
         $hash[] = json_encode($this->getCropLength());
         $hash[] = json_encode($this->getCropMarker());
+        $hash[] = json_encode($this->getCropMaxFragments());
+        $hash[] = json_encode($this->shouldPrioritizeMatches());
         $hash[] = json_encode($this->getHighlightEndTag());
         $hash[] = json_encode($this->getHighlightStartTag());
         $hash[] = json_encode($this->getAttributesToRetrieve());
@@ -235,6 +252,11 @@ final class SearchParameters extends AbstractQueryParameters
         return $this->sort;
     }
 
+    public function shouldPrioritizeMatches(): bool
+    {
+        return $this->prioritizeMatches;
+    }
+
     public function showMatchesPosition(): bool
     {
         return $this->showMatchesPosition;
@@ -252,6 +274,8 @@ final class SearchParameters extends AbstractQueryParameters
      *     facets: array<string>,
      *     cropLength: int,
      *     cropMarker: string,
+     *     cropMaxFragments: int,
+     *     prioritizeMatches: bool,
      *     filter: string,
      *     highlightEndTag: string,
      *     highlightStartTag: string,
@@ -279,6 +303,8 @@ final class SearchParameters extends AbstractQueryParameters
             'facets' => $this->facets,
             'cropLength' => $this->cropLength,
             'cropMarker' => $this->cropMarker,
+            'cropMaxFragments' => $this->cropMaxFragments,
+            'prioritizeMatches' => $this->prioritizeMatches,
             'highlightEndTag' => $this->highlightEndTag,
             'highlightStartTag' => $this->highlightStartTag,
             'matchingStrategy' => $this->getMatchingStrategy(),
@@ -298,6 +324,8 @@ final class SearchParameters extends AbstractQueryParameters
         array $attributesToCrop,
         int $cropLength = 50,
         string $cropMarker = '…',
+        int $cropMaxFragments = 5,
+        bool $prioritizeMatches = false,
     ): self {
         $clone = clone $this;
 
@@ -315,6 +343,8 @@ final class SearchParameters extends AbstractQueryParameters
         $clone->attributesToCrop = $attributes;
         $clone->cropMarker = $cropMarker;
         $clone->cropLength = $cropLength;
+        $clone->cropMaxFragments = $cropMaxFragments;
+        $clone->prioritizeMatches = $prioritizeMatches;
 
         return $clone;
     }
