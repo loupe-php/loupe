@@ -440,6 +440,22 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withAttributesToCrop(['title', 'summary'], cropMarker: '∞');
 ```
 
+Loupe emits one fragment per match cluster. You can limit how many fragments are returned with `cropMaxFragments` (defaults to `5`).
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title', 'summary'], cropMaxFragments: 3);
+```
+
+Fragments are emitted in document order, beginning from the first one. Set `prioritizeMatches` to `true` to rank the
+crop windows by density and number of distinct matches. This will still emit them in document order, but prefer the
+most relevant ones when limiting their number.
+
+```php
+$searchParameters = \Loupe\Loupe\SearchParameters::create()
+    ->withAttributesToCrop(['title', 'summary'], prioritizeMatches: true);
+```
+
 ## Stop words
 
 When configuring Loupe, you can define a list of stop words to be ignored by the engine when matching and
