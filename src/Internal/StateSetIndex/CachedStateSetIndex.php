@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\StateSetIndex;
 
 use Loupe\Loupe\Config\TypoTolerance;
+use Loupe\Loupe\Internal\Cache\QueryCacheKey;
 use Psr\Cache\CacheItemPoolInterface;
 use Toflar\StateSetIndex\Alphabet\AlphabetInterface;
 use Toflar\StateSetIndex\Config;
@@ -13,12 +14,6 @@ use Toflar\StateSetIndex\StateSet\StateSetInterface;
 
 final class CachedStateSetIndex implements StateSetIndexInterface
 {
-    /**
-     * 60 seconds matches typical typeahead/search interaction windows.
-     * Enough reuse while users iterate, short enough to naturally shed stale prefixes quickly.
-     */
-    private const CACHE_TTL = 60;
-
     /**
      * Version namespace rollover guard.
      * With a 60s TTL, even a very write-heavy index will not realistically hit this value within one TTL window.
@@ -32,7 +27,6 @@ final class CachedStateSetIndex implements StateSetIndexInterface
         private StateSetIndexInterface $inner,
         private TypoTolerance $typoTolerance,
         private CacheItemPoolInterface $cachePool,
-        private string $indexUid,
     ) {
         $this->cacheVersion = $this->loadCacheVersion();
     }
@@ -63,7 +57,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
         }
 
         $snapshot = $this->findOrBuildSnapshot($string, $editDistance, $transpositionCost, $maxPrefixCharsToTrimForCacheReuse);
-        $cacheItem->set($snapshot->toArray())->expiresAfter(self::CACHE_TTL);
+        $cacheItem->set($snapshot->toArray())->expiresAfter(QueryCacheKey::INTERACTIVE_TTL);
         $this->cachePool->save($cacheItem);
 
         return $snapshot->matchingStates();
@@ -100,30 +94,21 @@ final class CachedStateSetIndex implements StateSetIndexInterface
 
     private function buildCacheKey(string $term, int $levenshteinDistance, int $transpositionCost): string
     {
-        return 'states.'
-            . $this->indexUid
-            . '.'
-            . $this->cacheVersion
-            . '.'
-            . $this->typoTolerance->getAlphabetSize()
-            . '.'
-            . $this->typoTolerance->getIndexLength()
-            . '.'
-            . $levenshteinDistance
-            . '.'
-            . $transpositionCost
-            . '.'
-            . rawurlencode($term);
+        return QueryCacheKey::build('states', $this->cacheVersion, [
+            $this->typoTolerance->getAlphabetSize(),
+            $this->typoTolerance->getIndexLength(),
+            $levenshteinDistance,
+            $transpositionCost,
+            $term,
+        ]);
     }
 
     private function buildVersionKey(): string
     {
-        return 'states.version.'
-            . $this->indexUid
-            . '.'
-            . $this->typoTolerance->getAlphabetSize()
-            . '.'
-            . $this->typoTolerance->getIndexLength();
+        return QueryCacheKey::build('states.version', 1, [
+            $this->typoTolerance->getAlphabetSize(),
+            $this->typoTolerance->getIndexLength(),
+        ]);
     }
 
     private function bumpVersion(): void
@@ -135,7 +120,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
             $newVersion = 1;
         }
 
-        $versionItem->set($newVersion)->expiresAfter(self::CACHE_TTL);
+        $versionItem->set($newVersion)->expiresAfter(QueryCacheKey::INTERACTIVE_TTL);
         $this->cachePool->save($versionItem);
         $this->cacheVersion = $newVersion;
     }

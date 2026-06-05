@@ -123,7 +123,12 @@ class Searcher
         }
 
         $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
-        $this->filterBuilder = new FilterBuilder($this->engine, $this, $filterParser->getAst($this->queryParameters->getFilter()));
+        $this->filterBuilder = new FilterBuilder(
+            $this->engine,
+            $this,
+            $filterParser->getAst($this->queryParameters->getFilter()),
+            $this->engine->getQueryCache()
+        );
     }
 
     /**

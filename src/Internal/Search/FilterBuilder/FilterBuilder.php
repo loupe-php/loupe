@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Search\FilterBuilder;
 
 use Doctrine\DBAL\Query\QueryBuilder;
 use Location\Bounds;
+use Loupe\Loupe\Internal\Cache\QueryCacheKey;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\Ast;
 use Loupe\Loupe\Internal\Filter\Ast\AttributeFilterInterface;
@@ -20,20 +21,50 @@ use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\Search\Sorting;
+use Loupe\Loupe\SearchParameters;
+use Psr\Cache\CacheItemPoolInterface;
 
 class FilterBuilder
 {
     private const CTE_PREFIX = 'cte_fnode_';
 
+    private ?string $cachedBuildFrom = null;
+
+    /**
+     * @var array<string, array<string|float>>
+     */
+    private array $cachedGeoBoundingBoxWhereStatements = [];
+
     public function __construct(
         private Engine $engine,
         private Searcher $searcher,
         private Ast $filterAst,
+        private ?CacheItemPoolInterface $queryCache = null,
     ) {
     }
 
     public function buildFrom(): string
     {
+        if ($this->cachedBuildFrom !== null) {
+            return $this->cachedBuildFrom;
+        }
+
+        $cacheKey = $this->buildFromCacheKey();
+
+        if ($this->queryCache !== null) {
+            try {
+                $cacheItem = $this->queryCache->getItem($cacheKey);
+                if ($cacheItem->isHit()) {
+                    $cachedValue = $cacheItem->get();
+                    if (\is_string($cachedValue)) {
+                        return $this->cachedBuildFrom = $cachedValue;
+                    }
+                }
+            } catch (\Throwable) {
+                // Cache errors must never affect query execution.
+            }
+        }
+
         $froms = [];
 
         /**
@@ -46,7 +77,19 @@ class FilterBuilder
          */
         $this->handleFilterAstNode($this->filterAst->getRoot(), $froms);
 
-        return implode(' ', $froms);
+        $from = implode(' ', $froms);
+
+        if ($this->queryCache !== null) {
+            try {
+                $cacheItem = $this->queryCache->getItem($cacheKey);
+                $cacheItem->set($from)->expiresAfter(QueryCacheKey::INTERACTIVE_TTL);
+                $this->queryCache->save($cacheItem);
+            } catch (\Throwable) {
+                // Cache errors must never affect query execution.
+            }
+        }
+
+        return $this->cachedBuildFrom = $from;
     }
 
     /**
@@ -54,6 +97,12 @@ class FilterBuilder
      */
     public function createGeoBoundingBoxWhereStatement(string $attributeName, Bounds|null $bounds = null): array
     {
+        $cacheKey = $this->buildGeoBoundingBoxCacheKey($attributeName, $bounds);
+
+        if (isset($this->cachedGeoBoundingBoxWhereStatements[$cacheKey])) {
+            return $this->cachedGeoBoundingBoxWhereStatements[$cacheKey];
+        }
+
         $documentAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
         $whereStatement = [];
 
@@ -89,7 +138,7 @@ class FilterBuilder
         $whereStatement[] = 'AND';
         $whereStatement[] = $bounds->getNorth();
 
-        return $whereStatement;
+        return $this->cachedGeoBoundingBoxWhereStatements[$cacheKey] = $whereStatement;
     }
 
     /**
@@ -118,6 +167,37 @@ class FilterBuilder
             ->where($where);
 
         return $this->addCTEForNode($node, $qb);
+    }
+
+    private function buildFromCacheKey(): string
+    {
+        $sort = [];
+        $queryParameters = $this->searcher->getQueryParameters();
+
+        if ($queryParameters instanceof SearchParameters) {
+            $sort = $queryParameters->getSort();
+        }
+
+        return QueryCacheKey::build('filter.from', Engine::VERSION . ':' . $this->engine->getDependencyHash(), [
+            hash('xxh3', (string) json_encode([
+                'filter' => $this->filterAst->toArray(),
+                'sort' => $sort,
+            ], JSON_THROW_ON_ERROR)),
+        ]);
+    }
+
+    private function buildGeoBoundingBoxCacheKey(string $attributeName, ?Bounds $bounds): string
+    {
+        if ($bounds === null) {
+            return $attributeName . '|null';
+        }
+
+        return $attributeName . '|' . hash('xxh3', (string) json_encode([
+            $bounds->getNorth(),
+            $bounds->getEast(),
+            $bounds->getSouth(),
+            $bounds->getWest(),
+        ], JSON_THROW_ON_ERROR));
     }
 
     private function createQueryBuilderForSingleAttribute(): QueryBuilder

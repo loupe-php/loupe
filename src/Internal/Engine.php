@@ -11,6 +11,7 @@ use Loupe\Loupe\BrowseParameters;
 use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
+use Loupe\Loupe\Internal\Cache\NamespacedCachePool;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpserterFactory;
 use Loupe\Loupe\Internal\Index\Indexer;
@@ -31,6 +32,7 @@ use Loupe\Matcher\Matcher;
 use Loupe\Matcher\StopWords\InMemoryStopWords;
 use Loupe\Matcher\StopWords\StopWordsInterface;
 use Pdo\Sqlite;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
@@ -62,6 +64,8 @@ class Engine
     private Indexer $indexer;
 
     private IndexInfo $indexInfo;
+
+    private ?CacheItemPoolInterface $namespacedQueryCache = null;
 
     private StateSetIndexInterface $stateSetIndex;
 
@@ -260,6 +264,23 @@ class Engine
         return $this->logger;
     }
 
+    public function getQueryCache(): ?CacheItemPoolInterface
+    {
+        if ($this->namespacedQueryCache instanceof CacheItemPoolInterface) {
+            return $this->namespacedQueryCache;
+        }
+
+        $queryCache = $this->configuration->getQueryCache();
+        if ($queryCache === null) {
+            return null;
+        }
+
+        return $this->namespacedQueryCache = new NamespacedCachePool(
+            $queryCache,
+            $this->getIndexInfo()->getIndexUid()
+        );
+    }
+
     public function getStateSetIndex(): StateSetIndexInterface
     {
         return $this->stateSetIndex;
@@ -347,8 +368,11 @@ class Engine
             return;
         }
 
-        $queryCache = $this->configuration->getQueryCache();
-        if ($queryCache === null || $this->indexInfo->needsSetup()) {
+        if ($this->indexInfo->needsSetup()) {
+            return;
+        }
+        $queryCache = $this->getQueryCache();
+        if ($queryCache === null) {
             return;
         }
 
@@ -356,7 +380,6 @@ class Engine
             $this->stateSetIndex,
             $this->configuration->getTypoTolerance(),
             $queryCache,
-            $this->indexInfo->getIndexUid(),
         );
     }
 
