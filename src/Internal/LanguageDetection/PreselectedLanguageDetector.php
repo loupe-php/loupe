@@ -17,6 +17,11 @@ class PreselectedLanguageDetector implements LanguageDetectorInterface
         return new DocumentResult([], $this->language);
     }
 
+    public function detectForQuery(string $query): ?string
+    {
+        return $this->language;
+    }
+
     public function detectForString(string $string): ?string
     {
         return $this->language;
