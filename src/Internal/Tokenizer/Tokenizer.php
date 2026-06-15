@@ -120,6 +120,11 @@ class Tokenizer implements TokenizerInterface
         return $result;
     }
 
+    public function tokenizeQuery(string $query, int|null $maxTokens = null): TokenCollection
+    {
+        return $this->doTokenize($query, $this->languageDetector->detectForQuery($query), $maxTokens);
+    }
+
     private function doTokenize(string $string, string|null $language, int|null $maxTokens = null): TokenCollection
     {
         if (null === $language) {
