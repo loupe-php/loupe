@@ -7,14 +7,16 @@ namespace Loupe\Loupe\Internal\Tokenizer;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\LanguageDetectorInterface;
 use Loupe\Loupe\Internal\Levenshtein;
+use Loupe\Matcher\Locale;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 use Loupe\Matcher\Tokenizer\Tokenizer as LoupeMatcherTokenizer;
+use Loupe\Matcher\Tokenizer\TokenizerInterface;
 use Wamania\Snowball\NotFoundException;
 use Wamania\Snowball\Stemmer\Stemmer;
 use Wamania\Snowball\StemmerFactory;
 
-class Tokenizer
+class Tokenizer implements TokenizerInterface
 {
     /**
      * @var array<string,LoupeMatcherTokenizer>
@@ -95,7 +97,7 @@ class Tokenizer
         return false;
     }
 
-    public function tokenize(string $string, ?int $maxTokens = null, bool $withVariants = true): TokenCollection
+    public function tokenize(string $string, bool $withVariants = true, ?int $maxTokens = null): TokenCollection
     {
         return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens, $withVariants);
     }
@@ -126,12 +128,13 @@ class Tokenizer
     private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, bool $withVariants = true): TokenCollection
     {
         if ($language === null) {
-            $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $maxTokens);
+            $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $withVariants, $maxTokens);
         } else {
             if (!isset($this->languageTokenizers[$language])) {
-                $this->languageTokenizers[$language] = new LoupeMatcherTokenizer($language);
+                $locale = Locale::fromString($language);
+                $this->languageTokenizers[$language] = LoupeMatcherTokenizer::createFromPreconfiguredLocaleConfiguration($locale);
             }
-            $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $maxTokens);
+            $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $withVariants, $maxTokens);
         }
 
         $tokenCollectionWithVariants = new TokenCollection();
