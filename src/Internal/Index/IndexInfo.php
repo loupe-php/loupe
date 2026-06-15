@@ -517,6 +517,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['attribute', 'document'], 'attribute_document');
+        $table->addIndex(['document']);
     }
 
     private function addMultiAttributesToSchema(Schema $schema): void
@@ -577,6 +578,7 @@ class IndexInfo
             ->setNotnull(true);
 
         $table->setPrimaryKey(['prefix', 'term']);
+        $table->addIndex(['term']);
     }
 
     private function addStateSetToSchema(Schema $schema): void
@@ -691,9 +693,13 @@ class IndexInfo
 
     private function updateSchema(): void
     {
-        $schemaManager = $this->engine->getConnection()
-            ->createSchemaManager();
+        $connection = $this->engine->getConnection();
+        $schemaManager = $connection->createSchemaManager();
         $comparator = $schemaManager->createComparator();
+
+        // Schema changes invalidate query planner statistics; drop them before introspecting
+        $connection->executeStatement('DROP TABLE IF EXISTS sqlite_stat1');
+        $connection->executeStatement('DROP TABLE IF EXISTS sqlite_stat4');
 
         $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
         $schemaManager->alterSchema($schemaDiff);

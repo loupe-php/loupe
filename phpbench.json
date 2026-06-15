@@ -1,0 +1,15 @@
+{
+    "$schema": "vendor/phpbench/phpbench/phpbench.schema.json",
+    "runner.bootstrap": "vendor/autoload.php",
+    "runner.path": "tests/Benchmark",
+    "runner.file_pattern": "*Bench.php",
+    "runner.php_env": {
+        "XDEBUG_MODE": "off"
+    },
+    "runner.php_config": {
+        "apc.enable_cli": "0",
+        "opcache.enable_cli": "1",
+        "opcache.jit": "disable",
+        "memory_limit": "256M"
+    }
+}

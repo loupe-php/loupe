@@ -218,8 +218,8 @@ If you need to browse all the documents and ignore this limit, use [the browse A
 
 ## Query cache
 
-Loupe can cache internal query artifacts (such as state-set lookups during typo tolerant search) through
-a PSR-6 cache pool:
+Loupe can cache internal query artifacts (such as state-set lookups during typo tolerant search and parsed
+filter strings) through a PSR-6 cache pool:
 
 ```php
 $cachePool = new \Symfony\Component\Cache\Adapter\RedisAdapter($redisConnection);

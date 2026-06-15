@@ -391,7 +391,7 @@ $results = [
 
 ## Context cropping
 
-Loupe can crop selected attributes to a certain length around the search terms. The is useful to
+Loupe can crop selected attributes to a certain length around the search terms. It is useful to
 show as much context as possible around matched words when displaying results.
 
 ```php

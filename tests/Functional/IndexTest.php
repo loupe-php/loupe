@@ -127,6 +127,82 @@ class IndexTest extends TestCase
         // values for null or empty string.
     }
 
+    public function testBatchWithMixOfUnchangedChangedAndNewDocuments(): void
+    {
+        // A single addDocuments() call that mixes an unchanged document (skip path) with a changed one and a brand new
+        // one. The skip path runs inside the batching loop, so we make sure it does not interfere with its neighbours.
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname', 'lastname'])
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([self::getSandraDocument(), self::getUtaDocument()]);
+
+        $unchangedDocument = self::getSandraDocument();
+
+        $changedDocument = array_merge(self::getUtaDocument(), [
+            'lastname' => 'Schmidt',
+        ]);
+
+        $newDocument = [
+            'id' => 3,
+            'firstname' => 'Nina',
+            'lastname' => 'Neumann',
+            'gender' => 'female',
+            'departments' => ['Development'],
+            'colors' => ['Blue'],
+            'age' => 33,
+        ];
+
+        $loupe->addDocuments([
+            $unchangedDocument, // unchanged -> skip path
+            $changedDocument,   // changed -> must be re-tokenized
+            $newDocument,       // new -> must be indexed
+        ]);
+
+        $this->assertSame(3, $loupe->countDocuments());
+
+        // Sandra (unchanged) untouched
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+
+        // Uta's old term is gone, new term is searchable
+        $this->assertSame(0, $loupe->search(SearchParameters::create()->withQuery('koertig'))->getTotalHits());
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('schmidt'))->getTotalHits());
+
+        // New document searchable
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('neumann'))->getTotalHits());
+
+        // Filtering across all three still works
+        $params = SearchParameters::create()
+            ->withFilter("departments = 'Development'")
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withSort(['firstname:asc']);
+
+        $this->searchAndAssertResults($loupe, $params, [
+            'hits' => [
+                [
+                    'id' => 3,
+                    'firstname' => 'Nina',
+                ],
+                [
+                    'id' => 1,
+                    'firstname' => 'Sandra',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 3,
+        ]);
+    }
+
     public function testCanFilterAndSortOnNonExistingSchema(): void
     {
         $configuration = Configuration::create()
@@ -299,6 +375,29 @@ class IndexTest extends TestCase
         $this->assertNull($loupe->getDocument('not_existing_identifier'));
     }
 
+    public function testIdenticalReAddDoesNotPoisonLaterRealUpdate(): void
+    {
+        // Re-add an identical document, then change it. The earlier skip must not prevent the real update from being applied
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname', 'lastname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument(self::getSandraDocument());
+
+        // Identical re-add -> skip path
+        $loupe->addDocument(self::getSandraDocument());
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+
+        // Now a real change to the same id
+        $loupe->addDocument(array_merge(self::getSandraDocument(), [
+            'lastname' => 'Schmidt',
+        ]));
+
+        $this->assertSame(0, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('schmidt'))->getTotalHits());
+    }
+
     public function testIndexingIdenticalDocumentWorksIfConfigChanges(): void
     {
         $dir = $this->createTemporaryDirectory();
@@ -443,6 +542,60 @@ class IndexTest extends TestCase
         ]);
 
         $this->assertSame(2, $loupe->countDocuments());
+    }
+
+    public function testReAddingIdenticalDocumentPreservesSearchFilterAndSort(): void
+    {
+        // Re-adding an identical document must not drop its terms, attributes or multi attributes
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname', 'lastname'])
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument(self::getSandraDocument());
+        $loupe->addDocument(self::getUtaDocument());
+
+        $assetSearchResults = function () use (&$loupe): void {
+            // Terms (search) still present
+            $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+            $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('koertig'))->getTotalHits());
+
+            // Multi attribute filter + single attribute sort still work
+            $params = SearchParameters::create()
+                ->withFilter("departments = 'Development'")
+                ->withAttributesToRetrieve(['id', 'firstname'])
+                ->withSort(['firstname:asc']);
+
+            $this->assertSame(2, $loupe->countDocuments());
+
+            $this->searchAndAssertResults($loupe, $params, [
+                'hits' => [
+                    [
+                        'id' => 1,
+                        'firstname' => 'Sandra',
+                    ],
+                    [
+                        'id' => 2,
+                        'firstname' => 'Uta',
+                    ],
+                ],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 2,
+            ]);
+        };
+
+        // Baseline
+        $assetSearchResults();
+
+        // Re-add the exact same documents -> skip tokenization, should still work
+        $loupe->addDocument(self::getSandraDocument());
+        $loupe->addDocument(self::getUtaDocument());
+        $assetSearchResults();
     }
 
     public function testReindex(): void

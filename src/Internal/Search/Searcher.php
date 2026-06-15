@@ -27,11 +27,25 @@ use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 
 /**
+ * Searcher class.
+ *
+ * Builds and runs the search SQL as a chain of CTEs.
+ *
+ * Per-token pipeline:
+ *
+ *   _cte_term_matches_<token> (term ids matching the token, including typo/prefix variants)
+ *     -> _cte_term_documents_<token> (distinct documents containing any of those terms)
+ *          -> _cte_candidate_documents (UNION of every token's term-documents = "matches any term")
+ *               -> _cte_term_document_matches_<token> (per-token positional matches, restricted to candidate documents)
+ *                    -> _cte_matches (final per-document aggregation feeding ranking/selection)
+ *
  * @template T of AbstractQueryParameters
  */
 class Searcher
 {
     public const CTE_ALL_MULTI_FILTERS_PREFIX = '_cte_mf_all_';
+
+    public const CTE_CANDIDATE_DOCUMENTS = '_cte_candidate_documents';
 
     public const CTE_MATCHES = '_cte_matches';
 
@@ -74,6 +88,8 @@ class Searcher
      */
     private array $ctesByTag = [];
 
+    private ?TokenCollection $displayTokens = null;
+
     private FilterBuilder $filterBuilder;
 
     /**
@@ -88,9 +104,9 @@ class Searcher
 
     private QueryBuilder $queryBuilder;
 
-    private Sorting $sorting;
+    private ?TokenCollection $searchTokens = null;
 
-    private ?TokenCollection $tokens = null;
+    private Sorting $sorting;
 
     /**
      * @param T $queryParameters
@@ -107,7 +123,12 @@ class Searcher
         }
 
         $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder();
-        $this->filterBuilder = new FilterBuilder($this->engine, $this, $filterParser->getAst($this->queryParameters->getFilter()));
+        $this->filterBuilder = new FilterBuilder(
+            $this->engine,
+            $this,
+            $filterParser->getAst($this->queryParameters->getFilter()),
+            $this->engine->getQueryCache()
+        );
     }
 
     /**
@@ -249,12 +270,9 @@ class Searcher
     {
         $start = (int) floor(microtime(true) * 1000);
 
-        $tokens = $this->getTokens();
-        $tokensIncludingStopwords = $this->engine->getTokenizer()->tokenize(
-            $this->queryParameters->getQuery(),
-            false, // No variants (no stemming, no decomposition)
-            $this->engine->getConfiguration()->getMaxQueryTokens(),
-        );
+        $tokens = $this->getSearchTokens();
+        $needsHitFormatting = $this->askedForFormattingOrMatchesPosition();
+        $displayTokens = $needsHitFormatting ? $this->getDisplayTokens() : null;
 
         // Now it's time to add our CTEs
         $this->selectDocuments();
@@ -289,7 +307,9 @@ class Searcher
                     round($result[self::RELEVANCE_ALIAS], 5) : 0.0;
             }
 
-            $this->formatHit($hit, $result, $tokensIncludingStopwords);
+            if ($needsHitFormatting && $displayTokens !== null) {
+                $this->formatHit($hit, $result, $displayTokens);
+            }
 
             $hits[] = $hit;
         }
@@ -356,27 +376,27 @@ class Searcher
         return $this->queryParameters;
     }
 
-    public function getSorting(): Sorting
+    public function getSearchTokens(): TokenCollection
     {
-        return $this->sorting;
-    }
-
-    public function getTokens(): TokenCollection
-    {
-        if ($this->tokens instanceof TokenCollection) {
-            return $this->tokens;
+        if ($this->searchTokens instanceof TokenCollection) {
+            return $this->searchTokens;
         }
 
         if ($this->queryParameters->getQuery() === '') {
-            return $this->tokens = new TokenCollection();
+            return $this->searchTokens = new TokenCollection();
         }
 
-        return $this->tokens = $this->engine->getTokenizer()
+        return $this->searchTokens = $this->engine->getTokenizer()
             ->tokenize(
                 $this->queryParameters->getQuery(),
                 false, // No variants (no stemming, no decomposition)
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
             )->withoutStopwords($this->engine->getStopWords(), true);
+    }
+
+    public function getSorting(): Sorting
+    {
+        return $this->sorting;
     }
 
     public function hasCTE(string $cteName): bool
@@ -589,64 +609,90 @@ class Searcher
 
         $termsDocumentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS);
 
+        // Skip start/end columns unless formatting/highlighting/positions are requested
+        $needsPositions = $this->askedForFormattingOrMatchesPosition();
+
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->addSelect($termsDocumentsAlias . '.document');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.attribute');
         $cteSelectQb->addSelect($termsDocumentsAlias . '.position');
-        $cteSelectQb->addSelect($termsDocumentsAlias . '.start');
-        $cteSelectQb->addSelect($termsDocumentsAlias . '.end');
+        if ($needsPositions) {
+            $cteSelectQb->addSelect($termsDocumentsAlias . '.start');
+            $cteSelectQb->addSelect($termsDocumentsAlias . '.end');
+        }
         $needsFoldingState = $this->needsFoldingState();
         $needsTypoCount = $this->needsTypoCount();
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
 
         if ($needsTypoCount) {
-            $cteSelectQb->addSelect(\sprintf(
-                'MIN(loupe_levensthein(%s.term, %s, %s)) AS typos',
-                $termsAlias,
-                $this->createNamedParameter($token->getTerm()),
-                $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false'
-            ));
+            $cteSelectQb->addSelect(\sprintf('%s.typos AS typos', $termMatchesCTE));
         } else {
             $cteSelectQb->addSelect('0 AS typos');
         }
 
         if ($needsFoldingState) {
             $cteSelectQb->addSelect(\sprintf(
-                'MAX(CASE WHEN %s.term = %s AND %s.folded = %s THEN 1 ELSE 0 END) AS exact_match',
-                $termsAlias,
-                $this->createNamedParameter($token->getTerm()),
+                'CASE WHEN %s.is_exact_term = 1 AND %s.folded = %s THEN 1 ELSE 0 END AS exact_match',
+                $termMatchesCTE,
                 $termsDocumentsAlias,
                 $token->wasFolded() ? '1' : '0'
             ));
         }
 
-        if ($needsTypoCount || $needsFoldingState) {
-            $cteSelectQb->innerJoin(
+        $isPhraseContinuation = $token->isPartOfPhrase() && $previousPhraseToken !== null;
+        if ($isPhraseContinuation) {
+            // Continuing inside "a phrase": drive query from small materialized previous token's match CTE
+            // Use CROSS JOIN instead of INNER JOIN to pin join order and avoid full scans for common words like "his"
+            $previousPhraseCte = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken);
+            $previousPhraseAlias = $previousPhraseCte . '_prev';
+            $cteSelectQb->from(\sprintf(
+                '%s %s'
+                . ' CROSS JOIN %s'
+                . ' CROSS JOIN %s %s INDEXED BY sqlite_autoindex_terms_documents_1'
+                . ' ON %s.id = %s.term'
+                . ' AND %s.document = %s.document'
+                . ' AND %s.attribute = %s.attribute'
+                . ' AND %s.position = %s.position + 1',
+                $previousPhraseCte,
+                $previousPhraseAlias,
+                $termMatchesCTE,
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                 $termsDocumentsAlias,
-                IndexInfo::TABLE_NAME_TERMS,
-                $termsAlias,
-                \sprintf('%s.id = %s.term', $termsAlias, $termsDocumentsAlias)
+                $termMatchesCTE,
+                $termsDocumentsAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
+                $termsDocumentsAlias,
+                $previousPhraseAlias,
+            ));
+        } else {
+            // Join from term_matches CTE — not from terms_documents - to force primary key usage
+            $cteSelectQb->from($termMatchesCTE);
+            $cteSelectQb->innerJoin(
+                $termMatchesCTE,
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                $termsDocumentsAlias . ' INDEXED BY sqlite_autoindex_terms_documents_1',
+                \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias)
             );
         }
 
-        $cteSelectQb->from(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, $termsDocumentsAlias);
-
-        // Get documents that match any of our terms
-        $documentConditions = [];
-        foreach ($this->getTokens()->all() as $otherToken) {
-            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
-            if (!$this->hasCTE($cteName)) {
-                continue;
+        // Restrict to shared candidate documents only for real multi-token queries.
+        // For single-token queries this check is redundant and adds avoidable overhead.
+        // For phrase-continuation tokens, this filter is also redudandant and solved by the cross join above
+        if ($this->getSearchTokens()->count() > 1 && !$isPhraseContinuation) {
+            $hasCandidateDocuments = $this->ensureSharedCandidateDocumentsCTE();
+            if (!$hasCandidateDocuments) {
+                return;
             }
-            $documentConditions[] = \sprintf('%s.document IN (SELECT document FROM %s)', $termsDocumentsAlias, $cteName);
-        }
 
-        if ($documentConditions === []) {
-            return;
+            $cteSelectQb->where(\sprintf(
+                '%s.document IN (SELECT document FROM %s)',
+                $termsDocumentsAlias,
+                self::CTE_CANDIDATE_DOCUMENTS
+            ));
         }
-
-        $cteSelectQb->where('(' . implode(' OR ', $documentConditions) . ')');
-        $cteSelectQb->andWhere(\sprintf($termsDocumentsAlias . '.term IN (SELECT id FROM %s)', $termMatchesCTE));
 
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(\sprintf(
@@ -655,27 +701,28 @@ class Searcher
             ));
         }
 
-        // Ensure phrase positions if any
-        if ($token->isPartOfPhrase() && $previousPhraseToken) {
-            $cteSelectQb->andWhere(\sprintf(
-                '%s.position IN (SELECT position + 1 FROM %s WHERE document=td.document AND attribute=td.attribute)',
-                $termsDocumentsAlias,
-                $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $previousPhraseToken),
-            ));
-        }
-
-        $cteSelectQb->groupBy($termsDocumentsAlias . '.document');
-        $cteSelectQb->addGroupBy($termsDocumentsAlias . '.attribute');
-        $cteSelectQb->addGroupBy($termsDocumentsAlias . '.position');
-
         $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+        // loupe_levensthein calls prevent SQLite from materializing phrase-position subqueries
+        // so we force materialization to avoid re-evaluation per row and use temp b-trees instead
+        $materialized = $token->isPartOfPhrase() ? true : null;
+
+        $columns = ['document', 'attribute', 'position'];
+        if ($needsPositions) {
+            $columns[] = 'start';
+            $columns[] = 'end';
+        }
+        $columns[] = 'typos';
+        if ($needsFoldingState) {
+            $columns[] = 'exact_match';
+        }
 
         $this->addCTE(new Cte(
             $cteName,
-            $needsFoldingState ?
-                ['document', 'attribute', 'position', 'start', 'end', 'typos', 'exact_match'] :
-                ['document', 'attribute', 'position', 'start', 'end', 'typos'],
-            $cteSelectQb
+            $columns,
+            $cteSelectQb,
+            [],
+            $materialized
         ));
     }
 
@@ -764,11 +811,30 @@ class Searcher
             }
         }
 
-        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
-        $cteSelectQb->select('id');
-        $cteSelectQb->from('(' . implode(' UNION ', $selects) . ')');
+        // Precompute per-term typos + is_exact_term so _cte_term_document_matches_N can join this tiny CTE instead of the big `terms` table
+        $queryTermParam = $this->createNamedParameter($token->getTerm());
+        $firstCharDouble = $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false';
+        $unionSql = implode(' UNION ALL ', $selects);
 
-        $this->addCTE(new Cte($this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token), ['id'], $cteSelectQb));
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->select('inner_terms.id AS id');
+        $cteSelectQb->addSelect(\sprintf(
+            'MIN(loupe_levensthein(inner_terms.term, %s, %s)) AS typos',
+            $queryTermParam,
+            $firstCharDouble,
+        ));
+        $cteSelectQb->addSelect(\sprintf(
+            'MAX(CASE WHEN inner_terms.term = %s THEN 1 ELSE 0 END) AS is_exact_term',
+            $queryTermParam,
+        ));
+        $cteSelectQb->from('(' . $unionSql . ')', 'inner_terms');
+        $cteSelectQb->groupBy('inner_terms.id');
+
+        $this->addCTE(new Cte(
+            $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token),
+            ['id', 'typos', 'is_exact_term'],
+            $cteSelectQb
+        ));
     }
 
     private function addTermMatchesCTEs(TokenCollection $tokenCollection): void
@@ -918,6 +984,16 @@ class Searcher
             MatchingStrategy::Any => ' OR ',
         };
 
+        // Fast path: "any" strategy, only positive single-token groups: use _cte_candidate_documents directly
+        if ($strategy === MatchingStrategy::Any
+            && $negativeConditions === []
+            && $positiveConditions !== []
+            && $this->hasCTE(self::CTE_CANDIDATE_DOCUMENTS)
+            && array_filter($positiveConditions, fn ($s) => \count($s) !== 1) === []
+        ) {
+            return \sprintf('SELECT document AS document_id FROM %s', self::CTE_CANDIDATE_DOCUMENTS);
+        }
+
         $where = implode($positiveOperator, array_map(
             fn ($statements) => '(' . implode(' AND ', $statements) . ')',
             $positiveConditions
@@ -1007,16 +1083,23 @@ class Searcher
 
     private function createTermDocumentMatchesCTECondition(Token $token): ?string
     {
-        $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+        $usePositionAwareMatches = $token->isPartOfPhrase();
+        $cteName = $this->getCTENameForToken(
+            $usePositionAwareMatches ? self::CTE_TERM_DOCUMENT_MATCHES_PREFIX : self::CTE_TERM_DOCUMENTS_PREFIX,
+            $token
+        );
 
         if (!$this->hasCTE($cteName)) {
             return null;
         }
 
+        $subSelect = $usePositionAwareMatches ? 'SELECT DISTINCT document FROM ' : 'SELECT document FROM ';
+
         return \sprintf(
-            '%s._id %s (SELECT DISTINCT document FROM %s)',
+            '%s._id %s (%s%s)',
             $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
             $token->isNegated() ? 'NOT IN' : 'IN',
+            $subSelect,
             $cteName
         );
     }
@@ -1025,7 +1108,7 @@ class Searcher
     {
         $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
         $qb = $this->engine->getConnection()->createQueryBuilder();
-        $qb->select($termsAlias . '.id');
+        $qb->select($termsAlias . '.id', $termsAlias . '.term');
         $qb->from(IndexInfo::TABLE_NAME_TERMS, $termsAlias);
 
         if ($prefixLikeOnly) {
@@ -1151,6 +1234,42 @@ class Searcher
         }
 
         return implode(' ', $where);
+    }
+
+    /**
+     * Lazily build the shared "_cte_candidate_documents" CTE: set of documents matching ANY query term
+     * (the UNION of every token's _cte_term_documents_* list), and reports whether such a set exists.
+     * Done so that SQLite can satisfy each token with a single index lookup by computing the union once.
+     *
+     * @return bool true when a candidate set exists, false when no token has a term-documents CTE
+     */
+    private function ensureSharedCandidateDocumentsCTE(): bool
+    {
+        if ($this->hasCTE(self::CTE_CANDIDATE_DOCUMENTS)) {
+            return true;
+        }
+
+        // Collect each token's document list (their UNION is the "matches any term" candidate set)
+        $unionParts = [];
+        foreach ($this->getSearchTokens()->all() as $otherToken) {
+            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENTS_PREFIX, $otherToken);
+            if (!$this->hasCTE($cteName)) {
+                continue;
+            }
+            $unionParts[] = 'SELECT document FROM ' . $cteName;
+        }
+
+        if ($unionParts === []) {
+            return false;
+        }
+
+        $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
+        $cteSelectQb->select('document');
+        $cteSelectQb->from('(' . implode(' UNION ALL ', $unionParts) . ') candidates');
+
+        $this->addCTE(new Cte(self::CTE_CANDIDATE_DOCUMENTS, ['document'], $cteSelectQb));
+
+        return true;
     }
 
     private function filterDocuments(TokenCollection $tokenCollection): void
@@ -1337,6 +1456,23 @@ class Searcher
         }
     }
 
+    private function getDisplayTokens(): TokenCollection
+    {
+        if ($this->displayTokens instanceof TokenCollection) {
+            return $this->displayTokens;
+        }
+
+        if ($this->queryParameters->getQuery() === '') {
+            return $this->displayTokens = new TokenCollection();
+        }
+
+        return $this->displayTokens = $this->engine->getTokenizer()->tokenize(
+            $this->queryParameters->getQuery(),
+            true,
+            $this->engine->getConfiguration()->getMaxQueryTokens(),
+        );
+    }
+
     private function limitPagination(): void
     {
         $maxTotalHits = $this->engine->getConfiguration()->getMaxTotalHits();
@@ -1383,10 +1519,16 @@ class Searcher
         if ($this->ctesByName !== []) {
             $queryParts[] = 'WITH';
             foreach ($this->ctesByName as $name => $cte) {
+                $materializedHint = match ($cte->isMaterialized()) {
+                    true => 'MATERIALIZED ',
+                    false => 'NOT MATERIALIZED ',
+                    null => '',
+                };
                 $queryParts[] = \sprintf(
-                    '%s (%s) AS (%s)',
+                    '%s (%s) AS %s(%s)',
                     $name,
                     implode(',', $cte->getColumnAliasList()),
+                    $materializedHint,
                     $cte->getQueryBuilder()->getSQL()
                 );
                 $queryParts[] = ',';
@@ -1472,5 +1614,8 @@ class Searcher
     private function sortDocuments(): void
     {
         $this->sorting->applySorters($this);
+
+        // Append document id as final stable tiebreaker to ensure deterministic order regardless of query plan
+        $this->addOrderBy(self::DOCUMENT_ID_ALIAS, 'ASC');
     }
 }
