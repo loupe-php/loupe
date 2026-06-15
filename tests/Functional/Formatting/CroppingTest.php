@@ -34,7 +34,7 @@ final class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 24,
                             'title' => 'Kill Bill: Vol. 1',
-                            'overview' => 'An assassin is shot by her ruthless employer, Bill, and other members of their assassination circle – but she lives to plot her vengeance.',
+                            'overview' => 'An assassin is shot by her ruthless employer, Bill…members of their assassination circle – but she lives…',
                             'genres' => ['Action', 'Crime'],
                         ],
                     ],
@@ -62,7 +62,7 @@ final class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 24,
                             'title' => 'Kill Bill: Vol. 1',
-                            'overview' => 'An assassin is shot by her ruthless employer…and other members of their assassination circle – but she lives to plot…',
+                            'overview' => 'An assassin is shot by her ruthless employer, Bill…members of their assassination circle – but she lives…',
                             'genres' => ['Action', 'Crime'],
                         ],
                     ],
@@ -90,7 +90,7 @@ final class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 16,
                             'title' => 'Dancer in the Dark',
-                            'overview' => 'Selma, a Czech immigrant on the verge of blindness…operation. When life gets too difficult, Selma learns to cope through her love of musicals…',
+                            'overview' => 'Selma, a Czech immigrant on the verge of blindness…life gets too difficult, Selma learns to cope through…',
                             'genres' => ['Drama', 'Crime'],
                         ],
                     ],
@@ -118,7 +118,7 @@ final class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 16,
                             'title' => 'Dancer in the Dark',
-                            'overview' => '…to the rhythmic beats of her surroundings.',
+                            'overview' => '…numbers to the rhythmic beats of her surroundings.',
                             'genres' => ['Drama', 'Crime'],
                         ],
                     ],
@@ -146,7 +146,7 @@ final class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 24,
                             'title' => 'Kill Bill: Vol. 1',
-                            'overview' => 'An assassin is shot…their assassination circle…',
+                            'overview' => 'An assassin is shot by her…their assassination circle…',
                             'genres' => ['Action', 'Crime'],
                         ],
                     ],
@@ -181,7 +181,7 @@ final class CroppingTest extends TestCase
                         '_formatted' => [
                             'id' => 24,
                             'title' => 'Kill Bill: Vol. 1',
-                            'overview' => 'An <em>assassin</em> is shot…their <em>assassination</em> circle…',
+                            'overview' => 'An <em>assassin</em> is shot by…their <em>assassination</em> circle…',
                             'genres' => ['Action', 'Crime'],
                         ],
                     ],
