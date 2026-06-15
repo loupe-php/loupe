@@ -10,19 +10,18 @@ use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 use Loupe\Matcher\Tokenizer\Tokenizer as LoupeMatcherTokenizer;
-use Loupe\Matcher\Tokenizer\TokenizerInterface;
 use Wamania\Snowball\NotFoundException;
 use Wamania\Snowball\Stemmer\Stemmer;
 use Wamania\Snowball\StemmerFactory;
 
-class Tokenizer implements TokenizerInterface
+class Tokenizer
 {
     /**
-     * @var array<string, TokenizerInterface>
+     * @var array<string, LoupeMatcherTokenizer>
      */
     private array $languageTokenizers = [];
 
-    private readonly TokenizerInterface $noLanguageTokenizer;
+    private readonly LoupeMatcherTokenizer $noLanguageTokenizer;
 
     /**
      * @var array<string, array<string, string>>
@@ -96,9 +95,9 @@ class Tokenizer implements TokenizerInterface
         return false;
     }
 
-    public function tokenize(string $string, int|null $maxTokens = null): TokenCollection
+    public function tokenize(string $string, int|null $maxTokens = null, bool $withVariants = true): TokenCollection
     {
-        return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens);
+        return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens, $withVariants);
     }
 
     /**
@@ -120,12 +119,12 @@ class Tokenizer implements TokenizerInterface
         return $result;
     }
 
-    public function tokenizeQuery(string $query, int|null $maxTokens = null): TokenCollection
+    public function tokenizeQuery(string $query, int|null $maxTokens = null, bool $withVariants = true): TokenCollection
     {
-        return $this->doTokenize($query, $this->languageDetector->detectForQuery($query), $maxTokens);
+        return $this->doTokenize($query, $this->languageDetector->detectForQuery($query), $maxTokens, $withVariants);
     }
 
-    private function doTokenize(string $string, string|null $language, int|null $maxTokens = null): TokenCollection
+    private function doTokenize(string $string, string|null $language, int|null $maxTokens = null, bool $withVariants = true): TokenCollection
     {
         if (null === $language) {
             $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $maxTokens);
@@ -143,7 +142,8 @@ class Tokenizer implements TokenizerInterface
 
             // Stem if we detected a language - but only if not part of a phrase
             if (
-                null !== $language
+                $withVariants
+                && null !== $language
                 && !$token->isPartOfPhrase()
                 && !$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()
             ) {

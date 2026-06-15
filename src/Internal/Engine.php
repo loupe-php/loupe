@@ -24,6 +24,7 @@ use Loupe\Loupe\Internal\StateSetIndex\CachedStateSetIndex;
 use Loupe\Loupe\Internal\StateSetIndex\DefaultStateSetIndex;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\StateSetIndex\StateSetIndexInterface;
+use Loupe\Loupe\Internal\Tokenizer\MatcherTokenizerAdapter;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
@@ -95,7 +96,7 @@ class Engine
         $this->ticketHandler = new TicketHandler($this->connectionPool, $this->getLogger());
         $this->indexer = new Indexer($this, $this->ticketHandler);
         $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
-        $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->stopwords));
+        $this->formatter = new Formatter(new Matcher(new MatcherTokenizerAdapter($this->getTokenizer()), $this->stopwords));
         $this->filterParser = new Parser($this);
         $this->bulkUpserterFactory = new BulkUpserterFactory($this->connectionPool);
 
