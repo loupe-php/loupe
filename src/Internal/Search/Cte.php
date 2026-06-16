@@ -15,7 +15,7 @@ class Cte
     public function __construct(
         private string $name,
         private array $columnAliasList,
-        private QueryBuilder $queryBuilder,
+        private string|QueryBuilder $query,
         private array $tags = [],
         private ?bool $materialized = null,
     ) {
@@ -34,9 +34,9 @@ class Cte
         return $this->name;
     }
 
-    public function getQueryBuilder(): QueryBuilder
+    public function getQuerySql(): string
     {
-        return $this->queryBuilder;
+        return $this->query instanceof QueryBuilder ? $this->query->getSQL() : $this->query;
     }
 
     /**

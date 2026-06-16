@@ -8,6 +8,7 @@ use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
+use Loupe\Loupe\Tests\Support\InMemoryCachePool;
 use Loupe\Loupe\Tests\Util;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -3058,6 +3059,40 @@ class SearchTest extends TestCase
             'totalPages' => 1,
             'totalHits' => 3,
         ]);
+    }
+
+    public function testRepeatedSearchWithQueryCacheKeepsFilterCTEsIntact(): void
+    {
+        $configuration = Configuration::create()
+            ->withQueryCache(new InMemoryCachePool());
+
+        $loupe = $this->setupLoupeWithDepartmentsFixture($configuration);
+
+        $searchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter("departments = 'Backoffice'")
+            ->withSort(['firstname:asc']);
+
+        $expected = [
+            'hits' => [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+            'query' => '',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 2,
+        ];
+
+        $this->searchAndAssertResults($loupe, $searchParameters, $expected);
+        $this->searchAndAssertResults($loupe, $searchParameters, $expected);
     }
 
     public function testSearchingForAQueryThatMatchesWayTooManyDocumentsDoesNotTakeForeverAndAlsoStillReturnsTheMostRelevantDocument(): void
