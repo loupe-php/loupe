@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Search\FilterBuilder;
 
+use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
+use Doctrine\DBAL\Types\Type;
 use Location\Bounds;
 use Loupe\Loupe\Internal\Cache\QueryCacheKey;
 use Loupe\Loupe\Internal\Engine;
@@ -28,7 +31,15 @@ class FilterBuilder
 {
     private const CTE_PREFIX = 'cte_fnode_';
 
-    private ?string $cachedBuildFrom = null;
+    /**
+     * @var array{
+     *     from: string,
+     *     ctes: array<int, array{name: string, columns: array<int, string>, sql: string, tags: array<int, string>, materialized: ?bool}>,
+     *     parameters: array<int<0, max>|string, mixed>,
+     *     parameterTypes: array<int<0, max>|string, ArrayParameterType|ParameterType|Type|string>
+     * }|null
+     */
+    private ?array $cachedBuildFromResult = null;
 
     /**
      * @var array<string, array<string|float>>
@@ -45,8 +56,8 @@ class FilterBuilder
 
     public function buildFrom(): string
     {
-        if ($this->cachedBuildFrom !== null) {
-            return $this->cachedBuildFrom;
+        if ($this->cachedBuildFromResult !== null) {
+            return $this->cachedBuildFromResult['from'];
         }
 
         $cacheKey = $this->buildFromCacheKey();
@@ -55,9 +66,12 @@ class FilterBuilder
             try {
                 $cacheItem = $this->queryCache->getItem($cacheKey);
                 if ($cacheItem->isHit()) {
-                    $cachedValue = $cacheItem->get();
-                    if (\is_string($cachedValue)) {
-                        return $this->cachedBuildFrom = $cachedValue;
+                    $cachedValue = $this->hydrateCachedBuildFromResult($cacheItem->get());
+                    if ($cachedValue !== null) {
+                        $this->cachedBuildFromResult = $cachedValue;
+                        $this->restoreFilterBuildResult($cachedValue);
+
+                        return $cachedValue['from'];
                     }
                 }
             } catch (\Throwable) {
@@ -78,18 +92,20 @@ class FilterBuilder
         $this->handleFilterAstNode($this->filterAst->getRoot(), $froms);
 
         $from = implode(' ', $froms);
+        $result = $this->snapshotFilterBuildResult($from);
+        $this->cachedBuildFromResult = $result;
 
         if ($this->queryCache !== null) {
             try {
                 $cacheItem = $this->queryCache->getItem($cacheKey);
-                $cacheItem->set($from)->expiresAfter(QueryCacheKey::INTERACTIVE_TTL);
+                $cacheItem->set($result)->expiresAfter(QueryCacheKey::INTERACTIVE_TTL);
                 $this->queryCache->save($cacheItem);
             } catch (\Throwable) {
                 // Cache errors must never affect query execution.
             }
         }
 
-        return $this->cachedBuildFrom = $from;
+        return $from;
     }
 
     /**
@@ -116,27 +132,25 @@ class FilterBuilder
         $whereStatement[] = '!=';
         $whereStatement[] = $nullTerm;
 
-        if ($bounds === null) {
-            return $whereStatement;
+        if ($bounds !== null) {
+            $whereStatement[] = 'AND';
+
+            // Longitude
+            $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lng';
+            $whereStatement[] = 'BETWEEN';
+            $whereStatement[] = $bounds->getWest();
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $bounds->getEast();
+
+            $whereStatement[] = 'AND';
+
+            // Latitude
+            $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lat';
+            $whereStatement[] = 'BETWEEN';
+            $whereStatement[] = $bounds->getSouth();
+            $whereStatement[] = 'AND';
+            $whereStatement[] = $bounds->getNorth();
         }
-
-        $whereStatement[] = 'AND';
-
-        // Longitude
-        $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lng';
-        $whereStatement[] = 'BETWEEN';
-        $whereStatement[] = $bounds->getWest();
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $bounds->getEast();
-
-        $whereStatement[] = 'AND';
-
-        // Latitude
-        $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lat';
-        $whereStatement[] = 'BETWEEN';
-        $whereStatement[] = $bounds->getSouth();
-        $whereStatement[] = 'AND';
-        $whereStatement[] = $bounds->getNorth();
 
         return $this->cachedGeoBoundingBoxWhereStatements[$cacheKey] = $whereStatement;
     }
@@ -430,5 +444,96 @@ class FilterBuilder
         if ($node instanceof Concatenator) {
             $froms[] = $node->getSetOperator();
         }
+    }
+
+    /**
+     * @return array{
+     *     from: string,
+     *     ctes: array<int, array{name: string, columns: array<int, string>, sql: string, tags: array<int, string>, materialized: ?bool}>,
+     *     parameters: array<int<0, max>|string, mixed>,
+     *     parameterTypes: array<int<0, max>|string, ArrayParameterType|ParameterType|Type|string>
+     * }|null
+     */
+    private function hydrateCachedBuildFromResult(mixed $cachedValue): ?array
+    {
+        if (!\is_array($cachedValue)) {
+            return null;
+        }
+
+        if (
+            !isset($cachedValue['from']) ||
+            !\is_string($cachedValue['from']) ||
+            !isset($cachedValue['ctes']) ||
+            !\is_array($cachedValue['ctes']) ||
+            !isset($cachedValue['parameters']) ||
+            !\is_array($cachedValue['parameters']) ||
+            !isset($cachedValue['parameterTypes']) ||
+            !\is_array($cachedValue['parameterTypes'])
+        ) {
+            return null;
+        }
+
+        return [
+            'from' => $cachedValue['from'],
+            'ctes' => $cachedValue['ctes'],
+            'parameters' => $cachedValue['parameters'],
+            'parameterTypes' => $cachedValue['parameterTypes'],
+        ];
+    }
+
+    /**
+     * @param array{
+     *     from: string,
+     *     ctes: array<int, array{name: string, columns: array<int, string>, sql: string, tags: array<int, string>, materialized: ?bool}>,
+     *     parameters: array<int<0, max>|string, mixed>,
+     *     parameterTypes: array<int<0, max>|string, ArrayParameterType|ParameterType|Type|string>
+     * } $result
+     */
+    private function restoreFilterBuildResult(array $result): void
+    {
+        foreach ($result['ctes'] as $cteDefinition) {
+            $this->searcher->addCTE(new Cte(
+                $cteDefinition['name'],
+                $cteDefinition['columns'],
+                $cteDefinition['sql'],
+                $cteDefinition['tags'],
+                $cteDefinition['materialized'],
+            ));
+        }
+
+        $this->searcher->getQueryBuilder()->setParameters(
+            $result['parameters'],
+            $result['parameterTypes']
+        );
+    }
+
+    /**
+     * @return array{
+     *     from: string,
+     *     ctes: array<int, array{name: string, columns: array<int, string>, sql: string, tags: array<int, string>, materialized: ?bool}>,
+     *     parameters: array<int<0, max>|string, mixed>,
+     *     parameterTypes: array<int<0, max>|string, ArrayParameterType|ParameterType|Type|string>
+     * }
+     */
+    private function snapshotFilterBuildResult(string $from): array
+    {
+        $ctes = [];
+
+        foreach ($this->searcher->getCtesByName() as $cte) {
+            $ctes[] = [
+                'name' => $cte->getName(),
+                'columns' => $cte->getColumnAliasList(),
+                'sql' => $cte->getQuerySql(),
+                'tags' => $cte->getTags(),
+                'materialized' => $cte->isMaterialized(),
+            ];
+        }
+
+        return [
+            'from' => $from,
+            'ctes' => $ctes,
+            'parameters' => $this->searcher->getQueryBuilder()->getParameters(),
+            'parameterTypes' => $this->searcher->getQueryBuilder()->getParameterTypes(),
+        ];
     }
 }

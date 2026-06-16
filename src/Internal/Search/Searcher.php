@@ -1527,7 +1527,7 @@ class Searcher
                     $name,
                     implode(',', $cte->getColumnAliasList()),
                     $materializedHint,
-                    $cte->getQueryBuilder()->getSQL()
+                    $cte->getQuerySql()
                 );
                 $queryParts[] = ',';
             }
