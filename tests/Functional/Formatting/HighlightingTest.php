@@ -385,4 +385,39 @@ class HighlightingTest extends TestCase
             'totalHits' => 1,
         ]);
     }
+
+    public function testHighlightingIncludesAttributesThatAreNotRetrieved(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withFilterableAttributes(['genres'])
+            ->withSortableAttributes(['title']);
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Rooms')
+            ->withAttributesToRetrieve(['id', 'overview'])
+            ->withAttributesToHighlight(['title']);
+
+        $this->searchAndAssertResults($loupe, $searchParameters, [
+            'hits' => [
+                [
+                    'id' => 5,
+                    'overview' => 'It\'s Ted the Bellhop\'s first night on the job...and the hotel\'s very unusual guests are about to place him in some outrageous predicaments. It seems that this evening\'s room service is serving up one unbelievable happening after another.',
+                    '_formatted' => [
+                        'id' => 5,
+                        'overview' => 'It\'s Ted the Bellhop\'s first night on the job...and the hotel\'s very unusual guests are about to place him in some outrageous predicaments. It seems that this evening\'s room service is serving up one unbelievable happening after another.',
+                        'title' => 'Four <em>Rooms</em>',
+                    ],
+                ],
+            ],
+            'query' => 'Rooms',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
 }
