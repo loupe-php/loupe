@@ -308,7 +308,7 @@ class Searcher
             }
 
             if ($needsHitFormatting && $displayTokens !== null) {
-                $this->formatHit($hit, $result, $displayTokens);
+                $this->formatHit($hit, $document, $result, $displayTokens);
             }
 
             $hits[] = $hit;
@@ -1342,22 +1342,23 @@ class Searcher
 
     /**
      * @param array<mixed> $hit
+     * @param array<string, mixed> $document
      * @param array<mixed> $queryResult
      */
-    private function formatHit(array &$hit, array $queryResult, TokenCollection $queryTerms): void
+    private function formatHit(array &$hit, array $document, array $queryResult, TokenCollection $queryTerms): void
     {
         if (!$this->queryParameters instanceof SearchParameters) {
             return;
         }
 
         $searchableAttributes = ['*'] === $this->engine->getConfiguration()->getSearchableAttributes()
-            ? array_keys($hit)
+            ? array_keys($document)
             : $this->engine->getConfiguration()->getSearchableAttributes();
         $attributesToCrop = ['*'] === $this->queryParameters->getAttributesToCrop()
             ? array_keys($hit)
             : array_keys($this->queryParameters->getAttributesToCrop());
         $attributesToHighlight = ['*'] === $this->queryParameters->getAttributesToHighlight()
-            ? array_keys($hit)
+            ? $searchableAttributes
             : $this->queryParameters->getAttributesToHighlight();
 
         $options = (new FormatterOptions())
@@ -1400,8 +1401,18 @@ class Searcher
         $matchesPosition = [];
 
         foreach ($searchableAttributes as $attribute) {
-            // Do not include any attribute not required by the result (limited by attributesToRetrieve)
-            if (!isset($hit[$attribute])) {
+            $hasAttributeInHit = \array_key_exists($attribute, $hit);
+
+            // Do not include any attribute not required by the result unless it must be highlighted.
+            if (!$hasAttributeInHit) {
+                if (!\in_array($attribute, $attributesToHighlight, true) || !\array_key_exists($attribute, $document)) {
+                    continue;
+                }
+
+                $formatted[$attribute] = $document[$attribute];
+            }
+
+            if (!\array_key_exists($attribute, $formatted)) {
                 continue;
             }
 
