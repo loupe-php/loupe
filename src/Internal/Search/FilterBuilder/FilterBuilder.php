@@ -123,7 +123,7 @@ class FilterBuilder
         $whereStatement = [];
 
         // Prevent nullable
-        $nullTerm = $this->searcher->createNamedParameter(LoupeTypes::VALUE_NULL);
+        $nullTerm = $this->searcher->bindQueryParameter(LoupeTypes::VALUE_NULL);
         $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lat';
         $whereStatement[] = '!=';
         $whereStatement[] = $nullTerm;
@@ -250,7 +250,7 @@ class FilterBuilder
                     '%s.attribute=%s AND %s.id = %s.attribute',
                     $this->engine->getIndexInfo()
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->searcher->createNamedParameter($node->attribute),
+                    $this->searcher->bindQueryParameter($node->attribute),
                     $this->engine->getIndexInfo()
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $this->engine->getIndexInfo()
@@ -334,7 +334,7 @@ class FilterBuilder
                     \sprintf(
                         '%s.attribute=%s AND %s.id = %s.attribute',
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                        $this->searcher->createNamedParameter($node->attribute),
+                        $this->searcher->bindQueryParameter($node->attribute),
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                     )
@@ -491,6 +491,15 @@ class FilterBuilder
      */
     private function restoreFilterBuildResult(array $result): void
     {
+        foreach ($result['parameters'] as $parameterName => $parameterValue) {
+            $parameterType = $result['parameterTypes'][$parameterName] ?? ParameterType::STRING;
+            $this->searcher->bindQueryParameter(
+                $parameterValue,
+                $parameterType,
+                (string) $parameterName
+            );
+        }
+
         foreach ($result['ctes'] as $cteDefinition) {
             $this->searcher->addCTE(new Cte(
                 $cteDefinition['name'],
@@ -500,11 +509,6 @@ class FilterBuilder
                 $cteDefinition['materialized'],
             ));
         }
-
-        $this->searcher->getQueryBuilder()->setParameters(
-            $result['parameters'],
-            $result['parameterTypes']
-        );
     }
 
     /**

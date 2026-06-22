@@ -3068,12 +3068,12 @@ class SearchTest extends TestCase
 
         $loupe = $this->setupLoupeWithDepartmentsFixture($configuration);
 
-        $searchParameters = SearchParameters::create()
+        $filterOnlySearchParameters = SearchParameters::create()
             ->withAttributesToRetrieve(['id', 'firstname'])
             ->withFilter("departments = 'Backoffice'")
             ->withSort(['firstname:asc']);
 
-        $expected = [
+        $this->searchAndAssertResults($loupe, $filterOnlySearchParameters, [
             'hits' => [
                 [
                     'id' => 6,
@@ -3089,10 +3089,22 @@ class SearchTest extends TestCase
             'page' => 1,
             'totalPages' => 1,
             'totalHits' => 2,
-        ];
+        ]);
 
-        $this->searchAndAssertResults($loupe, $searchParameters, $expected);
-        $this->searchAndAssertResults($loupe, $searchParameters, $expected);
+        $querySearchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withQuery('maier')
+            ->withFilter("departments = 'Backoffice'")
+            ->withSort(['firstname:asc']);
+
+        $this->searchAndAssertResults($loupe, $querySearchParameters, [
+            'hits' => [],
+            'query' => 'maier',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 0,
+            'totalHits' => 0,
+        ]);
     }
 
     public function testSearchingForAQueryThatMatchesWayTooManyDocumentsDoesNotTakeForeverAndAlsoStillReturnsTheMostRelevantDocument(): void

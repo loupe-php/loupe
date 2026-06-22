@@ -93,11 +93,6 @@ class Searcher
     private FilterBuilder $filterBuilder;
 
     /**
-     * @var array<int|string, string>
-     */
-    private array $namedParameters = [];
-
-    /**
      * @var array<array{sort: string, order: string, needsMaterialization: bool}>
      */
     private array $orderByParts = [];
@@ -185,7 +180,7 @@ class Searcher
                 \sprintf(
                     '%s.attribute=%s AND %s.id = %s.attribute',
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->createNamedParameter($attribute),
+                    $this->bindQueryParameter($attribute),
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
                 )
@@ -248,17 +243,23 @@ class Searcher
         $this->queryBuilder->addOrderBy($sort, $order);
     }
 
-    public function createNamedParameter(mixed $value, mixed $type = ParameterType::STRING): string
-    {
-        if ($type === ParameterType::STRING && (\is_string($value) || \is_int($value))) {
-            if (isset($this->namedParameters[$value])) {
-                return $this->namedParameters[$value];
-            }
+    public function bindQueryParameter(
+        mixed $value,
+        mixed $type = ParameterType::STRING,
+        ?string $parameterName = null
+    ): string {
+        if ($parameterName !== null) {
+            $this->queryBuilder->setParameter($parameterName, $value, $type);
 
-            return $this->namedParameters[$value] = $this->queryBuilder->createNamedParameter($value, $type);
+            return ':' . $parameterName;
         }
 
-        return $this->queryBuilder->createNamedParameter($value, $type);
+        $signature = hash('xxh3', serialize([$type, $value]));
+
+        $parameterName = '__loupe_p_' . $signature;
+        $this->queryBuilder->setParameter($parameterName, $value, $type);
+
+        return ':' . $parameterName;
     }
 
     /**
@@ -436,8 +437,8 @@ class Searcher
             }
 
             // Make sure null and empty values are not considered (MAX() would probably prefer those)
-            $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_NULL));
-            $qb->andWhere($facetAlias . '!= ' . $this->queryBuilder->createNamedParameter(LoupeTypes::VALUE_EMPTY));
+            $qb->andWhere($facetAlias . '!= ' . $this->bindQueryParameter(LoupeTypes::VALUE_NULL));
+            $qb->andWhere($facetAlias . '!= ' . $this->bindQueryParameter(LoupeTypes::VALUE_EMPTY));
 
             $qb->setMaxResults($searchParameters->getMaxValuesPerFacet()); // Limit the number of facet values
 
@@ -696,7 +697,7 @@ class Searcher
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(\sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
-                $this->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
+                $this->bindQueryParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
             ));
         }
 
@@ -758,7 +759,7 @@ class Searcher
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             $cteSelectQb->andWhere(\sprintf(
                 $termsDocumentsAlias . '.attribute IN (%s)',
-                $this->createNamedParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
+                $this->bindQueryParameter($this->queryParameters->getAttributesToSearchOn(), ArrayParameterType::STRING)
             ));
         }
 
@@ -811,7 +812,7 @@ class Searcher
         }
 
         // Precompute per-term typos + is_exact_term so _cte_term_document_matches_N can join this tiny CTE instead of the big `terms` table
-        $queryTermParam = $this->createNamedParameter($token->getTerm());
+        $queryTermParam = $this->bindQueryParameter($token->getTerm());
         $firstCharDouble = $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false';
         $unionSql = implode(' UNION ALL ', $selects);
 
@@ -1070,7 +1071,7 @@ class Searcher
         $where[] = 'AND';
         $where[] = \sprintf(
             'loupe_max_levenshtein(%s, %s.%s, %d, %s)',
-            $this->createNamedParameter($term),
+            $this->bindQueryParameter($term),
             $this->engine->getIndexInfo()->getAliasForTable($table),
             $termColumnName,
             $levenshteinDistance,
@@ -1114,7 +1115,7 @@ class Searcher
             $qb->where(\sprintf(
                 '%s.term GLOB %s',
                 $termsAlias,
-                $this->createNamedParameter($term . '*')
+                $this->bindQueryParameter($term . '*')
             ));
         } else {
             $qb->where($this->createWherePartForTerm($term, $prefix, $disableTypoTolerance, $isLastToken));
@@ -1126,7 +1127,7 @@ class Searcher
     private function createWherePartForTerm(string $term, bool $prefix, bool $disableTypoTolerance, bool $isLastToken): string
     {
         $where = [];
-        $termParameter = $this->createNamedParameter($term);
+        $termParameter = $this->bindQueryParameter($term);
 
         if ($disableTypoTolerance) {
             $levenshteinDistance = 0;
@@ -1161,7 +1162,7 @@ class Searcher
             $where[] = \sprintf(
                 '%s.term GLOB %s',
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS),
-                $this->createNamedParameter($term . '*')
+                $this->bindQueryParameter($term . '*')
             );
             $where[] = ')';
         }
