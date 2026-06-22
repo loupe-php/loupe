@@ -390,6 +390,7 @@ class Searcher
         return $this->searchTokens = $this->engine->getTokenizer()
             ->tokenize(
                 $this->queryParameters->getQuery(),
+                false, // No variants (no stemming, no decomposition)
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
             )->withoutStopwords($this->engine->getStopWords(), true);
     }
@@ -1479,6 +1480,7 @@ class Searcher
 
         return $this->displayTokens = $this->engine->getTokenizer()->tokenize(
             $this->queryParameters->getQuery(),
+            true,
             $this->engine->getConfiguration()->getMaxQueryTokens(),
         );
     }
