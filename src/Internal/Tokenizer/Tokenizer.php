@@ -7,6 +7,7 @@ namespace Loupe\Loupe\Internal\Tokenizer;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\LanguageDetectorInterface;
 use Loupe\Loupe\Internal\Levenshtein;
+use Loupe\Matcher\Locale;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 use Loupe\Matcher\Tokenizer\Tokenizer as LoupeMatcherTokenizer;
@@ -18,11 +19,11 @@ use Wamania\Snowball\StemmerFactory;
 class Tokenizer implements TokenizerInterface
 {
     /**
-     * @var array<string,TokenizerInterface>
+     * @var array<string,LoupeMatcherTokenizer>
      */
     private array $languageTokenizers = [];
 
-    private TokenizerInterface $noLanguageTokenizer;
+    private LoupeMatcherTokenizer $noLanguageTokenizer;
 
     /**
      * @var array<string,array<string,string>>
@@ -96,9 +97,9 @@ class Tokenizer implements TokenizerInterface
         return false;
     }
 
-    public function tokenize(string $string, ?int $maxTokens = null): TokenCollection
+    public function tokenize(string $string, bool $withVariants = true, ?int $maxTokens = null): TokenCollection
     {
-        return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens);
+        return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens, $withVariants);
     }
 
     /**
@@ -119,15 +120,21 @@ class Tokenizer implements TokenizerInterface
         return $result;
     }
 
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
+    public function tokenizeQuery(string $query, ?int $maxTokens = null, bool $withVariants = true): TokenCollection
+    {
+        return $this->doTokenize($query, $this->languageDetector->detectForQuery($query), $maxTokens, $withVariants);
+    }
+
+    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null, bool $withVariants = true): TokenCollection
     {
         if ($language === null) {
-            $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $maxTokens);
+            $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $withVariants, $maxTokens);
         } else {
             if (!isset($this->languageTokenizers[$language])) {
-                $this->languageTokenizers[$language] = new LoupeMatcherTokenizer($language);
+                $locale = Locale::fromString($language);
+                $this->languageTokenizers[$language] = LoupeMatcherTokenizer::createFromPreconfiguredLocaleConfiguration($locale);
             }
-            $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $maxTokens);
+            $tokenCollection = $this->languageTokenizers[$language]->tokenize($string, $withVariants, $maxTokens);
         }
 
         $tokenCollectionWithVariants = new TokenCollection();
@@ -136,7 +143,7 @@ class Tokenizer implements TokenizerInterface
             $variants = [];
 
             // Stem if we detected a language - but only if not part of a phrase
-            if ($language !== null && !$token->isPartOfPhrase()) {
+            if ($withVariants && $language !== null && !$token->isPartOfPhrase()) {
                 $stem = $this->stem($token->getTerm(), $language);
                 if ($stem !== null && $token->getTerm() !== $stem) {
                     $variants = [$stem];
