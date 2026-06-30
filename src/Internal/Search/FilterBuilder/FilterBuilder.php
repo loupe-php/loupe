@@ -80,6 +80,8 @@ class FilterBuilder
         }
 
         $froms = [];
+        $existingCteNames = array_keys($this->searcher->getCtesByName());
+        $existingParameterNames = array_keys($this->searcher->getQueryBuilder()->getParameters());
 
         /**
          * TODO: This could be optimized.
@@ -92,7 +94,7 @@ class FilterBuilder
         $this->handleFilterAstNode($this->filterAst->getRoot(), $froms);
 
         $from = implode(' ', $froms);
-        $result = $this->snapshotFilterBuildResult($from);
+        $result = $this->snapshotFilterBuildResult($from, $existingCteNames, $existingParameterNames);
         $this->cachedBuildFromResult = $result;
 
         if ($this->queryCache !== null) {
@@ -512,6 +514,9 @@ class FilterBuilder
     }
 
     /**
+     * @param list<string> $existingCteNames
+     * @param list<int<0, max>|string> $existingParameterNames
+     *
      * @return array{
      *     from: string,
      *     ctes: array<int, array{name: string, columns: array<int, string>, sql: string, tags: array<int, string>, materialized: ?bool}>,
@@ -519,11 +524,16 @@ class FilterBuilder
      *     parameterTypes: array<int<0, max>|string, ArrayParameterType|ParameterType|Type|string>
      * }
      */
-    private function snapshotFilterBuildResult(string $from): array
+    private function snapshotFilterBuildResult(string $from, array $existingCteNames, array $existingParameterNames): array
     {
         $ctes = [];
+        $existingCteNames = array_flip($existingCteNames);
 
         foreach ($this->searcher->getCtesByName() as $cte) {
+            if (isset($existingCteNames[$cte->getName()])) {
+                continue;
+            }
+
             $ctes[] = [
                 'name' => $cte->getName(),
                 'columns' => $cte->getColumnAliasList(),
@@ -533,11 +543,18 @@ class FilterBuilder
             ];
         }
 
+        $parameters = $this->searcher->getQueryBuilder()->getParameters();
+        $parameterTypes = $this->searcher->getQueryBuilder()->getParameterTypes();
+
+        foreach ($existingParameterNames as $parameterName) {
+            unset($parameters[$parameterName], $parameterTypes[$parameterName]);
+        }
+
         return [
             'from' => $from,
             'ctes' => $ctes,
-            'parameters' => $this->searcher->getQueryBuilder()->getParameters(),
-            'parameterTypes' => $this->searcher->getQueryBuilder()->getParameterTypes(),
+            'parameters' => $parameters,
+            'parameterTypes' => $parameterTypes,
         ];
     }
 }

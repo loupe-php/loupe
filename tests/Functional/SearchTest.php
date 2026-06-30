@@ -2510,6 +2510,47 @@ class SearchTest extends TestCase
         ]);
     }
 
+    public function testQueryCacheDoesNotReuseSearchTermsAcrossDifferentQueriesWithSameFilterAndSort(): void
+    {
+        $configuration = Configuration::create()
+            ->withQueryCache(new InMemoryCachePool());
+
+        $loupe = $this->setupLoupeWithDepartmentsFixture($configuration);
+
+        $baseSearchParameters = SearchParameters::create()
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withFilter("departments = 'Backoffice'")
+            ->withSort(['firstname:asc']);
+
+        $this->searchAndAssertResults($loupe, $baseSearchParameters->withQuery('Huckleberry'), [
+            'hits' => [
+                [
+                    'id' => 6,
+                    'firstname' => 'Huckleberry',
+                ],
+            ],
+            'query' => 'Huckleberry',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+
+        $this->searchAndAssertResults($loupe, $baseSearchParameters->withQuery('Koertig'), [
+            'hits' => [
+                [
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                ],
+            ],
+            'query' => 'Koertig',
+            'hitsPerPage' => 20,
+            'page' => 1,
+            'totalPages' => 1,
+            'totalHits' => 1,
+        ]);
+    }
+
     public function testQueryCombinedWithFilter(): void
     {
         $loupe = $this->setupLoupeWithDepartmentsFixture();
