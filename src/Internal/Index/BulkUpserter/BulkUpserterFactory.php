@@ -18,14 +18,23 @@ class BulkUpserterFactory
      */
     public const VARIABLE_LIMIT = 999;
 
+    /**
+     * @param string|null $sqliteVersion Automatically detected if null, can be overridden for testing purposes
+     */
     public function __construct(
-        private ConnectionPool $connectionPool
+        private ConnectionPool $connectionPool,
+        private string|null $sqliteVersion = null
     ) {
 
     }
 
     public function create(BulkUpsertConfig $bulkUpsertConfig): BulkUpserter
     {
-        return new BulkUpserter($this->connectionPool->loupeConnection, $bulkUpsertConfig, self::VARIABLE_LIMIT);
+        return new BulkUpserter($this->connectionPool->loupeConnection, $bulkUpsertConfig, self::VARIABLE_LIMIT, $this->getSqliteVersion());
+    }
+
+    private function getSqliteVersion(): string
+    {
+        return $this->sqliteVersion ??= (string) $this->connectionPool->loupeConnection->fetchOne('SELECT sqlite_version()');
     }
 }

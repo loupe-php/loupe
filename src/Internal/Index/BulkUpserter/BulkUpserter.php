@@ -11,10 +11,17 @@ use Loupe\Loupe\Internal\Util;
 
 class BulkUpserter
 {
+    /**
+     * The RETURNING clause was only introduced in SQLite 3.35.0. For older versions, a fallback
+     * without RETURNING is used.
+     */
+    public const MIN_SQLITE_VERSION_FOR_RETURNING = '3.35.0';
+
     public function __construct(
         private Connection $connection,
         private BulkUpsertConfig $bulkUpsertConfig,
         private int $variableLimit,
+        private string $sqliteVersion,
     ) {
 
     }
@@ -62,12 +69,16 @@ class BulkUpserter
         $updateColumns = array_values(array_diff($this->bulkUpsertConfig->getRowColumns(), $this->bulkUpsertConfig->getUniqueColumns()));
         $chunkSize = max((int) round($this->variableLimit / \count($this->bulkUpsertConfig->getRowColumns()), 0, PHP_ROUND_HALF_DOWN), 1);
         $results = [];
+        $supportsReturning = version_compare($this->sqliteVersion, self::MIN_SQLITE_VERSION_FOR_RETURNING, '>=');
 
         foreach (Util::arrayChunk($this->bulkUpsertConfig->getRows(), $chunkSize) as $chunk) {
-            // Modern path: INSERT .. ON CONFLICT .. DO UPDATE [RETURNING]
-            $results = [...$results, ...$this->executeModern($chunk, $updateColumns)];
+            $chunkResults = $supportsReturning
+                // Modern path: INSERT .. ON CONFLICT .. DO UPDATE [RETURNING]
+                ? $this->executeModern($chunk, $updateColumns)
+                // Legacy path for SQLite < 3.35.0 without RETURNING support
+                : $this->executeLegacy($chunk, $updateColumns);
 
-            // Depending on the version, we could introduce fallback solutions here
+            $results = [...$results, ...$chunkResults];
         }
 
         return $results;
@@ -75,20 +86,20 @@ class BulkUpserter
 
     /**
      * @param array<array<int, mixed>> $rows
+     * @param array<int|string> $columnKeys
      * @param array<int<0, max>|string, mixed> $parameters
      */
-    private function buildValuesClause(array $rows, array &$parameters): string
+    private function buildTuples(array $rows, array $columnKeys, array &$parameters): string
     {
-        $columnKeys = array_keys($this->bulkUpsertConfig->getRowColumns());
-        $columnsCount = \count($columnKeys);
-
+        $tuple = $this->placeholdersRow(\count($columnKeys));
         $tuples = [];
+
         foreach ($rows as $row) {
             foreach ($columnKeys as $columnKey) {
                 $parameters[] = $row[$columnKey] ?? null;
             }
 
-            $tuples[] = $this->placeholdersRow($columnsCount);
+            $tuples[] = $tuple;
         }
 
         return implode(',', $tuples);
@@ -97,21 +108,11 @@ class BulkUpserter
     /**
      * @param array<array<int, mixed>> $rows
      * @param array<string> $updateColumns
-     * @return array<mixed>
+     * @param array<int<0, max>|string, mixed> $parameters
      */
-    private function executeModern(array $rows, array $updateColumns): array
+    private function buildUpsertSql(array $rows, array $updateColumns, ConflictMode $conflictMode, array &$parameters): string
     {
-        $parameters = [];
-        $values = $this->buildValuesClause($rows, $parameters);
-        $conflictMode = $this->bulkUpsertConfig->getConflictMode();
-        $returningColumns = $this->bulkUpsertConfig->getReturningColumns();
-
-        // If returning columns are desired but there are no columns to update, this would not return any data.
-        // Hence, we have to force an UPDATE SET with the unique columns.
-        if ($returningColumns !== [] && $updateColumns === []) {
-            $conflictMode = ConflictMode::Update;
-            $updateColumns = $this->bulkUpsertConfig->getUniqueColumns();
-        }
+        $values = $this->buildTuples($rows, array_keys($this->bulkUpsertConfig->getRowColumns()), $parameters);
 
         $sql = \sprintf(
             'INSERT INTO %s (%s) VALUES %s ON CONFLICT (%s) DO ',
@@ -135,12 +136,60 @@ class BulkUpserter
             );
         }
 
+        return $sql;
+    }
+
+    /**
+     * Fallback for SQLite < 3.35.0 which does not support the RETURNING clause: executes the upsert
+     * without RETURNING and reconstructs the result with a follow-up SELECT over the unique columns
+     * of the just upserted rows.
+     *
+     * In contrast to the modern path, this cannot cheaply detect which conflicting rows were skipped
+     * because of the change detecting column, so it conservatively returns all upserted rows.
+     *
+     * @param array<array<int, mixed>> $rows
+     * @param array<string> $updateColumns
+     * @return array<mixed>
+     */
+    private function executeLegacy(array $rows, array $updateColumns): array
+    {
+        $parameters = [];
+        $sql = $this->buildUpsertSql($rows, $updateColumns, $this->bulkUpsertConfig->getConflictMode(), $parameters);
+        $this->executeStatement($sql, $parameters);
+
+        if ($this->bulkUpsertConfig->getReturningColumns() === []) {
+            return [];
+        }
+
+        return $this->selectReturningColumns($rows);
+    }
+
+    /**
+     * @param array<array<int, mixed>> $rows
+     * @param array<string> $updateColumns
+     * @return array<mixed>
+     */
+    private function executeModern(array $rows, array $updateColumns): array
+    {
+        $conflictMode = $this->bulkUpsertConfig->getConflictMode();
+        $returningColumns = $this->bulkUpsertConfig->getReturningColumns();
+
+        // If returning columns are desired but there are no columns to update, this would not return any data.
+        // Hence, we have to force an UPDATE SET with the unique columns.
+        if ($returningColumns !== [] && $updateColumns === []) {
+            $conflictMode = ConflictMode::Update;
+            $updateColumns = $this->bulkUpsertConfig->getUniqueColumns();
+        }
+
+        $parameters = [];
+        $sql = $this->buildUpsertSql($rows, $updateColumns, $conflictMode, $parameters);
+
         if ($returningColumns === []) {
             $this->executeStatement($sql, $parameters);
             return [];
         }
 
-        $sql .= ' RETURNING ' . implode(', ', $this->bulkUpsertConfig->getReturningColumns());
+        $sql .= ' RETURNING ' . implode(', ', $returningColumns);
         return $this->executeQuery($sql, $parameters)->fetchAllAssociative();
     }
 
@@ -182,6 +231,33 @@ class BulkUpserter
     private function placeholdersRow(int $n): string
     {
         return '(' . implode(',', array_fill(0, $n, '?')) . ')';
+    }
+
+    /**
+     * @param array<array<int, mixed>> $rows
+     * @return array<mixed>
+     */
+    private function selectReturningColumns(array $rows): array
+    {
+        $uniqueColumns = $this->bulkUpsertConfig->getUniqueColumns();
+        $columnKeysByName = array_flip($this->bulkUpsertConfig->getRowColumns());
+        $uniqueColumnKeys = [];
+
+        foreach ($uniqueColumns as $uniqueColumn) {
+            \assert(isset($columnKeysByName[$uniqueColumn]), 'Unique columns must be part of the row columns.');
+            $uniqueColumnKeys[] = $columnKeysByName[$uniqueColumn];
+        }
+
+        $parameters = [];
+        $sql = \sprintf(
+            'SELECT %s FROM %s WHERE (%s) IN (VALUES %s)',
+            implode(', ', $this->bulkUpsertConfig->getReturningColumns()),
+            $this->bulkUpsertConfig->getTable(),
+            implode(', ', $uniqueColumns),
+            $this->buildTuples($rows, $uniqueColumnKeys, $parameters),
+        );
+
+        return $this->executeQuery($sql, $parameters)->fetchAllAssociative();
     }
 
     /**
