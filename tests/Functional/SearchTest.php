@@ -1952,7 +1952,7 @@ class SearchTest extends TestCase
         $this->indexFixture($loupe, 'movies');
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('young london glaciologist music')
+            ->withQuery('young glaciologist music')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withMatchingStrategy('all')
             ->withSort(['title:asc']);
@@ -1964,7 +1964,7 @@ class SearchTest extends TestCase
                     'title' => '9 Songs',
                 ],
             ],
-            'query' => 'young london glaciologist music',
+            'query' => 'young glaciologist music',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
@@ -1972,11 +1972,11 @@ class SearchTest extends TestCase
         ]);
 
         $impossibleParameters = $searchParameters
-            ->withQuery('young london glaciologist music life things');
+            ->withQuery('young glaciologist music life things');
 
         $this->searchAndAssertResults($loupe, $impossibleParameters, [
             'hits' => [],
-            'query' => 'young london glaciologist music life things',
+            'query' => 'young glaciologist music life things',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 0,
@@ -1995,7 +1995,7 @@ class SearchTest extends TestCase
         $this->indexFixture($loupe, 'movies');
 
         $searchParameters = SearchParameters::create()
-            ->withQuery('young london glaciologist music')
+            ->withQuery('young glaciologist music')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc']);
 
@@ -2018,7 +2018,7 @@ class SearchTest extends TestCase
                     'title' => 'The Fifth Element',
                 ],
             ],
-            'query' => 'young london glaciologist music',
+            'query' => 'young glaciologist music',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
@@ -2265,46 +2265,49 @@ class SearchTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
 
-        // Test with regular Star Wars search should list Star Wars first because of relevance
-        // sorting, but it should also include other movies with the term "war".
+        // An unquoted search matches documents containing any of the terms.
         $searchParameters = SearchParameters::create()
-            ->withQuery('I like Star Wars')
+            ->withQuery('young glaciologist music')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc']);
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 28,
-                    'title' => 'Apocalypse Now',
+                    'id' => 27,
+                    'title' => '9 Songs',
                 ],
                 [
-                    'id' => 25,
-                    'title' => 'Jarhead',
+                    'id' => 16,
+                    'title' => 'Dancer in the Dark',
                 ],
                 [
-                    'id' => 11,
-                    'title' => 'Star Wars',
+                    'id' => 12,
+                    'title' => 'Finding Nemo',
+                ],
+                [
+                    'id' => 18,
+                    'title' => 'The Fifth Element',
                 ],
             ],
-            'query' => 'I like Star Wars',
+            'query' => 'young glaciologist music',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,
-            'totalHits' => 3,
+            'totalHits' => 4,
         ]);
 
-        // Now let's search for "Star Wars" which should return "Star Wars" only.
-        $searchParameters = $searchParameters->withQuery('I like "Star Wars"');
+        // Quoting the terms requires the exact phrase and should return only "young glaciologist".
+        $searchParameters = $searchParameters->withQuery('"young glaciologist"');
 
         $this->searchAndAssertResults($loupe, $searchParameters, [
             'hits' => [
                 [
-                    'id' => 11,
-                    'title' => 'Star Wars',
+                    'id' => 27,
+                    'title' => '9 Songs',
                 ],
             ],
-            'query' => 'I like "Star Wars"',
+            'query' => '"young glaciologist"',
             'hitsPerPage' => 20,
             'page' => 1,
             'totalPages' => 1,

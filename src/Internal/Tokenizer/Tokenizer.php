@@ -136,7 +136,11 @@ class Tokenizer implements TokenizerInterface
             $variants = [];
 
             // Stem if we detected a language - but only if not part of a phrase
-            if ($language !== null && !$token->isPartOfPhrase()) {
+            if (
+                $language !== null
+                && !$token->isPartOfPhrase()
+                && !$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()
+            ) {
                 $stem = $this->stem($token->getTerm(), $language);
                 if ($stem !== null && $token->getTerm() !== $stem) {
                     $variants = [$stem];
