@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Unit\Internal\Tokenizer;
 
+use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
@@ -233,6 +234,15 @@ class TokenizerTest extends TestCase
             ->allTermsWithVariants());
     }
 
+    public function testTokenizeWithoutTypoToleranceDoesNotStem(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()->withTypoTolerance(TypoTolerance::disabled())
+        );
+
+        $this->assertSame(['name'], $tokenizer->tokenize('Name')->allTermsWithVariants());
+    }
+
     public function testTokenizeWithPhrases(): void
     {
         $tokenizer = $this->createTokenizer();
@@ -297,6 +307,9 @@ class TokenizerTest extends TestCase
         $configuration = $configuration ?? Configuration::create();
         $languageDetector = new NitotmLanguageDetector($configuration->getLanguages());
 
-        return new Tokenizer($this->createMock(Engine::class), $languageDetector);
+        $engine = $this->createMock(Engine::class);
+        $engine->method('getConfiguration')->willReturn($configuration);
+
+        return new Tokenizer($engine, $languageDetector);
     }
 }
