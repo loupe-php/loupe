@@ -13,9 +13,8 @@ class PrefixDecoratedLogger implements LoggerInterface
 
     public function __construct(
         private string $prefix,
-        private LoggerInterface $innerLogger
+        private LoggerInterface $innerLogger,
     ) {
-
     }
 
     public function log($level, \Stringable|string $message, array $context = []): void

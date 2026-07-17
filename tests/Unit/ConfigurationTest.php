@@ -11,9 +11,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 
-class ConfigurationTest extends TestCase
+final class ConfigurationTest extends TestCase
 {
-    public static function indexHashProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function indexHashProvider(): iterable
     {
         yield 'Defaults should match' => [
             Configuration::create(),
@@ -84,7 +87,10 @@ class ConfigurationTest extends TestCase
         ];
     }
 
-    public static function invalidAttributeNameProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function invalidAttributeNameProvider(): iterable
     {
         yield ['_underscore'];
         yield ['$dollar_sign'];
@@ -106,8 +112,8 @@ class ConfigurationTest extends TestCase
             \sprintf(
                 'A valid attribute name starts with a letter, followed by any number of letters, numbers, or underscores. It must not exceed %d characters. "%s" given.',
                 Configuration::MAX_ATTRIBUTE_NAME_LENGTH,
-                $attributeName
-            )
+                $attributeName,
+            ),
         );
 
         Configuration::create()->withFilterableAttributes([$attributeName]);
@@ -125,6 +131,6 @@ class ConfigurationTest extends TestCase
     {
         $configuration = Configuration::create()->withQueryCache(null);
 
-        $this->assertNull($configuration->getQueryCache());
+        $this->assertNotInstanceOf(CacheItemPoolInterface::class, $configuration->getQueryCache());
     }
 }

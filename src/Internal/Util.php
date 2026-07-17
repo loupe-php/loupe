@@ -12,7 +12,9 @@ class Util
      * This is a slightly more memory-efficient alternative to array_chunk().
      *
      * @template T
+     *
      * @param array<T> $array
+     *
      * @return \Generator<array<T>>
      */
     public static function arrayChunk(array $array, int $size): \Generator
@@ -26,7 +28,7 @@ class Util
 
         foreach ($array as $value) {
             $chunk[] = $value;
-            $count++;
+            ++$count;
 
             if ($count === $size) {
                 yield $chunk;
@@ -61,7 +63,7 @@ class Util
     {
         $json = json_encode($data, $flags);
 
-        if ($json === false) {
+        if (false === $json) {
             throw new InvalidJsonException(json_last_error_msg());
         }
 

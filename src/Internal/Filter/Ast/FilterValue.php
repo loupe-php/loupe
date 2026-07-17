@@ -11,9 +11,8 @@ class FilterValue
     /**
      * @param float|string|bool|array<int, string|float|bool> $value
      */
-    public function __construct(
-        private float|string|bool|array $value
-    ) {
+    public function __construct(private array|bool|float|string $value)
+    {
         if (\is_array($this->value)) {
             foreach ($this->value as $value) {
                 if (!\is_string($value) && !\is_float($value) && !\is_bool($value)) {
@@ -43,7 +42,7 @@ class FilterValue
     /**
      * @return float|string|bool|array<int, string|float|bool>
      */
-    public function getValue(): float|string|bool|array
+    public function getValue(): array|bool|float|string
     {
         return $this->value;
     }

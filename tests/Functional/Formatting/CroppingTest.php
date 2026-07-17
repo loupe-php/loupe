@@ -10,11 +10,14 @@ use Loupe\Loupe\Tests\Functional\FunctionalTestTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class CroppingTest extends TestCase
+final class CroppingTest extends TestCase
 {
     use FunctionalTestTrait;
 
-    public static function croppingProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function croppingProvider(): iterable
     {
         yield 'Cropping with too little text and no change' => [
             'assassin employer member vengeance',
@@ -193,25 +196,15 @@ class CroppingTest extends TestCase
     }
 
     /**
-     * @param array<string> $searchableAttributes
-     * @param array<string>|array<string,int> $attributesToCrop
-     * @param array<string> $attributesToHighlight
-     * @param array<mixed> $expectedResults
-     * @param array<string> $stopWords
+     * @param array<string>                    $searchableAttributes
+     * @param array<string>|array<string, int> $attributesToCrop
+     * @param array<string>                    $attributesToHighlight
+     * @param array<mixed>                     $expectedResults
+     * @param array<string>                    $stopWords
      */
     #[DataProvider('croppingProvider')]
-    public function testCropping(
-        string $query,
-        array $searchableAttributes,
-        array $attributesToCrop,
-        array $attributesToHighlight,
-        array $expectedResults,
-        array $stopWords = [],
-        string $highlightStartTag = '<em>',
-        string $highlightEndTag = '</em>',
-        string $cropMarker = '…',
-        int $cropLength = 50,
-    ): void {
+    public function testCropping(string $query, array $searchableAttributes, array $attributesToCrop, array $attributesToHighlight, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>', string $cropMarker = '…', int $cropLength = 50): void
+    {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])

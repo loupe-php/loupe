@@ -17,6 +17,7 @@ final class ApcuCachePool implements CacheItemPoolInterface
     public function clear(): bool
     {
         $this->deferred = [];
+
         return apcu_clear_cache();
     }
 
@@ -38,12 +39,14 @@ final class ApcuCachePool implements CacheItemPoolInterface
     {
         self::assertValidKey($key);
         unset($this->deferred[$key]);
-        return (bool) apcu_delete($key);
+
+        return apcu_delete($key);
     }
 
     public function deleteItems(array $keys): bool
     {
         $ok = true;
+
         foreach ($keys as $key) {
             if (!$this->deleteItem((string) $key)) {
                 $ok = false;
@@ -82,6 +85,7 @@ final class ApcuCachePool implements CacheItemPoolInterface
     public function hasItem(string $key): bool
     {
         self::assertValidKey($key);
+
         return isset($this->deferred[$key]) || apcu_exists($key);
     }
 
@@ -92,6 +96,7 @@ final class ApcuCachePool implements CacheItemPoolInterface
         }
 
         $ttl = $item->getTtl() ?? 0;
+
         return apcu_store($item->getKey(), $item->get(), $ttl);
     }
 
@@ -108,8 +113,8 @@ final class ApcuCachePool implements CacheItemPoolInterface
 
     private static function assertValidKey(string $key): void
     {
-        if ($key === '' || preg_match('/[{}()\/\\\\@:]/', $key)) {
-            throw new InvalidArgumentException('Invalid cache key: ' . $key);
+        if ('' === $key || preg_match('/[{}()\/\\\\@:]/', $key)) {
+            throw new InvalidArgumentException('Invalid cache key: '.$key);
         }
     }
 }

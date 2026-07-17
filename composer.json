@@ -37,23 +37,32 @@
     },
     "require-dev": {
         "phpbench/phpbench": "^1.2",
-        "phpstan/phpstan": "^2.1.31",
         "phpunit/phpunit": "^10.5.58",
         "symfony/filesystem": "^7.3.2",
         "symfony/finder": "^7.3.5",
         "symfony/process": "^7.3.4",
         "symfony/var-dumper": "^7.3.5",
-        "symplify/easy-coding-standard": "^12.6.2"
+        "terminal42/code-quality-tools": "dev-main"
     },
     "scripts": {
         "tests": "@php vendor/bin/phpunit",
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
         "slow-tests": "@php vendor/bin/phpunit --testsuite=slow",
-        "cs-fixer": "@php vendor/bin/ecs check --fix",
-        "ci-cs-fixer": "@php vendor/bin/ecs check",
-        "phpstan": "@php vendor/bin/phpstan analyse",
         "bench": "@php vendor/bin/phpbench run --report=aggregate --group=query",
-        "bench-index": "@php vendor/bin/phpbench run --report=aggregate --group=index"
+        "bench-index": "@php vendor/bin/phpbench run --report=aggregate --group=index",
+        "cs-fixer": "@php vendor/terminal42/code-quality-tools/tools/ecs/vendor/bin/ecs check src tests --config vendor/terminal42/code-quality-tools/tools/ecs/config.php --fix --ansi",
+        "rector": "@php vendor/terminal42/code-quality-tools/tools/rector/vendor/bin/rector process src tests --config vendor/terminal42/code-quality-tools/tools/rector/config.php --ansi",
+        "phpstan": "@php vendor/terminal42/code-quality-tools/tools/phpstan/vendor/bin/phpstan analyze src tests --configuration vendor/terminal42/code-quality-tools/tools/phpstan/config.php --ansi",
+        "ci-code-quality": [
+            "@cs-fixer",
+            "@rector",
+            "@phpstan"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "terminal42/code-quality-tools": true
+        }
     }
 }

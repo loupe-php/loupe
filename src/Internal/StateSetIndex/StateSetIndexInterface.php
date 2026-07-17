@@ -28,6 +28,7 @@ interface StateSetIndexInterface
 
     /**
      * @param array<string> $strings
+     *
      * @return array<string, int>
      */
     public function index(array $strings): array;

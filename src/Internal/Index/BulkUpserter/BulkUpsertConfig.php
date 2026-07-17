@@ -14,32 +14,32 @@ class BulkUpsertConfig
     private array $returningColumns = [];
 
     /**
-     * @param non-empty-list<string> $rowColumns
+     * @param non-empty-list<string>            $rowColumns
      * @param non-empty-list<array<int, mixed>> $rows
-     * @param non-empty-array<string> $uniqueColumns
+     * @param non-empty-array<string>           $uniqueColumns
      */
     private function __construct(
         private string $table,
         private array $rowColumns,
         private array $rows,
         private array $uniqueColumns,
-        private ConflictMode $conflictMode
+        private ConflictMode $conflictMode,
     ) {
-        \assert($this->rows !== [], 'Rows cannot be empty.');
-        \assert($this->uniqueColumns !== [], 'Unique columns cannot be empty.');
+        \assert([] !== $this->rows, 'Rows cannot be empty.');
+        \assert([] !== $this->uniqueColumns, 'Unique columns cannot be empty.');
     }
 
     /**
-     * @param non-empty-list<string> $rowColumns
+     * @param non-empty-list<string>            $rowColumns
      * @param non-empty-list<array<int, mixed>> $rows
-     * @param non-empty-array<string> $uniqueColumns
+     * @param non-empty-array<string>           $uniqueColumns
      */
     public static function create(string $table, array $rowColumns, array $rows, array $uniqueColumns, ConflictMode $conflictMode): self
     {
         return new self($table, $rowColumns, $rows, $uniqueColumns, $conflictMode);
     }
 
-    public function getChangeDetectingColumn(): ?string
+    public function getChangeDetectingColumn(): string|null
     {
         return $this->changeDetectingColumn;
     }
@@ -79,17 +79,18 @@ class BulkUpsertConfig
     }
 
     /**
-     * @return string[]
+     * @return array<string>
      */
     public function getUniqueColumns(): array
     {
         return $this->uniqueColumns;
     }
 
-    public function withChangeDetectingColumn(?string $changeDetectingColumn): self
+    public function withChangeDetectingColumn(string|null $changeDetectingColumn): self
     {
         $clone = clone $this;
         $clone->changeDetectingColumn = $changeDetectingColumn;
+
         return $clone;
     }
 
@@ -100,6 +101,7 @@ class BulkUpsertConfig
     {
         $clone = clone $this;
         $clone->returningColumns = $returningColumns;
+
         return $clone;
     }
 }

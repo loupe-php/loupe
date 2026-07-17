@@ -9,10 +9,10 @@ use Psr\Cache\CacheItemPoolInterface;
 
 final class NamespacedCachePool implements CacheItemPoolInterface
 {
-    private string $namespace;
+    private readonly string $namespace;
 
     public function __construct(
-        private CacheItemPoolInterface $inner,
+        private readonly CacheItemPoolInterface $inner,
         string $namespace,
     ) {
         $this->namespace = rawurlencode($namespace);
@@ -36,6 +36,7 @@ final class NamespacedCachePool implements CacheItemPoolInterface
     public function deleteItems(array $keys): bool
     {
         $mapped = [];
+
         foreach ($keys as $key) {
             $mapped[] = $this->mapKey((string) $key);
         }
@@ -84,6 +85,6 @@ final class NamespacedCachePool implements CacheItemPoolInterface
 
     private function mapKey(string $key): string
     {
-        return $this->namespace . '.' . $key;
+        return $this->namespace.'.'.$key;
     }
 }

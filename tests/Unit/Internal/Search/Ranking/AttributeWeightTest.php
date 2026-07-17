@@ -9,9 +9,12 @@ use Loupe\Loupe\Internal\Search\Ranking\RankingInfo;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class AttributeWeightTest extends TestCase
+final class AttributeWeightTest extends TestCase
 {
-    public static function attributeWeightProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function attributeWeightProvider(): iterable
     {
         yield 'No attributes are weighted' => [
             '1:title:1:0,2:summary:1:0',
@@ -60,7 +63,7 @@ class AttributeWeightTest extends TestCase
     {
         $this->assertSame(
             [],
-            AttributeWeight::calculateIntrinsicAttributeWeights(['*'])
+            AttributeWeight::calculateIntrinsicAttributeWeights(['*']),
         );
 
         $this->assertSame(
@@ -69,7 +72,7 @@ class AttributeWeightTest extends TestCase
                 'summary' => 0.8,
                 'body' => 0.64,
             ],
-            AttributeWeight::calculateIntrinsicAttributeWeights(['title', 'summary', 'body'])
+            AttributeWeight::calculateIntrinsicAttributeWeights(['title', 'summary', 'body']),
         );
     }
 }

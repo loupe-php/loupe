@@ -8,7 +8,7 @@ class Position
 {
     public function __construct(
         public int $position,
-        public int $numberOfTypos
+        public int $numberOfTypos,
     ) {
     }
 }

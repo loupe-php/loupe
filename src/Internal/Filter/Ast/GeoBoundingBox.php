@@ -9,7 +9,7 @@ use Location\Coordinate;
 
 class GeoBoundingBox extends Node implements AttributeFilterInterface
 {
-    private Bounds $bbox;
+    private readonly Bounds $bbox;
 
     public function __construct(
         public string $attributeName,

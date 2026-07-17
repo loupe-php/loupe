@@ -9,9 +9,8 @@ use Loupe\Loupe\Internal\Engine;
 
 final class Loupe
 {
-    public function __construct(
-        private Engine $engine
-    ) {
+    public function __construct(private readonly Engine $engine)
+    {
     }
 
     /**
@@ -69,7 +68,7 @@ final class Loupe
     /**
      * @return array<string, mixed>|null
      */
-    public function getDocument(int|string $identifier): ?array
+    public function getDocument(int|string $identifier): array|null
     {
         return $this->engine->getDocument($identifier);
     }

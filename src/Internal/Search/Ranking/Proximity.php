@@ -29,7 +29,7 @@ class Proximity extends AbstractRanker
                 $lastPosition = end($consecutivePositionsPerAttribute[$match->getAttribute()]);
 
                 // First element
-                if ($lastPosition === false) {
+                if (false === $lastPosition) {
                     $consecutivePositionsPerAttribute[$match->getAttribute()][] = $match->getFirstPosition()->position;
                 } else {
                     $positionAfter = $match->getPositionAfter($lastPosition);
@@ -54,20 +54,20 @@ class Proximity extends AbstractRanker
                 $allAdjacentPerAttribute[$attribute] = false;
             }
 
-            if ($positionsCount === 1) {
+            if (1 === $positionsCount) {
                 $proximityPerAttribute[$attribute] = 1.0 / $termPositions->getTotalMatchingTerms();
                 continue;
             }
 
             foreach ($positions as $position) {
-                if ($positionPrev === null) {
+                if (null === $positionPrev) {
                     $positionPrev = $position;
                     continue;
                 }
 
                 $distance = $position - $positionPrev;
 
-                if ($distance !== 1) {
+                if (1 !== $distance) {
                     $allAdjacentPerAttribute[$attribute] = false;
                 }
 
@@ -87,7 +87,7 @@ class Proximity extends AbstractRanker
             }
         }
 
-        if ($proximityPerAttribute === []) {
+        if ([] === $proximityPerAttribute) {
             return 1.0;
         }
 

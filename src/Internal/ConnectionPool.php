@@ -12,6 +12,5 @@ class ConnectionPool
         public Connection $loupeConnection,
         public Connection $ticketConnection,
     ) {
-
     }
 }

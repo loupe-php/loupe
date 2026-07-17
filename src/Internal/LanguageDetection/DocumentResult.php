@@ -11,16 +11,16 @@ class DocumentResult
      */
     public function __construct(
         private readonly array $bestLanguagePerAttribute,
-        private readonly string|null $bestLanguageForDocument
+        private readonly string|null $bestLanguageForDocument,
     ) {
     }
 
-    public function getBestLanguageForAttribute(string $attribute): ?string
+    public function getBestLanguageForAttribute(string $attribute): string|null
     {
         return $this->bestLanguagePerAttribute[$attribute] ?? null;
     }
 
-    public function getBestLanguageForDocument(): ?string
+    public function getBestLanguageForDocument(): string|null
     {
         return $this->bestLanguageForDocument;
     }

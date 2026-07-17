@@ -21,24 +21,23 @@ class TermPositions
 
     private int $totalNumberOfTypos = 0;
 
-    private int $totalTermsSearchedFor;
+    private readonly int $totalTermsSearchedFor;
 
     /**
      * @param array<Term> $terms
      */
-    public function __construct(
-        private readonly array $terms
-    ) {
+    public function __construct(private readonly array $terms)
+    {
         $this->totalTermsSearchedFor = \count($this->terms);
 
         foreach ($this->terms as $term) {
             if ($term->hasMatches()) {
-                $this->totalMatchingTerms++;
+                ++$this->totalMatchingTerms;
 
                 $this->totalNumberOfTypos += $term->getLowestNumberOfTypos();
 
                 if ($term->hasExactMatch()) {
-                    $this->totalExactMatchingTerms++;
+                    ++$this->totalExactMatchingTerms;
                 }
 
                 foreach ($term->getMatches() as $match) {
@@ -49,7 +48,7 @@ class TermPositions
     }
 
     /**
-     * Parse an intermediate string representation of term positions and matches attributes
+     * Parse an intermediate string representation of term positions and matches attributes.
      *
      * Example: A string with "3:title,8:title,10:title;0;4:summary" would read as follows:
      * * - The query consisted of 3 tokens (terms).
@@ -63,7 +62,7 @@ class TermPositions
     {
         $terms = [];
 
-        if ($positionsInDocumentPerTerm === '') {
+        if ('' === $positionsInDocumentPerTerm) {
             return new self($terms);
         }
 
@@ -71,21 +70,21 @@ class TermPositions
             [$positionsForTerm, $hasExactMatch] = array_pad(explode('|', $termSearchedFor, 2), 2, null);
 
             // Document did not match this term
-            if ($positionsForTerm === '0') {
+            if ('0' === $positionsForTerm) {
                 $terms[] = new Term([]);
                 continue;
             }
 
             $attributePositions = [];
             $termMatches = [];
-            $shouldInferExactMatch = $hasExactMatch === null;
-            $hasExactMatch = $hasExactMatch === '1';
+            $shouldInferExactMatch = null === $hasExactMatch;
+            $hasExactMatch = '1' === $hasExactMatch;
 
             foreach (explode(',', $positionsForTerm ?? '0') as $positionAttributeCombination) {
                 [$position, $attribute, $numberOfTypos, $foldingMismatch] = array_pad(explode(':', $positionAttributeCombination, 4), 4, '0');
                 $attributePositions[$attribute][] = new Position((int) $position, (int) $numberOfTypos);
                 if ($shouldInferExactMatch) {
-                    $hasExactMatch = $hasExactMatch || ((int) $numberOfTypos === 0 && $foldingMismatch === '0');
+                    $hasExactMatch = $hasExactMatch || (0 === (int) $numberOfTypos && '0' === $foldingMismatch);
                 }
             }
 

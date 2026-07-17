@@ -9,7 +9,7 @@ class Filter extends Node implements AttributeFilterInterface
     public function __construct(
         public string $attribute,
         public Operator $operator,
-        public FilterValue $value
+        public FilterValue $value,
     ) {
     }
 

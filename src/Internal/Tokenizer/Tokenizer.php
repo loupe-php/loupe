@@ -18,25 +18,25 @@ use Wamania\Snowball\StemmerFactory;
 class Tokenizer implements TokenizerInterface
 {
     /**
-     * @var array<string,TokenizerInterface>
+     * @var array<string, TokenizerInterface>
      */
     private array $languageTokenizers = [];
 
-    private TokenizerInterface $noLanguageTokenizer;
+    private readonly TokenizerInterface $noLanguageTokenizer;
 
     /**
-     * @var array<string,array<string,string>>
+     * @var array<string, array<string, string>>
      */
     private array $stemmerCache = [];
 
     /**
-     * @var array<string,?Stemmer>
+     * @var array<string, ?Stemmer>
      */
     private array $stemmers = [];
 
     public function __construct(
-        private Engine $engine,
-        private LanguageDetectorInterface $languageDetector,
+        private readonly Engine $engine,
+        private readonly LanguageDetectorInterface $languageDetector,
     ) {
         $this->noLanguageTokenizer = new LoupeMatcherTokenizer();
     }
@@ -50,7 +50,7 @@ class Tokenizer implements TokenizerInterface
             foreach ($queryToken->allTerms() as $queryTerm) {
                 $levenshteinDistance = $configuration->getTypoTolerance()->getLevenshteinDistanceForTerm($queryTerm);
 
-                if ($levenshteinDistance === 0) {
+                if (0 === $levenshteinDistance) {
                     if (\in_array($queryTerm, $token->allTerms(), true)) {
                         return true;
                     }
@@ -66,7 +66,7 @@ class Tokenizer implements TokenizerInterface
 
         $lastToken = $tokens->last();
 
-        if ($lastToken === null) {
+        if (null === $lastToken) {
             return false;
         }
 
@@ -85,7 +85,7 @@ class Tokenizer implements TokenizerInterface
             return true;
         }
 
-        while ($rest !== []) {
+        while ([] !== $rest) {
             $prefix .= array_shift($rest);
 
             if (Levenshtein::damerauLevenshtein($lastToken->getTerm(), $prefix, $firstCharTypoCountsDouble) <= $levenshteinDistance) {
@@ -96,13 +96,14 @@ class Tokenizer implements TokenizerInterface
         return false;
     }
 
-    public function tokenize(string $string, ?int $maxTokens = null): TokenCollection
+    public function tokenize(string $string, int|null $maxTokens = null): TokenCollection
     {
         return $this->doTokenize($string, $this->languageDetector->detectForString($string), $maxTokens);
     }
 
     /**
      * @param array<string, string> $document
+     *
      * @return array<string, TokenCollection>
      */
     public function tokenizeDocument(array $document): array
@@ -119,9 +120,9 @@ class Tokenizer implements TokenizerInterface
         return $result;
     }
 
-    private function doTokenize(string $string, ?string $language, ?int $maxTokens = null): TokenCollection
+    private function doTokenize(string $string, string|null $language, int|null $maxTokens = null): TokenCollection
     {
-        if ($language === null) {
+        if (null === $language) {
             $tokenCollection = $this->noLanguageTokenizer->tokenize($string, $maxTokens);
         } else {
             if (!isset($this->languageTokenizers[$language])) {
@@ -137,12 +138,12 @@ class Tokenizer implements TokenizerInterface
 
             // Stem if we detected a language - but only if not part of a phrase
             if (
-                $language !== null
+                null !== $language
                 && !$token->isPartOfPhrase()
                 && !$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()
             ) {
                 $stem = $this->stem($token->getTerm(), $language);
-                if ($stem !== null && $token->getTerm() !== $stem) {
+                if (null !== $stem && $token->getTerm() !== $stem) {
                     $variants = [$stem];
                 }
             }
@@ -153,7 +154,7 @@ class Tokenizer implements TokenizerInterface
         return $tokenCollectionWithVariants;
     }
 
-    private function getStemmerForLanguage(string $language): ?Stemmer
+    private function getStemmerForLanguage(string $language): Stemmer|null
     {
         if (isset($this->stemmers[$language])) {
             return $this->stemmers[$language];
@@ -168,7 +169,7 @@ class Tokenizer implements TokenizerInterface
         return $this->stemmers[$language] = $stemmer;
     }
 
-    private function stem(string $term, string $language): ?string
+    private function stem(string $term, string $language): string|null
     {
         if (isset($this->stemmerCache[$language][$term])) {
             return $this->stemmerCache[$language][$term];
@@ -176,7 +177,7 @@ class Tokenizer implements TokenizerInterface
 
         $stemmer = $this->getStemmerForLanguage($language);
 
-        if ($stemmer === null) {
+        if (null === $stemmer) {
             return null;
         }
 

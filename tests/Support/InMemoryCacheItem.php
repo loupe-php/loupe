@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Support;
 
-use DateInterval;
-use DateTimeInterface;
 use Psr\Cache\CacheItemInterface;
 
 final class InMemoryCacheItem implements CacheItemInterface
@@ -14,17 +12,16 @@ final class InMemoryCacheItem implements CacheItemInterface
 
     private mixed $value = null;
 
-    public function __construct(
-        private string $key,
-    ) {
+    public function __construct(private readonly string $key)
+    {
     }
 
-    public function expiresAfter(int|DateInterval|null $time): static
+    public function expiresAfter(\DateInterval|int|null $time): static
     {
         return $this;
     }
 
-    public function expiresAt(?DateTimeInterface $expiration): static
+    public function expiresAt(\DateTimeInterface|null $expiration): static
     {
         return $this;
     }

@@ -24,9 +24,9 @@ final class CachedStateSetIndex implements StateSetIndexInterface
     private int $cacheVersion = 0;
 
     public function __construct(
-        private StateSetIndexInterface $inner,
-        private TypoTolerance $typoTolerance,
-        private CacheItemPoolInterface $cachePool,
+        private readonly StateSetIndexInterface $inner,
+        private readonly TypoTolerance $typoTolerance,
+        private readonly CacheItemPoolInterface $cachePool,
     ) {
         $this->cacheVersion = $this->loadCacheVersion();
     }
@@ -49,6 +49,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
             if (\is_array($value)) {
                 try {
                     $snapshot = MatchingStatesSnapshot::fromArray($value);
+
                     return $snapshot->matchingStates();
                 } catch (\InvalidArgumentException) {
                     // Ignore invalid cache payloads and treat as cache miss.
@@ -94,27 +95,35 @@ final class CachedStateSetIndex implements StateSetIndexInterface
 
     private function buildCacheKey(string $term, int $levenshteinDistance, int $transpositionCost): string
     {
-        return QueryCacheKey::build('states', $this->cacheVersion, [
-            $this->typoTolerance->getAlphabetSize(),
-            $this->typoTolerance->getIndexLength(),
-            $levenshteinDistance,
-            $transpositionCost,
-            $term,
-        ]);
+        return QueryCacheKey::build(
+            'states',
+            $this->cacheVersion,
+            [
+                $this->typoTolerance->getAlphabetSize(),
+                $this->typoTolerance->getIndexLength(),
+                $levenshteinDistance,
+                $transpositionCost,
+                $term,
+            ],
+        );
     }
 
     private function buildVersionKey(): string
     {
-        return QueryCacheKey::build('states.version', 1, [
-            $this->typoTolerance->getAlphabetSize(),
-            $this->typoTolerance->getIndexLength(),
-        ]);
+        return QueryCacheKey::build(
+            'states.version',
+            1,
+            [
+                $this->typoTolerance->getAlphabetSize(),
+                $this->typoTolerance->getIndexLength(),
+            ],
+        );
     }
 
     private function bumpVersion(): void
     {
         $versionItem = $this->cachePool->getItem($this->buildVersionKey());
-        $newVersion = ((int) ($versionItem->isHit() ? $versionItem->get() : 0)) + 1;
+        $newVersion = (int) ($versionItem->isHit() ? $versionItem->get() : 0) + 1;
 
         if ($newVersion > self::CACHE_VERSION_MAX) {
             $newVersion = 1;
@@ -133,6 +142,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
 
         $termLength = mb_strlen($string);
         $maxTrim = min($maxPrefixCharsToTrimForCacheReuse, $termLength - 1);
+
         for ($trim = 1; $trim <= $maxTrim; ++$trim) {
             if ($termLength <= $trim) {
                 break;
@@ -148,6 +158,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
             if (\is_array($prefixValue)) {
                 try {
                     $snapshot = MatchingStatesSnapshot::fromArray($prefixValue);
+
                     return $this->inner->continueMatchingStatesSnapshot($string, $snapshot);
                 } catch (\InvalidArgumentException) {
                     continue;

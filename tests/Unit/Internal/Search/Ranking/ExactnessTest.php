@@ -9,9 +9,12 @@ use Loupe\Loupe\Internal\Search\Ranking\RankingInfo;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class ExactnessTest extends TestCase
+final class ExactnessTest extends TestCase
 {
-    public static function exactnessFactorProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function exactnessFactorProvider(): iterable
     {
         yield 'No terms match' => [
             '0;0;0',

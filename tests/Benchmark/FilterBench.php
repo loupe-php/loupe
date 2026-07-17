@@ -36,7 +36,7 @@ class FilterBench extends AbstractBench
             SearchParameters::create()
                 ->withQuery('aircarft')
                 ->withFilter("release_date < 1127433600 AND genres IN ('Drama', 'Western')")
-                ->withSort(['release_date:desc'])
+                ->withSort(['release_date:desc']),
         );
     }
 

@@ -11,9 +11,9 @@ final class TermMatch
      */
     public function __construct(
         private readonly string $attribute,
-        private array $positions
+        private array $positions,
     ) {
-        \assert($this->positions !== []);
+        \assert([] !== $this->positions);
         sort($this->positions);
     }
 
@@ -37,7 +37,7 @@ final class TermMatch
             }
 
             // Shortcut
-            if ($lowestNumber === 0) {
+            if (0 === $lowestNumber) {
                 return 0;
             }
         }
@@ -45,7 +45,7 @@ final class TermMatch
         return $lowestNumber;
     }
 
-    public function getPositionAfter(int $referencePosition): ?Position
+    public function getPositionAfter(int $referencePosition): Position|null
     {
         foreach ($this->positions as $position) {
             if ($position->position > $referencePosition) {

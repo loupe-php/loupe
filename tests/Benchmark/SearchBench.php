@@ -35,7 +35,7 @@ class SearchBench extends AbstractBench
         $this->loupe->search(
             SearchParameters::create()
                 ->withQuery('Anakin Skywalker')
-                ->withFacets(['genres'])
+                ->withFacets(['genres']),
         );
     }
 
@@ -91,7 +91,7 @@ class SearchBench extends AbstractBench
     public function benchPlainQuery(): void
     {
         $this->loupe->search(
-            SearchParameters::create()->withQuery('star wars')
+            SearchParameters::create()->withQuery('star wars'),
         );
     }
 
@@ -119,7 +119,7 @@ class SearchBench extends AbstractBench
         $this->loupe->search(
             SearchParameters::create()
                 ->withQuery('Amakin Dkywalker')
-                ->withFacets(['genres'])
+                ->withFacets(['genres']),
         );
     }
 
