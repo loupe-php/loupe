@@ -49,12 +49,11 @@
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
         "slow-tests": "@php vendor/bin/phpunit --testsuite=slow",
+        "bench": "@php vendor/bin/phpbench run --report=aggregate --group=query",
+        "bench-index": "@php vendor/bin/phpbench run --report=aggregate --group=index",
         "cs-fixer": "@php vendor/terminal42/code-quality-tools/tools/ecs/vendor/bin/ecs check src tests --config vendor/terminal42/code-quality-tools/tools/ecs/config.php --fix --ansi",
         "rector": "@php vendor/terminal42/code-quality-tools/tools/rector/vendor/bin/rector process src tests --config vendor/terminal42/code-quality-tools/tools/rector/config.php --ansi",
-        "ci-cs-fixer": "@php vendor/bin/ecs check",
-        "phpstan": "@php vendor/terminal42/code-quality-tools/tools/phpstan/vendor/bin/phpstan analyze src tests --configuration vendor/terminal42/code-quality-tools/tools/phpstan/config.php --ansi",
-        "bench": "@php vendor/bin/phpbench run --report=aggregate --group=query",
-        "bench-index": "@php vendor/bin/phpbench run --report=aggregate --group=index"
+        "phpstan": "@php vendor/terminal42/code-quality-tools/tools/phpstan/vendor/bin/phpstan analyze src tests --configuration vendor/terminal42/code-quality-tools/tools/phpstan/config.php --ansi"
     },
     "config": {
         "allow-plugins": {
