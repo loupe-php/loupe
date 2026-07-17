@@ -23,7 +23,7 @@ use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Searcher;
-use Loupe\Loupe\Internal\Search\Sorting;
+use Loupe\Loupe\Internal\Search\Sorting\MultiAttribute;
 use Loupe\Loupe\SearchParameters;
 use Psr\Cache\CacheItemPoolInterface;
 
@@ -197,12 +197,13 @@ class FilterBuilder
 
         return QueryCacheKey::build(
             'filter.from',
-            Engine::VERSION.':'.$this->engine->getDependencyHash(), [
+            Engine::VERSION.':'.$this->engine->getDependencyHash(),
+            [
                 hash('xxh3', json_encode([
                     'filter' => $this->filterAst->toArray(),
                     'sort' => $sort,
                 ], JSON_THROW_ON_ERROR)),
-        ],
+            ],
         );
     }
 
@@ -288,7 +289,7 @@ class FilterBuilder
         $selects = [];
 
         foreach ($this->searcher->getSorting()->getSorters() as $sorter) {
-            if ($sorter instanceof Sorting\MultiAttribute && $attribute === $sorter->getAttribute()) {
+            if ($sorter instanceof MultiAttribute && $attribute === $sorter->getAttribute()) {
                 $selects[$sorter->getFilterSelect($this->engine)] = $sorter->getFilterSelectAlias();
             }
         }

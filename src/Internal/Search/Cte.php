@@ -11,7 +11,7 @@ class Cte
     /**
      * @param array<string> $columnAliasList
      * @param array<string> $tags
-     * ^     */
+     * ^ */
     public function __construct(
         private readonly string $name,
         private readonly array $columnAliasList,

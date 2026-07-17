@@ -97,13 +97,14 @@ final class CachedStateSetIndex implements StateSetIndexInterface
     {
         return QueryCacheKey::build(
             'states',
-            $this->cacheVersion, [
+            $this->cacheVersion,
+            [
                 $this->typoTolerance->getAlphabetSize(),
                 $this->typoTolerance->getIndexLength(),
                 $levenshteinDistance,
                 $transpositionCost,
                 $term,
-        ],
+            ],
         );
     }
 
@@ -111,10 +112,11 @@ final class CachedStateSetIndex implements StateSetIndexInterface
     {
         return QueryCacheKey::build(
             'states.version',
-            1, [
+            1,
+            [
                 $this->typoTolerance->getAlphabetSize(),
                 $this->typoTolerance->getIndexLength(),
-        ],
+            ],
         );
     }
 

@@ -21,7 +21,7 @@ class MultiAttribute
     }
 
     /**
-     * @return array<float>|array<string>|bool[]
+     * @return array<float>|array<string>|array<bool>
      */
     public function getValues(): array
     {

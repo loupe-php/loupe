@@ -183,7 +183,8 @@ final class IndexTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $params, [
+            $params,
+            [
                 'hits' => [
                     [
                         'id' => 3,
@@ -203,7 +204,7 @@ final class IndexTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 3,
-        ],
+            ],
         );
     }
 
@@ -233,14 +234,15 @@ final class IndexTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
 
         // Not existing field on negative filter should return partial Uta as this matches
@@ -248,7 +250,8 @@ final class IndexTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [[
                     'id' => 2,
                     'lastname' => 'Koertig',
@@ -258,7 +261,7 @@ final class IndexTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
 
         // Adding the entire document should allow to filter by it now
@@ -268,7 +271,8 @@ final class IndexTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [[
                     'id' => 2,
                     'firstname' => 'Uta',
@@ -280,21 +284,22 @@ final class IndexTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
 
         $searchParameters = $searchParameters->withFilter('departments != \'Development\'');
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 
@@ -477,14 +482,15 @@ final class IndexTest extends TestCase
         // Searching now results in 0 results because the schema has not been migrated - can only do that on indexing
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
 
         // Index new data should not fail and migrate existing data
@@ -494,7 +500,8 @@ final class IndexTest extends TestCase
         // department, due to auto-migration
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -510,7 +517,7 @@ final class IndexTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -597,7 +604,8 @@ final class IndexTest extends TestCase
 
             $this->searchAndAssertResults(
                 $loupe,
-                $params, [
+                $params,
+                [
                     'hits' => [
                         [
                             'id' => 1,
@@ -613,7 +621,7 @@ final class IndexTest extends TestCase
                     'page' => 1,
                     'totalPages' => 1,
                     'totalHits' => 2,
-            ],
+                ],
             );
         };
 
@@ -748,14 +756,15 @@ final class IndexTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedHits,
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
-        ],
+            ],
         );
     }
 

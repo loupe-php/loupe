@@ -110,7 +110,7 @@ class TicketHandler
                 }
 
                 return $this->connectionPool->ticketConnection->lastInsertId();
-            }
+            },
         );
     }
 

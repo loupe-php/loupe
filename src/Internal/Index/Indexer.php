@@ -87,7 +87,7 @@ class Indexer
                     $this->removeCurrentDocumentData($prepared);
                     $this->bulkInsertMultiAttributes($prepared);
                     $this->bulkInsertTerms($prepared);
-                }
+                },
             );
 
             $this->commitChanges();
@@ -122,7 +122,7 @@ class Indexer
         $this->recordChange(
             function (): void {
                 $this->reviseStorage(false);
-            }
+            },
         );
         $this->commitChanges();
     }
@@ -138,7 +138,7 @@ class Indexer
                 $this->engine->getConnection()->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
                 $this->reviseStorage(true);
-            }
+            },
         );
 
         $this->commitChanges();
@@ -168,7 +168,7 @@ class Indexer
                 ;
 
                 $this->reviseStorage(true);
-            }
+            },
         );
 
         $this->commitChanges();

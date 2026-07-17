@@ -125,6 +125,6 @@ final class ConfigurationTest extends TestCase
     {
         $configuration = Configuration::create()->withQueryCache(null);
 
-        $this->assertNotInstanceOf(\Psr\Cache\CacheItemPoolInterface::class, $configuration->getQueryCache());
+        $this->assertNotInstanceOf(CacheItemPoolInterface::class, $configuration->getQueryCache());
     }
 }

@@ -24,7 +24,8 @@ final class BrowseTest extends TestCase
 
         $this->browseAndAssertResults(
             $loupe,
-            $browseParameters, [
+            $browseParameters,
+            [
                 'hits' => [
                     [
                         'id' => 5,
@@ -40,7 +41,7 @@ final class BrowseTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -71,7 +72,8 @@ final class BrowseTest extends TestCase
 
         $this->browseAndAssertResults(
             $loupe,
-            $browseParameters, [
+            $browseParameters,
+            [
                 'hits' => [
                     [
                         'id' => '0001',
@@ -95,7 +97,7 @@ final class BrowseTest extends TestCase
                 'page' => 1,
                 'totalPages' => 125,
                 'totalHits' => 500, // Max total hits must be ignored
-        ],
+            ],
         );
     }
 }

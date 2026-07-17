@@ -74,7 +74,7 @@ class StateSet implements StateSetInterface
 
     /**
      * @param array<int, bool> $stateSet
-     * ^     */
+     * ^ */
     private function dumpStateSetCache(array $stateSet): void
     {
         $cacheFile = $this->getStateSetCacheFile();

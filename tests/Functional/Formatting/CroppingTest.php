@@ -200,7 +200,7 @@ final class CroppingTest extends TestCase
      * @param array<string>                    $stopWords
      */
     #[DataProvider('croppingProvider')]
-    public function testCropping(string $query, array $searchableAttributes, array $attributesToCrop, array $attributesToHighlight, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>', string $cropMarker = '…', int $cropLength = 50,): void
+    public function testCropping(string $query, array $searchableAttributes, array $attributesToCrop, array $attributesToHighlight, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>', string $cropMarker = '…', int $cropLength = 50): void
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)

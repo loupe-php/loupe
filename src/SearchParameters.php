@@ -7,6 +7,7 @@ namespace Loupe\Loupe;
 use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\MatchingStrategy;
+use Loupe\Loupe\Internal\Search\Searcher;
 
 final class SearchParameters extends AbstractQueryParameters
 {
@@ -48,7 +49,9 @@ final class SearchParameters extends AbstractQueryParameters
     /**
      * @var array<string>
      */
-    private array $sort = [Internal\Search\Searcher::RELEVANCE_ALIAS.':desc'];
+    private array $sort = [
+        Searcher::RELEVANCE_ALIAS.':desc',
+    ];
 
     public static function create(): static
     {
@@ -294,7 +297,7 @@ final class SearchParameters extends AbstractQueryParameters
     /**
      * @param array<string>|array<string, int> $attributesToCrop
      */
-    public function withAttributesToCrop(array $attributesToCrop, int $cropLength = 50, string $cropMarker = '…',): self
+    public function withAttributesToCrop(array $attributesToCrop, int $cropLength = 50, string $cropMarker = '…'): self
     {
         $clone = clone $this;
 
@@ -320,7 +323,7 @@ final class SearchParameters extends AbstractQueryParameters
     /**
      * @param array<string> $attributesToHighlight
      */
-    public function withAttributesToHighlight(array $attributesToHighlight, string $highlightStartTag = '<em>', string $highlightEndTag = '</em>',): self
+    public function withAttributesToHighlight(array $attributesToHighlight, string $highlightStartTag = '<em>', string $highlightEndTag = '</em>'): self
     {
         sort($attributesToHighlight);
 

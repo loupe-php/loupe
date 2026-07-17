@@ -25,7 +25,8 @@ final class PaginationTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 2,
@@ -53,7 +54,7 @@ final class PaginationTest extends TestCase
                 'page' => 1,
                 'totalPages' => 3,
                 'totalHits' => 14,
-        ],
+            ],
         );
     }
 
@@ -69,7 +70,8 @@ final class PaginationTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 15,
@@ -81,7 +83,7 @@ final class PaginationTest extends TestCase
                 'page' => 1,
                 'totalPages' => 14,
                 'totalHits' => 14,
-        ],
+            ],
         );
     }
 
@@ -98,7 +100,8 @@ final class PaginationTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 6,
@@ -114,7 +117,7 @@ final class PaginationTest extends TestCase
                 'page' => 2,
                 'totalPages' => 7,
                 'totalHits' => 14,
-        ],
+            ],
         );
     }
 
@@ -130,7 +133,8 @@ final class PaginationTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 2,
@@ -142,7 +146,7 @@ final class PaginationTest extends TestCase
                 'page' => 1,
                 'totalPages' => 14,
                 'totalHits' => 14,
-        ],
+            ],
         );
     }
 }

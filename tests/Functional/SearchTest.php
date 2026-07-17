@@ -1167,7 +1167,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 2,
@@ -1179,7 +1180,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -1203,7 +1204,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 42,
@@ -1219,7 +1221,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -1237,7 +1239,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 5,
@@ -1253,7 +1256,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -1270,7 +1273,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'sku' => 'IPH15-RD-128',
@@ -1282,7 +1286,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -1318,7 +1322,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 2,
@@ -1336,7 +1341,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -1356,14 +1361,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedHits,
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
-        ],
+            ],
         );
     }
 
@@ -1383,14 +1389,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedHits,
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
-        ],
+            ],
         );
     }
 
@@ -1416,28 +1423,30 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [$document],
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
 
         $searchParameters = $searchParameters->withFilter('published = '.SearchParameters::escapeFilterValue(true));
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [$document],
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -1472,7 +1481,8 @@ final class SearchTest extends TestCase
         // for "administr". Also, the terms are exactly the same distance apart. Hence, we test the exactness feature here.
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -1490,7 +1500,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -1525,7 +1535,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [[
                     'id' => 42,
                     'title' => 'Test 42',
@@ -1538,7 +1549,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -1573,7 +1584,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => '2',
@@ -1597,7 +1609,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -1619,7 +1631,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -1643,7 +1656,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
 
         $searchParameters = SearchParameters::create()
@@ -1654,7 +1667,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 4,
@@ -1670,7 +1684,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
 
         $searchParameters = SearchParameters::create()
@@ -1680,7 +1694,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 2,
@@ -1736,7 +1751,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 4,
-        ],
+            ],
         );
     }
 
@@ -1758,7 +1773,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => '2',
@@ -1784,7 +1800,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -1805,7 +1821,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => '2',
@@ -1833,7 +1850,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -1849,14 +1866,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => 'This is a very long query that should be shortened',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 
@@ -1876,14 +1894,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedHits,
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
-        ],
+            ],
         );
     }
 
@@ -1963,14 +1982,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedHits,
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
-        ],
+            ],
         );
     }
 
@@ -1987,14 +2007,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => 'young london glaciologist -passion',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 
@@ -2020,7 +2041,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 19,
@@ -2032,7 +2054,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2056,7 +2078,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 27,
@@ -2068,7 +2091,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
 
         $impossibleParameters = $searchParameters
@@ -2077,14 +2100,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $impossibleParameters, [
+            $impossibleParameters,
+            [
                 'hits' => [],
                 'query' => 'young glaciologist music life things',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 
@@ -2107,7 +2131,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 27,
@@ -2131,7 +2156,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 4,
-        ],
+            ],
         );
     }
 
@@ -2202,7 +2227,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParametersWithoutNegation, [
+            $searchParametersWithoutNegation,
+            [
                 'hits' => [
                     [
                         'id' => 2,
@@ -2222,7 +2248,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 3,
-        ],
+            ],
         );
     }
 
@@ -2238,7 +2264,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParametersWithoutNegation, [
+            $searchParametersWithoutNegation,
+            [
                 'hits' => [
                     [
                         'id' => 15,
@@ -2254,7 +2281,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
 
         $searchParametersWithNegation = SearchParameters::create()
@@ -2265,7 +2292,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParametersWithNegation, [
+            $searchParametersWithNegation,
+            [
                 'hits' => [
                     [
                         'id' => 15,
@@ -2277,7 +2305,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2293,7 +2321,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParametersWithoutNegation, [
+            $searchParametersWithoutNegation,
+            [
                 'hits' => [
                     [
                         'id' => 14,
@@ -2325,7 +2354,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 6,
-        ],
+            ],
         );
 
         $searchParametersWithNegation = SearchParameters::create()
@@ -2336,7 +2365,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParametersWithNegation, [
+            $searchParametersWithNegation,
+            [
                 'hits' => [
                     [
                         'id' => 14,
@@ -2364,7 +2394,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 5,
-        ],
+            ],
         );
     }
 
@@ -2384,14 +2414,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedHits,
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
-        ],
+            ],
         );
     }
 
@@ -2415,7 +2446,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 27,
@@ -2439,7 +2471,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 4,
-        ],
+            ],
         );
 
         // Quoting the terms requires the exact phrase and should return only "young glaciologist".
@@ -2447,7 +2479,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 27,
@@ -2459,7 +2492,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2474,14 +2507,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => '"Taisto Kasrinen"',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 
@@ -2515,7 +2549,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -2527,7 +2562,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2553,7 +2588,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -2565,7 +2601,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2591,14 +2627,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedResults,
                 'query' => $query,
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0 === \count($expectedResults) ? 0 : 1,
                 'totalHits' => \count($expectedResults),
-        ],
+            ],
         );
     }
 
@@ -2617,7 +2654,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [[
                     'id' => 24,
                     'title' => 'Kill Bill: Vol. 1',
@@ -2633,7 +2671,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2650,7 +2688,8 @@ final class SearchTest extends TestCase
         // This should find Ariel because "star" matches "starting" in prefix search
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 2,
@@ -2666,7 +2705,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
 
         // This should not match Ariel because ""star"" (phrase search) does not match "starting"
@@ -2674,7 +2713,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 11,
@@ -2686,7 +2726,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2706,7 +2746,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $baseSearchParameters->withQuery('Huckleberry'), [
+            $baseSearchParameters->withQuery('Huckleberry'),
+            [
                 'hits' => [
                     [
                         'id' => 6,
@@ -2718,12 +2759,13 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
 
         $this->searchAndAssertResults(
             $loupe,
-            $baseSearchParameters->withQuery('Koertig'), [
+            $baseSearchParameters->withQuery('Koertig'),
+            [
                 'hits' => [
                     [
                         'id' => 2,
@@ -2735,7 +2777,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2752,7 +2794,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [[
                     'id' => 3,
                     'firstname' => 'Alexander',
@@ -2764,7 +2807,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -2781,7 +2824,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 22,
@@ -2794,7 +2838,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 17,
                 'totalHits' => 17,
-        ],
+            ],
         );
     }
 
@@ -2833,7 +2877,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 4,
@@ -2861,7 +2906,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 4,
-        ],
+            ],
         );
 
         // Test ranking score threshold
@@ -2869,7 +2914,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 4,
@@ -2887,7 +2933,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -2917,7 +2963,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'name' => 'Die große Straße',
@@ -2931,14 +2978,15 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
 
         $searchParameters = $searchParameters->withQuery('die grosse strasse');
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'name' => 'Die grosse Strasse',
@@ -2952,7 +3000,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -2991,7 +3039,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 4,
@@ -3019,7 +3068,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 4,
-        ],
+            ],
         );
     }
 
@@ -3057,7 +3106,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'name' => 'Thomas Müller',
@@ -3077,7 +3127,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 4,
-        ],
+            ],
         );
 
         // Test without umlaut
@@ -3085,7 +3135,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'name' => 'Sandra Muller',
@@ -3105,7 +3156,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 4,
-        ],
+            ],
         );
     }
 
@@ -3144,7 +3195,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -3167,7 +3219,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 3,
-        ],
+            ],
         );
 
         $configurationWithAttributes = Configuration::create()
@@ -3180,7 +3232,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -3203,7 +3256,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 3,
-        ],
+            ],
         );
     }
 
@@ -3241,7 +3294,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -3267,7 +3321,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 3,
-        ],
+            ],
         );
 
         $configurationWithWordsOnly = Configuration::create()
@@ -3280,7 +3334,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -3306,7 +3361,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 3,
-        ],
+            ],
         );
 
         $configurationWithAttributesOnly = Configuration::create()
@@ -3319,7 +3374,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -3345,7 +3401,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 3,
-        ],
+            ],
         );
     }
 
@@ -3365,7 +3421,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $filterOnlySearchParameters, [
+            $filterOnlySearchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 6,
@@ -3381,7 +3438,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
 
         $querySearchParameters = SearchParameters::create()
@@ -3393,14 +3450,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $querySearchParameters, [
+            $querySearchParameters,
+            [
                 'hits' => [],
                 'query' => 'maier',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 
@@ -3438,7 +3496,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => '9999',
@@ -3466,7 +3525,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 200,
                 'totalHits' => 800, // Max total hits
-        ],
+            ],
         );
     }
 
@@ -3489,7 +3548,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [[
                     'id' => 42,
                     'months' => [04, 05],
@@ -3499,7 +3559,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -3519,14 +3579,15 @@ final class SearchTest extends TestCase
         // Searching now causes exceptions because the schema of the v012 database is wrong
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 
@@ -3543,7 +3604,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 5,
@@ -3555,7 +3617,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -3591,7 +3653,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 5,
@@ -3607,7 +3670,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 2,
-        ],
+            ],
         );
     }
 
@@ -3622,7 +3685,8 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'firstname' => 'Alexander',
@@ -3651,14 +3715,15 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 7,
-        ],
+            ],
         );
 
         $searchParameters = $searchParameters->withSort(['firstname:desc']);
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'firstname' => 'Uta',
@@ -3687,7 +3752,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 7,
-        ],
+            ],
         );
     }
 
@@ -3737,14 +3802,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedHits,
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
-        ],
+            ],
         );
     }
 
@@ -3797,14 +3863,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedHits,
                 'query' => '',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
-        ],
+            ],
         );
     }
 
@@ -3828,7 +3895,8 @@ final class SearchTest extends TestCase
         // Should return all movies with the term "young" (OR matching)
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 27,
@@ -3848,7 +3916,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 3,
-        ],
+            ],
         );
 
         $configurationWithStopWords = Configuration::create()
@@ -3864,7 +3932,8 @@ final class SearchTest extends TestCase
         // Should only return movies with the term "glaciologist" since "young" is a stop word
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 27,
@@ -3876,7 +3945,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
 
         $loupe = $this->createLoupe($configurationWithStopWords);
@@ -3886,7 +3955,8 @@ final class SearchTest extends TestCase
         $searchParameters = $searchParameters->withSort(['_relevance:desc']);
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 27,
@@ -3898,7 +3968,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -3948,7 +4018,8 @@ final class SearchTest extends TestCase
         // Should return Vienna
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => '3',
@@ -3960,7 +4031,7 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
 
         $loupe->addDocument([
@@ -3971,14 +4042,15 @@ final class SearchTest extends TestCase
         // Should not return old Vienna document
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => 'vienna',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 
@@ -3998,14 +4070,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => $expectedResults,
                 'query' => $query,
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0 === \count($expectedResults) ? 0 : 1,
                 'totalHits' => \count($expectedResults),
-        ],
+            ],
         );
     }
 
@@ -4016,14 +4089,15 @@ final class SearchTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [],
                 'query' => 'foobar',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
-        ],
+            ],
         );
     }
 

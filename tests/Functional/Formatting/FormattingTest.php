@@ -151,7 +151,7 @@ final class FormattingTest extends TestCase
      * @param array<mixed>  $expectedResults
      */
     #[DataProvider('formattingProvider')]
-    public function testFormatting(string $query, array $searchableAttributes, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>',): void
+    public function testFormatting(string $query, array $searchableAttributes, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>'): void
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)

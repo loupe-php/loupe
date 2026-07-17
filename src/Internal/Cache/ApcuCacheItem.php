@@ -10,8 +10,11 @@ final class ApcuCacheItem implements CacheItemInterface
 {
     private int|null $ttl = null;
 
-    public function __construct(private readonly string $key, private mixed $value = null, private bool $hit = false)
-    {
+    public function __construct(
+        private readonly string $key,
+        private mixed $value = null,
+        private bool $hit = false,
+    ) {
     }
 
     public function expiresAfter(\DateInterval|int|null $time): static

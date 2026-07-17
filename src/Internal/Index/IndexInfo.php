@@ -104,7 +104,7 @@ class IndexInfo
                 );
 
                 $this->needsSetup = false;
-            }
+            },
         );
     }
 
@@ -717,7 +717,7 @@ class IndexInfo
                     ))
                     ->execute()
                 ;
-            }
+            },
         );
     }
 

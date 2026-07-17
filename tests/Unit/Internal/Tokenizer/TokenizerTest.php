@@ -33,7 +33,7 @@ final class TokenizerTest extends TestCase
                 'has',
             ],
             $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.', 5)
-            ->allTermsWithVariants(),
+                ->allTermsWithVariants(),
         );
     }
 
@@ -263,7 +263,7 @@ final class TokenizerTest extends TestCase
                 'nicht',
             ],
             $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.')
-            ->allTermsWithVariants(),
+                ->allTermsWithVariants(),
         );
     }
 
@@ -294,7 +294,7 @@ final class TokenizerTest extends TestCase
                 'nicht',
             ],
             $tokenizer->tokenize('Hallo, mein "Name ist Hase" und ich weiß von nichts.')
-            ->allTermsWithVariants(),
+                ->allTermsWithVariants(),
         );
     }
 

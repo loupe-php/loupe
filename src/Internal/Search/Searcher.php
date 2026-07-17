@@ -244,7 +244,7 @@ class Searcher
         $this->queryBuilder->addOrderBy($sort, $order);
     }
 
-    public function bindQueryParameter(mixed $value, mixed $type = ParameterType::STRING, string|null $parameterName = null,): string
+    public function bindQueryParameter(mixed $value, mixed $type = ParameterType::STRING, string|null $parameterName = null): string
     {
         if (null !== $parameterName) {
             $this->queryBuilder->setParameter($parameterName, $value, $type);

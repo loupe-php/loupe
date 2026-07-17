@@ -287,7 +287,7 @@ final class HighlightingTest extends TestCase
      * @param array<mixed>  $expectedResults
      */
     #[DataProvider('highlightingProvider')]
-    public function testHighlighting(string $query, array $searchableAttributes, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>',): void
+    public function testHighlighting(string $query, array $searchableAttributes, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>'): void
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)
@@ -339,7 +339,8 @@ final class HighlightingTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 1,
@@ -377,7 +378,7 @@ final class HighlightingTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 
@@ -400,7 +401,8 @@ final class HighlightingTest extends TestCase
 
         $this->searchAndAssertResults(
             $loupe,
-            $searchParameters, [
+            $searchParameters,
+            [
                 'hits' => [
                     [
                         'id' => 5,
@@ -417,7 +419,7 @@ final class HighlightingTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => 1,
-        ],
+            ],
         );
     }
 }
