@@ -27,7 +27,7 @@ final class ConcurrencyTest extends TestCase
     protected function setUp(): void
     {
         $this->tempDir = $this->createTemporaryDirectory();
-        $this->workerLogFile = $this->tempDir . '/workers.log';
+        $this->workerLogFile = $this->tempDir.'/workers.log';
     }
 
     public function testLoupeDoesNotGetStuckIfProcessIsKilled(): void
@@ -63,7 +63,7 @@ final class ConcurrencyTest extends TestCase
         // takes longer, showcasing that simply indexing one document after the other within its own transaction
         // is not sufficient if there are too many concurrent processes.
         for ($i = 1; $i <= 5; ++$i) {
-            $processes['worker-' . $i] = $this->createWorkerProcess('worker-' . $i, [
+            $processes['worker-'.$i] = $this->createWorkerProcess('worker-'.$i, [
                 'numberOfRandomDocuments' => 100,
                 'numberOfWordsPerDocument' => 1000,
             ]);
@@ -135,7 +135,7 @@ final class ConcurrencyTest extends TestCase
      */
     private function createWorkerProcess(string $workerName, array $options = []): Process
     {
-        $command = [(new PhpExecutableFinder())->find(), __DIR__ . '/../bin/worker.php'];
+        $command = [(new PhpExecutableFinder())->find(), __DIR__.'/../bin/worker.php'];
         $env = [
             'LOUPE_FUNCTIONAL_TEST_TEMP_DIR' => $this->tempDir,
             'LOUPE_FUNCTIONAL_TEST_CONFIGURATION' => $this->getConfiguration($this->prefixWorkerNameWithTest($workerName))->toString(),
@@ -178,7 +178,7 @@ final class ConcurrencyTest extends TestCase
             $this->startWorker($processName, $process);
         }
 
-        if ($processToKill !== null) {
+        if (null !== $processToKill) {
             $processes[$processToKill]->stop(0);
         }
 
@@ -188,7 +188,7 @@ final class ConcurrencyTest extends TestCase
     private function startWorker(string $workerName, Process $process): void
     {
         usleep(500000); // 0.5 seconds to simulate incoming workers one after the other
-        $this->getWorkerLogger($workerName)->log(LogLevel::INFO, 'Starting worker ' . $workerName);
+        $this->getWorkerLogger($workerName)->log(LogLevel::INFO, 'Starting worker '.$workerName);
         $process->start();
     }
 
@@ -203,16 +203,16 @@ final class ConcurrencyTest extends TestCase
         foreach ($processes as $processName => $process) {
             $process->wait();
 
-            if ($processToKill !== null && $processToKill === $processName) {
+            if (null !== $processToKill && $processToKill === $processName) {
                 continue;
             }
 
             if (!$process->isSuccessful()) {
-                $errors[] = \sprintf('[%s]: ', $processName) . $process->getOutput() . PHP_EOL . $process->getErrorOutput();
+                $errors[] = \sprintf('[%s]: ', $processName).$process->getOutput().PHP_EOL.$process->getErrorOutput();
             }
         }
 
-        if ($errors !== []) {
+        if ([] !== $errors) {
             $this->fail(implode(PHP_EOL, $errors));
         }
     }
@@ -257,7 +257,7 @@ final class ConcurrencyTest extends TestCase
         }
 
         $logContents = file_get_contents($this->workerLogFile);
-        if ($logContents === false) {
+        if (false === $logContents) {
             return false;
         }
 
