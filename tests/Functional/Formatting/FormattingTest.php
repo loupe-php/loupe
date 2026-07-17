@@ -14,6 +14,9 @@ final class FormattingTest extends TestCase
 {
     use FunctionalTestTrait;
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function formattingProvider(): iterable
     {
         yield 'Matches position only' => [

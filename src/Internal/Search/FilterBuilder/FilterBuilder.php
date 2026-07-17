@@ -21,6 +21,7 @@ use Loupe\Loupe\Internal\Filter\Ast\Group;
 use Loupe\Loupe\Internal\Filter\Ast\Node;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\Search\Sorting\MultiAttribute;
@@ -46,6 +47,9 @@ class FilterBuilder
      */
     private array $cachedGeoBoundingBoxWhereStatements = [];
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function __construct(
         private readonly Engine $engine,
         private readonly Searcher $searcher,

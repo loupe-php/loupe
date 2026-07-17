@@ -13,6 +13,9 @@ use Psr\Cache\CacheItemPoolInterface;
 
 final class ConfigurationTest extends TestCase
 {
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function indexHashProvider(): iterable
     {
         yield 'Defaults should match' => [
@@ -84,6 +87,9 @@ final class ConfigurationTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function invalidAttributeNameProvider(): iterable
     {
         yield ['_underscore'];

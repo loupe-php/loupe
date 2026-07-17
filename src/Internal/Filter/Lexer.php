@@ -7,6 +7,9 @@ namespace Loupe\Loupe\Internal\Filter;
 use Doctrine\Common\Lexer\AbstractLexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 
+/**
+ * @extends AbstractLexer<int, string>
+ */
 class Lexer extends AbstractLexer
 {
     public const T_AND = 201;

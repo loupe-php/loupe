@@ -18,6 +18,9 @@ final class TypoCountTest extends TestCase
         $this->assertSame($expected, TypoCount::calculate($rankingInfo));
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function typoCountFactorProvider(): iterable
     {
         yield 'No terms match' => [

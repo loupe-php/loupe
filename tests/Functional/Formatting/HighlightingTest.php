@@ -14,6 +14,9 @@ final class HighlightingTest extends TestCase
 {
     use FunctionalTestTrait;
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function highlightingProvider(): iterable
     {
         yield 'Highlighting with all searchable fields but no highlightable attributes' => [

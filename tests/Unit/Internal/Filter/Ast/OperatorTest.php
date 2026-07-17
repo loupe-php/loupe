@@ -10,6 +10,9 @@ use PHPUnit\Framework\TestCase;
 
 final class OperatorTest extends TestCase
 {
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function negativeAndOppositeProvider(): iterable
     {
         yield 'IN' => [

@@ -22,6 +22,9 @@ class Parser
 {
     private Ast $ast;
 
+    /**
+     * @var \SplStack<Group>
+     */
     private readonly \SplStack $groups;
 
     private readonly Lexer $lexer;
@@ -122,6 +125,9 @@ class Parser
         return $this;
     }
 
+    /**
+     * @param Token<int, string>|null $token
+     */
     private function assertAndExtractFloat(Token|null $token, bool $allowNegative = false): float
     {
         $multipler = 1;
@@ -136,26 +142,41 @@ class Parser
         return (float) $this->lexer->token?->value * $multipler;
     }
 
+    /**
+     * @param Token<int, string>|null $token
+     */
     private function assertClosingParenthesis(Token|null $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_CLOSE_PARENTHESIS], "')'");
     }
 
+    /**
+     * @param Token<int, string>|null $token
+     */
     private function assertComma(Token|null $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_COMMA], "','");
     }
 
+    /**
+     * @param Token<int, string>|null $token
+     */
     private function assertFloat(Token|null $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_FLOAT], 'valid float value');
     }
 
+    /**
+     * @param Token<int, string>|null $token
+     */
     private function assertOpeningParenthesis(Token|null $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_OPEN_PARENTHESIS], "'('");
     }
 
+    /**
+     * @param Token<int, string>|null $token
+     */
     private function assertOperator(Token|null $token): void
     {
         $type = $token->type ?? null;
@@ -165,6 +186,9 @@ class Parser
         }
     }
 
+    /**
+     * @param Token<int, string>|null $token
+     */
     private function assertStringOrFloatOrBoolean(Token|null $token): void
     {
         $this->assertTokenTypes(
@@ -180,7 +204,8 @@ class Parser
     }
 
     /**
-     * @param array<int> $types
+     * @param Token<int, string>|null $token
+     * @param array<int, int>         $types
      */
     private function assertTokenTypes(Token|null $token, array $types, string $error): void
     {
@@ -406,6 +431,9 @@ class Parser
         $this->syntaxError('"NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is', $this->lexer->lookahead);
     }
 
+    /**
+     * @param Token<int, string>|Token<int, non-falsy-string>|null $token
+     */
     private function syntaxError(string $expected = '', Token|null $token = null): void
     {
         if (null === $token) {

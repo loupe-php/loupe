@@ -41,6 +41,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function emptyFilterProvider(): iterable
     {
         yield 'IS EMPTY on multiple attribute' => [
@@ -124,6 +127,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function equalFilterProvider(): iterable
     {
         yield '= on multiple attribute match multiple' => [
@@ -257,6 +263,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function inFilterProvider(): iterable
     {
         yield 'IN on multiple attribute' => [
@@ -350,6 +359,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function lowerAndGreaterThanAndBetweenFilters(): iterable
     {
         yield [
@@ -490,6 +502,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function negatedQueryProvider(): iterable
     {
         yield 'Searching for "-Huckleberry" should return all except him' => [
@@ -563,6 +578,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function nullFilterProvider(): iterable
     {
         yield 'IS NULL on multiple attribute' => [
@@ -646,6 +664,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function prefixSearchProvider(): iterable
     {
         yield 'Searching for "h" should not return any results by default because the minimum prefix length is 3' => [
@@ -699,6 +720,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function searchWithFacetsProvider(): iterable
     {
         yield 'No query and no filters, checking the gender and isActive facet only' => [
@@ -962,6 +986,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function sortOnMultiAttributesWithMinAndMaxModifiers(): iterable
     {
         yield 'Test MIN aggregate without filters (ASC)' => [
@@ -1092,6 +1119,9 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function sortWithNullAndNonExistingValueProvider(): iterable
     {
         yield 'ASC' => [
@@ -4101,6 +4131,9 @@ final class SearchTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function typoToleranceProvider(): iterable
     {
         yield 'Test finds exact match when typo tolerance is disabled' => [

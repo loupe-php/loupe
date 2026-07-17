@@ -11,6 +11,9 @@ use PHPUnit\Framework\TestCase;
 
 final class ExactnessTest extends TestCase
 {
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function exactnessFactorProvider(): iterable
     {
         yield 'No terms match' => [

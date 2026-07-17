@@ -10,7 +10,6 @@ use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\ConnectionPool;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\StateSetIndex\StateSetIndexInterface;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -80,13 +79,6 @@ final class StateSetTest extends TestCase
             // Jane
             3, 14, 59, 238,
         ]);
-    }
-
-    public function testStateSetIndexInstance(): void
-    {
-        $engine = $this->createTestEngine();
-
-        $this->assertInstanceOf(StateSetIndexInterface::class, $engine->getStateSetIndex());
     }
 
     public function testStateSetIndexRevisedAfterDocumentDeleted(): void
@@ -202,10 +194,10 @@ final class StateSetTest extends TestCase
         $dump = (string) file_get_contents($engine->getDataDir().'/state_set.bin');
         $dump = (array) unpack('Q*', $dump);
         $dump = array_combine($dump, array_fill(0, \count($dump), true));
-        sort($dump);
+        ksort($dump);
 
         $this->assertSame($expected, $all);
-        $this->assertSame($dump, $all);
+        $this->assertSame(array_keys($dump), $all);
     }
 
     private function createTestEngine(): Engine

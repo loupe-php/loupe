@@ -10,6 +10,9 @@ use PHPUnit\Framework\TestCase;
 
 final class LoupeTypesTest extends TestCase
 {
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function getTypeFromValueProvider(): iterable
     {
         yield 'String' => ['foobar', LoupeTypes::TYPE_STRING];
@@ -100,6 +103,9 @@ final class LoupeTypesTest extends TestCase
         $this->assertSame($expectedResult, LoupeTypes::typeMatchesType($schemaType, $checkType));
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function typeIsNarrowerThanType(): iterable
     {
         yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NULL, false];
@@ -110,6 +116,9 @@ final class LoupeTypesTest extends TestCase
         yield [LoupeTypes::TYPE_ARRAY_EMPTY, LoupeTypes::TYPE_ARRAY_STRING, true];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function typeMatchesTypeProvider(): iterable
     {
         yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NULL, true];

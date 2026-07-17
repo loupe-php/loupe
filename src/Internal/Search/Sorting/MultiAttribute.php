@@ -9,6 +9,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 /**
@@ -34,6 +35,9 @@ class MultiAttribute extends AbstractSorter
     ) {
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function apply(Searcher $searcher, Engine $engine): void
     {
         $isFloatType = $engine->getIndexInfo()->isNumericAttribute($this->attributeName);
@@ -117,6 +121,9 @@ class MultiAttribute extends AbstractSorter
         return $qb;
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     private function createQueryBuilderWithoutFilterCte(Engine $engine, Searcher $searcher, string $column): QueryBuilder
     {
         $qb = $engine->getConnection()->createQueryBuilder()

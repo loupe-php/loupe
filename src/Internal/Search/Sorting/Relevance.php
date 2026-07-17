@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
 use Loupe\Loupe\Internal\Search\Ranking\Exactness;
@@ -32,6 +33,9 @@ class Relevance extends AbstractSorter
     {
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function apply(Searcher $searcher, Engine $engine): void
     {
         $queryParameters = $searcher->getQueryParameters();

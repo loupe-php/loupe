@@ -11,6 +11,9 @@ use PHPUnit\Framework\TestCase;
 
 final class ProximityTest extends TestCase
 {
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function proximityFactorProvider(): iterable
     {
         yield 'All terms are adjacent' => [

@@ -15,6 +15,9 @@ use PHPUnit\Framework\TestCase;
 
 final class ParserTest extends TestCase
 {
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function filterProvider(): iterable
     {
         yield 'Basic string filter' => [
@@ -354,6 +357,9 @@ final class ParserTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function invalidFilterProvider(): iterable
     {
         yield 'Must begin with either ( or an attribute name' => [

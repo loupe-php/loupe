@@ -18,6 +18,9 @@ final class WordCountTest extends TestCase
         $this->assertSame($expected, WordCount::calculate($rankingInfo));
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function wordCountFactorProvider(): iterable
     {
         yield 'No terms match' => [

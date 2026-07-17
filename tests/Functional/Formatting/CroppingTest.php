@@ -14,6 +14,9 @@ final class CroppingTest extends TestCase
 {
     use FunctionalTestTrait;
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function croppingProvider(): iterable
     {
         yield 'Cropping with too little text and no change' => [

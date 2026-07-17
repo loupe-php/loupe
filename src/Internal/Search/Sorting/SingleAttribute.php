@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 class SingleAttribute extends AbstractSorter
@@ -16,6 +17,9 @@ class SingleAttribute extends AbstractSorter
     ) {
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function apply(Searcher $searcher, Engine $engine): void
     {
         $attribute = $this->attributeName;

@@ -11,6 +11,9 @@ use PHPUnit\Framework\TestCase;
 
 final class AttributeWeightTest extends TestCase
 {
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function attributeWeightProvider(): iterable
     {
         yield 'No attributes are weighted' => [

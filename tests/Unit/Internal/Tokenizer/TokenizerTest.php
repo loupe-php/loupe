@@ -298,6 +298,9 @@ final class TokenizerTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function tokenizationWithLanguageSubsetProvider(): iterable
     {
         yield 'Test German extracts as expected on German text' => [

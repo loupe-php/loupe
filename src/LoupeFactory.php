@@ -96,9 +96,8 @@ final class LoupeFactory implements LoupeFactoryInterface
         $config = new DbalConfiguration();
         $middlewares = [];
 
-        if (null !== $configuration->getLogger()) {
+        if (null !== ($logger = $configuration->getLogger())) {
             // Prefix logger with connection and process names
-            $logger = $configuration->getLogger();
             $logger = $this->prefixLoggerWithProcessName($configuration, $logger);
             $logger = new PrefixDecoratedLogger('db-'.$connectionName, $logger);
 

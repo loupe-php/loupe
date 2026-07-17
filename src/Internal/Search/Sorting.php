@@ -26,6 +26,9 @@ class Sorting
     ) {
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function applySorters(Searcher $searcher): void
     {
         foreach ($this->sorters as $sorter) {

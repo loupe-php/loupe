@@ -20,6 +20,9 @@ final class IndexTest extends TestCase
     use FunctionalTestTrait;
     use StorageFixturesTestTrait;
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function invalidSchemaChangesProvider(): iterable
     {
         yield 'Wrong array values' => [
@@ -49,6 +52,9 @@ final class IndexTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function specialDataTypesAreEscapedProvider(): iterable
     {
         yield 'Check internal null value is escaped on single attribute (gender IS NULL)' => [
@@ -829,6 +835,9 @@ final class IndexTest extends TestCase
         $this->assertSame(\count($documents), $loupe->countDocuments());
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function validSchemaChangesProvider(): iterable
     {
         yield 'Schema matches exactly' => [
