@@ -1,0 +1,11 @@
+name: Code Quality
+
+on:
+    push: ~
+    pull_request: ~
+
+permissions: read-all
+
+jobs:
+    code-quality:
+        uses: 'terminal42/code-quality-tools/.github/workflows/code-quality.yml@main'
