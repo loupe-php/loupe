@@ -11,7 +11,7 @@ class MultiAttribute
      */
     public function __construct(
         private string $name,
-        private array $values
+        private array $values,
     ) {
     }
 
@@ -21,7 +21,7 @@ class MultiAttribute
     }
 
     /**
-     * @return float[]|string[]|bool[]
+     * @return array<float>|array<string>|bool[]
      */
     public function getValues(): array
     {

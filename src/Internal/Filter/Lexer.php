@@ -77,76 +77,76 @@ class Lexer extends AbstractLexer
             case is_numeric($value):
                 return self::T_FLOAT;
 
-                // Recognize quoted strings
-            case $value[0] === "'":
+            // Recognize quoted strings
+            case "'" === $value[0]:
                 $value = str_replace("''", "'", substr($value, 1, \strlen($value) - 2));
 
                 return self::T_STRING;
 
-            case $value === 'AND':
-            case $value === '&&':
+            case 'AND' === $value:
+            case '&&' === $value:
                 return self::T_AND;
 
-            case $value === 'OR':
-            case $value === '||':
+            case 'OR' === $value:
+            case '||' === $value:
                 return self::T_OR;
 
-            case $value === 'IN':
+            case 'IN' === $value:
                 return self::T_IN;
 
-            case $value === 'NOT':
+            case 'NOT' === $value:
                 return self::T_NOT;
 
-            case $value === 'EMPTY':
+            case 'EMPTY' === $value:
                 return self::T_EMPTY;
 
-            case $value === 'IS':
+            case 'IS' === $value:
                 return self::T_IS;
 
-            case $value === 'NULL':
+            case 'NULL' === $value:
                 return self::T_NULL;
 
-            case $value === 'false':
+            case 'false' === $value:
                 return self::T_FALSE;
 
-            case $value === 'true':
+            case 'true' === $value:
                 return self::T_TRUE;
 
-            case $value === '-':
+            case '-' === $value:
                 return self::T_MINUS;
 
-            case $value === 'BETWEEN':
+            case 'BETWEEN' === $value:
                 return self::T_BETWEEN;
 
-            case $value === '_geoRadius':
+            case '_geoRadius' === $value:
                 return self::T_GEO_RADIUS;
 
-            case $value === '_geoBoundingBox':
+            case '_geoBoundingBox' === $value:
                 return self::T_GEO_BOUNDING_BOX;
 
-                // Attribute names
+            // Attribute names
             case IndexInfo::isValidAttributeName($value):
                 return self::T_ATTRIBUTE_NAME;
 
-            case $value === '(':
+            case '(' === $value:
                 return self::T_OPEN_PARENTHESIS;
 
-            case $value === ')':
+            case ')' === $value:
                 return self::T_CLOSE_PARENTHESIS;
 
-            case $value === '=':
+            case '=' === $value:
                 return self::T_EQUALS;
 
-            case $value === '>':
+            case '>' === $value:
                 return self::T_GREATER_THAN;
 
-            case $value === '<':
+            case '<' === $value:
                 return self::T_LOWER_THAN;
 
-            case $value === '!':
+            case '!' === $value:
                 return self::T_NEGATE;
 
-            case $value === ',':
+            case ',' === $value:
                 return self::T_COMMA;
         }
 

@@ -49,11 +49,12 @@ abstract class AbstractSorter
                 \sprintf(
                     '%s.document_id = %s.document_id',
                     $cteName,
-                    Searcher::CTE_MATCHES
-                )
-            );
+                    Searcher::CTE_MATCHES,
+                ),
+            )
+        ;
 
-        $alias = $cteName . '.sort_order';
+        $alias = $cteName.'.sort_order';
 
         // Because of how Loupe works (SQLite's loosely typed system) we need to always ensure that null and empty values
         // are ordered ascending first.
@@ -62,7 +63,7 @@ abstract class AbstractSorter
             Operator::Equals->buildSql(
                 $engine->getConnection(),
                 $alias,
-                FilterValue::createNull()
+                FilterValue::createNull(),
             ),
             Direction::ASC->getSQL(),
             true,
@@ -72,7 +73,7 @@ abstract class AbstractSorter
             Operator::Equals->buildSql(
                 $engine->getConnection(),
                 $alias,
-                FilterValue::createEmpty()
+                FilterValue::createEmpty(),
             ),
             Direction::ASC->getSQL(),
             true,

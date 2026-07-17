@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 
 class OperatorTest extends TestCase
 {
-    public static function negativeAndOppositeProvider(): \Generator
+    public static function negativeAndOppositeProvider(): iterable
     {
         yield 'IN' => [
             Operator::In,

@@ -16,11 +16,11 @@ class BulkUpserter
         private BulkUpsertConfig $bulkUpsertConfig,
         private int $variableLimit,
     ) {
-
     }
 
     /**
      * @param array<mixed> $results
+     *
      * @return array<string, array<mixed>>
      */
     public static function convertResultsToIndexedArray(array $results, string $indexColumn): array
@@ -39,6 +39,7 @@ class BulkUpserter
 
     /**
      * @param array<mixed> $results
+     *
      * @return array<string|int, mixed>
      */
     public static function convertResultsToKeyValueArray(array $results): array
@@ -74,7 +75,7 @@ class BulkUpserter
     }
 
     /**
-     * @param array<array<int, mixed>> $rows
+     * @param array<array<int, mixed>>         $rows
      * @param array<int<0, max>|string, mixed> $parameters
      */
     private function buildValuesClause(array $rows, array &$parameters): string
@@ -83,6 +84,7 @@ class BulkUpserter
         $columnsCount = \count($columnKeys);
 
         $tuples = [];
+
         foreach ($rows as $row) {
             foreach ($columnKeys as $columnKey) {
                 $parameters[] = $row[$columnKey] ?? null;
@@ -96,7 +98,8 @@ class BulkUpserter
 
     /**
      * @param array<array<int, mixed>> $rows
-     * @param array<string> $updateColumns
+     * @param array<string>            $updateColumns
+     *
      * @return array<mixed>
      */
     private function executeModern(array $rows, array $updateColumns): array
@@ -108,7 +111,7 @@ class BulkUpserter
 
         // If returning columns are desired but there are no columns to update, this would not return any data.
         // Hence, we have to force an UPDATE SET with the unique columns.
-        if ($returningColumns !== [] && $updateColumns === []) {
+        if ([] !== $returningColumns && [] === $updateColumns) {
             $conflictMode = ConflictMode::Update;
             $updateColumns = $this->bulkUpsertConfig->getUniqueColumns();
         }
@@ -131,16 +134,18 @@ class BulkUpserter
                 ' WHERE %s.%s IS NOT excluded.%s',
                 $this->bulkUpsertConfig->getTable(),
                 $this->bulkUpsertConfig->getChangeDetectingColumn(),
-                $this->bulkUpsertConfig->getChangeDetectingColumn()
+                $this->bulkUpsertConfig->getChangeDetectingColumn(),
             );
         }
 
-        if ($returningColumns === []) {
+        if ([] === $returningColumns) {
             $this->executeStatement($sql, $parameters);
+
             return [];
         }
 
-        $sql .= ' RETURNING ' . implode(', ', $this->bulkUpsertConfig->getReturningColumns());
+        $sql .= ' RETURNING '.implode(', ', $this->bulkUpsertConfig->getReturningColumns());
+
         return $this->executeQuery($sql, $parameters)->fetchAllAssociative();
     }
 
@@ -162,7 +167,8 @@ class BulkUpserter
 
     /**
      * @param array<int<0, max>|string, mixed> $parameters
-     * @return array<int<0, max>|string, \Doctrine\DBAL\ParameterType>
+     *
+     * @return array<int<0, max>|string, ParameterType>
      */
     private function extractDbalTypes(array $parameters): array
     {
@@ -172,7 +178,7 @@ class BulkUpserter
             $types[$k] = match (\gettype($v)) {
                 'boolean' => ParameterType::BOOLEAN,
                 'integer' => ParameterType::INTEGER,
-                default => ParameterType::STRING
+                default => ParameterType::STRING,
             };
         }
 
@@ -181,7 +187,7 @@ class BulkUpserter
 
     private function placeholdersRow(int $n): string
     {
-        return '(' . implode(',', array_fill(0, $n, '?')) . ')';
+        return '('.implode(',', array_fill(0, $n, '?')).')';
     }
 
     /**
@@ -189,14 +195,16 @@ class BulkUpserter
      */
     private function updateSetExcluded(array $columns): string
     {
-        if ($columns === []) {
+        if ([] === $columns) {
             return 'NOTHING';
         }
 
         $parts = [];
+
         foreach ($columns as $column) {
-            $parts[] = $column . ' = excluded.' . $column;
+            $parts[] = $column.' = excluded.'.$column;
         }
+
         return implode(', ', $parts);
     }
 }

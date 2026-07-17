@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 class ExactnessTest extends TestCase
 {
-    public static function exactnessFactorProvider(): \Generator
+    public static function exactnessFactorProvider(): iterable
     {
         yield 'No terms match' => [
             '0;0;0',

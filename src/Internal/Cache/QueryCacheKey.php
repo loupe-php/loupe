@@ -14,7 +14,7 @@ final class QueryCacheKey
     /**
      * @param list<bool|int|string> $parts
      */
-    public static function build(string $prefix, string|int $version, array $parts = []): string
+    public static function build(string $prefix, int|string $version, array $parts = []): string
     {
         return self::join([
             $prefix,
@@ -30,7 +30,7 @@ final class QueryCacheKey
     {
         $normalized = array_map(
             static fn (bool|int|string $part): string => rawurlencode((string) $part),
-            $parts
+            $parts,
         );
 
         return implode('.', $normalized);

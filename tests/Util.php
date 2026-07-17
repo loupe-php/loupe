@@ -6,8 +6,8 @@ namespace Loupe\Loupe\Tests;
 
 class Util
 {
-    public static function fixturesPath(?string $path = null): string
+    public static function fixturesPath(string|null $path = null): string
     {
-        return __DIR__ . '/Fixtures' . ($path ? '/' . $path : '');
+        return __DIR__.'/Fixtures'.($path ? '/'.$path : '');
     }
 }

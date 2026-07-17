@@ -11,5 +11,5 @@ interface LanguageDetectorInterface
      */
     public function detectForDocument(array $document): DocumentResult;
 
-    public function detectForString(string $string): ?string;
+    public function detectForString(string $string): string|null;
 }

@@ -11,7 +11,7 @@ class Term
      */
     public function __construct(
         private array $termMatches,
-        private bool $hasExactMatch = false
+        private bool $hasExactMatch = false,
     ) {
     }
 
@@ -26,7 +26,7 @@ class Term
             }
 
             // Shortcut
-            if ($lowestNumber === 0) {
+            if (0 === $lowestNumber) {
                 return 0;
             }
         }
@@ -35,7 +35,7 @@ class Term
     }
 
     /**
-     * @return TermMatch[]
+     * @return array<TermMatch>
      */
     public function getMatches(): array
     {

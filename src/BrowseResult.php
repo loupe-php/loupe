@@ -17,7 +17,7 @@ final class BrowseResult extends AbstractQueryResult
             $browseParameters->getHitsPerPage() ?? $browseParameters->getLimit(),
             1,
             0,
-            0
+            0,
         );
     }
 }

@@ -13,7 +13,7 @@ final class RankingInfo
     private function __construct(
         private array $rankingRules,
         private array $searchableAttributes,
-        private TermPositions $termPositions
+        private TermPositions $termPositions,
     ) {
     }
 

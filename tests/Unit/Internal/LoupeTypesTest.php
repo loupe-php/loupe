@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 
 class LoupeTypesTest extends TestCase
 {
-    public static function getTypeFromValueProvider(): \Generator
+    public static function getTypeFromValueProvider(): iterable
     {
         yield 'String' => ['foobar', LoupeTypes::TYPE_STRING];
 
@@ -78,7 +78,7 @@ class LoupeTypesTest extends TestCase
                 {
                     return 'foobar';
                 }
-            }
+            },
         ));
     }
 
@@ -100,7 +100,7 @@ class LoupeTypesTest extends TestCase
         $this->assertSame($expectedResult, LoupeTypes::typeMatchesType($schemaType, $checkType));
     }
 
-    public static function typeIsNarrowerThanType(): \Generator
+    public static function typeIsNarrowerThanType(): iterable
     {
         yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NULL, false];
         yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NUMBER, true];
@@ -110,7 +110,7 @@ class LoupeTypesTest extends TestCase
         yield [LoupeTypes::TYPE_ARRAY_EMPTY, LoupeTypes::TYPE_ARRAY_STRING, true];
     }
 
-    public static function typeMatchesTypeProvider(): \Generator
+    public static function typeMatchesTypeProvider(): iterable
     {
         yield [LoupeTypes::TYPE_NULL, LoupeTypes::TYPE_NULL, true];
         yield [LoupeTypes::TYPE_NUMBER, LoupeTypes::TYPE_NUMBER, true];

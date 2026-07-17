@@ -32,7 +32,7 @@ class LoupeFactoryTest extends TestCase
 
     public function testNestedDataDirIsCreatedAutomatically(): void
     {
-        $dataDir = $this->createTemporaryDirectory() . '/' . uniqid() . '/a/b/c';
+        $dataDir = $this->createTemporaryDirectory().'/'.uniqid().'/a/b/c';
         $this->assertDirectoryDoesNotExist($dataDir);
 
         $loupe = (new LoupeFactory())->create($dataDir, Configuration::create());
@@ -43,7 +43,7 @@ class LoupeFactoryTest extends TestCase
 
     public function testNonExistentDataDirIsCreatedAutomatically(): void
     {
-        $dataDir = $this->createTemporaryDirectory() . '/' . uniqid();
+        $dataDir = $this->createTemporaryDirectory().'/'.uniqid();
         $this->assertDirectoryDoesNotExist($dataDir);
 
         $loupe = (new LoupeFactory())->create($dataDir, Configuration::create());
@@ -61,7 +61,7 @@ class LoupeFactoryTest extends TestCase
 
     public function testUncreatableDataDirThrows(): void
     {
-        $dataDir = '/this_root_path_cannot_exist_' . uniqid('', true) . '/subdir';
+        $dataDir = '/this_root_path_cannot_exist_'.uniqid('', true).'/subdir';
 
         $this->expectException(InvalidConfigurationException::class);
 

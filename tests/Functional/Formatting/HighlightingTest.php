@@ -14,7 +14,7 @@ class HighlightingTest extends TestCase
 {
     use FunctionalTestTrait;
 
-    public static function highlightingProvider(): \Generator
+    public static function highlightingProvider(): iterable
     {
         yield 'Highlighting with all searchable fields but no highlightable attributes' => [
             'assassin',
@@ -284,19 +284,11 @@ class HighlightingTest extends TestCase
      * @param array<string> $searchableAttributes
      * @param array<string> $attributesToHighlight
      * @param array<string> $stopWords
-     * @param array<mixed> $expectedResults
+     * @param array<mixed>  $expectedResults
      */
     #[DataProvider('highlightingProvider')]
-    public function testHighlighting(
-        string $query,
-        array $searchableAttributes,
-        array $attributesToHighlight,
-        bool $showMatchesPosition,
-        array $expectedResults,
-        array $stopWords = [],
-        string $highlightStartTag = '<em>',
-        string $highlightEndTag = '</em>',
-    ): void {
+    public function testHighlighting(string $query, array $searchableAttributes, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>',): void
+    {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])
@@ -345,45 +337,48 @@ class HighlightingTest extends TestCase
             ->withAttributesToRetrieve(['id', 'name', 'tags'])
         ;
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 1,
-                    'name' => 'Die Straßen sind groß und lang',
-                    'tags' => ['Auf Straße und Schiene'],
-                    '_formatted' => [
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters, [
+                'hits' => [
+                    [
                         'id' => 1,
-                        'name' => 'Die <em>Straßen</em> sind <em>groß</em> und lang',
-                        'tags' => ['Auf <em>Straße</em> und Schiene'],
-                    ],
-                    '_matchesPosition' => [
-                        'name' => [
-                            [
-                                'start' => 4,
-                                'length' => 7,
-                            ],
-                            [
-                                'start' => 17,
-                                'length' => 4,
-                            ],
+                        'name' => 'Die Straßen sind groß und lang',
+                        'tags' => ['Auf Straße und Schiene'],
+                        '_formatted' => [
+                            'id' => 1,
+                            'name' => 'Die <em>Straßen</em> sind <em>groß</em> und lang',
+                            'tags' => ['Auf <em>Straße</em> und Schiene'],
                         ],
-                        'tags' => [
-                            0 => [
+                        '_matchesPosition' => [
+                            'name' => [
                                 [
                                     'start' => 4,
-                                    'length' => 6,
+                                    'length' => 7,
+                                ],
+                                [
+                                    'start' => 17,
+                                    'length' => 4,
+                                ],
+                            ],
+                            'tags' => [
+                                0 => [
+                                    [
+                                        'start' => 4,
+                                        'length' => 6,
+                                    ],
                                 ],
                             ],
                         ],
                     ],
                 ],
-            ],
-            'query' => 'grosse strasse',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 1,
-        ]);
+                'query' => 'grosse strasse',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+        ],
+        );
     }
 
     public function testHighlightingIncludesAttributesThatAreNotRetrieved(): void
@@ -391,7 +386,8 @@ class HighlightingTest extends TestCase
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title', 'overview'])
             ->withFilterableAttributes(['genres'])
-            ->withSortableAttributes(['title']);
+            ->withSortableAttributes(['title'])
+        ;
 
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'movies');
@@ -399,25 +395,29 @@ class HighlightingTest extends TestCase
         $searchParameters = SearchParameters::create()
             ->withQuery('Rooms')
             ->withAttributesToRetrieve(['id', 'overview'])
-            ->withAttributesToHighlight(['title']);
+            ->withAttributesToHighlight(['title'])
+        ;
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 5,
-                    'overview' => 'It\'s Ted the Bellhop\'s first night on the job...and the hotel\'s very unusual guests are about to place him in some outrageous predicaments. It seems that this evening\'s room service is serving up one unbelievable happening after another.',
-                    '_formatted' => [
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters, [
+                'hits' => [
+                    [
                         'id' => 5,
                         'overview' => 'It\'s Ted the Bellhop\'s first night on the job...and the hotel\'s very unusual guests are about to place him in some outrageous predicaments. It seems that this evening\'s room service is serving up one unbelievable happening after another.',
-                        'title' => 'Four <em>Rooms</em>',
+                        '_formatted' => [
+                            'id' => 5,
+                            'overview' => 'It\'s Ted the Bellhop\'s first night on the job...and the hotel\'s very unusual guests are about to place him in some outrageous predicaments. It seems that this evening\'s room service is serving up one unbelievable happening after another.',
+                            'title' => 'Four <em>Rooms</em>',
+                        ],
                     ],
                 ],
-            ],
-            'query' => 'Rooms',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 1,
-        ]);
+                'query' => 'Rooms',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+        ],
+        );
     }
 }

@@ -29,8 +29,9 @@ class AttributeWeight extends AbstractRanker
         }
 
         $totalWeight = 1;
+
         foreach ($weightsPerTerm as $termWeight) {
-            $totalWeight = $totalWeight * $termWeight;
+            $totalWeight *= $termWeight;
         }
 
         return $totalWeight;
@@ -38,9 +39,10 @@ class AttributeWeight extends AbstractRanker
 
     /**
      * Assign decreasing weights to each attribute
-     * ['title', 'summary', 'body] → ['title' => 1, 'summary' => 0.8, 'body' => 0.8 ^ 2]
+     * ['title', 'summary', 'body] → ['title' => 1, 'summary' => 0.8, 'body' => 0.8 ^ 2].
      *
      * @param array<int, string> $searchableAttributes
+     *
      * @return array<string, int>
      */
     public static function calculateIntrinsicAttributeWeights(array $searchableAttributes): array
@@ -50,14 +52,16 @@ class AttributeWeight extends AbstractRanker
         }
 
         $weight = 1;
+
         return array_reduce(
             $searchableAttributes,
-            function ($result, $attribute) use (&$weight) {
+            static function ($result, $attribute) use (&$weight) {
                 $result[$attribute] = round($weight, 2);
                 $weight *= Configuration::ATTRIBUTE_RANKING_ORDER_FACTOR;
+
                 return $result;
             },
-            []
+            [],
         );
     }
 }

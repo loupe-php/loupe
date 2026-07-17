@@ -12,7 +12,7 @@ class SingleAttribute extends AbstractSorter
 {
     public function __construct(
         private string $attributeName,
-        private Direction $direction
+        private Direction $direction,
     ) {
     }
 
@@ -32,12 +32,12 @@ class SingleAttribute extends AbstractSorter
         $qb = $engine->getConnection()->createQueryBuilder();
         $qb
             ->select(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '._id AS document_id',
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS) . '.' . $attribute . ' AS sort_order'
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS).'._id AS document_id',
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS).'.'.$attribute.' AS sort_order',
             )
             ->from(
                 IndexInfo::TABLE_NAME_DOCUMENTS,
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
             )
             ->innerJoin(
                 $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
@@ -47,13 +47,14 @@ class SingleAttribute extends AbstractSorter
                     '%s.document_id = %s._id',
                     Searcher::CTE_MATCHES,
                     $engine->getIndexInfo()->getAliasForTable(
-                        IndexInfo::TABLE_NAME_DOCUMENTS
-                    )
-                )
+                        IndexInfo::TABLE_NAME_DOCUMENTS,
+                    ),
+                ),
             )
-            ->groupBy('document_id');
+            ->groupBy('document_id')
+        ;
 
-        $cteName = 'order_' . $this->attributeName;
+        $cteName = 'order_'.$this->attributeName;
 
         $this->addAndOrderByCte($searcher, $engine, $this->direction, $cteName, $qb);
     }

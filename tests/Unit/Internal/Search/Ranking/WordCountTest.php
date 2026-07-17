@@ -18,7 +18,7 @@ class WordCountTest extends TestCase
         $this->assertSame($expected, WordCount::calculate($rankingInfo));
     }
 
-    public static function wordCountFactorProvider(): \Generator
+    public static function wordCountFactorProvider(): iterable
     {
         yield 'No terms match' => [
             '0;0;0',

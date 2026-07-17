@@ -36,12 +36,12 @@ enum Operator: string
         }
 
         if (\is_array($value)) {
-            if ($this === self::In || $this === self::NotIn) {
-                return $attribute . ' ' . $this->value . ' (' . implode(', ', $value) . ')';
+            if (self::In === $this || self::NotIn === $this) {
+                return $attribute.' '.$this->value.' ('.implode(', ', $value).')';
             }
 
-            if ($this === self::Between || $this === self::NotBetween) {
-                return $attribute . ' ' . $this->value . ' ' . $value[0] . ' AND ' . $value[1];
+            if (self::Between === $this || self::NotBetween === $this) {
+                return $attribute.' '.$this->value.' '.$value[0].' AND '.$value[1];
             }
 
             throw new \InvalidArgumentException('Can oly work with arrays for IN() and NOT IN().');
@@ -49,21 +49,21 @@ enum Operator: string
 
         return match ($this) {
             self::Equals,
-            self::NotEquals => $attribute . ' ' . $this->value . ' ' . $value,
+            self::NotEquals => $attribute.' '.$this->value.' '.$value,
             self::GreaterThan,
             self::GreaterThanOrEquals,
             self::LowerThan,
-            self::LowerThanOrEquals => '(' .
-                $attribute . ' ' .
-                $this->value . ' ' .
-                $value .
-                ' AND ' .
-                self::NotEquals->buildSql($connection, $attribute, FilterValue::createNull()) .
+            self::LowerThanOrEquals => '('.
+                $attribute.' '.
+                $this->value.' '.
+                $value.
+                ' AND '.
+                self::NotEquals->buildSql($connection, $attribute, FilterValue::createNull()).
                 ')',
             self::Between,
             self::NotBetween,
             self::In,
-            self::NotIn => throw new \InvalidArgumentException('Can only use IN(), NOT IN(), BETWEEN and NOT BETWEEN with arrays.')
+            self::NotIn => throw new \InvalidArgumentException('Can only use IN(), NOT IN(), BETWEEN and NOT BETWEEN with arrays.'),
         };
     }
 
@@ -80,7 +80,7 @@ enum Operator: string
             'NOT IN' => self::NotIn,
             'BETWEEN' => self::Between,
             'NOT BETWEEN' => self::NotBetween,
-            default => throw new \InvalidArgumentException('Invalid operator given.')
+            default => throw new \InvalidArgumentException('Invalid operator given.'),
         };
     }
 

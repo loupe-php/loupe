@@ -16,7 +16,7 @@ abstract class AbstractQueryResult
         private int $hitsPerPage,
         private int $page,
         private int $totalPages,
-        private int $totalHits
+        private int $totalHits,
     ) {
     }
 

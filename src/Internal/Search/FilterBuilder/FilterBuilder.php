@@ -39,7 +39,7 @@ class FilterBuilder
      *     parameterTypes: array<int<0, max>|string, ArrayParameterType|ParameterType|Type|string>
      * }|null
      */
-    private ?array $cachedBuildFromResult = null;
+    private array|null $cachedBuildFromResult = null;
 
     /**
      * @var array<string, array<string|float>>
@@ -50,24 +50,24 @@ class FilterBuilder
         private Engine $engine,
         private Searcher $searcher,
         private Ast $filterAst,
-        private ?CacheItemPoolInterface $queryCache = null,
+        private CacheItemPoolInterface|null $queryCache = null,
     ) {
     }
 
     public function buildFrom(): string
     {
-        if ($this->cachedBuildFromResult !== null) {
+        if (null !== $this->cachedBuildFromResult) {
             return $this->cachedBuildFromResult['from'];
         }
 
         $cacheKey = $this->buildFromCacheKey();
 
-        if ($this->queryCache !== null) {
+        if (null !== $this->queryCache) {
             try {
                 $cacheItem = $this->queryCache->getItem($cacheKey);
                 if ($cacheItem->isHit()) {
                     $cachedValue = $this->hydrateCachedBuildFromResult($cacheItem->get());
-                    if ($cachedValue !== null) {
+                    if (null !== $cachedValue) {
                         $this->cachedBuildFromResult = $cachedValue;
                         $this->restoreFilterBuildResult($cachedValue);
 
@@ -83,7 +83,7 @@ class FilterBuilder
         $existingCteNames = array_keys($this->searcher->getCtesByName());
         $existingParameterNames = array_keys($this->searcher->getQueryBuilder()->getParameters());
 
-        /**
+        /*
          * TODO: This could be optimized.
          * Right now, the filter "multi_attribute = 'foo' AND single_attribute >= 42" is converted to
          * "<cte_1> INTERSECT <cte_2>" for simplicity. It has to remain like this when there are different multi
@@ -97,7 +97,7 @@ class FilterBuilder
         $result = $this->snapshotFilterBuildResult($from, $existingCteNames, $existingParameterNames);
         $this->cachedBuildFromResult = $result;
 
-        if ($this->queryCache !== null) {
+        if (null !== $this->queryCache) {
             try {
                 $cacheItem = $this->queryCache->getItem($cacheKey);
                 $cacheItem->set($result)->expiresAfter(QueryCacheKey::INTERACTIVE_TTL);
@@ -126,19 +126,19 @@ class FilterBuilder
 
         // Prevent nullable
         $nullTerm = $this->searcher->bindQueryParameter(LoupeTypes::VALUE_NULL);
-        $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lat';
+        $whereStatement[] = $documentAlias.'.'.$attributeName.'_geo_lat';
         $whereStatement[] = '!=';
         $whereStatement[] = $nullTerm;
         $whereStatement[] = 'AND';
-        $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lng';
+        $whereStatement[] = $documentAlias.'.'.$attributeName.'_geo_lng';
         $whereStatement[] = '!=';
         $whereStatement[] = $nullTerm;
 
-        if ($bounds !== null) {
+        if (null !== $bounds) {
             $whereStatement[] = 'AND';
 
             // Longitude
-            $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lng';
+            $whereStatement[] = $documentAlias.'.'.$attributeName.'_geo_lng';
             $whereStatement[] = 'BETWEEN';
             $whereStatement[] = $bounds->getWest();
             $whereStatement[] = 'AND';
@@ -147,7 +147,7 @@ class FilterBuilder
             $whereStatement[] = 'AND';
 
             // Latitude
-            $whereStatement[] = $documentAlias . '.' . $attributeName . '_geo_lat';
+            $whereStatement[] = $documentAlias.'.'.$attributeName.'_geo_lat';
             $whereStatement[] = 'BETWEEN';
             $whereStatement[] = $bounds->getSouth();
             $whereStatement[] = 'AND';
@@ -166,10 +166,10 @@ class FilterBuilder
         $tags = [];
 
         if ($node instanceof AttributeFilterInterface) {
-            $cteName = self::CTE_PREFIX . $node->getShortHash();
-            $tags[] = 'attribute:' . $node->getAttribute();
+            $cteName = self::CTE_PREFIX.$node->getShortHash();
+            $tags[] = 'attribute:'.$node->getAttribute();
         } else {
-            $cteName = self::CTE_PREFIX . $this->filterAst->getIdForNode($node);
+            $cteName = self::CTE_PREFIX.$this->filterAst->getIdForNode($node);
         }
 
         $this->searcher->addCTE(new Cte($cteName, $columnAliases, $qb, $tags));
@@ -180,7 +180,8 @@ class FilterBuilder
     private function addCTEForSingleAttribute(Node $node, string $where): string
     {
         $qb = $this->createQueryBuilderForSingleAttribute()
-            ->where($where);
+            ->where($where)
+        ;
 
         return $this->addCTEForNode($node, $qb);
     }
@@ -194,21 +195,24 @@ class FilterBuilder
             $sort = $queryParameters->getSort();
         }
 
-        return QueryCacheKey::build('filter.from', Engine::VERSION . ':' . $this->engine->getDependencyHash(), [
-            hash('xxh3', (string) json_encode([
-                'filter' => $this->filterAst->toArray(),
-                'sort' => $sort,
-            ], JSON_THROW_ON_ERROR)),
-        ]);
+        return QueryCacheKey::build(
+            'filter.from',
+            Engine::VERSION.':'.$this->engine->getDependencyHash(), [
+                hash('xxh3', (string) json_encode([
+                    'filter' => $this->filterAst->toArray(),
+                    'sort' => $sort,
+                ], JSON_THROW_ON_ERROR)),
+        ],
+        );
     }
 
-    private function buildGeoBoundingBoxCacheKey(string $attributeName, ?Bounds $bounds): string
+    private function buildGeoBoundingBoxCacheKey(string $attributeName, Bounds|null $bounds): string
     {
-        if ($bounds === null) {
-            return $attributeName . '|null';
+        if (null === $bounds) {
+            return $attributeName.'|null';
         }
 
-        return $attributeName . '|' . hash('xxh3', (string) json_encode([
+        return $attributeName.'|'.hash('xxh3', (string) json_encode([
             $bounds->getNorth(),
             $bounds->getEast(),
             $bounds->getSouth(),
@@ -222,25 +226,28 @@ class FilterBuilder
             ->select(
                 \sprintf(
                     '%s._id AS document_id',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
-                )
+                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                ),
             )
             ->from(
                 IndexInfo::TABLE_NAME_DOCUMENTS,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)
-            );
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+            )
+        ;
     }
 
     private function createSubQueryForMultiAttribute(Filter $node): string
     {
         $qb = $this->engine->getConnection()
-            ->createQueryBuilder();
+            ->createQueryBuilder()
+        ;
+
         $qb
             ->select(\sprintf('%s.document', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)))
             ->from(
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
                 $this->engine->getIndexInfo()
-                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)
+                    ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
             )
             ->innerJoin(
                 $this->engine->getIndexInfo()
@@ -257,11 +264,11 @@ class FilterBuilder
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $this->engine->getIndexInfo()
                         ->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                )
+                ),
             )
         ;
 
-        $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
+        $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES).'.'.
             $node->value->getMultiAttributeColumn();
 
         $sql = $node->operator->isNegative() ?
@@ -298,11 +305,12 @@ class FilterBuilder
 
         if ($node instanceof Group) {
             $groupFroms = [];
+
             foreach ($node->getChildren() as $child) {
                 $this->handleFilterAstNode($child, $groupFroms);
             }
 
-            if ($groupFroms !== []) {
+            if ([] !== $groupFroms) {
                 $froms[] = 'SELECT document_id FROM (';
                 $froms[] = implode(' ', $groupFroms);
                 $froms[] = ')';
@@ -325,8 +333,9 @@ class FilterBuilder
                 $sortingSelects = $this->getSortingSelects($node->attribute);
                 $qb = $this->engine->getConnection()->createQueryBuilder();
                 $qb->select(\sprintf('%s._id AS document_id', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS)));
+
                 foreach ($sortingSelects as $sortingSelect => $alias) {
-                    $qb->addSelect($sortingSelect . ' AS ' . $alias);
+                    $qb->addSelect($sortingSelect.' AS '.$alias);
                 }
                 $qb->from(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS));
                 $qb->innerJoin(
@@ -339,7 +348,7 @@ class FilterBuilder
                         $this->searcher->bindQueryParameter($node->attribute),
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                    )
+                    ),
                 )
                     ->innerJoin(
                         $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
@@ -349,17 +358,18 @@ class FilterBuilder
                             '%s._id = %s.document',
                             $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
                             $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                        )
-                    );
+                        ),
+                    )
+                ;
 
-                $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES) . '.' .
+                $column = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES).'.'.
                     $node->value->getMultiAttributeColumn();
 
                 // If the multi attribute operator is positive, we can inline the query, otherwise, we need a subquery
                 if ($node->operator->isPositive()) {
                     $qb->andWhere($node->operator->buildSql($this->engine->getConnection(), $column, $node->value));
                 } else {
-                    $whereStatement = [$documentAlias . '._id NOT IN ('];
+                    $whereStatement = [$documentAlias.'._id NOT IN ('];
                     $whereStatement[] = $this->createSubQueryForMultiAttribute($node);
                     $whereStatement[] = ')';
                     $qb->andWhere(implode(' ', $whereStatement));
@@ -369,7 +379,7 @@ class FilterBuilder
                 $qb->groupBy('document_id');
 
                 $cteName = $this->addCTEForNode($node, $qb, $sortingSelects);
-                $froms[] = 'SELECT document_id FROM ' . $cteName;
+                $froms[] = 'SELECT document_id FROM '.$cteName;
             } else {
                 // Single attribute
                 $attribute = $node->attribute;
@@ -380,10 +390,10 @@ class FilterBuilder
 
                 $cteName = $this->addCTEForSingleAttribute($node, $operator->buildSql(
                     $this->engine->getConnection(),
-                    $documentAlias . '.' . $attribute,
-                    $node->value
+                    $documentAlias.'.'.$attribute,
+                    $node->value,
                 ));
-                $froms[] = 'SELECT document_id FROM ' . $cteName;
+                $froms[] = 'SELECT document_id FROM '.$cteName;
             }
         }
 
@@ -400,7 +410,7 @@ class FilterBuilder
                 $node->attributeName,
                 $node->lat,
                 $node->lng,
-                $node->getBbox()
+                $node->getBbox(),
             );
 
             $qb = $this->createQueryBuilderForSingleAttribute();
@@ -412,35 +422,36 @@ class FilterBuilder
                     '%s.document_id = %s._id',
                     $distanceCte,
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                )
+                ),
             );
 
             $where = [];
 
             // And now calculate the real distance to filter out the ones that are within the BBOX (which is a square)
             // but not within the radius (which is a circle).
-            $where[] = $distanceCte . '.distance';
+            $where[] = $distanceCte.'.distance';
             $where[] = '<=';
             $where[] = $node->distance;
 
             $qb->andWhere(implode(' ', $where));
 
             $cteName = $this->addCTEForNode($node, $qb);
-            $froms[] = 'SELECT document_id FROM ' . $cteName;
+            $froms[] = 'SELECT document_id FROM '.$cteName;
         }
 
         if ($node instanceof GeoBoundingBox) {
             // Not existing attributes need be handled as no match
             if (!\in_array($node->attributeName, $this->engine->getIndexInfo()->getFilterableAttributes(), true)) {
                 $froms[] = 'SELECT document_id FROM (SELECT NULL AS document_id) WHERE 1 = 0';
+
                 return;
             }
 
             $cteName = $this->addCTEForSingleAttribute(
                 $node,
-                implode(' ', $this->createGeoBoundingBoxWhereStatement($node->attributeName, $node->getBbox()))
+                implode(' ', $this->createGeoBoundingBoxWhereStatement($node->attributeName, $node->getBbox())),
             );
-            $froms[] = 'SELECT document_id FROM ' . $cteName;
+            $froms[] = 'SELECT document_id FROM '.$cteName;
         }
 
         if ($node instanceof Concatenator) {
@@ -456,21 +467,21 @@ class FilterBuilder
      *     parameterTypes: array<int<0, max>|string, ArrayParameterType|ParameterType|Type|string>
      * }|null
      */
-    private function hydrateCachedBuildFromResult(mixed $cachedValue): ?array
+    private function hydrateCachedBuildFromResult(mixed $cachedValue): array|null
     {
         if (!\is_array($cachedValue)) {
             return null;
         }
 
         if (
-            !isset($cachedValue['from']) ||
-            !\is_string($cachedValue['from']) ||
-            !isset($cachedValue['ctes']) ||
-            !\is_array($cachedValue['ctes']) ||
-            !isset($cachedValue['parameters']) ||
-            !\is_array($cachedValue['parameters']) ||
-            !isset($cachedValue['parameterTypes']) ||
-            !\is_array($cachedValue['parameterTypes'])
+            !isset($cachedValue['from'])
+            || !\is_string($cachedValue['from'])
+            || !isset($cachedValue['ctes'])
+            || !\is_array($cachedValue['ctes'])
+            || !isset($cachedValue['parameters'])
+            || !\is_array($cachedValue['parameters'])
+            || !isset($cachedValue['parameterTypes'])
+            || !\is_array($cachedValue['parameterTypes'])
         ) {
             return null;
         }
@@ -498,7 +509,7 @@ class FilterBuilder
             $this->searcher->bindQueryParameter(
                 $parameterValue,
                 $parameterType,
-                (string) $parameterName
+                (string) $parameterName,
             );
         }
 
@@ -514,7 +525,7 @@ class FilterBuilder
     }
 
     /**
-     * @param list<string> $existingCteNames
+     * @param list<string>             $existingCteNames
      * @param list<int<0, max>|string> $existingParameterNames
      *
      * @return array{

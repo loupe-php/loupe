@@ -65,7 +65,7 @@ final class TypoTolerance
     {
         $instance = new self();
 
-        if (isset($data['isDisabled']) && $data['isDisabled'] === true) {
+        if (isset($data['isDisabled']) && true === $data['isDisabled']) {
             $instance = $instance->disable();
         }
 

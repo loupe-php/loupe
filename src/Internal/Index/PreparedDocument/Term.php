@@ -14,7 +14,7 @@ class Term
         private int $position,
         private int $start,
         private int $end,
-        private bool $isVariant
+        private bool $isVariant,
     ) {
         $this->termLength = mb_strlen($term, 'UTF-8');
     }

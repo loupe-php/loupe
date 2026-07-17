@@ -16,9 +16,8 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
     /**
      * @param array<string> $languages
      */
-    public function __construct(
-        private readonly array $languages
-    ) {
+    public function __construct(private readonly array $languages)
+    {
     }
 
     /**
@@ -28,8 +27,9 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
     {
         $bestScoresPerLanguage = [];
         $languagePerAttribute = [];
+
         foreach ($document as $attribute => $value) {
-            if ($value === '') {
+            if ('' === $value) {
                 continue;
             }
 
@@ -39,7 +39,7 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
             // Store the best score per language
             foreach ($languageResult->scores() as $lang => $score) {
                 // Weigh longer texts higher because scores will be more precise
-                $score = $score * $weight;
+                $score *= $weight;
 
                 if (isset($bestScoresPerLanguage[$lang])) {
                     $bestScoresPerLanguage[$lang] = max($bestScoresPerLanguage[$lang], $score);
@@ -56,7 +56,7 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
 
         // The overall highest score is the best language for the entire document (if any)
         $bestLanguage = null;
-        if ($bestScoresPerLanguage !== []) {
+        if ([] !== $bestScoresPerLanguage) {
             /** @var string $bestLanguage */
             $bestLanguage = array_keys($bestScoresPerLanguage, max($bestScoresPerLanguage), true)[0];
         }
@@ -64,7 +64,7 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
         return new DocumentResult($languagePerAttribute, $bestLanguage);
     }
 
-    public function detectForString(string $string): ?string
+    public function detectForString(string $string): string|null
     {
         $language = null;
         $languageResult = $this->getLanguageDetector()->detect($string);
@@ -85,7 +85,7 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
      */
     private function getLanguageDetector(): LanguageDetector
     {
-        if ($this->languageDetector === null) {
+        if (null === $this->languageDetector) {
             $this->languageDetector = new LanguageDetector(
                 EldDataFile::LARGE, // Large is actually faster than small, see https://github.com/nitotm/efficient-language-detector/issues/15
                 EldScheme::ISO639_1,

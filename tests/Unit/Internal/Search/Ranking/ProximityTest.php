@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 class ProximityTest extends TestCase
 {
-    public static function proximityFactorProvider(): \Generator
+    public static function proximityFactorProvider(): iterable
     {
         yield 'All terms are adjacent' => [
             '1:attribute:1:0;2:attribute:1:0;3:attribute:1:0',
@@ -40,7 +40,7 @@ class ProximityTest extends TestCase
         yield 'Multiple positions per term, only closest must be considered' => [
             '1:attribute:1:0,4:attribute:1:0;6:attribute:1:0,10:attribute:1:0',
             0.1,
-            (exp(-0.1 * 5)),
+            exp(-0.1 * 5),
         ];
 
         yield 'Higher decay factor' => [

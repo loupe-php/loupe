@@ -11,18 +11,18 @@ class Cte
     /**
      * @param array<string> $columnAliasList
      * @param array<string> $tags
-^     */
+     * ^     */
     public function __construct(
         private string $name,
         private array $columnAliasList,
-        private string|QueryBuilder $query,
+        private QueryBuilder|string $query,
         private array $tags = [],
-        private ?bool $materialized = null,
+        private bool|null $materialized = null,
     ) {
     }
 
     /**
-     * @return string[]
+     * @return array<string>
      */
     public function getColumnAliasList(): array
     {
@@ -48,9 +48,9 @@ class Cte
     }
 
     /**
-     * null = let SQLite decide, true = force MATERIALIZED, false = force NOT MATERIALIZED
+     * null = let SQLite decide, true = force MATERIALIZED, false = force NOT MATERIALIZED.
      */
-    public function isMaterialized(): ?bool
+    public function isMaterialized(): bool|null
     {
         return $this->materialized;
     }

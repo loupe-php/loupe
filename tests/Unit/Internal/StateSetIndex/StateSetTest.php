@@ -199,20 +199,20 @@ class StateSetTest extends TestCase
         $all = $set->all();
         sort($all);
 
-        $dump = (string) file_get_contents($engine->getDataDir() . '/state_set.bin');
+        $dump = (string) file_get_contents($engine->getDataDir().'/state_set.bin');
         $dump = (array) unpack('Q*', $dump);
         $dump = array_combine($dump, array_fill(0, \count($dump), true));
         sort($dump);
 
-        $this->assertEquals($expected, $all);
-        $this->assertEquals($dump, $all);
+        $this->assertSame($expected, $all);
+        $this->assertSame($dump, $all);
     }
 
     private function createTestEngine(): Engine
     {
         $dir = $this->createTemporaryDirectory();
-        $loupePath = $dir . '/loupe.db';
-        $ticketPath = $dir . '/ticket.db';
+        $loupePath = $dir.'/loupe.db';
+        $ticketPath = $dir.'/ticket.db';
 
         $dbConfig = new DbalConfiguration();
         $dbConfig->setMiddlewares([]);
@@ -220,10 +220,10 @@ class StateSetTest extends TestCase
         $configuration = Configuration::create()->withSearchableAttributes(['content']);
 
         $connection = DriverManager::getConnection(
-            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $loupePath)
+            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/'.$loupePath),
         );
         $ticketConnection = DriverManager::getConnection(
-            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $ticketPath)
+            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/'.$ticketPath),
         );
 
         $engine = new Engine(new ConnectionPool($connection, $ticketConnection), $configuration, new NullLogger(), $dir);

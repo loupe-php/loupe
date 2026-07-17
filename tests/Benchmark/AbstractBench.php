@@ -19,6 +19,7 @@ abstract class AbstractBench
         }
 
         $iterator = new \FilesystemIterator($dir, \FilesystemIterator::CURRENT_AS_FILEINFO);
+
         /** @var \SplFileInfo $file */
         foreach ($iterator as $file) {
             if ($file->isFile()) {
@@ -33,7 +34,8 @@ abstract class AbstractBench
             ->withSearchableAttributes(['title', 'overview'])
             ->withFilterableAttributes(['release_date', 'genres'])
             ->withSortableAttributes(['release_date'])
-            ->withLanguages(['en']);
+            ->withLanguages(['en'])
+        ;
     }
 
     protected static function ensureMoviesJson(): void
@@ -52,8 +54,8 @@ abstract class AbstractBench
         $start = microtime(true);
 
         $data = file_get_contents(self::MOVIES_URL);
-        if ($data === false || $data === '') {
-            throw new \RuntimeException('Failed to download ' . self::MOVIES_URL);
+        if (false === $data || '' === $data) {
+            throw new \RuntimeException('Failed to download '.self::MOVIES_URL);
         }
 
         file_put_contents($path, $data);
@@ -61,7 +63,7 @@ abstract class AbstractBench
         self::progress(\sprintf(
             'Downloaded %.1f MiB in %.1fs',
             \strlen($data) / 1024 / 1024,
-            microtime(true) - $start
+            microtime(true) - $start,
         ));
     }
 
@@ -84,7 +86,7 @@ abstract class AbstractBench
         $movies = self::loadMovies();
         self::progress(\sprintf(
             'Building shared search index (%d documents, one-time) ...',
-            \count($movies)
+            \count($movies),
         ));
         $start = microtime(true);
 
@@ -96,7 +98,7 @@ abstract class AbstractBench
 
     protected static function indexScratchPath(): string
     {
-        return self::projectRoot() . '/var/bench/movies-index';
+        return self::projectRoot().'/var/bench/movies-index';
     }
 
     /**
@@ -105,8 +107,8 @@ abstract class AbstractBench
     protected static function loadMovies(): array
     {
         $json = file_get_contents(self::moviesJsonPath());
-        if ($json === false) {
-            throw new \RuntimeException('Failed to read ' . self::moviesJsonPath());
+        if (false === $json) {
+            throw new \RuntimeException('Failed to read '.self::moviesJsonPath());
         }
 
         return json_decode($json, true, 512, JSON_THROW_ON_ERROR);
@@ -123,7 +125,7 @@ abstract class AbstractBench
 
     protected static function moviesJsonPath(): string
     {
-        return self::projectRoot() . '/var/movies.json';
+        return self::projectRoot().'/var/movies.json';
     }
 
     protected static function projectRoot(): string
@@ -133,11 +135,11 @@ abstract class AbstractBench
 
     protected static function searchIndexPath(): string
     {
-        return self::projectRoot() . '/var/bench/movies-search';
+        return self::projectRoot().'/var/bench/movies-search';
     }
 
     private static function progress(string $message): void
     {
-        fwrite(STDERR, '[bench] ' . $message . \PHP_EOL);
+        fwrite(STDERR, '[bench] '.$message.PHP_EOL);
     }
 }

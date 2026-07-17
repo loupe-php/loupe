@@ -22,23 +22,26 @@ class BrowseTest extends TestCase
             ->withAttributesToRetrieve(['id', 'title'])
         ;
 
-        $this->browseAndAssertResults($loupe, $browseParameters, [
-            'hits' => [
-                [
-                    'id' => 5,
-                    'title' => 'Four Rooms',
+        $this->browseAndAssertResults(
+            $loupe,
+            $browseParameters, [
+                'hits' => [
+                    [
+                        'id' => 5,
+                        'title' => 'Four Rooms',
+                    ],
+                    [
+                        'id' => 6,
+                        'title' => 'Judgment Night',
+                    ],
                 ],
-                [
-                    'id' => 6,
-                    'title' => 'Judgment Night',
-                ],
-            ],
-            'query' => 'four',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 2,
-        ]);
+                'query' => 'four',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 2,
+        ],
+        );
     }
 
     public function testMaxTotalHitsDoesNotApplyToBrowseApi(): void
@@ -66,30 +69,33 @@ class BrowseTest extends TestCase
             ->withHitsPerPage(4)
         ;
 
-        $this->browseAndAssertResults($loupe, $browseParameters, [
-            'hits' => [
-                [
-                    'id' => '0001',
-                    'content' => 'dog',
+        $this->browseAndAssertResults(
+            $loupe,
+            $browseParameters, [
+                'hits' => [
+                    [
+                        'id' => '0001',
+                        'content' => 'dog',
+                    ],
+                    [
+                        'id' => '0002',
+                        'content' => 'dog',
+                    ],
+                    [
+                        'id' => '0003',
+                        'content' => 'dog',
+                    ],
+                    [
+                        'id' => '0004',
+                        'content' => 'dog',
+                    ],
                 ],
-                [
-                    'id' => '0002',
-                    'content' => 'dog',
-                ],
-                [
-                    'id' => '0003',
-                    'content' => 'dog',
-                ],
-                [
-                    'id' => '0004',
-                    'content' => 'dog',
-                ],
-            ],
-            'query' => 'dog sled',
-            'hitsPerPage' => 4,
-            'page' => 1,
-            'totalPages' => 125,
-            'totalHits' => 500, // Max total hits must be ignored
-        ]);
+                'query' => 'dog sled',
+                'hitsPerPage' => 4,
+                'page' => 1,
+                'totalPages' => 125,
+                'totalHits' => 500, // Max total hits must be ignored
+        ],
+        );
     }
 }

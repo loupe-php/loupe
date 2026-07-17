@@ -11,10 +11,10 @@ enum Aggregate: string
 
     public function buildSql(string $attribute): string
     {
-        return $this->value . '(' . $attribute . ')';
+        return $this->value.'('.$attribute.')';
     }
 
-    public static function tryFromCaseInsensitive(string $value): null|self
+    public static function tryFromCaseInsensitive(string $value): self|null
     {
         return self::tryFrom(strtoupper($value));
     }

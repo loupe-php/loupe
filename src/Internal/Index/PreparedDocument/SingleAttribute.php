@@ -8,7 +8,7 @@ class SingleAttribute
 {
     public function __construct(
         private string $name,
-        private string|float|bool $value
+        private bool|float|string $value,
     ) {
     }
 
@@ -17,7 +17,7 @@ class SingleAttribute
         return $this->name;
     }
 
-    public function getValue(): string|float|bool
+    public function getValue(): bool|float|string
     {
         return $this->value;
     }

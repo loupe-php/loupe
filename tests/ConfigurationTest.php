@@ -82,8 +82,9 @@ class ConfigurationTest extends TestCase
                     ->withTypoThresholds([
                         10 => 3,
                         5 => 2,
-                    ])
-            );
+                    ]),
+            )
+        ;
 
         $array = $original->toArray();
         $reconstructed = Configuration::fromArray($array);

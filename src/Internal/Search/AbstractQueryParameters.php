@@ -22,13 +22,13 @@ abstract class AbstractQueryParameters
 
     private string $filter = '';
 
-    private ?int $hitsPerPage = null;
+    private int|null $hitsPerPage = null;
 
     private int $limit = 20;
 
     private int $offset = 0;
 
-    private ?int $page = null;
+    private int|null $page = null;
 
     private string $query = '';
 
@@ -38,12 +38,12 @@ abstract class AbstractQueryParameters
 
     abstract public static function create(): static;
 
-    public static function escapeFilterValue(string|int|float|bool $value): string
+    public static function escapeFilterValue(bool|float|int|string $value): string
     {
         return match (true) {
             \is_bool($value) => $value ? 'true' : 'false',
             \is_int($value), \is_float($value) => (string) $value,
-            default => "'" . str_replace("'", "''", $value) . "'"
+            default => "'".str_replace("'", "''", $value)."'",
         };
     }
 
@@ -124,7 +124,7 @@ abstract class AbstractQueryParameters
         return $this->filter;
     }
 
-    public function getHitsPerPage(): ?int
+    public function getHitsPerPage(): int|null
     {
         return $this->hitsPerPage;
     }
@@ -139,7 +139,7 @@ abstract class AbstractQueryParameters
         return $this->offset;
     }
 
-    public function getPage(): ?int
+    public function getPage(): int|null
     {
         return $this->page;
     }
@@ -214,9 +214,9 @@ abstract class AbstractQueryParameters
         return $clone;
     }
 
-    public function withHitsPerPage(?int $hitsPerPage): static
+    public function withHitsPerPage(int|null $hitsPerPage): static
     {
-        if ($hitsPerPage !== null && $hitsPerPage > self::MAX_LIMIT) {
+        if (null !== $hitsPerPage && $hitsPerPage > self::MAX_LIMIT) {
             throw InvalidSearchParametersException::maxLimit();
         }
 
@@ -246,7 +246,7 @@ abstract class AbstractQueryParameters
         return $clone;
     }
 
-    public function withPage(?int $page): static
+    public function withPage(int|null $page): static
     {
         $clone = clone $this;
         $clone->page = $page;

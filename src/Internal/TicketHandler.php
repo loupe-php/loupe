@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\LockWaitTimeoutException;
 use Doctrine\DBAL\Exception\TableExistsException;
 use Doctrine\DBAL\Exception\TableNotFoundException;
@@ -26,11 +27,11 @@ class TicketHandler
 
     private const FAILSAFE_TRIGGER_THRESHOLD = 5; // every 5 sleeps we trigger failsafe
 
-    private const SLEEP_BETWEEN_TURNS = 2;       // seconds
+    private const SLEEP_BETWEEN_TURNS = 2; // seconds
 
     private int $currentTicket = 0;
 
-    private ?int $failsafeObservedId = null;
+    private int|null $failsafeObservedId = null;
 
     private int $failsafeStableCount = 0;
 
@@ -40,7 +41,7 @@ class TicketHandler
 
     public function __construct(
         private ConnectionPool $connectionPool,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
     ) {
         $this->installSignalHandlerOnce();
     }
@@ -59,8 +60,9 @@ class TicketHandler
         $this->claimTicket();
 
         $i = 0;
+
         while (true) {
-            $i++;
+            ++$i;
             $this->log('Acquire loop: checking if it is my turn');
 
             if ($this->isMyTurn()) {
@@ -69,9 +71,10 @@ class TicketHandler
                     $this->beginExclusiveTransaction($this->connectionPool->loupeConnection);
                     $this->writeLockAlreadyAcquired = true;
                     $this->log('Writer lock acquired');
+
                     return;
                 } catch (LockWaitTimeoutException $e) {
-                    $this->log('Acquire lock failed: ' . $e->getMessage());
+                    $this->log('Acquire lock failed: '.$e->getMessage());
                     usleep(200_000); // 200ms backoff
                     continue;
                 }
@@ -80,7 +83,7 @@ class TicketHandler
             $this->log('Not my turn, sleeping');
             sleep(self::SLEEP_BETWEEN_TURNS);
 
-            if ($i === self::FAILSAFE_TRIGGER_THRESHOLD) {
+            if (self::FAILSAFE_TRIGGER_THRESHOLD === $i) {
                 $i = 0;
                 $this->runFailsafe();
             }
@@ -89,24 +92,26 @@ class TicketHandler
 
     public function claimTicket(): int
     {
-        if ($this->currentTicket !== 0) {
+        if (0 !== $this->currentTicket) {
             return $this->currentTicket;
         }
 
-        return $this->currentTicket = (int) $this->connectionPool->ticketConnection->transactional(function () {
-            try {
-                $this->connectionPool->ticketConnection->executeStatement(
-                    \sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME)
-                );
-            } catch (TableNotFoundException) {
-                $this->updateSchema();
-                $this->connectionPool->ticketConnection->executeStatement(
-                    \sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME)
-                );
-            }
+        return $this->currentTicket = (int) $this->connectionPool->ticketConnection->transactional(
+            function () {
+                try {
+                    $this->connectionPool->ticketConnection->executeStatement(
+                        \sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME),
+                    );
+                } catch (TableNotFoundException) {
+                    $this->updateSchema();
+                    $this->connectionPool->ticketConnection->executeStatement(
+                        \sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME),
+                    );
+                }
 
-            return $this->connectionPool->ticketConnection->lastInsertId();
-        });
+                return $this->connectionPool->ticketConnection->lastInsertId();
+            }
+        );
     }
 
     /**
@@ -115,16 +120,16 @@ class TicketHandler
     public function release(): void
     {
         // Acknowledge/delete our ticket under ticket DB exclusive transaction
-        if ($this->currentTicket !== 0) {
+        if (0 !== $this->currentTicket) {
             try {
                 $this->beginExclusiveTransaction($this->connectionPool->ticketConnection);
                 $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
                     'id' => $this->currentTicket,
                 ]);
                 $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
-                $this->log('Released ticket ' . $this->currentTicket);
+                $this->log('Released ticket '.$this->currentTicket);
             } catch (LockWaitTimeoutException $e) {
-                $this->log('Could not acquire ticket DB lock to delete my ticket: ' . $e->getMessage());
+                $this->log('Could not acquire ticket DB lock to delete my ticket: '.$e->getMessage());
                 // If this fails, another worker's failsafe will eventually clean up.
             } finally {
                 $this->currentTicket = 0;
@@ -139,7 +144,7 @@ class TicketHandler
     }
 
     /**
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     private function beginExclusiveTransaction(Connection $connection): void
     {
@@ -149,7 +154,7 @@ class TicketHandler
 
     private function cleanupAndExit(int $signal): void
     {
-        $this->log('Signal received: ' . $signal . ' — cleaning up');
+        $this->log('Signal received: '.$signal.' — cleaning up');
 
         // Try to release our own lock if we held it (ignore errors if we didn't)
         try {
@@ -158,7 +163,7 @@ class TicketHandler
         }
 
         // If we had no ticket, no need to do anything
-        if ($this->currentTicket === 0) {
+        if (0 === $this->currentTicket) {
             return;
         }
 
@@ -169,9 +174,10 @@ class TicketHandler
                 'id' => $this->currentTicket,
             ]);
             $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
-            $this->log('Deleted my ticket on shutdown: ' . $this->currentTicket);
+            $this->log('Deleted my ticket on shutdown: '.$this->currentTicket);
         } catch (\Throwable $e) {
-            $this->log('Failed to delete my ticket on shutdown: ' . $e->getMessage());
+            $this->log('Failed to delete my ticket on shutdown: '.$e->getMessage());
+
             try {
                 $this->rollbackExclusiveTransaction($this->connectionPool->ticketConnection);
             } catch (\Throwable) {
@@ -180,7 +186,7 @@ class TicketHandler
             $this->currentTicket = 0;
         }
 
-        exit($signal === SIGINT ? 130 : 143);
+        exit(SIGINT === $signal ? 130 : 143);
     }
 
     private function commitExclusiveTransaction(Connection $connection): void
@@ -188,11 +194,12 @@ class TicketHandler
         $connection->executeStatement('COMMIT');
     }
 
-    private function getCurrentTicket(): ?int
+    private function getCurrentTicket(): int|null
     {
         $current = $this->connectionPool->ticketConnection->fetchOne(
-            \sprintf('SELECT id FROM %s ORDER BY id LIMIT 1', self::TABLE_NAME)
+            \sprintf('SELECT id FROM %s ORDER BY id LIMIT 1', self::TABLE_NAME),
         );
+
         return $current ? (int) $current : null;
     }
 
@@ -203,7 +210,8 @@ class TicketHandler
 
         $table->addColumn('id', Types::INTEGER)
             ->setNotnull(true)
-            ->setAutoincrement(true);
+            ->setAutoincrement(true)
+        ;
 
         $table->setPrimaryKey(['id']);
 
@@ -220,6 +228,7 @@ class TicketHandler
 
         if (!\function_exists('pcntl_signal')) {
             $this->log('Signal handling unavailable (pcntl extension not available)');
+
             return;
         }
 
@@ -244,13 +253,14 @@ class TicketHandler
         try {
             $this->beginExclusiveTransaction($this->connectionPool->loupeConnection);
             $this->rollbackExclusiveTransaction($this->connectionPool->loupeConnection);
+
             return false;
         } catch (LockWaitTimeoutException) {
             return true;
         } finally {
             // Reset busy timeout
             $this->connectionPool->loupeConnection->executeStatement(
-                'PRAGMA busy_timeout = ' . LoupeFactory::SQLITE_BUSY_TIMEOUT
+                'PRAGMA busy_timeout = '.LoupeFactory::SQLITE_BUSY_TIMEOUT,
             );
         }
     }
@@ -275,15 +285,17 @@ class TicketHandler
             $this->log('Failsafe: Another writer is active. Skipping');
             $this->failsafeObservedId = null;
             $this->failsafeStableCount = 0;
+
             return;
         }
 
         $observedCurrent = $this->getCurrentTicket();
-        $this->log('Failsafe: No writer active. Observed: ' . ($observedCurrent ?? 'null'));
+        $this->log('Failsafe: No writer active. Observed: '.($observedCurrent ?? 'null'));
 
-        if ($observedCurrent === null) {
+        if (null === $observedCurrent) {
             $this->failsafeObservedId = null;
             $this->failsafeStableCount = 0;
+
             return;
         }
 
@@ -291,11 +303,12 @@ class TicketHandler
             $this->log('Failsafe: Head is my ticket. Skipping');
             $this->failsafeObservedId = null;
             $this->failsafeStableCount = 0;
+
             return;
         }
 
         if ($this->failsafeObservedId === $observedCurrent) {
-            $this->failsafeStableCount++;
+            ++$this->failsafeStableCount;
         } else {
             $this->failsafeObservedId = $observedCurrent;
             $this->failsafeStableCount = 1;
@@ -307,6 +320,7 @@ class TicketHandler
                 $observedCurrent,
                 $this->failsafeStableCount,
             ));
+
             return;
         }
 
@@ -315,6 +329,7 @@ class TicketHandler
             $this->log('Failsafe: Writer became active. Skipping delete');
             $this->failsafeObservedId = null;
             $this->failsafeStableCount = 0;
+
             return;
         }
 
@@ -325,21 +340,21 @@ class TicketHandler
 
             $freshCurrent = $this->getCurrentTicket();
             if (
-                $freshCurrent !== null &&
-                $freshCurrent === $observedCurrent &&
-                $freshCurrent !== $this->currentTicket
+                null !== $freshCurrent
+                && $freshCurrent === $observedCurrent
+                && $freshCurrent !== $this->currentTicket
             ) {
                 $this->connectionPool->ticketConnection->delete(self::TABLE_NAME, [
                     'id' => $freshCurrent,
                 ]);
-                $this->log('Failsafe: Deleted ticket ' . $freshCurrent);
+                $this->log('Failsafe: Deleted ticket '.$freshCurrent);
             } else {
                 $this->log('Failsafe: Head changed or became my own. Skipping delete');
             }
 
             $this->commitExclusiveTransaction($this->connectionPool->ticketConnection);
         } catch (LockWaitTimeoutException $e) {
-            $this->log('Failsafe: Could not acquire ticket lock: ' . $e->getMessage());
+            $this->log('Failsafe: Could not acquire ticket lock: '.$e->getMessage());
         } finally {
             $this->failsafeObservedId = null;
             $this->failsafeStableCount = 0;
@@ -352,6 +367,7 @@ class TicketHandler
         $comparator = $schemaManager->createComparator();
 
         $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
+
         try {
             $schemaManager->alterSchema($schemaDiff);
         } catch (TableExistsException|LockWaitTimeoutException) {

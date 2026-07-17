@@ -10,7 +10,7 @@ class PrimaryKeyNotFoundException extends \InvalidArgumentException implements L
     {
         return new self(\sprintf(
             'The primary key was configured to "%s" which does not exist on your document.',
-            $primaryKey
+            $primaryKey,
         ));
     }
 }

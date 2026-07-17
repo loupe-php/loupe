@@ -21,29 +21,35 @@ class DocumentHandlingTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $this->indexFixture($loupe, 'departments');
 
-        $this->assertSame([
-            'id' => 1,
-            'firstname' => 'Sandra',
-            'lastname' => 'Maier',
-            'gender' => 'female',
-            'departments' => ['Development', 'Engineering'],
-            'colors' => ['Green', 'Blue'],
-            'age' => 40,
-            'isActive' => true,
-            'recentPerformanceScores' => [4.5, 4.7, 4.6],
-        ], $loupe->getDocument(1));
+        $this->assertSame(
+            [
+                'id' => 1,
+                'firstname' => 'Sandra',
+                'lastname' => 'Maier',
+                'gender' => 'female',
+                'departments' => ['Development', 'Engineering'],
+                'colors' => ['Green', 'Blue'],
+                'age' => 40,
+                'isActive' => true,
+                'recentPerformanceScores' => [4.5, 4.7, 4.6],
+            ],
+            $loupe->getDocument(1),
+        );
 
-        $this->assertSame([
-            'id' => 1,
-            'firstname' => 'Sandra',
-            'lastname' => 'Maier',
-            'gender' => 'female',
-            'departments' => ['Development', 'Engineering'],
-            'colors' => ['Green', 'Blue'],
-            'age' => 40,
-            'isActive' => true,
-            'recentPerformanceScores' => [4.5, 4.7, 4.6],
-        ], $loupe->getDocument('1'));
+        $this->assertSame(
+            [
+                'id' => 1,
+                'firstname' => 'Sandra',
+                'lastname' => 'Maier',
+                'gender' => 'female',
+                'departments' => ['Development', 'Engineering'],
+                'colors' => ['Green', 'Blue'],
+                'age' => 40,
+                'isActive' => true,
+                'recentPerformanceScores' => [4.5, 4.7, 4.6],
+            ],
+            $loupe->getDocument('1'),
+        );
 
         $this->assertNull($loupe->getDocument('foobar'));
     }
@@ -52,7 +58,8 @@ class DocumentHandlingTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
-            ->withSortableAttributes(['firstname']);
+            ->withSortableAttributes(['firstname'])
+        ;
 
         $loupe = $this->createLoupe($configuration);
 
@@ -64,7 +71,8 @@ class DocumentHandlingTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withFilterableAttributes(['departments', 'gender'])
-            ->withSortableAttributes(['firstname']);
+            ->withSortableAttributes(['firstname'])
+        ;
 
         $loupe = $this->createLoupe($configuration);
         $sizeBefore = $loupe->size();

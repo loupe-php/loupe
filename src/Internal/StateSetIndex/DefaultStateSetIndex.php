@@ -12,9 +12,8 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 final class DefaultStateSetIndex implements StateSetIndexInterface
 {
-    public function __construct(
-        private StateSetIndex $inner,
-    ) {
+    public function __construct(private StateSetIndex $inner)
+    {
     }
 
     public function continueMatchingStatesSnapshot(string $string, MatchingStatesSnapshot $snapshot): MatchingStatesSnapshot
