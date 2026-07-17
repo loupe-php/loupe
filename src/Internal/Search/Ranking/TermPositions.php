@@ -21,7 +21,7 @@ class TermPositions
 
     private int $totalNumberOfTypos = 0;
 
-    private int $totalTermsSearchedFor;
+    private readonly int $totalTermsSearchedFor;
 
     /**
      * @param array<Term> $terms

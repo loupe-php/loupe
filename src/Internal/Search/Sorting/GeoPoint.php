@@ -15,10 +15,10 @@ class GeoPoint extends AbstractSorter
     private const GEOPOINT_RGXP = '^_geoPoint\(('.Configuration::ATTRIBUTE_NAME_RGXP.'),\s*'.self::COORDINATES_RGXP.'\)$';
 
     public function __construct(
-        private string $attributeName,
-        private Direction $direction,
-        private float $lat,
-        private float $lng,
+        private readonly string $attributeName,
+        private readonly Direction $direction,
+        private readonly float $lat,
+        private readonly float $lng,
     ) {
     }
 
@@ -85,7 +85,7 @@ class GeoPoint extends AbstractSorter
         return [
             'lat' => (float) $matches[2],
             'lng' => (float) $matches[5],
-            'attribute' => (string) $matches[1],
+            'attribute' => $matches[1],
         ];
     }
 }

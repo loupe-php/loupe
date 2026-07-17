@@ -47,10 +47,10 @@ class FilterBuilder
     private array $cachedGeoBoundingBoxWhereStatements = [];
 
     public function __construct(
-        private Engine $engine,
-        private Searcher $searcher,
-        private Ast $filterAst,
-        private CacheItemPoolInterface|null $queryCache = null,
+        private readonly Engine $engine,
+        private readonly Searcher $searcher,
+        private readonly Ast $filterAst,
+        private readonly CacheItemPoolInterface|null $queryCache = null,
     ) {
     }
 
@@ -198,7 +198,7 @@ class FilterBuilder
         return QueryCacheKey::build(
             'filter.from',
             Engine::VERSION.':'.$this->engine->getDependencyHash(), [
-                hash('xxh3', (string) json_encode([
+                hash('xxh3', json_encode([
                     'filter' => $this->filterAst->toArray(),
                     'sort' => $sort,
                 ], JSON_THROW_ON_ERROR)),
@@ -212,7 +212,7 @@ class FilterBuilder
             return $attributeName.'|null';
         }
 
-        return $attributeName.'|'.hash('xxh3', (string) json_encode([
+        return $attributeName.'|'.hash('xxh3', json_encode([
             $bounds->getNorth(),
             $bounds->getEast(),
             $bounds->getSouth(),

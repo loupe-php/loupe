@@ -45,7 +45,7 @@ class IndexInfo
 
     private bool|null $needsSetup = null;
 
-    public function __construct(private Engine $engine)
+    public function __construct(private readonly Engine $engine)
     {
     }
 
@@ -121,10 +121,8 @@ class IndexInfo
 
         $missingAttributes = array_keys(array_diff_key($documentSchema, $document));
 
-        if ([] !== $missingAttributes) {
-            foreach ($missingAttributes as $missingAttribute) {
-                $document[$missingAttribute] = null;
-            }
+        foreach ($missingAttributes as $missingAttribute) {
+            $document[$missingAttribute] = null;
         }
 
         $needsSchemaUpdate = false;

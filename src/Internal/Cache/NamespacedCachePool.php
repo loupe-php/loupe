@@ -9,10 +9,10 @@ use Psr\Cache\CacheItemPoolInterface;
 
 final class NamespacedCachePool implements CacheItemPoolInterface
 {
-    private string $namespace;
+    private readonly string $namespace;
 
     public function __construct(
-        private CacheItemPoolInterface $inner,
+        private readonly CacheItemPoolInterface $inner,
         string $namespace,
     ) {
         $this->namespace = rawurlencode($namespace);

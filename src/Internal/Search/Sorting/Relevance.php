@@ -28,7 +28,7 @@ class Relevance extends AbstractSorter
 
     private const CTE_NAME = 'relevances_per_document';
 
-    public function __construct(private Direction $direction)
+    public function __construct(private readonly Direction $direction)
     {
     }
 

@@ -9,7 +9,7 @@ use Loupe\Loupe\Internal\Search\Ranking\TypoCount;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class TypoCountTest extends TestCase
+final class TypoCountTest extends TestCase
 {
     #[DataProvider('typoCountFactorProvider')]
     public function testTypoCountCalculation(string $positionsPerTerm, float $expected): void
@@ -32,7 +32,7 @@ class TypoCountTest extends TestCase
 
         yield 'One typo' => [
             '1:title:1:0',
-            exp(-0.1 * 1),
+            exp(-0.1),
         ];
 
         yield 'Always lowest amount of typos is considered' => [

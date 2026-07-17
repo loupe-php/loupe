@@ -9,7 +9,7 @@ use Loupe\Loupe\Internal\Search\Ranking\TermPositions;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class ProximityTest extends TestCase
+final class ProximityTest extends TestCase
 {
     public static function proximityFactorProvider(): iterable
     {

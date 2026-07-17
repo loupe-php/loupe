@@ -9,7 +9,7 @@ use Loupe\Loupe\Internal\Engine;
 
 final class Loupe
 {
-    public function __construct(private Engine $engine)
+    public function __construct(private readonly Engine $engine)
     {
     }
 

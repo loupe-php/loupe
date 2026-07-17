@@ -10,7 +10,7 @@ use Loupe\Loupe\Tests\Functional\FunctionalTestTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class HighlightingTest extends TestCase
+final class HighlightingTest extends TestCase
 {
     use FunctionalTestTrait;
 

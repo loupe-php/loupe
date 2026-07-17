@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
-class IndexTest extends TestCase
+final class IndexTest extends TestCase
 {
     use FunctionalTestTrait;
     use StorageFixturesTestTrait;
@@ -543,7 +543,7 @@ class IndexTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocument(self::getSandraDocument());
 
-        $this->assertNotSame(0, \count($logger->getRecords()));
+        $this->assertNotCount(0, $logger->getRecords());
     }
 
     public function testNullValueIsIrrelevantForDocumentSchema(): void

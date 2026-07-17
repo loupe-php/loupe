@@ -21,8 +21,8 @@ class Sorting
      * @param array<AbstractSorter> $sorters
      */
     private function __construct(
-        private Engine $engine,
-        private array $sorters,
+        private readonly Engine $engine,
+        private readonly array $sorters,
     ) {
     }
 

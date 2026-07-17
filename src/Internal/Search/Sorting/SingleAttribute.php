@@ -11,8 +11,8 @@ use Loupe\Loupe\Internal\Search\Searcher;
 class SingleAttribute extends AbstractSorter
 {
     public function __construct(
-        private string $attributeName,
-        private Direction $direction,
+        private readonly string $attributeName,
+        private readonly Direction $direction,
     ) {
     }
 

@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
 
-class ConfigurationTest extends TestCase
+final class ConfigurationTest extends TestCase
 {
     public static function indexHashProvider(): iterable
     {
@@ -125,6 +125,6 @@ class ConfigurationTest extends TestCase
     {
         $configuration = Configuration::create()->withQueryCache(null);
 
-        $this->assertNull($configuration->getQueryCache());
+        $this->assertNotInstanceOf(\Psr\Cache\CacheItemPoolInterface::class, $configuration->getQueryCache());
     }
 }

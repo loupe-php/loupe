@@ -12,9 +12,9 @@ use Loupe\Loupe\Internal\Util;
 class BulkUpserter
 {
     public function __construct(
-        private Connection $connection,
-        private BulkUpsertConfig $bulkUpsertConfig,
-        private int $variableLimit,
+        private readonly Connection $connection,
+        private readonly BulkUpsertConfig $bulkUpsertConfig,
+        private readonly int $variableLimit,
     ) {
     }
 

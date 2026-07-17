@@ -90,7 +90,7 @@ class Searcher
 
     private TokenCollection|null $displayTokens = null;
 
-    private FilterBuilder $filterBuilder;
+    private readonly FilterBuilder $filterBuilder;
 
     /**
      * @var array<array{sort: string, order: string, needsMaterialization: bool}>
@@ -107,9 +107,9 @@ class Searcher
      * @param T $queryParameters
      */
     public function __construct(
-        private Engine $engine,
+        private readonly Engine $engine,
         Parser $filterParser,
-        private AbstractQueryParameters $queryParameters,
+        private readonly AbstractQueryParameters $queryParameters,
     ) {
         if ($this->queryParameters instanceof SearchParameters) {
             $this->sorting = Sorting::fromArray($this->queryParameters->getSort(), $this->engine);
@@ -507,8 +507,8 @@ class Searcher
         $facetStats = [];
 
         foreach ($result as $column => $value) {
-            if (str_starts_with($column, self::FACET_ALIAS_COUNT_PREFIX)) {
-                $attribute = (string) preg_replace('/^'.self::FACET_ALIAS_COUNT_PREFIX.'('.Configuration::ATTRIBUTE_NAME_RGXP.')$/', '$1', $column);
+            if (str_starts_with((string) $column, self::FACET_ALIAS_COUNT_PREFIX)) {
+                $attribute = (string) preg_replace('/^'.self::FACET_ALIAS_COUNT_PREFIX.'('.Configuration::ATTRIBUTE_NAME_RGXP.')$/', '$1', (string) $column);
                 $isBoolean = LoupeTypes::TYPE_BOOLEAN === $this->engine->getIndexInfo()->getLoupeTypeForAttribute($attribute);
 
                 // No matches
@@ -541,8 +541,8 @@ class Searcher
                 }
             }
 
-            if (str_starts_with($column, self::FACET_ALIAS_MIN_MAX_PREFIX)) {
-                $attribute = (string) preg_replace('/^'.self::FACET_ALIAS_MIN_MAX_PREFIX.'('.Configuration::ATTRIBUTE_NAME_RGXP.')$/', '$1', $column);
+            if (str_starts_with((string) $column, self::FACET_ALIAS_MIN_MAX_PREFIX)) {
+                $attribute = (string) preg_replace('/^'.self::FACET_ALIAS_MIN_MAX_PREFIX.'('.Configuration::ATTRIBUTE_NAME_RGXP.')$/', '$1', (string) $column);
 
                 // No matches
                 if (null === $value) {
@@ -550,7 +550,7 @@ class Searcher
                     continue;
                 }
 
-                [$min, $max] = explode(':', $value);
+                [$min, $max] = explode(':', (string) $value);
                 $facetStats[$attribute]['min'] = (float) $min;
                 $facetStats[$attribute]['max'] = (float) $max;
             }
@@ -623,7 +623,7 @@ class Searcher
         }
         $needsFoldingState = $this->needsFoldingState();
         $needsTypoCount = $this->needsTypoCount();
-        $termsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
+        $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_TERMS);
 
         if ($needsTypoCount) {
             $cteSelectQb->addSelect(\sprintf('%s.typos AS typos', $termMatchesCTE));
@@ -1390,8 +1390,8 @@ class Searcher
 
         foreach ($queryResult as $key => $value) {
             // Need to check for null because it might be that there was no match for a given term in this document
-            if (str_starts_with($key, self::MATCH_POSITION_INFO_PREFIX) && null !== $value) {
-                $documentMatches = explode(',', $value);
+            if (str_starts_with((string) $key, self::MATCH_POSITION_INFO_PREFIX) && null !== $value) {
+                $documentMatches = explode(',', (string) $value);
 
                 foreach ($documentMatches as $documentMatch) {
                     [$attribute, $position, $start, $end] = explode(':', $documentMatch, 4);

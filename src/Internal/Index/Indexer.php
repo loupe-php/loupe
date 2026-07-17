@@ -46,8 +46,8 @@ class Indexer
     private array $existingHashes = [];
 
     public function __construct(
-        private Engine $engine,
-        private TicketHandler $ticketHandler,
+        private readonly Engine $engine,
+        private readonly TicketHandler $ticketHandler,
     ) {
     }
 

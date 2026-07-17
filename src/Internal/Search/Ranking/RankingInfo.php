@@ -11,9 +11,9 @@ final class RankingInfo
      * @param array<string> $searchableAttributes
      */
     private function __construct(
-        private array $rankingRules,
-        private array $searchableAttributes,
-        private TermPositions $termPositions,
+        private readonly array $rankingRules,
+        private readonly array $searchableAttributes,
+        private readonly TermPositions $termPositions,
     ) {
     }
 

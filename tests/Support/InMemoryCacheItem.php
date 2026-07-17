@@ -12,7 +12,7 @@ final class InMemoryCacheItem implements CacheItemInterface
 
     private mixed $value = null;
 
-    public function __construct(private string $key)
+    public function __construct(private readonly string $key)
     {
     }
 

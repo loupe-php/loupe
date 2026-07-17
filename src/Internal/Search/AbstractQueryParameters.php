@@ -76,11 +76,11 @@ abstract class AbstractQueryParameters
         }
 
         if (isset($data['offset'])) {
-            $instance = $instance->withOffset((int) $data['offset']);
+            $instance = $instance->withOffset($data['offset']);
         }
 
         if (isset($data['limit'])) {
-            $instance = $instance->withLimit((int) $data['limit']);
+            $instance = $instance->withLimit($data['limit']);
         }
 
         if (isset($data['query'])) {

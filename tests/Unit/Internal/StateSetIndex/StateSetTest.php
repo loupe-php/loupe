@@ -15,7 +15,7 @@ use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
-class StateSetTest extends TestCase
+final class StateSetTest extends TestCase
 {
     use StorageFixturesTestTrait;
 

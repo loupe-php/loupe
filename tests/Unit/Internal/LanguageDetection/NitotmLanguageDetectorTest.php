@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Tests\Unit\Internal\LanguageDetection;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use PHPUnit\Framework\TestCase;
 
-class NitotmLanguageDetectorTest extends TestCase
+final class NitotmLanguageDetectorTest extends TestCase
 {
     public function testWeightedLanguageDetection(): void
     {

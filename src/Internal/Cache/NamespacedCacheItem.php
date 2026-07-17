@@ -9,8 +9,8 @@ use Psr\Cache\CacheItemInterface;
 final class NamespacedCacheItem implements CacheItemInterface
 {
     public function __construct(
-        private string $key,
-        private CacheItemInterface $inner,
+        private readonly string $key,
+        private readonly CacheItemInterface $inner,
     ) {
     }
 

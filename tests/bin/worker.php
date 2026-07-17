@@ -25,7 +25,7 @@ $generateRandomWords = static function () use ($numberOfWordsPerDocument): strin
         $word = '';
 
         for ($j = 0; $j < $length; ++$j) {
-            $word .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            $word .= $alphabet[random_int(0, strlen((string) $alphabet) - 1)];
         }
 
         $words[] = $word;

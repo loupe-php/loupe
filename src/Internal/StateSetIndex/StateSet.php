@@ -16,7 +16,7 @@ class StateSet implements StateSetInterface
 
     private InMemoryStateSet $inMemoryStateSet;
 
-    public function __construct(private Engine $engine)
+    public function __construct(private readonly Engine $engine)
     {
     }
 

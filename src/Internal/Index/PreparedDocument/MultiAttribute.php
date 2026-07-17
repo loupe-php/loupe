@@ -10,8 +10,8 @@ class MultiAttribute
      * @param array<string|float|bool> $values
      */
     public function __construct(
-        private string $name,
-        private array $values,
+        private readonly string $name,
+        private readonly array $values,
     ) {
     }
 

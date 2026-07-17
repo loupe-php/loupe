@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Tests\Functional;
 use Loupe\Loupe\Configuration;
 use PHPUnit\Framework\TestCase;
 
-class DocumentHandlingTest extends TestCase
+final class DocumentHandlingTest extends TestCase
 {
     use FunctionalTestTrait;
 

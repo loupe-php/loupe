@@ -146,11 +146,11 @@ final class Configuration
         }
 
         if (isset($data['maxQueryTokens'])) {
-            $instance = $instance->withMaxQueryTokens((int) $data['maxQueryTokens']);
+            $instance = $instance->withMaxQueryTokens($data['maxQueryTokens']);
         }
 
         if (isset($data['minTokenLengthForPrefixSearch'])) {
-            $instance = $instance->withMinTokenLengthForPrefixSearch((int) $data['minTokenLengthForPrefixSearch']);
+            $instance = $instance->withMinTokenLengthForPrefixSearch($data['minTokenLengthForPrefixSearch']);
         }
 
         if (isset($data['primaryKey'])) {

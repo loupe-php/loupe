@@ -10,13 +10,13 @@ abstract class AbstractQueryResult
      * @param array<array<string, mixed>> $hits
      */
     public function __construct(
-        private array $hits,
-        private string $query,
-        private int $processingTimeMs,
-        private int $hitsPerPage,
-        private int $page,
-        private int $totalPages,
-        private int $totalHits,
+        private readonly array $hits,
+        private readonly string $query,
+        private readonly int $processingTimeMs,
+        private readonly int $hitsPerPage,
+        private readonly int $page,
+        private readonly int $totalPages,
+        private readonly int $totalHits,
     ) {
     }
 

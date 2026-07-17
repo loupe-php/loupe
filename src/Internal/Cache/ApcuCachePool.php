@@ -40,7 +40,7 @@ final class ApcuCachePool implements CacheItemPoolInterface
         self::assertValidKey($key);
         unset($this->deferred[$key]);
 
-        return (bool) apcu_delete($key);
+        return apcu_delete($key);
     }
 
     public function deleteItems(array $keys): bool

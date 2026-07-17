@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
-class SearchTest extends TestCase
+final class SearchTest extends TestCase
 {
     use FunctionalTestTrait;
     use StorageFixturesTestTrait;

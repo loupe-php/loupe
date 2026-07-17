@@ -8,7 +8,7 @@ use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\TestCase;
 
-class SearchParametersTest extends TestCase
+final class SearchParametersTest extends TestCase
 {
     public function testHash(): void
     {

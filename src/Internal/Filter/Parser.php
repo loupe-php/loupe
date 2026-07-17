@@ -22,11 +22,11 @@ class Parser
 {
     private Ast $ast;
 
-    private \SplStack $groups;
+    private readonly \SplStack $groups;
 
-    private Lexer $lexer;
+    private readonly Lexer $lexer;
 
-    public function __construct(private Engine $engine)
+    public function __construct(private readonly Engine $engine)
     {
         $this->lexer = new Lexer();
         $this->groups = new \SplStack();

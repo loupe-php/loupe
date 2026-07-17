@@ -9,7 +9,7 @@ use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use PHPUnit\Framework\TestCase;
 
-class BrowseTest extends TestCase
+final class BrowseTest extends TestCase
 {
     use FunctionalTestTrait;
 

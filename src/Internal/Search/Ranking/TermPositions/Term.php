@@ -10,8 +10,8 @@ class Term
      * @param array<TermMatch> $termMatches
      */
     public function __construct(
-        private array $termMatches,
-        private bool $hasExactMatch = false,
+        private readonly array $termMatches,
+        private readonly bool $hasExactMatch = false,
     ) {
     }
 

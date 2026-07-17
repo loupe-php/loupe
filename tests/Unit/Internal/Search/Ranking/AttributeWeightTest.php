@@ -9,7 +9,7 @@ use Loupe\Loupe\Internal\Search\Ranking\RankingInfo;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class AttributeWeightTest extends TestCase
+final class AttributeWeightTest extends TestCase
 {
     public static function attributeWeightProvider(): iterable
     {

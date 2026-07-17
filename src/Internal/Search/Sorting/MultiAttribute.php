@@ -28,9 +28,9 @@ class MultiAttribute extends AbstractSorter
     private const MULTI_RGXP = '^(max|min)\(('.Configuration::ATTRIBUTE_NAME_RGXP.')\)$';
 
     public function __construct(
-        private string $attributeName,
-        private Aggregate $aggregate,
-        private Direction $direction,
+        private readonly string $attributeName,
+        private readonly Aggregate $aggregate,
+        private readonly Direction $direction,
     ) {
     }
 
@@ -157,7 +157,7 @@ class MultiAttribute extends AbstractSorter
 
         return [
             'aggregate' => $aggregate,
-            'attribute' => (string) $matches[2],
+            'attribute' => $matches[2],
         ];
     }
 }

@@ -12,7 +12,7 @@ use Loupe\Loupe\LoupeFactory;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 
-class ConnectionTest extends TestCase
+final class ConnectionTest extends TestCase
 {
     use StorageFixturesTestTrait;
 

@@ -11,7 +11,7 @@ use Loupe\Loupe\LoupeFactory;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 
-class LoupeFactoryTest extends TestCase
+final class LoupeFactoryTest extends TestCase
 {
     use StorageFixturesTestTrait;
 

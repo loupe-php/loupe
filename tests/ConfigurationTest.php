@@ -9,7 +9,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\TestCase;
 
-class ConfigurationTest extends TestCase
+final class ConfigurationTest extends TestCase
 {
     public function testGetIndexHashChangesOnMutation(): void
     {

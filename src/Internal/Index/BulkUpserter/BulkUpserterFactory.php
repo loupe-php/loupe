@@ -18,7 +18,7 @@ class BulkUpserterFactory
      */
     public const VARIABLE_LIMIT = 999;
 
-    public function __construct(private ConnectionPool $connectionPool)
+    public function __construct(private readonly ConnectionPool $connectionPool)
     {
     }
 

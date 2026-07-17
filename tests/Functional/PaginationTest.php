@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Tests\Functional;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\TestCase;
 
-class PaginationTest extends TestCase
+final class PaginationTest extends TestCase
 {
     use FunctionalTestTrait;
 

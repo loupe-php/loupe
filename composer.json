@@ -50,6 +50,7 @@
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
         "slow-tests": "@php vendor/bin/phpunit --testsuite=slow",
         "cs-fixer": "@php vendor/terminal42/code-quality-tools/tools/ecs/vendor/bin/ecs check src tests --config vendor/terminal42/code-quality-tools/tools/ecs/config.php --fix --ansi",
+        "rector": "@php vendor/terminal42/code-quality-tools/tools/rector/vendor/bin/rector process src tests --config vendor/terminal42/code-quality-tools/tools/rector/config.php --ansi",
         "ci-cs-fixer": "@php vendor/bin/ecs check",
         "phpstan": "@php vendor/bin/phpstan analyse",
         "bench": "@php vendor/bin/phpbench run --report=aggregate --group=query",

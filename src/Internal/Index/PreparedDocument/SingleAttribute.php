@@ -7,8 +7,8 @@ namespace Loupe\Loupe\Internal\Index\PreparedDocument;
 class SingleAttribute
 {
     public function __construct(
-        private string $name,
-        private bool|float|string $value,
+        private readonly string $name,
+        private readonly bool|float|string $value,
     ) {
     }
 

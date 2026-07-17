@@ -24,9 +24,9 @@ final class CachedStateSetIndex implements StateSetIndexInterface
     private int $cacheVersion = 0;
 
     public function __construct(
-        private StateSetIndexInterface $inner,
-        private TypoTolerance $typoTolerance,
-        private CacheItemPoolInterface $cachePool,
+        private readonly StateSetIndexInterface $inner,
+        private readonly TypoTolerance $typoTolerance,
+        private readonly CacheItemPoolInterface $cachePool,
     ) {
         $this->cacheVersion = $this->loadCacheVersion();
     }

@@ -22,7 +22,7 @@ class Tokenizer implements TokenizerInterface
      */
     private array $languageTokenizers = [];
 
-    private TokenizerInterface $noLanguageTokenizer;
+    private readonly TokenizerInterface $noLanguageTokenizer;
 
     /**
      * @var array<string, array<string, string>>
@@ -35,8 +35,8 @@ class Tokenizer implements TokenizerInterface
     private array $stemmers = [];
 
     public function __construct(
-        private Engine $engine,
-        private LanguageDetectorInterface $languageDetector,
+        private readonly Engine $engine,
+        private readonly LanguageDetectorInterface $languageDetector,
     ) {
         $this->noLanguageTokenizer = new LoupeMatcherTokenizer();
     }

@@ -8,19 +8,10 @@ use Psr\Cache\CacheItemInterface;
 
 final class ApcuCacheItem implements CacheItemInterface
 {
-    private bool $hit;
-
     private int|null $ttl = null;
 
-    private mixed $value;
-
-    public function __construct(
-        private string $key,
-        mixed $value = null,
-        bool $hit = false,
-    ) {
-        $this->value = $value;
-        $this->hit = $hit;
+    public function __construct(private readonly string $key, private mixed $value = null, private bool $hit = false)
+    {
     }
 
     public function expiresAfter(\DateInterval|int|null $time): static

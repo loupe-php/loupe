@@ -10,7 +10,7 @@ use Loupe\Loupe\Tests\Functional\FunctionalTestTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class CroppingTest extends TestCase
+final class CroppingTest extends TestCase
 {
     use FunctionalTestTrait;
 

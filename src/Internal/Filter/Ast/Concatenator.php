@@ -6,7 +6,7 @@ namespace Loupe\Loupe\Internal\Filter\Ast;
 
 class Concatenator extends Node
 {
-    public function __construct(private string $concatenator)
+    public function __construct(private readonly string $concatenator)
     {
     }
 

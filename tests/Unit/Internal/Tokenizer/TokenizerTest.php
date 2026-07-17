@@ -13,14 +13,14 @@ use Loupe\Matcher\StopWords\InMemoryStopWords;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class TokenizerTest extends TestCase
+final class TokenizerTest extends TestCase
 {
     public function testMaximumTokens(): void
     {
         $tokenizer = $this->createTokenizer();
         $tokens = $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.', 5);
 
-        $this->assertSame(5, $tokens->count());
+        $this->assertCount(5, $tokens);
 
         $this->assertSame(
             [
@@ -340,7 +340,7 @@ class TokenizerTest extends TestCase
 
     private function createTokenizer(Configuration|null $configuration = null): Tokenizer
     {
-        $configuration = $configuration ?? Configuration::create();
+        $configuration ??= Configuration::create();
         $languageDetector = new NitotmLanguageDetector($configuration->getLanguages());
 
         $engine = $this->createMock(Engine::class);

@@ -13,11 +13,11 @@ class Cte
      * @param array<string> $tags
      * ^     */
     public function __construct(
-        private string $name,
-        private array $columnAliasList,
-        private QueryBuilder|string $query,
-        private array $tags = [],
-        private bool|null $materialized = null,
+        private readonly string $name,
+        private readonly array $columnAliasList,
+        private readonly QueryBuilder|string $query,
+        private readonly array $tags = [],
+        private readonly bool|null $materialized = null,
     ) {
     }
 

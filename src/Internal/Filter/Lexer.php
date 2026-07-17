@@ -79,7 +79,7 @@ class Lexer extends AbstractLexer
 
             // Recognize quoted strings
             case "'" === $value[0]:
-                $value = str_replace("''", "'", substr($value, 1, \strlen($value) - 2));
+                $value = str_replace("''", "'", substr((string) $value, 1, \strlen((string) $value) - 2));
 
                 return self::T_STRING;
 

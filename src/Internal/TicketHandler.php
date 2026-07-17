@@ -40,8 +40,8 @@ class TicketHandler
     private bool $writeLockAlreadyAcquired = false;
 
     public function __construct(
-        private ConnectionPool $connectionPool,
-        private LoggerInterface $logger,
+        private readonly ConnectionPool $connectionPool,
+        private readonly LoggerInterface $logger,
     ) {
         $this->installSignalHandlerOnce();
     }

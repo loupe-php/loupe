@@ -8,7 +8,7 @@ use Loupe\Loupe\Internal\LoupeTypes;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class LoupeTypesTest extends TestCase
+final class LoupeTypesTest extends TestCase
 {
     public static function getTypeFromValueProvider(): iterable
     {

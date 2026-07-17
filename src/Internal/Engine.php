@@ -50,36 +50,36 @@ class Engine
         'loupe/matcher', // This contains the core tokenization logic
     ];
 
-    private BulkUpserterFactory $bulkUpserterFactory;
+    private readonly BulkUpserterFactory $bulkUpserterFactory;
 
     /**
      * @var array<string, mixed>
      */
     private array $cache = [];
 
-    private Parser $filterParser;
+    private readonly Parser $filterParser;
 
-    private Formatter $formatter;
+    private readonly Formatter $formatter;
 
-    private Indexer $indexer;
+    private readonly Indexer $indexer;
 
-    private IndexInfo $indexInfo;
+    private readonly IndexInfo $indexInfo;
 
     private CacheItemPoolInterface|null $namespacedQueryCache = null;
 
     private StateSetIndexInterface $stateSetIndex;
 
-    private StopWordsInterface $stopwords;
+    private readonly StopWordsInterface $stopwords;
 
-    private TicketHandler $ticketHandler;
+    private readonly TicketHandler $ticketHandler;
 
     private Tokenizer|null $tokenizer = null;
 
     public function __construct(
-        private ConnectionPool $connectionPool,
-        private Configuration $configuration,
-        private LoggerInterface $logger,
-        private string|null $dataDir = null,
+        private readonly ConnectionPool $connectionPool,
+        private readonly Configuration $configuration,
+        private readonly LoggerInterface $logger,
+        private readonly string|null $dataDir = null,
     ) {
         $this->indexInfo = new IndexInfo($this);
         $stateSetIndex = new StateSetIndex(
