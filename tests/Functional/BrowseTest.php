@@ -99,5 +99,35 @@ final class BrowseTest extends TestCase
                 'totalHits' => 500, // Max total hits must be ignored
             ],
         );
+
+        $this->browseAndAssertResults(
+            $loupe,
+            $browseParameters->withPage(51),
+            [
+                'hits' => [
+                    [
+                        'id' => '0201',
+                        'content' => 'dog',
+                    ],
+                    [
+                        'id' => '0202',
+                        'content' => 'dog',
+                    ],
+                    [
+                        'id' => '0203',
+                        'content' => 'dog',
+                    ],
+                    [
+                        'id' => '0204',
+                        'content' => 'dog',
+                    ],
+                ],
+                'query' => 'dog sled',
+                'hitsPerPage' => 4,
+                'page' => 51,
+                'totalPages' => 125,
+                'totalHits' => 500,
+            ],
+        );
     }
 }

@@ -1496,8 +1496,6 @@ class Searcher
 
     private function limitPagination(): void
     {
-        $maxTotalHits = $this->engine->getConfiguration()->getMaxTotalHits();
-
         $offset = $this->queryParameters->getOffset();
         $limit = $this->queryParameters->getLimit();
 
@@ -1506,8 +1504,11 @@ class Searcher
             $offset = (($this->queryParameters->getPage() ?? 1) - 1) * $limit;
         }
 
-        $limit = min($limit, $maxTotalHits);
-        $offset = min($offset, $maxTotalHits - $limit);
+        if ($this->queryParameters instanceof SearchParameters) {
+            $maxTotalHits = $this->engine->getConfiguration()->getMaxTotalHits();
+            $limit = min($limit, $maxTotalHits);
+            $offset = min($offset, $maxTotalHits - $limit);
+        }
 
         $this->queryBuilder->setFirstResult($offset);
         $this->queryBuilder->setMaxResults($limit);
