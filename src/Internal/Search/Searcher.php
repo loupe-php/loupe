@@ -386,7 +386,7 @@ class Searcher
         }
 
         return $this->searchTokens = $this->engine->getTokenizer()
-            ->tokenize(
+            ->tokenizeQuery(
                 $this->queryParameters->getQuery(),
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
             )->withoutStopwords($this->engine->getStopWords(), true)
@@ -1488,7 +1488,7 @@ class Searcher
             return $this->displayTokens = new TokenCollection();
         }
 
-        return $this->displayTokens = $this->engine->getTokenizer()->tokenize(
+        return $this->displayTokens = $this->engine->getTokenizer()->tokenizeQuery(
             $this->queryParameters->getQuery(),
             $this->engine->getConfiguration()->getMaxQueryTokens(),
         );

@@ -64,6 +64,17 @@ class NitotmLanguageDetector implements LanguageDetectorInterface
         return new DocumentResult($languagePerAttribute, $bestLanguage);
     }
 
+    public function detectForQuery(string $query): string|null
+    {
+        $languageResult = $this->getLanguageDetector()->detect($query);
+
+        if ('und' !== $languageResult->language) {
+            return $languageResult->language;
+        }
+
+        return null;
+    }
+
     public function detectForString(string $string): string|null
     {
         $language = null;
