@@ -40,6 +40,6 @@ final class ConnectionTest extends TestCase
 
     private function createConnection(string $dir): Connection
     {
-        return DriverManager::getConnection((new DsnParser())->parse((class_exists(\SQLite3::class) ? 'sqlite3' : 'pdo-sqlite').'://notused:inthis@case/'.$dir.'/loupe.db'));
+        return DriverManager::getConnection((new DsnParser())->parse('pdo-sqlite://notused:inthis@case/'.$dir.'/loupe.db'));
     }
 }
