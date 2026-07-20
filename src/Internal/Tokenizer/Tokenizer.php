@@ -127,15 +127,11 @@ class Tokenizer implements TokenizerInterface
         return $result;
     }
 
-    public function tokenizeQuery(string $query, int|null $maxTokens = null, bool $withVariants = true): TokenCollection
+    public function tokenizeQuery(string $query, int|null $maxTokens = null): TokenCollection
     {
         $language = $this->languageDetector->detectForQuery($query);
 
-        if (!$withVariants) {
-            return $this->tokenizeWithoutVariants($query, $language, $maxTokens);
-        }
-
-        return $this->tokenizeWithVariants($query, $language, $maxTokens);
+        return $this->tokenizeWithoutVariants($query, $language, $maxTokens);
     }
 
     private function getLanguageTokenizer(string|null $language): LoupeMatcherTokenizer

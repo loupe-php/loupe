@@ -389,7 +389,6 @@ class Searcher
             ->tokenizeQuery(
                 $this->queryParameters->getQuery(),
                 $this->engine->getConfiguration()->getMaxQueryTokens(),
-                false, // No variants (no stemming, no decomposition)
             )->withoutStopwords($this->engine->getStopWords(), true)
         ;
     }
