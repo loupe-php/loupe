@@ -12,6 +12,8 @@ use Toflar\StateSetIndex\StateSet\StateSetInterface;
 
 class StateSet implements StateSetInterface
 {
+    private bool $dirty = false;
+
     private bool $initialized = false;
 
     private InMemoryStateSet $inMemoryStateSet;
@@ -23,7 +25,13 @@ class StateSet implements StateSetInterface
     public function add(int $state): void
     {
         $this->initialize();
+
+        if ($this->inMemoryStateSet->has($state)) {
+            return;
+        }
+
         $this->inMemoryStateSet->add($state);
+        $this->dirty = true;
     }
 
     public function all(): array
@@ -36,7 +44,13 @@ class StateSet implements StateSetInterface
     public function clear(): void
     {
         $this->initialize();
+
+        if ([] === $this->inMemoryStateSet->all()) {
+            return;
+        }
+
         $this->inMemoryStateSet = new InMemoryStateSet([]);
+        $this->dirty = true;
     }
 
     public function has(int $state): bool
@@ -49,6 +63,11 @@ class StateSet implements StateSetInterface
     public function persist(): void
     {
         $this->initialize();
+
+        if (!$this->dirty) {
+            return;
+        }
+
         $this->engine->getConnection()->executeStatement('DELETE FROM '.IndexInfo::TABLE_NAME_STATE_SET);
         $this->engine->getConnection()->executeStatement('DELETE FROM sqlite_sequence WHERE name = ?', [IndexInfo::TABLE_NAME_STATE_SET]);
         $values = [];
@@ -64,12 +83,19 @@ class StateSet implements StateSetInterface
         $all = $this->inMemoryStateSet->all();
         $all = array_combine($this->inMemoryStateSet->all(), array_fill(0, \count($all), true));
         $this->dumpStateSetCache($all);
+        $this->dirty = false;
     }
 
     public function remove(int $state): void
     {
         $this->initialize();
+
+        if (!$this->inMemoryStateSet->has($state)) {
+            return;
+        }
+
         $this->inMemoryStateSet->remove($state);
+        $this->dirty = true;
     }
 
     /**
