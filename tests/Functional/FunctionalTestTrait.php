@@ -89,7 +89,7 @@ trait FunctionalTestTrait
         return $loupe;
     }
 
-    protected function setupLoupeWithMoviesFixture(Configuration|null $configuration = null): Loupe
+    protected function setupLoupeWithMoviesFixture(Configuration|null $configuration = null, string $dataDir = ''): Loupe
     {
         if (null === $configuration) {
             $configuration = Configuration::create();
@@ -101,7 +101,7 @@ trait FunctionalTestTrait
             ->withSearchableAttributes(['title', 'overview'])
         ;
 
-        $loupe = $this->createLoupe($configuration);
+        $loupe = $this->createLoupe($configuration, $dataDir);
         $this->indexFixture($loupe, 'movies');
 
         return $loupe;

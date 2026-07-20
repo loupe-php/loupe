@@ -723,6 +723,38 @@ final class SearchTest extends TestCase
     /**
      * @return iterable<array-key, array<mixed>>
      */
+    public static function searchWithDecompositionProvider(): iterable
+    {
+        yield '[German] Test on "Wartungsvertrag"' => [
+            'Ich möchte einen Wartungsvertrag verkaufen.',
+            'Vertrag',
+            [
+                'id' => 42,
+                'text' => 'Ich möchte einen Wartungsvertrag verkaufen.',
+                '_formatted' => [
+                    'id' => 42,
+                    'text' => 'Ich möchte einen <em>Wartungsvertrag</em> verkaufen.',
+                ],
+            ],
+        ];
+
+        yield '[German] Test on "Künstlerinnengespräch"' => [
+            'Ich möchte ein Künstlerinnengespräch führen.',
+            'Gespräch',
+            [
+                'id' => 42,
+                'text' => 'Ich möchte ein Künstlerinnengespräch führen.',
+                '_formatted' => [
+                    'id' => 42,
+                    'text' => 'Ich möchte ein <em>Künstlerinnengespräch</em> führen.',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
     public static function searchWithFacetsProvider(): iterable
     {
         yield 'No query and no filters, checking the gender and isActive facet only' => [
@@ -3652,6 +3684,41 @@ final class SearchTest extends TestCase
     }
 
     /**
+     * @param array<string, mixed> $expectedHit
+     */
+    #[DataProvider('searchWithDecompositionProvider')]
+    public function testSearchWithDecomposition(string $text, string $query, array $expectedHit): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['text'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'text' => $text,
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery($query)
+            ->withAttributesToHighlight(['text'])
+        ;
+
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [$expectedHit],
+                'query' => $query,
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        );
+    }
+
+    /**
      * @param array<string> $facets
      * @param array<mixed>  $expectedResults
      */
@@ -3901,6 +3968,37 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 1,
                 'totalHits' => \count($expectedHits),
+            ],
+        );
+    }
+
+    public function testStemmingAndDecompositionDoesNotHappenForQueries(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+            ->withLanguages(['de'])
+        ;
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument([
+            'id' => 42,
+            'content' => 'Ich bin ein Schiff',
+        ]);
+
+        $searchParameters = SearchParameters::create()
+            ->withQuery('Dampfschiff')
+        ;
+
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [],
+                'query' => 'Dampfschiff',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 0,
+                'totalHits' => 0,
             ],
         );
     }
