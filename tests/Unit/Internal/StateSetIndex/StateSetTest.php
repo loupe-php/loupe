@@ -10,6 +10,7 @@ use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\ConnectionPool;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -79,6 +80,27 @@ final class StateSetTest extends TestCase
             // Jane
             3, 14, 59, 238,
         ]);
+    }
+
+    public function testStateSetIsNotPersistedWhenDocumentsAreUnchanged(): void
+    {
+        $engine = $this->createTestEngine();
+        $documents = [
+            [
+                'id' => 1,
+                'content' => 'John Doe',
+            ],
+        ];
+
+        $engine->addDocuments($documents);
+        $engine->getConnection()->executeStatement(
+            'CREATE TRIGGER prevent_state_set_rewrite BEFORE DELETE ON '.IndexInfo::TABLE_NAME_STATE_SET.
+            " BEGIN SELECT RAISE(ABORT, 'State set must not be rewritten.'); END",
+        );
+
+        $engine->addDocuments($documents);
+
+        $this->assertStateSetContents($engine, [3, 16, 65, 263, 1, 8, 34]);
     }
 
     public function testStateSetIndexRevisedAfterDocumentDeleted(): void
