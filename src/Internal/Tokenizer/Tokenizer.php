@@ -181,7 +181,7 @@ class Tokenizer implements TokenizerInterface
 
     private function getStemmerForLanguage(string $language): Stemmer|null
     {
-        if (isset($this->stemmers[$language])) {
+        if (\array_key_exists($language, $this->stemmers)) {
             return $this->stemmers[$language];
         }
 
