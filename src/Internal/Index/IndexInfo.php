@@ -641,7 +641,6 @@ class IndexInfo
         ;
 
         $table->setPrimaryKey(['term', 'document', 'attribute', 'position']);
-        $table->addIndex(['document']);
     }
 
     private function addTermsToSchema(Schema $schema): void
@@ -730,6 +729,28 @@ class IndexInfo
         // Schema changes invalidate query planner statistics; drop them before introspecting
         $connection->executeStatement('DROP TABLE IF EXISTS sqlite_stat1');
         $connection->executeStatement('DROP TABLE IF EXISTS sqlite_stat4');
+
+        $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
+
+        foreach ($schemaDiff->getCreatedTables() as $table) {
+            if (
+                in_array(
+                    $table->getObjectName()->getUnqualifiedName()->getValue(),
+                    [
+                        self::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+                        self::TABLE_NAME_TERMS_DOCUMENTS,
+                        self::TABLE_NAME_PREFIXES_TERMS,
+                    ],
+                )
+            ) {
+                foreach ($connection->getDatabasePlatform()->getCreateTableSQL($table) as $statement) {
+                    if (str_starts_with($statement, 'CREATE TABLE')) {
+                        $statement .= ' WITHOUT ROWID';
+                    }
+                    $connection->executeStatement($statement);
+                }
+            }
+        }
 
         $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
         $schemaManager->alterSchema($schemaDiff);
