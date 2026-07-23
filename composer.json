@@ -38,8 +38,9 @@
     "require-dev": {
         "phpbench/phpbench": "^1.2",
         "phpunit/phpunit": "^10.5.58",
-        "symfony/filesystem": "^7.3.2",
-        "symfony/process": "^7.3.4",
+        "symfony/console": "^7.4",
+        "symfony/filesystem": "^7.4",
+        "symfony/process": "^7.4",
         "terminal42/code-quality-tools": "dev-main"
     },
     "scripts": {
@@ -47,8 +48,16 @@
         "unit-tests": "@php vendor/bin/phpunit --testsuite=unit",
         "functional-tests": "@php vendor/bin/phpunit --testsuite=functional",
         "slow-tests": "@php vendor/bin/phpunit --testsuite=slow",
-        "bench": "@php vendor/bin/phpbench run --report=aggregate --group=query",
-        "bench-index": "@php vendor/bin/phpbench run --report=aggregate --group=index",
+        "bench": [
+            "@php vendor/bin/phpbench run --report=aggregate --group=query",
+            "@bench-size"
+        ],
+        "bench-index": [
+            "@php vendor/bin/phpbench run --report=aggregate --group=index",
+            "@bench-index-size"
+        ],
+        "bench-size": "@php tests/bin/report-database-size.php var/bench/movies-search/loupe.db",
+        "bench-index-size": "@php tests/bin/report-database-size.php var/bench/movies-index/loupe.db",
         "cs-fixer": "@php vendor/terminal42/code-quality-tools/tools/ecs/vendor/bin/ecs check src tests --config vendor/terminal42/code-quality-tools/tools/ecs/config.php --fix --ansi",
         "rector": "@php vendor/terminal42/code-quality-tools/tools/rector/vendor/bin/rector process src tests --config vendor/terminal42/code-quality-tools/tools/rector/config.php --ansi",
         "phpstan": "@php vendor/terminal42/code-quality-tools/tools/phpstan/vendor/bin/phpstan analyze src tests --configuration vendor/terminal42/code-quality-tools/tools/phpstan/config.php --ansi",
