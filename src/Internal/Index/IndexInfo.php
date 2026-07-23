@@ -18,6 +18,8 @@ use Loupe\Loupe\Internal\Util;
 
 class IndexInfo
 {
+    public const INDEX_NAME_TERMS_DOCUMENTS_SEARCH = 'terms_documents_search';
+
     public const TABLE_NAME_DOCUMENTS = 'documents';
 
     public const TABLE_NAME_INDEX_INFO = 'info';
@@ -642,6 +644,10 @@ class IndexInfo
 
         $table->setPrimaryKey(['term', 'document', 'position']);
         $table->addIndex(['document']);
+        $table->addIndex(
+            ['term', 'document', 'attribute', 'position', 'folded'],
+            self::INDEX_NAME_TERMS_DOCUMENTS_SEARCH,
+        );
     }
 
     private function addTermsToSchema(Schema $schema): void
