@@ -83,6 +83,10 @@ abstract class AbstractBench
             return;
         }
 
+        // Rebuild from an empty database so schema benchmarks do not include freelist pages from the previous index.
+        unset($loupe);
+        self::clearDir($dataDir);
+
         $movies = self::loadMovies();
         self::progress(\sprintf(
             'Building shared search index (%d documents, one-time) ...',
@@ -90,7 +94,7 @@ abstract class AbstractBench
         ));
         $start = microtime(true);
 
-        $loupe->deleteAllDocuments();
+        $loupe = self::loupe($dataDir);
         $loupe->addDocuments($movies);
 
         self::progress(\sprintf('Index built in %.1fs', microtime(true) - $start));
