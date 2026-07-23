@@ -22,6 +22,8 @@ class IndexInfo
 
     public const TABLE_NAME_INDEX_INFO = 'info';
 
+    public const TABLE_NAME_ATTRIBUTES = 'attributes';
+
     public const TABLE_NAME_MULTI_ATTRIBUTES = 'multi_attributes';
 
     public const TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS = 'multi_attributes_documents';
@@ -163,6 +165,7 @@ class IndexInfo
         return match ($table) {
             self::TABLE_NAME_DOCUMENTS => 'd',
             self::TABLE_NAME_INDEX_INFO => 'i',
+            self::TABLE_NAME_ATTRIBUTES => 'a',
             self::TABLE_NAME_MULTI_ATTRIBUTES => 'ma',
             self::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS => 'mad',
             self::TABLE_NAME_TERMS => 't',
@@ -528,6 +531,23 @@ class IndexInfo
         $table->addIndex(['document']);
     }
 
+    private function addAttributesToSchema(Schema $schema): void
+    {
+        $table = $schema->createTable(self::TABLE_NAME_ATTRIBUTES);
+
+        $table->addColumn('id', Types::INTEGER)
+            ->setNotnull(true)
+            ->setAutoincrement(true)
+        ;
+
+        $table->addColumn('attribute', Types::STRING)
+            ->setNotnull(true)
+        ;
+
+        $table->setPrimaryKey(['id']);
+        $table->addUniqueIndex(['attribute']);
+    }
+
     private function addMultiAttributesToSchema(Schema $schema): void
     {
         $table = $schema->createTable(self::TABLE_NAME_MULTI_ATTRIBUTES);
@@ -620,7 +640,7 @@ class IndexInfo
             ->setNotnull(true)
         ;
 
-        $table->addColumn('attribute', Types::STRING)
+        $table->addColumn('attribute', Types::INTEGER)
             ->setNotnull(true)
         ;
 
@@ -682,6 +702,7 @@ class IndexInfo
 
         $this->addIndexInfoToSchema($schema);
         $this->addDocumentsToSchema($schema);
+        $this->addAttributesToSchema($schema);
         $this->addMultiAttributesToSchema($schema);
         $this->addTermsToSchema($schema);
         $this->addPrefixesToSchema($schema);
