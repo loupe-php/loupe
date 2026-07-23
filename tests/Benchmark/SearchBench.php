@@ -40,6 +40,42 @@ class SearchBench extends AbstractBench
     }
 
     #[Revs(1)]
+    public function benchMultiQueryOnAttributes(): void
+    {
+        $attributes = [
+            ['title'],
+            ['overview'],
+            ['title', 'overview'],
+        ];
+
+        foreach ($attributes as $attr) {
+            $this->loupe->search(
+                SearchParameters::create()
+                    ->withQuery('Anakin Skywalker')
+                    ->withAttributesToSearchOn($attr),
+            );
+        }
+    }
+
+    #[Revs(1)]
+    public function benchSingleQueryOnAttributes(): void
+    {
+        $attributes = [
+            ['title'],
+            ['overview'],
+            ['title', 'overview'],
+        ];
+
+        foreach ($attributes as $attr) {
+            $this->loupe->search(
+                SearchParameters::create()
+                    ->withQuery('knight')
+                    ->withAttributesToSearchOn($attr),
+            );
+        }
+    }
+
+    #[Revs(1)]
     public function benchMultiWordQueries(): void
     {
         $queries = [
