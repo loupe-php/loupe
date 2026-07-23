@@ -108,6 +108,12 @@ class IndexInfo
         );
     }
 
+    public static function getPrimaryKeyIndexName(string $tableName): string
+    {
+        // SQLite exposes the implicit index for our composite primary keys using this generated name.
+        return 'sqlite_autoindex_'.$tableName.'_1';
+    }
+
     /**
      * @param array<string, mixed> $document
      */
