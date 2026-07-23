@@ -652,7 +652,7 @@ class Searcher
             $cteSelectQb->from(\sprintf(
                 '%s %s'
                 .' CROSS JOIN %s'
-                .' CROSS JOIN %s %s INDEXED BY '.IndexInfo::getPrimaryKeyIndexName(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS)
+                .' CROSS JOIN %s %s INDEXED BY '.IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH
                 .' ON %s.id = %s.term'
                 .' AND %s.document = %s.document'
                 .' AND %s.attribute = %s.attribute'
@@ -744,7 +744,7 @@ class Searcher
         $queryBuilder->innerJoin(
             $termMatchesCTE,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            $termsDocumentsAlias.' INDEXED BY '.IndexInfo::getPrimaryKeyIndexName(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+            $termsDocumentsAlias.' INDEXED BY '.IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH,
             \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias),
         );
     }
