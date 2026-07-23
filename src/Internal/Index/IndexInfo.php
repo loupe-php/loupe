@@ -640,7 +640,7 @@ class IndexInfo
             ->setNotnull(true)
         ;
 
-        $table->setPrimaryKey(['term', 'document', 'attribute', 'position']);
+        $table->setPrimaryKey(['term', 'document', 'position']);
         $table->addIndex(['document']);
     }
 
