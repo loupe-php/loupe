@@ -479,7 +479,7 @@ class Indexer
                 return;
             }
 
-            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the "position", 3 the "start", 4 the "end" of the match, 5 if folded - need to optimize for memory here
+            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the document-global "position", 3 the "start", 4 the "end" of the match, 5 if folded - need to optimize for memory here
             $termsMapper = [];
             $knownTermRows = [];
             // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
@@ -555,7 +555,7 @@ class Indexer
                     IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                     ['document', 'attribute', 'position', 'start', 'end', 'folded', 'term'],
                     $relationRows,
-                    ['term', 'document', 'attribute', 'position'],
+                    ['term', 'document', 'position'],
                     ConflictMode::Ignore,
                 ))
                 ->execute()
@@ -819,9 +819,9 @@ class Indexer
 
         $tokensPerAttribute = $this->engine->getTokenizer()->tokenizeDocument($cleanedDocument);
 
-        foreach ($tokensPerAttribute as $attributeName => $tokenCollection) {
-            $termPosition = 1;
+        $termPosition = 1;
 
+        foreach ($tokensPerAttribute as $attributeName => $tokenCollection) {
             foreach ($tokenCollection->all() as $token) {
                 // Index the main term
                 $terms[] = new Term($token->getTerm(), $attributeName, $termPosition, $token->getOriginalStartPosition(), $token->getOriginalEndPosition(), $token->wasFolded());
