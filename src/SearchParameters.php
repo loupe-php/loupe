@@ -323,7 +323,7 @@ final class SearchParameters extends AbstractQueryParameters
     /**
      * @param array<string>|array<string, int> $attributesToCrop
      */
-    public function withAttributesToCrop(array $attributesToCrop, int $cropLength = 50, string $cropMarker = '…', int $cropMaxFragments = 5, bool $prioritizeMatches = false,): self
+    public function withAttributesToCrop(array $attributesToCrop, int $cropLength = 50, string $cropMarker = '…', int $cropMaxFragments = 5, bool $prioritizeMatches = false): self
     {
         $clone = clone $this;
 
