@@ -21,11 +21,14 @@ class Sorting
      * @param array<AbstractSorter> $sorters
      */
     private function __construct(
-        private Engine $engine,
-        private array $sorters
+        private readonly Engine $engine,
+        private readonly array $sorters,
     ) {
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function applySorters(Searcher $searcher): void
     {
         foreach ($this->sorters as $sorter) {
@@ -41,6 +44,7 @@ class Sorting
         $sorters = [];
 
         $i = 0;
+
         foreach ($sort as $v) {
             if (!\is_string($v)) {
                 throw new SortFormatException('Sort parameters must be an array of strings.');
@@ -48,7 +52,7 @@ class Sorting
 
             $chunks = explode(':', $v, 2);
 
-            if (\count($chunks) !== 2 || !\in_array($chunks[1], ['asc', 'desc'], true)) {
+            if (2 !== \count($chunks) || !\in_array($chunks[1], ['asc', 'desc'], true)) {
                 throw SortFormatException::becauseFormat();
             }
 
@@ -62,7 +66,7 @@ class Sorting
                 break;
             }
 
-            if ($sorter === null) {
+            if (null === $sorter) {
                 throw SortFormatException::becauseNotSortable($chunks[0]);
             }
 

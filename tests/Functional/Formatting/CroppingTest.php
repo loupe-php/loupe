@@ -10,11 +10,14 @@ use Loupe\Loupe\Tests\Functional\FunctionalTestTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class CroppingTest extends TestCase
+final class CroppingTest extends TestCase
 {
     use FunctionalTestTrait;
 
-    public static function croppingProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function croppingProvider(): iterable
     {
         yield 'Cropping with matches spread across the text' => [
             'assassin employer member vengeance',
@@ -262,27 +265,15 @@ class CroppingTest extends TestCase
     }
 
     /**
-     * @param array<string> $searchableAttributes
-     * @param array<string>|array<string,int> $attributesToCrop
-     * @param array<string> $attributesToHighlight
-     * @param array<mixed> $expectedResults
-     * @param array<string> $stopWords
+     * @param array<string>                    $searchableAttributes
+     * @param array<string>|array<string, int> $attributesToCrop
+     * @param array<string>                    $attributesToHighlight
+     * @param array<mixed>                     $expectedResults
+     * @param array<string>                    $stopWords
      */
     #[DataProvider('croppingProvider')]
-    public function testCropping(
-        string $query,
-        array $searchableAttributes,
-        array $attributesToCrop,
-        array $attributesToHighlight,
-        array $expectedResults,
-        array $stopWords = [],
-        string $highlightStartTag = '<em>',
-        string $highlightEndTag = '</em>',
-        string $cropMarker = '…',
-        int $cropLength = 50,
-        int $cropMaxFragments = 5,
-        bool $prioritizeMatches = false,
-    ): void {
+    public function testCropping(string $query, array $searchableAttributes, array $attributesToCrop, array $attributesToHighlight, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>', string $cropMarker = '…', int $cropLength = 50, int $cropMaxFragments = 5, bool $prioritizeMatches = false,): void
+    {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])
@@ -314,26 +305,27 @@ class CroppingTest extends TestCase
             [
                 'id' => 1,
                 'text' => 'In the opening the term alpha appears all by itself.'
-                    . $filler . 'Midway through the document the terms alpha bravo appear side by side.'
-                    . $filler . 'Near the very end alpha bravo charlie cluster tightly together.',
+                    .$filler.'Midway through the document the terms alpha bravo appear side by side.'
+                    .$filler.'Near the very end alpha bravo charlie cluster tightly together.',
             ],
         ]);
 
         $search = static fn (bool $prioritize): SearchParameters => SearchParameters::create()
             ->withQuery('alpha bravo charlie')
             ->withAttributesToCrop(['text'], cropLength: 30, cropMaxFragments: 2, prioritizeMatches: $prioritize)
-            ->withAttributesToRetrieve(['id', 'text']);
+            ->withAttributesToRetrieve(['id', 'text'])
+        ;
 
         $this->assertSame(
             '…opening the term alpha appears all by…the terms alpha bravo appear side…',
             $loupe->search($search(false))->toArray()['hits'][0]['_formatted']['text'],
-            'Document order picks the two earliest windows, dropping the densest trailing one'
+            'Document order picks the two earliest windows, dropping the densest trailing one',
         );
 
         $this->assertSame(
             '…alpha bravo appear side by side.…end alpha bravo charlie cluster…',
             $loupe->search($search(true))->toArray()['hits'][0]['_formatted']['text'],
-            'Prioritization picks the two densest windows (2 then 3 terms), so the best fragment is emitted last'
+            'Prioritization picks the two densest windows (2 then 3 terms), so the best fragment is emitted last',
         );
     }
 }

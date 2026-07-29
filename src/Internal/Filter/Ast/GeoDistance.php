@@ -14,7 +14,7 @@ class GeoDistance extends Node implements AttributeFilterInterface
         public string $attributeName,
         public float $lat,
         public float $lng,
-        public float $distance
+        public float $distance,
     ) {
     }
 

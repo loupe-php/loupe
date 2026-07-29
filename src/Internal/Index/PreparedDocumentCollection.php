@@ -7,14 +7,14 @@ namespace Loupe\Loupe\Internal\Index;
 class PreparedDocumentCollection
 {
     /**
-     * @var PreparedDocument[]
+     * @var array<PreparedDocument>
      */
     private array $documents = [];
 
     private int $termsCount = 0;
 
     /**
-     * @param PreparedDocument[] $documents
+     * @param array<PreparedDocument> $documents
      */
     public function __construct(array $documents = [])
     {
@@ -32,7 +32,7 @@ class PreparedDocumentCollection
     }
 
     /**
-     * @return PreparedDocument[]
+     * @return array<PreparedDocument>
      */
     public function all(): array
     {
@@ -44,9 +44,7 @@ class PreparedDocumentCollection
      */
     public function allInternalIds(): array
     {
-        return array_map(static function (PreparedDocument $document) {
-            return $document->getInternalId();
-        }, $this->documents);
+        return array_map(static fn (PreparedDocument $document) => $document->getInternalId(), $this->documents);
     }
 
     /**
@@ -86,7 +84,7 @@ class PreparedDocumentCollection
 
     public function empty(): bool
     {
-        return $this->documents === [];
+        return [] === $this->documents;
     }
 
     public function getTermsCount(): int

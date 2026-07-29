@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe\Internal\StateSetIndex;
 
 use Loupe\Loupe\Config\TypoTolerance;
+use Loupe\Loupe\Internal\Cache\QueryCacheKey;
 use Psr\Cache\CacheItemPoolInterface;
 use Toflar\StateSetIndex\Alphabet\AlphabetInterface;
 use Toflar\StateSetIndex\Config;
@@ -13,12 +14,6 @@ use Toflar\StateSetIndex\StateSet\StateSetInterface;
 
 final class CachedStateSetIndex implements StateSetIndexInterface
 {
-    /**
-     * 60 seconds matches typical typeahead/search interaction windows.
-     * Enough reuse while users iterate, short enough to naturally shed stale prefixes quickly.
-     */
-    private const CACHE_TTL = 60;
-
     /**
      * Version namespace rollover guard.
      * With a 60s TTL, even a very write-heavy index will not realistically hit this value within one TTL window.
@@ -29,10 +24,9 @@ final class CachedStateSetIndex implements StateSetIndexInterface
     private int $cacheVersion = 0;
 
     public function __construct(
-        private StateSetIndexInterface $inner,
-        private TypoTolerance $typoTolerance,
-        private CacheItemPoolInterface $cachePool,
-        private string $indexUid,
+        private readonly StateSetIndexInterface $inner,
+        private readonly TypoTolerance $typoTolerance,
+        private readonly CacheItemPoolInterface $cachePool,
     ) {
         $this->cacheVersion = $this->loadCacheVersion();
     }
@@ -55,6 +49,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
             if (\is_array($value)) {
                 try {
                     $snapshot = MatchingStatesSnapshot::fromArray($value);
+
                     return $snapshot->matchingStates();
                 } catch (\InvalidArgumentException) {
                     // Ignore invalid cache payloads and treat as cache miss.
@@ -63,7 +58,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
         }
 
         $snapshot = $this->findOrBuildSnapshot($string, $editDistance, $transpositionCost, $maxPrefixCharsToTrimForCacheReuse);
-        $cacheItem->set($snapshot->toArray())->expiresAfter(self::CACHE_TTL);
+        $cacheItem->set($snapshot->toArray())->expiresAfter(QueryCacheKey::INTERACTIVE_TTL);
         $this->cachePool->save($cacheItem);
 
         return $snapshot->matchingStates();
@@ -100,42 +95,41 @@ final class CachedStateSetIndex implements StateSetIndexInterface
 
     private function buildCacheKey(string $term, int $levenshteinDistance, int $transpositionCost): string
     {
-        return 'states.'
-            . $this->indexUid
-            . '.'
-            . $this->cacheVersion
-            . '.'
-            . $this->typoTolerance->getAlphabetSize()
-            . '.'
-            . $this->typoTolerance->getIndexLength()
-            . '.'
-            . $levenshteinDistance
-            . '.'
-            . $transpositionCost
-            . '.'
-            . rawurlencode($term);
+        return QueryCacheKey::build(
+            'states',
+            $this->cacheVersion,
+            [
+                $this->typoTolerance->getAlphabetSize(),
+                $this->typoTolerance->getIndexLength(),
+                $levenshteinDistance,
+                $transpositionCost,
+                $term,
+            ],
+        );
     }
 
     private function buildVersionKey(): string
     {
-        return 'states.version.'
-            . $this->indexUid
-            . '.'
-            . $this->typoTolerance->getAlphabetSize()
-            . '.'
-            . $this->typoTolerance->getIndexLength();
+        return QueryCacheKey::build(
+            'states.version',
+            1,
+            [
+                $this->typoTolerance->getAlphabetSize(),
+                $this->typoTolerance->getIndexLength(),
+            ],
+        );
     }
 
     private function bumpVersion(): void
     {
         $versionItem = $this->cachePool->getItem($this->buildVersionKey());
-        $newVersion = ((int) ($versionItem->isHit() ? $versionItem->get() : 0)) + 1;
+        $newVersion = (int) ($versionItem->isHit() ? $versionItem->get() : 0) + 1;
 
         if ($newVersion > self::CACHE_VERSION_MAX) {
             $newVersion = 1;
         }
 
-        $versionItem->set($newVersion)->expiresAfter(self::CACHE_TTL);
+        $versionItem->set($newVersion)->expiresAfter(QueryCacheKey::INTERACTIVE_TTL);
         $this->cachePool->save($versionItem);
         $this->cacheVersion = $newVersion;
     }
@@ -148,6 +142,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
 
         $termLength = mb_strlen($string);
         $maxTrim = min($maxPrefixCharsToTrimForCacheReuse, $termLength - 1);
+
         for ($trim = 1; $trim <= $maxTrim; ++$trim) {
             if ($termLength <= $trim) {
                 break;
@@ -163,6 +158,7 @@ final class CachedStateSetIndex implements StateSetIndexInterface
             if (\is_array($prefixValue)) {
                 try {
                     $snapshot = MatchingStatesSnapshot::fromArray($prefixValue);
+
                     return $this->inner->continueMatchingStatesSnapshot($string, $snapshot);
                 } catch (\InvalidArgumentException) {
                     continue;

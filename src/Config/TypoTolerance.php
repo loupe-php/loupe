@@ -65,24 +65,24 @@ final class TypoTolerance
     {
         $instance = new self();
 
-        if (isset($data['isDisabled']) && $data['isDisabled'] === true) {
+        if (isset($data['isDisabled']) && true === $data['isDisabled']) {
             $instance = $instance->disable();
         }
 
         if (isset($data['alphabetSize'])) {
-            $instance = $instance->withAlphabetSize((int) $data['alphabetSize']);
+            $instance = $instance->withAlphabetSize($data['alphabetSize']);
         }
 
         if (isset($data['firstCharTypoCountsDouble'])) {
-            $instance = $instance->withFirstCharTypoCountsDouble((bool) $data['firstCharTypoCountsDouble']);
+            $instance = $instance->withFirstCharTypoCountsDouble($data['firstCharTypoCountsDouble']);
         }
 
         if (isset($data['indexLength'])) {
-            $instance = $instance->withIndexLength((int) $data['indexLength']);
+            $instance = $instance->withIndexLength($data['indexLength']);
         }
 
         if (isset($data['isEnabledForPrefixSearch'])) {
-            $instance = $instance->withEnabledForPrefixSearch((bool) $data['isEnabledForPrefixSearch']);
+            $instance = $instance->withEnabledForPrefixSearch($data['isEnabledForPrefixSearch']);
         }
 
         if (isset($data['typoThresholds']) && \is_array($data['typoThresholds'])) {
@@ -108,7 +108,7 @@ final class TypoTolerance
             return 0;
         }
 
-        $termLength = (int) mb_strlen($term, 'UTF-8');
+        $termLength = mb_strlen($term, 'UTF-8');
 
         foreach ($this->typoThresholds as $threshold => $distance) {
             if ($termLength >= $threshold) {

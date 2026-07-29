@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
 use Loupe\Loupe\Internal\Search\Ranking\Exactness;
@@ -28,16 +29,18 @@ class Relevance extends AbstractSorter
 
     private const CTE_NAME = 'relevances_per_document';
 
-    public function __construct(
-        private Direction $direction
-    ) {
+    public function __construct(private readonly Direction $direction)
+    {
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function apply(Searcher $searcher, Engine $engine): void
     {
         $queryParameters = $searcher->getQueryParameters();
 
-        $tokens = $searcher->getTokens()->all();
+        $tokens = $searcher->getSearchTokens()->all();
         if (!\count($tokens) || !$queryParameters instanceof SearchParameters) {
             return;
         }
@@ -54,45 +57,42 @@ class Relevance extends AbstractSorter
                 continue;
             }
 
-            $termRelevanceCTE = $searcher->getCTENameForToken(self::CTE_NAME . '_term_', $token);
+            $termRelevanceCTE = $searcher->getCTENameForToken(self::CTE_NAME.'_term_', $token);
 
             // Create the relevance CTE
             $qb = $engine->getConnection()->createQueryBuilder();
             $qb
-                ->addSelect(Searcher::CTE_MATCHES . '.document_id AS document')
-                // COALESCE() makes sure that if the token does not match a document, we don't have NULL but a 0 which is important
-                // for the relevance split. Otherwise, the relevance calculation cannot know which of the documents did not match
-                // because it's just a ";" separated list.
-                ->from(Searcher::CTE_MATCHES)
-                ->leftJoin(
-                    Searcher::CTE_MATCHES,
-                    $cteName,
-                    'dm',
-                    \sprintf('dm.document = %s.document_id', Searcher::CTE_MATCHES)
-                )
-                ->groupBy(Searcher::CTE_MATCHES . '.document_id');
+                ->addSelect('dm.document AS document')
+                ->from($cteName, 'dm')
+                ->groupBy('dm.document')
+            ;
 
             if ($needsFoldingState) {
-                $qb->addSelect("COALESCE(group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos), '0') || '|' || COALESCE(MAX(dm.exact_match), 0) AS relevance");
+                $qb->addSelect("group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos) || '|' || COALESCE(MAX(dm.exact_match), 0) AS relevance");
             } else {
-                $qb->addSelect("COALESCE(group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos), '0' ) AS relevance");
+                $qb->addSelect("group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos) AS relevance");
             }
 
             $searcher->addCTE(new Cte($termRelevanceCTE, ['document_id', 'relevance_per_term'], $qb));
 
             $ctes[] = $termRelevanceCTE;
-            $relevances[] = $termRelevanceCTE . '.relevance_per_term';
+            $relevances[] = $termRelevanceCTE.'.relevance_per_term';
         }
 
-        if ($ctes === []) {
+        if ([] === $ctes) {
             return;
         }
 
         // CTE for all documents
         $qb = $engine->getConnection()->createQueryBuilder();
+        $relevancesWithFallback = array_map(
+            static fn (string $relevance): string => \sprintf("COALESCE(%s, '0')", $relevance),
+            $relevances,
+        );
+
         $qb
-            ->addSelect(Searcher::CTE_MATCHES . '.document_id AS document')
-            ->addSelect(implode(" || ';' || ", $relevances) . ' AS relevance_per_term')
+            ->addSelect(Searcher::CTE_MATCHES.'.document_id AS document')
+            ->addSelect(implode(" || ';' || ", $relevancesWithFallback).' AS relevance_per_term')
             ->from(Searcher::CTE_MATCHES)
         ;
 
@@ -107,7 +107,7 @@ class Relevance extends AbstractSorter
             Searcher::CTE_MATCHES,
             self::CTE_NAME,
             self::CTE_NAME,
-            \sprintf('%s.document_id = %s.document_id', self::CTE_NAME, Searcher::CTE_MATCHES)
+            \sprintf('%s.document_id = %s.document_id', self::CTE_NAME, Searcher::CTE_MATCHES),
         );
 
         // Searchable attributes to determine attribute weight
@@ -117,7 +117,7 @@ class Relevance extends AbstractSorter
             "loupe_relevance('%s', '%s', %s) AS %s",
             implode(':', $searchableAttributes),
             implode(':', $engine->getConfiguration()->getRankingRules()),
-            self::CTE_NAME . '.relevance_per_term',
+            self::CTE_NAME.'.relevance_per_term',
             Searcher::RELEVANCE_ALIAS,
         );
 
@@ -130,7 +130,7 @@ class Relevance extends AbstractSorter
         // Apply threshold
         $threshold = $queryParameters->getRankingScoreThreshold();
         if ($threshold > 0) {
-            $searcher->getQueryBuilder()->andWhere(Searcher::RELEVANCE_ALIAS . '>= ' . $threshold);
+            $searcher->getQueryBuilder()->andWhere(Searcher::RELEVANCE_ALIAS.'>= '.$threshold);
         }
     }
 
@@ -150,6 +150,7 @@ class Relevance extends AbstractSorter
 
         $weights = [];
         $totalWeight = 0;
+
         foreach ($rankers as [$class, $weight]) {
             $weights[] = $class::calculate($rankingInfo) * $weight;
             $totalWeight += $weight;
@@ -165,23 +166,25 @@ class Relevance extends AbstractSorter
 
     public static function supports(string $value, Engine $engine): bool
     {
-        return $value === Searcher::RELEVANCE_ALIAS;
+        return Searcher::RELEVANCE_ALIAS === $value;
     }
 
     /**
      * @param array<string> $rules
+     *
      * @return array<array{string, float}>
      */
     protected static function getRankers(array $rules): array
     {
         return array_map(
-            function ($rule, $index) {
+            static function ($rule, $index) {
                 $class = self::RANKERS[$rule];
                 $weight = Configuration::RANKING_RULES_ORDER_FACTOR ** $index;
+
                 return [$class, $weight];
             },
             $rules,
-            range(0, \count($rules) - 1)
+            range(0, \count($rules) - 1),
         );
     }
 }

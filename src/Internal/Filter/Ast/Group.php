@@ -66,7 +66,7 @@ class Group extends Node
 
     public function isEmpty(): bool
     {
-        return $this->getChildren() === [];
+        return [] === $this->getChildren();
     }
 
     public function toArray(): array

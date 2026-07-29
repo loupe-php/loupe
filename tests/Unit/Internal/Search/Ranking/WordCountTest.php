@@ -9,7 +9,7 @@ use Loupe\Loupe\Internal\Search\Ranking\WordCount;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class WordCountTest extends TestCase
+final class WordCountTest extends TestCase
 {
     #[DataProvider('wordCountFactorProvider')]
     public function testWordCountCalculation(string $positionsPerTerm, float $expected): void
@@ -18,7 +18,10 @@ class WordCountTest extends TestCase
         $this->assertSame($expected, WordCount::calculate($rankingInfo));
     }
 
-    public static function wordCountFactorProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function wordCountFactorProvider(): iterable
     {
         yield 'No terms match' => [
             '0;0;0',

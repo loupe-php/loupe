@@ -1,6 +1,7 @@
 /var
 /vendor
 /.phpunit.result.cache
+/.phpbench
 /composer.lock
 /docs/.docs-site
 /docs/_build

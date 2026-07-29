@@ -10,17 +10,17 @@ use Symfony\Component\Filesystem\Filesystem;
 trait StorageFixturesTestTrait
 {
     /**
-     * @var string[]
+     * @var array<string>
      */
     protected array $tmpDataDirs = [];
 
     protected function createTemporaryDirectory(): string
     {
-        $dir = sys_get_temp_dir() . '/' . uniqid('lt');
+        $dir = sys_get_temp_dir().'/'.uniqid('lt');
         $this->tmpDataDirs[] = $dir;
 
         $fs = new Filesystem();
-        ($fs)->mkdir($dir);
+        $fs->mkdir($dir);
 
         return $dir;
     }
@@ -29,6 +29,7 @@ trait StorageFixturesTestTrait
     private function clearTemporaryDirectory(): void
     {
         $fs = new Filesystem();
+
         foreach (array_filter($this->tmpDataDirs) as $dir) {
             $fs->remove($dir);
         }

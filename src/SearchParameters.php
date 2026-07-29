@@ -7,11 +7,12 @@ namespace Loupe\Loupe;
 use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\MatchingStrategy;
+use Loupe\Loupe\Internal\Search\Searcher;
 
 final class SearchParameters extends AbstractQueryParameters
 {
     /**
-     * @var array<string,int>
+     * @var array<string, int>
      */
     private array $attributesToCrop = [];
 
@@ -26,7 +27,7 @@ final class SearchParameters extends AbstractQueryParameters
 
     private int $cropMaxFragments = 5;
 
-    private ?string $distinct = null;
+    private string|null $distinct = null;
 
     /**
      * @var array<string>
@@ -52,7 +53,9 @@ final class SearchParameters extends AbstractQueryParameters
     /**
      * @var array<string>
      */
-    private array $sort = [Internal\Search\Searcher::RELEVANCE_ALIAS . ':desc'];
+    private array $sort = [
+        Searcher::RELEVANCE_ALIAS.':desc',
+    ];
 
     public static function create(): static
     {
@@ -61,7 +64,7 @@ final class SearchParameters extends AbstractQueryParameters
 
     /**
      * @param array{
-     *     attributesToCrop?: array<string>|array<string,int>,
+     *     attributesToCrop?: array<string>|array<string, int>,
      *     cropLength?: int,
      *     cropMarker?: string,
      *     cropMaxFragments?: int,
@@ -145,7 +148,7 @@ final class SearchParameters extends AbstractQueryParameters
     }
 
     /**
-     * @return array<string,int>
+     * @return array<string, int>
      */
     public function getAttributesToCrop(): array
     {
@@ -175,7 +178,7 @@ final class SearchParameters extends AbstractQueryParameters
         return $this->cropMaxFragments;
     }
 
-    public function getDistinct(): ?string
+    public function getDistinct(): string|null
     {
         return $this->distinct;
     }
@@ -269,7 +272,7 @@ final class SearchParameters extends AbstractQueryParameters
 
     /**
      * @return array{
-     *     attributesToCrop: array<string,int>,
+     *     attributesToCrop: array<string, int>,
      *     attributesToHighlight: array<string>,
      *     facets: array<string>,
      *     cropLength: int,
@@ -318,18 +321,14 @@ final class SearchParameters extends AbstractQueryParameters
     }
 
     /**
-     * @param array<string>|array<string,int> $attributesToCrop
+     * @param array<string>|array<string, int> $attributesToCrop
      */
-    public function withAttributesToCrop(
-        array $attributesToCrop,
-        int $cropLength = 50,
-        string $cropMarker = '…',
-        int $cropMaxFragments = 5,
-        bool $prioritizeMatches = false,
-    ): self {
+    public function withAttributesToCrop(array $attributesToCrop, int $cropLength = 50, string $cropMarker = '…', int $cropMaxFragments = 5, bool $prioritizeMatches = false,): self
+    {
         $clone = clone $this;
 
         $attributes = [];
+
         foreach ($attributesToCrop as $key => $attribute) {
             if (\is_string($key) && \is_int($attribute)) {
                 $attributes[$key] = $attribute;
@@ -352,11 +351,8 @@ final class SearchParameters extends AbstractQueryParameters
     /**
      * @param array<string> $attributesToHighlight
      */
-    public function withAttributesToHighlight(
-        array $attributesToHighlight,
-        string $highlightStartTag = '<em>',
-        string $highlightEndTag = '</em>',
-    ): self {
+    public function withAttributesToHighlight(array $attributesToHighlight, string $highlightStartTag = '<em>', string $highlightEndTag = '</em>'): self
+    {
         sort($attributesToHighlight);
 
         $clone = clone $this;
@@ -367,10 +363,11 @@ final class SearchParameters extends AbstractQueryParameters
         return $clone;
     }
 
-    public function withDistinct(?string $distinct): self
+    public function withDistinct(string|null $distinct): self
     {
         $clone = clone $this;
         $clone->distinct = $distinct;
+
         return $clone;
     }
 
@@ -389,11 +386,8 @@ final class SearchParameters extends AbstractQueryParameters
     {
         $strategy = MatchingStrategy::tryFrom($matchingStrategy);
 
-        if ($strategy === null) {
-            throw InvalidSearchParametersException::invalidMatchingStrategy(
-                $matchingStrategy,
-                array_column(MatchingStrategy::cases(), 'value'),
-            );
+        if (null === $strategy) {
+            throw InvalidSearchParametersException::invalidMatchingStrategy($matchingStrategy, array_column(MatchingStrategy::cases(), 'value'));
         }
 
         $clone = clone $this;

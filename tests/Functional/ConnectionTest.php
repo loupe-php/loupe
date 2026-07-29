@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Functional;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Configuration;
@@ -11,7 +12,7 @@ use Loupe\Loupe\LoupeFactory;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 
-class ConnectionTest extends TestCase
+final class ConnectionTest extends TestCase
 {
     use StorageFixturesTestTrait;
 
@@ -37,8 +38,8 @@ class ConnectionTest extends TestCase
         $this->assertSame(8192, $this->createConnection($dir)->fetchOne('PRAGMA page_size'));
     }
 
-    private function createConnection(string $dir): \Doctrine\DBAL\Connection
+    private function createConnection(string $dir): Connection
     {
-        return DriverManager::getConnection((new DsnParser())->parse((class_exists(\SQLite3::class) ? 'sqlite3' : 'pdo-sqlite') . '://notused:inthis@case/' . $dir . '/loupe.db'));
+        return DriverManager::getConnection((new DsnParser())->parse('pdo-sqlite://notused:inthis@case/'.$dir.'/loupe.db'));
     }
 }

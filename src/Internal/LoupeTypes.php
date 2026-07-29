@@ -32,7 +32,8 @@ class LoupeTypes
     public const VALUE_NULL = ':l:n';
 
     /**
-     * @param  array<mixed> $attributeValue
+     * @param array<mixed> $attributeValue
+     *
      * @return array<float>
      */
     public static function convertToArrayOfFloats(array $attributeValue): array
@@ -47,7 +48,8 @@ class LoupeTypes
     }
 
     /**
-     * @param  array<mixed> $attributeValue
+     * @param array<mixed> $attributeValue
+     *
      * @return array<string>
      */
     public static function convertToArrayOfStrings(array $attributeValue): array
@@ -85,13 +87,13 @@ class LoupeTypes
         }
 
         if (\is_string($attributeValue)) {
-            if ($attributeValue === '') {
+            if ('' === $attributeValue) {
                 return self::VALUE_EMPTY;
             }
 
             // Escape our internal values
             if (\in_array($attributeValue, [self::VALUE_EMPTY, self::VALUE_NULL], true)) {
-                return '\\' . $attributeValue;
+                return '\\'.$attributeValue;
             }
 
             return $attributeValue;
@@ -105,10 +107,11 @@ class LoupeTypes
             }
 
             $strings = [];
+
             foreach ($attributeValue as $k => $v) {
                 $recursive = self::convertToString($v);
-                if ($recursive !== '') {
-                    $strings[] = $k . '.' . self::convertToString($v);
+                if ('' !== $recursive) {
+                    $strings[] = $k.'.'.self::convertToString($v);
                 }
             }
 
@@ -126,9 +129,9 @@ class LoupeTypes
     /**
      * @return array<string>|array<float>|string|float|bool
      */
-    public static function convertValueToType(mixed $attributeValue, string $type): array|string|float|bool
+    public static function convertValueToType(mixed $attributeValue, string $type): array|bool|float|string
     {
-        if ($attributeValue === null) {
+        if (null === $attributeValue) {
             return self::VALUE_NULL;
         }
 
@@ -138,16 +141,16 @@ class LoupeTypes
             self::TYPE_STRING => self::convertToString($attributeValue),
             self::TYPE_NUMBER => self::convertToFloat($attributeValue),
             self::TYPE_BOOLEAN => (bool) $attributeValue,
-            self::TYPE_ARRAY_STRING => $attributeValue === [] ? self::VALUE_EMPTY : self::convertToArrayOfStrings($attributeValue),
-            self::TYPE_ARRAY_NUMBER => $attributeValue === [] ? self::VALUE_EMPTY : self::convertToArrayOfFloats($attributeValue),
+            self::TYPE_ARRAY_STRING => [] === $attributeValue ? self::VALUE_EMPTY : self::convertToArrayOfStrings($attributeValue),
+            self::TYPE_ARRAY_NUMBER => [] === $attributeValue ? self::VALUE_EMPTY : self::convertToArrayOfFloats($attributeValue),
             self::TYPE_GEO => self::convertToArrayOfFloats($attributeValue),
-            default => throw new \InvalidArgumentException('Invalid type given.')
+            default => throw new \InvalidArgumentException('Invalid type given.'),
         };
     }
 
     public static function getTypeFromValue(mixed $variable): string
     {
-        if ($variable === null) {
+        if (null === $variable) {
             return self::TYPE_NULL;
         }
 
@@ -163,19 +166,20 @@ class LoupeTypes
             $count = \count($variable);
             $keys = array_keys($variable);
 
-            if ($count === 0) {
+            if (0 === $count) {
                 return self::TYPE_ARRAY_EMPTY;
             }
 
-            if ($count === 2 && \in_array('lat', $keys, true) && \in_array('lng', $keys, true)) {
+            if (2 === $count && \in_array('lat', $keys, true) && \in_array('lng', $keys, true)) {
                 return self::TYPE_GEO;
             }
 
             $allNumbers = true;
+
             foreach ($variable as $v) {
                 $type = self::getTypeFromValue($v);
 
-                if ($type !== self::TYPE_NUMBER) {
+                if (self::TYPE_NUMBER !== $type) {
                     $allNumbers = false;
                 }
             }
@@ -194,44 +198,56 @@ class LoupeTypes
 
     public static function isFloatType(string $type): bool
     {
-        return \in_array($type, [
-            self::TYPE_NUMBER,
-            self::TYPE_ARRAY_NUMBER,
-        ], true);
+        return \in_array(
+            $type,
+            [
+                self::TYPE_NUMBER,
+                self::TYPE_ARRAY_NUMBER,
+            ],
+            true,
+        );
     }
 
     public static function isMultiType(string $type): bool
     {
-        return \in_array($type, [
-            self::TYPE_ARRAY_EMPTY,
-            self::TYPE_ARRAY_NUMBER,
-            self::TYPE_STRING,
-        ], true);
+        return \in_array(
+            $type,
+            [
+                self::TYPE_ARRAY_EMPTY,
+                self::TYPE_ARRAY_NUMBER,
+                self::TYPE_STRING,
+            ],
+            true,
+        );
     }
 
     public static function isSingleType(string $type): bool
     {
         // The Geo type is not exactly a single type, but it has to be treated as such
-        return \in_array($type, [
-            self::TYPE_NUMBER,
-            self::TYPE_STRING,
-            self::TYPE_BOOLEAN,
-            self::TYPE_GEO,
-            self::TYPE_NULL,
-        ], true);
+        return \in_array(
+            $type,
+            [
+                self::TYPE_NUMBER,
+                self::TYPE_STRING,
+                self::TYPE_BOOLEAN,
+                self::TYPE_GEO,
+                self::TYPE_NULL,
+            ],
+            true,
+        );
     }
 
     public static function typeIsNarrowerThanType(string $schemaType, string $checkType): bool
     {
-        if ($checkType === self::TYPE_NULL) {
+        if (self::TYPE_NULL === $checkType) {
             return false;
         }
 
-        if ($schemaType === self::TYPE_NULL) {
+        if (self::TYPE_NULL === $schemaType) {
             return true;
         }
 
-        if ($schemaType !== self::TYPE_ARRAY_EMPTY) {
+        if (self::TYPE_ARRAY_EMPTY !== $schemaType) {
             return false;
         }
 
@@ -244,7 +260,7 @@ class LoupeTypes
 
     public static function typeMatchesType(string $schemaType, string $checkType): bool
     {
-        if ($checkType === self::TYPE_NULL || $schemaType === self::TYPE_NULL) {
+        if (self::TYPE_NULL === $checkType || self::TYPE_NULL === $schemaType) {
             return true;
         }
 
@@ -252,11 +268,11 @@ class LoupeTypes
             return true;
         }
 
-        if ($checkType === self::TYPE_ARRAY_EMPTY && ($schemaType === self::TYPE_ARRAY_NUMBER || $schemaType === self::TYPE_ARRAY_STRING)) {
+        if (self::TYPE_ARRAY_EMPTY === $checkType && (self::TYPE_ARRAY_NUMBER === $schemaType || self::TYPE_ARRAY_STRING === $schemaType)) {
             return true;
         }
 
-        if ($schemaType === self::TYPE_ARRAY_EMPTY && ($checkType === self::TYPE_ARRAY_NUMBER || $checkType === self::TYPE_ARRAY_STRING)) {
+        if (self::TYPE_ARRAY_EMPTY === $schemaType && (self::TYPE_ARRAY_NUMBER === $checkType || self::TYPE_ARRAY_STRING === $checkType)) {
             return true;
         }
 

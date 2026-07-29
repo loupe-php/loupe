@@ -11,6 +11,7 @@ use Loupe\Loupe\BrowseParameters;
 use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
+use Loupe\Loupe\Internal\Cache\NamespacedCachePool;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpserterFactory;
 use Loupe\Loupe\Internal\Index\Indexer;
@@ -31,6 +32,7 @@ use Loupe\Matcher\Matcher;
 use Loupe\Matcher\StopWords\InMemoryStopWords;
 use Loupe\Matcher\StopWords\StopWordsInterface;
 use Pdo\Sqlite;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use Toflar\StateSetIndex\Alphabet\Utf8Alphabet;
 use Toflar\StateSetIndex\Config;
@@ -39,7 +41,7 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '0.13.1'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.13.2'; // Increase this whenever a re-index of all documents is needed
 
     private const DEPENDENCY_HASH_RELEVANT_PACKAGES = [
         'wamania/php-stemmer', // Stemming algorithms might change
@@ -48,34 +50,36 @@ class Engine
         'loupe/matcher', // This contains the core tokenization logic
     ];
 
-    private BulkUpserterFactory $bulkUpserterFactory;
+    private readonly BulkUpserterFactory $bulkUpserterFactory;
 
     /**
      * @var array<string, mixed>
      */
     private array $cache = [];
 
-    private Parser $filterParser;
+    private readonly Parser $filterParser;
 
-    private Formatter $formatter;
+    private readonly Formatter $formatter;
 
-    private Indexer $indexer;
+    private readonly Indexer $indexer;
 
-    private IndexInfo $indexInfo;
+    private readonly IndexInfo $indexInfo;
+
+    private CacheItemPoolInterface|null $namespacedQueryCache = null;
 
     private StateSetIndexInterface $stateSetIndex;
 
-    private StopwordsInterface $stopwords;
+    private readonly StopWordsInterface $stopwords;
 
-    private TicketHandler $ticketHandler;
+    private readonly TicketHandler $ticketHandler;
 
-    private ?Tokenizer $tokenizer = null;
+    private Tokenizer|null $tokenizer = null;
 
     public function __construct(
-        private ConnectionPool $connectionPool,
-        private Configuration $configuration,
-        private LoggerInterface $logger,
-        private ?string $dataDir = null
+        private readonly ConnectionPool $connectionPool,
+        private readonly Configuration $configuration,
+        private readonly LoggerInterface $logger,
+        private readonly string|null $dataDir = null,
     ) {
         $this->indexInfo = new IndexInfo($this);
         $stateSetIndex = new StateSetIndex(
@@ -85,7 +89,7 @@ class Engine
             ),
             new Utf8Alphabet(),
             new StateSet($this),
-            new NullDataStore()
+            new NullDataStore(),
         );
         $this->stateSetIndex = new DefaultStateSetIndex($stateSetIndex);
         $this->ticketHandler = new TicketHandler($this->connectionPool, $this->getLogger());
@@ -100,11 +104,12 @@ class Engine
 
     /**
      * @param array<array<string, mixed>> $documents
+     *
      * @throws InvalidDocumentException
      */
     public function addDocuments(array $documents): self
     {
-        if ($documents === []) {
+        if ([] === $documents) {
             return $this;
         }
 
@@ -149,7 +154,8 @@ class Engine
         return (int) $this->getConnection()->createQueryBuilder()
             ->select('COUNT(*)')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS)
-            ->fetchOne();
+            ->fetchOne()
+        ;
     }
 
     public function deleteAllDocuments(): self
@@ -196,7 +202,7 @@ class Engine
         return $this->connectionPool->loupeConnection;
     }
 
-    public function getDataDir(): ?string
+    public function getDataDir(): string|null
     {
         return $this->dataDir;
     }
@@ -219,7 +225,7 @@ class Engine
     /**
      * @return array<string, mixed>|null
      */
-    public function getDocument(int|string $identifier): ?array
+    public function getDocument(int|string $identifier): array|null
     {
         if ($this->getIndexInfo()->needsSetup()) {
             return null;
@@ -230,8 +236,9 @@ class Engine
                 \sprintf('SELECT _document FROM %s WHERE _user_id = :id', IndexInfo::TABLE_NAME_DOCUMENTS),
                 [
                     'id' => LoupeTypes::convertToString($identifier),
-                ]
-            );
+                ],
+            )
+        ;
 
         if ($document) {
             return Util::decodeJson($document);
@@ -260,6 +267,23 @@ class Engine
         return $this->logger;
     }
 
+    public function getQueryCache(): CacheItemPoolInterface|null
+    {
+        if ($this->namespacedQueryCache instanceof CacheItemPoolInterface) {
+            return $this->namespacedQueryCache;
+        }
+
+        $queryCache = $this->configuration->getQueryCache();
+        if (null === $queryCache) {
+            return null;
+        }
+
+        return $this->namespacedQueryCache = new NamespacedCachePool(
+            $queryCache,
+            $this->getIndexInfo()->getIndexUid(),
+        );
+    }
+
     public function getStateSetIndex(): StateSetIndexInterface
     {
         return $this->stateSetIndex;
@@ -279,7 +303,7 @@ class Engine
         $languages = $this->getConfiguration()->getLanguages();
 
         // Fast route if you configured only one language
-        if (\count($languages) === 1) {
+        if (1 === \count($languages)) {
             $languageDetector = new PreselectedLanguageDetector($languages[0]);
         } else {
             $languageDetector = new NitotmLanguageDetector($languages);
@@ -295,7 +319,7 @@ class Engine
             return false;
         }
 
-        if ($this->getIndexInfo()->getEngineVersion() !== self::VERSION) {
+        if (self::VERSION !== $this->getIndexInfo()->getEngineVersion()) {
             return true;
         }
 
@@ -332,13 +356,14 @@ class Engine
     }
 
     /**
-     * Returns the approx. size in bytes
+     * Returns the approx. size in bytes.
      */
     public function size(): int
     {
         return (int) $this->getConnection()
             ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
-            ->fetchOne();
+            ->fetchOne()
+        ;
     }
 
     private function maybeWrapStateSetIndexWithCache(): void
@@ -347,8 +372,11 @@ class Engine
             return;
         }
 
-        $queryCache = $this->configuration->getQueryCache();
-        if ($queryCache === null || $this->indexInfo->needsSetup()) {
+        if ($this->indexInfo->needsSetup()) {
+            return;
+        }
+        $queryCache = $this->getQueryCache();
+        if (null === $queryCache) {
             return;
         }
 
@@ -356,7 +384,6 @@ class Engine
             $this->stateSetIndex,
             $this->configuration->getTypoTolerance(),
             $queryCache,
-            $this->indexInfo->getIndexUid(),
         );
     }
 
@@ -389,13 +416,13 @@ class Engine
                 $nativeConnection->createFunction(
                     $functionName,
                     $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
-                    $function['numArgs']
+                    $function['numArgs'],
                 );
             } elseif ($nativeConnection instanceof \PDO) {
                 $nativeConnection->sqliteCreateFunction(
                     $functionName,
                     $this->wrapSQLiteMethodForCache($functionName, $function['callback']),
-                    $function['numArgs']
+                    $function['numArgs'],
                 );
             } else {
                 throw new \LogicException('This here should not happen.');
@@ -407,14 +434,14 @@ class Engine
     {
         return function () use ($prefix, $callback) {
             $args = \func_get_args();
-            $cacheKey = $prefix . ':' . implode('--', $args);
+            $cacheKey = $prefix.':'.implode('--', $args);
             $cachedValue = $this->cache[$cacheKey] ?? null;
 
-            if ($cachedValue !== null) {
+            if (null !== $cachedValue) {
                 return $cachedValue;
             }
 
-            return $this->cache[$cacheKey] = \call_user_func_array($callback, $args);
+            return $this->cache[$cacheKey] = $callback(...$args);
         };
     }
 }

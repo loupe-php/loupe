@@ -8,6 +8,7 @@ use Doctrine\DBAL\Query\QueryBuilder;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Filter\Ast\FilterValue;
 use Loupe\Loupe\Internal\Filter\Ast\Operator;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Searcher;
 
@@ -15,6 +16,9 @@ abstract class AbstractSorter
 {
     private int $id = 0;
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     abstract public function apply(Searcher $searcher, Engine $engine): void;
 
     abstract public static function fromString(string $value, Engine $engine, Direction $direction): self;
@@ -33,6 +37,9 @@ abstract class AbstractSorter
 
     abstract public static function supports(string $value, Engine $engine): bool;
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     protected function addAndOrderByCte(Searcher $searcher, Engine $engine, Direction $direction, string $cteName, QueryBuilder $queryBuilder): void
     {
         if ($searcher->hasCTE($cteName)) {
@@ -49,11 +56,12 @@ abstract class AbstractSorter
                 \sprintf(
                     '%s.document_id = %s.document_id',
                     $cteName,
-                    Searcher::CTE_MATCHES
-                )
-            );
+                    Searcher::CTE_MATCHES,
+                ),
+            )
+        ;
 
-        $alias = $cteName . '.sort_order';
+        $alias = $cteName.'.sort_order';
 
         // Because of how Loupe works (SQLite's loosely typed system) we need to always ensure that null and empty values
         // are ordered ascending first.
@@ -62,7 +70,7 @@ abstract class AbstractSorter
             Operator::Equals->buildSql(
                 $engine->getConnection(),
                 $alias,
-                FilterValue::createNull()
+                FilterValue::createNull(),
             ),
             Direction::ASC->getSQL(),
             true,
@@ -72,7 +80,7 @@ abstract class AbstractSorter
             Operator::Equals->buildSql(
                 $engine->getConnection(),
                 $alias,
-                FilterValue::createEmpty()
+                FilterValue::createEmpty(),
             ),
             Direction::ASC->getSQL(),
             true,

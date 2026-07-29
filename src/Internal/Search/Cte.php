@@ -11,17 +11,18 @@ class Cte
     /**
      * @param array<string> $columnAliasList
      * @param array<string> $tags
-^     */
+     * ^ */
     public function __construct(
-        private string $name,
-        private array $columnAliasList,
-        private QueryBuilder $queryBuilder,
-        private array $tags = [],
+        private readonly string $name,
+        private readonly array $columnAliasList,
+        private readonly QueryBuilder|string $query,
+        private readonly array $tags = [],
+        private readonly bool|null $materialized = null,
     ) {
     }
 
     /**
-     * @return string[]
+     * @return array<string>
      */
     public function getColumnAliasList(): array
     {
@@ -33,9 +34,9 @@ class Cte
         return $this->name;
     }
 
-    public function getQueryBuilder(): QueryBuilder
+    public function getQuerySql(): string
     {
-        return $this->queryBuilder;
+        return $this->query instanceof QueryBuilder ? $this->query->getSQL() : $this->query;
     }
 
     /**
@@ -44,5 +45,13 @@ class Cte
     public function getTags(): array
     {
         return $this->tags;
+    }
+
+    /**
+     * null = let SQLite decide, true = force MATERIALIZED, false = force NOT MATERIALIZED.
+     */
+    public function isMaterialized(): bool|null
+    {
+        return $this->materialized;
     }
 }

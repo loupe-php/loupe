@@ -10,11 +10,14 @@ use Loupe\Loupe\Tests\Functional\FunctionalTestTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class FormattingTest extends TestCase
+final class FormattingTest extends TestCase
 {
     use FunctionalTestTrait;
 
-    public static function formattingProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function formattingProvider(): iterable
     {
         yield 'Matches position only' => [
             'assassin',
@@ -148,19 +151,11 @@ class FormattingTest extends TestCase
      * @param array<string> $searchableAttributes
      * @param array<string> $attributesToHighlight
      * @param array<string> $stopWords
-     * @param array<mixed> $expectedResults
+     * @param array<mixed>  $expectedResults
      */
     #[DataProvider('formattingProvider')]
-    public function testFormatting(
-        string $query,
-        array $searchableAttributes,
-        array $attributesToHighlight,
-        bool $showMatchesPosition,
-        array $expectedResults,
-        array $stopWords = [],
-        string $highlightStartTag = '<em>',
-        string $highlightEndTag = '</em>',
-    ): void {
+    public function testFormatting(string $query, array $searchableAttributes, array $attributesToHighlight, bool $showMatchesPosition, array $expectedResults, array $stopWords = [], string $highlightStartTag = '<em>', string $highlightEndTag = '</em>'): void
+    {
         $configuration = Configuration::create()
             ->withSearchableAttributes($searchableAttributes)
             ->withFilterableAttributes(['genres'])

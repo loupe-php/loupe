@@ -110,7 +110,8 @@ Damerau-Levenshtein.
 
 ## Query cache backend
 
-Loupe can cache internal query artifacts (especially state-set lookups for typo tolerance) via a PSR-6 cache pool.
+Loupe can cache internal query artifacts (especially state-set lookups for typo tolerance and parsed filter strings)
+via a PSR-6 cache pool.
 By default, Loupe auto-enables an APCu-backed pool when APCu is available. This is intentionally zero-config and
 gives an immediate speedup in many real-world typeahead/autosubmit setups.
 

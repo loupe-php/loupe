@@ -10,12 +10,12 @@ use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\ConnectionPool;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\StateSetIndex\StateSetIndexInterface;
+use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
-class StateSetTest extends TestCase
+final class StateSetTest extends TestCase
 {
     use StorageFixturesTestTrait;
 
@@ -82,11 +82,25 @@ class StateSetTest extends TestCase
         ]);
     }
 
-    public function testStateSetIndexInstance(): void
+    public function testStateSetIsNotPersistedWhenDocumentsAreUnchanged(): void
     {
         $engine = $this->createTestEngine();
+        $documents = [
+            [
+                'id' => 1,
+                'content' => 'John Doe',
+            ],
+        ];
 
-        $this->assertInstanceOf(StateSetIndexInterface::class, $engine->getStateSetIndex());
+        $engine->addDocuments($documents);
+        $engine->getConnection()->executeStatement(
+            'CREATE TRIGGER prevent_state_set_rewrite BEFORE DELETE ON '.IndexInfo::TABLE_NAME_STATE_SET.
+            " BEGIN SELECT RAISE(ABORT, 'State set must not be rewritten.'); END",
+        );
+
+        $engine->addDocuments($documents);
+
+        $this->assertStateSetContents($engine, [3, 16, 65, 263, 1, 8, 34]);
     }
 
     public function testStateSetIndexRevisedAfterDocumentDeleted(): void
@@ -199,20 +213,20 @@ class StateSetTest extends TestCase
         $all = $set->all();
         sort($all);
 
-        $dump = (string) file_get_contents($engine->getDataDir() . '/state_set.bin');
+        $dump = (string) file_get_contents($engine->getDataDir().'/state_set.bin');
         $dump = (array) unpack('Q*', $dump);
         $dump = array_combine($dump, array_fill(0, \count($dump), true));
-        sort($dump);
+        ksort($dump);
 
-        $this->assertEquals($expected, $all);
-        $this->assertEquals($dump, $all);
+        $this->assertSame($expected, $all);
+        $this->assertSame(array_keys($dump), $all);
     }
 
     private function createTestEngine(): Engine
     {
         $dir = $this->createTemporaryDirectory();
-        $loupePath = $dir . '/loupe.db';
-        $ticketPath = $dir . '/ticket.db';
+        $loupePath = $dir.'/loupe.db';
+        $ticketPath = $dir.'/ticket.db';
 
         $dbConfig = new DbalConfiguration();
         $dbConfig->setMiddlewares([]);
@@ -220,10 +234,10 @@ class StateSetTest extends TestCase
         $configuration = Configuration::create()->withSearchableAttributes(['content']);
 
         $connection = DriverManager::getConnection(
-            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $loupePath)
+            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/'.$loupePath),
         );
         $ticketConnection = DriverManager::getConnection(
-            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/' . $ticketPath)
+            (new DsnParser())->parse('pdo-sqlite://notused:inthis@case/'.$ticketPath),
         );
 
         $engine = new Engine(new ConnectionPool($connection, $ticketConnection), $configuration, new NullLogger(), $dir);

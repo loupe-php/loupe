@@ -9,7 +9,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use PHPUnit\Framework\TestCase;
 
-class ConfigurationTest extends TestCase
+final class ConfigurationTest extends TestCase
 {
     public function testGetIndexHashChangesOnMutation(): void
     {
@@ -82,8 +82,9 @@ class ConfigurationTest extends TestCase
                     ->withTypoThresholds([
                         10 => 3,
                         5 => 2,
-                    ])
-            );
+                    ]),
+            )
+        ;
 
         $array = $original->toArray();
         $reconstructed = Configuration::fromArray($array);

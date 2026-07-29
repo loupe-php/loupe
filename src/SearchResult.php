@@ -11,12 +11,12 @@ final class SearchResult extends AbstractQueryResult
     /**
      * @var array<string, array<string, int>>|null
      */
-    private ?array $facetDistribution = null;
+    private array|null $facetDistribution = null;
 
     /**
      * @var array<string, array<string, float>>|null
      */
-    private ?array $facetStats = null;
+    private array|null $facetStats = null;
 
     public static function createEmptyFromSearchParameters(SearchParameters $searchParameters): self
     {
@@ -27,7 +27,7 @@ final class SearchResult extends AbstractQueryResult
             $searchParameters->getHitsPerPage() ?? $searchParameters->getLimit(),
             1,
             0,
-            0
+            0,
         );
     }
 
@@ -82,6 +82,7 @@ final class SearchResult extends AbstractQueryResult
     {
         $clone = clone $this;
         $clone->facetDistribution = $facetDistribution;
+
         return $clone;
     }
 
@@ -92,6 +93,7 @@ final class SearchResult extends AbstractQueryResult
     {
         $clone = clone $this;
         $clone->facetStats = $facetStats;
+
         return $clone;
     }
 }

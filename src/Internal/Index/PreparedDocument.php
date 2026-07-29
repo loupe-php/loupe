@@ -37,7 +37,7 @@ final class PreparedDocument
 
     public function getContentHash(): string
     {
-        if ($this->contentHash !== null) {
+        if (null !== $this->contentHash) {
             return $this->contentHash;
         }
 
@@ -46,7 +46,7 @@ final class PreparedDocument
 
     public function getInternalId(): int
     {
-        if ($this->internalId === null) {
+        if (null === $this->internalId) {
             throw new \LogicException('Must set the internal ID first, this should not happen.');
         }
 
@@ -59,7 +59,7 @@ final class PreparedDocument
     }
 
     /**
-     * @return MultiAttribute[]
+     * @return array<MultiAttribute>
      */
     public function getMultiAttributes(): array
     {
@@ -67,7 +67,7 @@ final class PreparedDocument
     }
 
     /**
-     * @return SingleAttribute[]
+     * @return array<SingleAttribute>
      */
     public function getSingleAttributes(): array
     {
@@ -75,7 +75,7 @@ final class PreparedDocument
     }
 
     /**
-     * @return Term[]
+     * @return array<Term>
      */
     public function getTerms(): array
     {
@@ -96,6 +96,7 @@ final class PreparedDocument
     {
         $clone = clone $this;
         $clone->internalId = $internalId;
+
         return $clone;
     }
 
@@ -106,6 +107,7 @@ final class PreparedDocument
     {
         $clone = clone $this;
         $clone->multiAttributes = $multiAttributes;
+
         return $clone;
     }
 
@@ -116,6 +118,7 @@ final class PreparedDocument
     {
         $clone = clone $this;
         $clone->singleAttributes = $singleAttributes;
+
         return $clone;
     }
 
@@ -126,6 +129,7 @@ final class PreparedDocument
     {
         $clone = clone $this;
         $clone->terms = $terms;
+
         return $clone;
     }
 }

@@ -6,22 +6,26 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 class GeoPoint extends AbstractSorter
 {
     private const COORDINATES_RGXP = '((\-?|\+?)?\d+(\.\d+)?),\s*((\-?|\+?)?\d+(\.\d+)?)'; // Maybe we can find a better one?
 
-    private const GEOPOINT_RGXP = '^_geoPoint\((' . Configuration::ATTRIBUTE_NAME_RGXP . '),\s*' . self::COORDINATES_RGXP . '\)$';
+    private const GEOPOINT_RGXP = '^_geoPoint\(('.Configuration::ATTRIBUTE_NAME_RGXP.'),\s*'.self::COORDINATES_RGXP.'\)$';
 
     public function __construct(
-        private string $attributeName,
-        private Direction $direction,
-        private float $lat,
-        private float $lng
+        private readonly string $attributeName,
+        private readonly Direction $direction,
+        private readonly float $lat,
+        private readonly float $lng,
     ) {
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function apply(Searcher $searcher, Engine $engine): void
     {
         $cteName = $searcher->addGeoDistanceCte($this->attributeName, $this->lat, $this->lng);
@@ -29,8 +33,8 @@ class GeoPoint extends AbstractSorter
         $qb = $engine->getConnection()->createQueryBuilder();
         $qb
             ->addSelect(
-                $cteName . '.document_id AS document_id',
-                $cteName . '.distance AS sort_order'
+                $cteName.'.document_id AS document_id',
+                $cteName.'.distance AS sort_order',
             )
             ->from($cteName)
             ->innerJoin(
@@ -40,19 +44,20 @@ class GeoPoint extends AbstractSorter
                 \sprintf(
                     '%s.document_id = %s.document_id',
                     Searcher::CTE_MATCHES,
-                    $cteName
-                )
+                    $cteName,
+                ),
             )
-            ->groupBy($cteName . '.document_id');
+            ->groupBy($cteName.'.document_id')
+        ;
 
-        $this->addAndOrderByCte($searcher, $engine, $this->direction, 'order_' . $this->attributeName, $qb);
+        $this->addAndOrderByCte($searcher, $engine, $this->direction, 'order_'.$this->attributeName, $qb);
     }
 
     public static function fromString(string $value, Engine $engine, Direction $direction): self
     {
         $matches = self::split($value);
 
-        if ($matches === null) {
+        if (null === $matches) {
             throw new \InvalidArgumentException('Invalid string, call supports() first.');
         }
 
@@ -63,7 +68,7 @@ class GeoPoint extends AbstractSorter
     {
         $matches = self::split($value);
 
-        if ($matches === null) {
+        if (null === $matches) {
             return false;
         }
 
@@ -71,11 +76,11 @@ class GeoPoint extends AbstractSorter
     }
 
     /**
-     * @return null|array{lat: float, lng: float, attribute: string}
+     * @return array{lat: float, lng: float, attribute: string}|null
      */
-    private static function split(string $value): ?array
+    private static function split(string $value): array|null
     {
-        $supports = preg_match('@' . self::GEOPOINT_RGXP . '@', $value, $matches);
+        $supports = preg_match('@'.self::GEOPOINT_RGXP.'@', $value, $matches);
 
         if (!$supports) {
             return null;
@@ -84,7 +89,7 @@ class GeoPoint extends AbstractSorter
         return [
             'lat' => (float) $matches[2],
             'lng' => (float) $matches[5],
-            'attribute' => (string) $matches[1],
+            'attribute' => $matches[1],
         ];
     }
 }

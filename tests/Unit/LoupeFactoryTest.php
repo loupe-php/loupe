@@ -6,12 +6,11 @@ namespace Loupe\Loupe\Tests\Unit;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
-use Loupe\Loupe\Loupe;
 use Loupe\Loupe\LoupeFactory;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 
-class LoupeFactoryTest extends TestCase
+final class LoupeFactoryTest extends TestCase
 {
     use StorageFixturesTestTrait;
 
@@ -27,41 +26,41 @@ class LoupeFactoryTest extends TestCase
     {
         $configuration = Configuration::create();
         $client = (new LoupeFactory())->createInMemory($configuration);
-        $this->assertInstanceOf(Loupe::class, $client);
+
+        $this->assertSame(0, $client->countDocuments());
     }
 
     public function testNestedDataDirIsCreatedAutomatically(): void
     {
-        $dataDir = $this->createTemporaryDirectory() . '/' . uniqid() . '/a/b/c';
+        $dataDir = $this->createTemporaryDirectory().'/'.uniqid().'/a/b/c';
         $this->assertDirectoryDoesNotExist($dataDir);
 
-        $loupe = (new LoupeFactory())->create($dataDir, Configuration::create());
+        (new LoupeFactory())->create($dataDir, Configuration::create());
 
         $this->assertDirectoryExists($dataDir);
-        $this->assertInstanceOf(Loupe::class, $loupe);
     }
 
     public function testNonExistentDataDirIsCreatedAutomatically(): void
     {
-        $dataDir = $this->createTemporaryDirectory() . '/' . uniqid();
+        $dataDir = $this->createTemporaryDirectory().'/'.uniqid();
         $this->assertDirectoryDoesNotExist($dataDir);
 
-        $loupe = (new LoupeFactory())->create($dataDir, Configuration::create());
+        (new LoupeFactory())->create($dataDir, Configuration::create());
 
         $this->assertDirectoryExists($dataDir);
-        $this->assertInstanceOf(Loupe::class, $loupe);
     }
 
     public function testPersistedClient(): void
     {
         $configuration = Configuration::create();
         $client = (new LoupeFactory())->create($this->createTemporaryDirectory(), $configuration);
-        $this->assertInstanceOf(Loupe::class, $client);
+
+        $this->assertSame(0, $client->countDocuments());
     }
 
     public function testUncreatableDataDirThrows(): void
     {
-        $dataDir = '/this_root_path_cannot_exist_' . uniqid('', true) . '/subdir';
+        $dataDir = '/this_root_path_cannot_exist_'.uniqid('', true).'/subdir';
 
         $this->expectException(InvalidConfigurationException::class);
 

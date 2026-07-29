@@ -7,7 +7,7 @@ namespace Loupe\Loupe\Tests\Unit\Internal\Config;
 use Loupe\Loupe\Config\TypoTolerance;
 use PHPUnit\Framework\TestCase;
 
-class TypoToleranceTest extends TestCase
+final class TypoToleranceTest extends TestCase
 {
     public function testDefaults(): void
     {

@@ -39,15 +39,14 @@ class IndexInfo
     /**
      * @var array<string, mixed>|null
      */
-    private ?array $documentSchema = null;
+    private array|null $documentSchema = null;
 
-    private ?string $indexUid = null;
+    private string|null $indexUid = null;
 
-    private ?bool $needsSetup = null;
+    private bool|null $needsSetup = null;
 
-    public function __construct(
-        private Engine $engine
-    ) {
+    public function __construct(private readonly Engine $engine)
+    {
     }
 
     /**
@@ -76,34 +75,37 @@ class IndexInfo
 
         $this->updateDocumentSchema($documentSchema);
 
-        $this->engine->getIndexer()->recordChange(function () {
-            $this->engine->getBulkUpserterFactory()
-                ->create(BulkUpsertConfig::create(
-                    self::TABLE_NAME_INDEX_INFO,
-                    ['key', 'value'],
+        $this->engine->getIndexer()->recordChange(
+            function (): void {
+                $this->engine->getBulkUpserterFactory()
+                    ->create(BulkUpsertConfig::create(
+                        self::TABLE_NAME_INDEX_INFO,
+                        ['key', 'value'],
+                        [
+                            ['engineVersion', Engine::VERSION],
+                            ['configHash', $this->engine->getConfiguration()->getIndexHash()],
+                            ['dependencyHash', $this->engine->getDependencyHash()],
+                        ],
+                        ['key'],
+                        ConflictMode::Update,
+                    ))
+                    ->execute()
+                ;
+
+                $this->engine->getConnection()->executeStatement(
+                    \sprintf(
+                        "INSERT INTO %s (key, value) VALUES ('%s', :uid) ON CONFLICT(key) DO NOTHING",
+                        self::TABLE_NAME_INDEX_INFO,
+                        'indexUid',
+                    ),
                     [
-                        ['engineVersion', Engine::VERSION],
-                        ['configHash', $this->engine->getConfiguration()->getIndexHash()],
-                        ['dependencyHash', $this->engine->getDependencyHash()],
+                        'uid' => $this->generateIndexUid(),
                     ],
-                    ['key'],
-                    ConflictMode::Update
-                ))
-                ->execute();
+                );
 
-            $this->engine->getConnection()->executeStatement(
-                \sprintf(
-                    "INSERT INTO %s (key, value) VALUES ('%s', :uid) ON CONFLICT(key) DO NOTHING",
-                    self::TABLE_NAME_INDEX_INFO,
-                    'indexUid'
-                ),
-                [
-                    'uid' => $this->generateIndexUid(),
-                ]
-            );
-
-            $this->needsSetup = false;
-        });
+                $this->needsSetup = false;
+            },
+        );
     }
 
     /**
@@ -119,10 +121,8 @@ class IndexInfo
 
         $missingAttributes = array_keys(array_diff_key($documentSchema, $document));
 
-        if ($missingAttributes !== []) {
-            foreach ($missingAttributes as $missingAttribute) {
-                $document[$missingAttribute] = null;
-            }
+        foreach ($missingAttributes as $missingAttribute) {
+            $document[$missingAttribute] = null;
         }
 
         $needsSchemaUpdate = false;
@@ -142,11 +142,7 @@ class IndexInfo
             }
 
             if (!LoupeTypes::typeMatchesType($documentSchema[$attributeName], $valueType)) {
-                throw InvalidDocumentException::becauseDoesNotMatchSchema(
-                    $documentSchema,
-                    $document,
-                    $primaryKey
-                );
+                throw InvalidDocumentException::becauseDoesNotMatchSchema($documentSchema, $document, $primaryKey);
             }
 
             // Update schema to narrower type (e.g. before it was "array" and now it becomes "array<string>" or before
@@ -173,8 +169,8 @@ class IndexInfo
             self::TABLE_NAME_TERMS_DOCUMENTS => 'td',
             self::TABLE_NAME_PREFIXES => 'p',
             self::TABLE_NAME_PREFIXES_TERMS => 'tp',
-            default => throw new \LogicException(\sprintf('Forgot to define an alias for %s.', $table))
-        } . $suffix;
+            default => throw new \LogicException(\sprintf('Forgot to define an alias for %s.', $table)),
+        }.$suffix;
     }
 
     /**
@@ -183,6 +179,7 @@ class IndexInfo
     public function getAllTableNames(): array
     {
         $tables = [];
+
         foreach ($this->getSchema()->getTables() as $table) {
             if (method_exists($table, 'getObjectName')) {
                 $tables[] = $table->getObjectName()->toString(); // Doctrine 4
@@ -201,7 +198,8 @@ class IndexInfo
             ->select('value')
             ->from(self::TABLE_NAME_INDEX_INFO)
             ->where("key = 'configHash'")
-            ->fetchOne();
+            ->fetchOne()
+        ;
     }
 
     public function getDependencyHash(): string
@@ -211,7 +209,8 @@ class IndexInfo
             ->select('value')
             ->from(self::TABLE_NAME_INDEX_INFO)
             ->where("key = 'dependencyHash'")
-            ->fetchOne();
+            ->fetchOne()
+        ;
     }
 
     /**
@@ -219,15 +218,16 @@ class IndexInfo
      */
     public function getDocumentSchema(): array
     {
-        if ($this->documentSchema === null) {
+        if (null === $this->documentSchema) {
             $schema = $this->engine->getConnection()
                 ->createQueryBuilder()
                 ->select('value')
                 ->from(self::TABLE_NAME_INDEX_INFO)
                 ->where("key = 'documentSchema'")
-                ->fetchOne();
+                ->fetchOne()
+            ;
 
-            if ($schema === false) {
+            if (false === $schema) {
                 $this->documentSchema = [];
             } else {
                 $this->documentSchema = Util::decodeJson($schema);
@@ -244,9 +244,10 @@ class IndexInfo
             ->select('value')
             ->from(self::TABLE_NAME_INDEX_INFO)
             ->where("key = 'engineVersion'")
-            ->fetchOne();
+            ->fetchOne()
+        ;
 
-        if ($version === false) {
+        if (false === $version) {
             return Engine::VERSION;
         }
 
@@ -271,7 +272,7 @@ class IndexInfo
 
     public function getIndexUid(): string
     {
-        if ($this->indexUid !== null) {
+        if (null !== $this->indexUid) {
             return $this->indexUid;
         }
 
@@ -280,19 +281,20 @@ class IndexInfo
             ->select('value')
             ->from(self::TABLE_NAME_INDEX_INFO)
             ->where("key = 'indexUid'")
-            ->fetchOne();
+            ->fetchOne()
+        ;
 
-        if ($uid === false) {
+        if (false === $uid) {
             $uid = $this->generateIndexUid();
             $this->engine->getConnection()->executeStatement(
                 \sprintf(
                     "INSERT INTO %s (key, value) VALUES ('%s', :uid) ON CONFLICT(key) DO NOTHING",
                     self::TABLE_NAME_INDEX_INFO,
-                    'indexUid'
+                    'indexUid',
                 ),
                 [
                     'uid' => $uid,
-                ]
+                ],
             );
 
             $uid = $this->engine->getConnection()
@@ -300,10 +302,11 @@ class IndexInfo
                 ->select('value')
                 ->from(self::TABLE_NAME_INDEX_INFO)
                 ->where("key = 'indexUid'")
-                ->fetchOne();
+                ->fetchOne()
+            ;
         }
 
-        if (!\is_string($uid) || $uid === '') {
+        if (!\is_string($uid) || '' === $uid) {
             throw new \LogicException('Could not determine index UID.');
         }
 
@@ -313,10 +316,7 @@ class IndexInfo
     public function getLoupeTypeForAttribute(string $attributeName): string
     {
         if (!\array_key_exists($attributeName, $this->getDocumentSchema())) {
-            throw new InvalidConfigurationException(\sprintf(
-                'The attribute "%s" does not exist on the document schema.',
-                $attributeName
-            ));
+            throw new InvalidConfigurationException(\sprintf('The attribute "%s" does not exist on the document schema.', $attributeName));
         }
 
         return $this->getDocumentSchema()[$attributeName];
@@ -400,6 +400,7 @@ class IndexInfo
     {
         try {
             Configuration::validateAttributeName($name);
+
             return true;
         } catch (InvalidConfigurationException) {
             return false;
@@ -408,13 +409,13 @@ class IndexInfo
 
     public function needsSetup(): bool
     {
-        if ($this->needsSetup !== null) {
+        if (null !== $this->needsSetup) {
             return $this->needsSetup;
         }
 
         return $this->needsSetup = !$this->engine->getConnection()->fetchOne(
             "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
-            [self::TABLE_NAME_INDEX_INFO]
+            [self::TABLE_NAME_INDEX_INFO],
         );
     }
 
@@ -435,13 +436,16 @@ class IndexInfo
         ;
 
         $table->addColumn('_user_id', Types::STRING)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('_document', Types::TEXT)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('_hash', Types::STRING)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->setPrimaryKey(['_id']);
         $table->addUniqueIndex(['_user_id']);
@@ -456,9 +460,9 @@ class IndexInfo
 
             $loupeType = $this->getLoupeTypeForAttribute($attribute);
 
-            if ($loupeType === LoupeTypes::TYPE_GEO) {
-                $columns[$attribute . '_geo_lat'] = Types::FLOAT;
-                $columns[$attribute . '_geo_lng'] = Types::FLOAT;
+            if (LoupeTypes::TYPE_GEO === $loupeType) {
+                $columns[$attribute.'_geo_lat'] = Types::FLOAT;
+                $columns[$attribute.'_geo_lng'] = Types::FLOAT;
                 continue;
             }
 
@@ -467,10 +471,10 @@ class IndexInfo
                 LoupeTypes::TYPE_STRING => Types::STRING,
                 LoupeTypes::TYPE_NUMBER => Types::FLOAT,
                 LoupeTypes::TYPE_BOOLEAN => Types::FLOAT,
-                default => null
+                default => null,
             };
 
-            if ($dbalType === null) {
+            if (null === $dbalType) {
                 continue;
             }
 
@@ -498,10 +502,12 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_INDEX_INFO);
 
         $table->addColumn('key', Types::STRING)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('value', Types::TEXT)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addUniqueIndex(['key']);
     }
@@ -511,12 +517,15 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS);
 
         $table->addColumn('attribute', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('document', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->setPrimaryKey(['attribute', 'document'], 'attribute_document');
+        $table->addIndex(['document']);
     }
 
     private function addMultiAttributesToSchema(Schema $schema): void
@@ -529,13 +538,16 @@ class IndexInfo
         ;
 
         $table->addColumn('attribute', Types::STRING)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('string_value', Types::STRING)
-            ->setNotnull(false);
+            ->setNotnull(false)
+        ;
 
         $table->addColumn('numeric_value', Types::FLOAT)
-            ->setNotnull(false);
+            ->setNotnull(false)
+        ;
 
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['attribute', 'string_value']);
@@ -552,13 +564,16 @@ class IndexInfo
         ;
 
         $table->addColumn('prefix', Types::STRING)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('length', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('state', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['prefix', 'state', 'length']);
@@ -571,12 +586,15 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_PREFIXES_TERMS);
 
         $table->addColumn('prefix', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('term', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->setPrimaryKey(['prefix', 'term']);
+        $table->addIndex(['term']);
     }
 
     private function addStateSetToSchema(Schema $schema): void
@@ -584,7 +602,8 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_STATE_SET);
 
         $table->addColumn('state', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->setPrimaryKey(['state']);
     }
@@ -594,27 +613,34 @@ class IndexInfo
         $table = $schema->createTable(self::TABLE_NAME_TERMS_DOCUMENTS);
 
         $table->addColumn('term', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('document', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('attribute', Types::STRING)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('position', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('start', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('end', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('folded', Types::BOOLEAN)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
-        $table->setPrimaryKey(['term', 'document', 'attribute', 'position']);
+        $table->setPrimaryKey(['term', 'document', 'position']);
         $table->addIndex(['document']);
     }
 
@@ -628,13 +654,16 @@ class IndexInfo
         ;
 
         $table->addColumn('term', Types::STRING)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('state', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->addColumn('length', Types::INTEGER)
-            ->setNotnull(true);
+            ->setNotnull(true)
+        ;
 
         $table->setPrimaryKey(['id']);
         $table->addUniqueIndex(['term', 'state', 'length']);
@@ -672,28 +701,35 @@ class IndexInfo
     {
         $this->documentSchema = $documentSchema;
 
-        $this->engine->getIndexer()->recordChange(function () use ($documentSchema) {
-            $this->updateSchema();
+        $this->engine->getIndexer()->recordChange(
+            function () use ($documentSchema): void {
+                $this->updateSchema();
 
-            $this->engine->getBulkUpserterFactory()
-                ->create(BulkUpsertConfig::create(
-                    self::TABLE_NAME_INDEX_INFO,
-                    ['key', 'value'],
-                    [
-                        ['documentSchema', json_encode($documentSchema)],
-                    ],
-                    ['key'],
-                    ConflictMode::Update
-                ))
-                ->execute();
-        });
+                $this->engine->getBulkUpserterFactory()
+                    ->create(BulkUpsertConfig::create(
+                        self::TABLE_NAME_INDEX_INFO,
+                        ['key', 'value'],
+                        [
+                            ['documentSchema', json_encode($documentSchema)],
+                        ],
+                        ['key'],
+                        ConflictMode::Update,
+                    ))
+                    ->execute()
+                ;
+            },
+        );
     }
 
     private function updateSchema(): void
     {
-        $schemaManager = $this->engine->getConnection()
-            ->createSchemaManager();
+        $connection = $this->engine->getConnection();
+        $schemaManager = $connection->createSchemaManager();
         $comparator = $schemaManager->createComparator();
+
+        // Schema changes invalidate query planner statistics; drop them before introspecting
+        $connection->executeStatement('DROP TABLE IF EXISTS sqlite_stat1');
+        $connection->executeStatement('DROP TABLE IF EXISTS sqlite_stat4');
 
         $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
         $schemaManager->alterSchema($schemaDiff);

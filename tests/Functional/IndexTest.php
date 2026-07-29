@@ -15,12 +15,15 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
-class IndexTest extends TestCase
+final class IndexTest extends TestCase
 {
     use FunctionalTestTrait;
     use StorageFixturesTestTrait;
 
-    public static function invalidSchemaChangesProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function invalidSchemaChangesProvider(): iterable
     {
         yield 'Wrong array values' => [
             [
@@ -49,7 +52,10 @@ class IndexTest extends TestCase
         ];
     }
 
-    public static function specialDataTypesAreEscapedProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function specialDataTypesAreEscapedProvider(): iterable
     {
         yield 'Check internal null value is escaped on single attribute (gender IS NULL)' => [
             [
@@ -127,6 +133,87 @@ class IndexTest extends TestCase
         // values for null or empty string.
     }
 
+    public function testBatchWithMixOfUnchangedChangedAndNewDocuments(): void
+    {
+        // A single addDocuments() call that mixes an unchanged document (skip path) with a changed one and a brand new
+        // one. The skip path runs inside the batching loop, so we make sure it does not interfere with its neighbours.
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname', 'lastname'])
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([self::getSandraDocument(), self::getUtaDocument()]);
+
+        $unchangedDocument = self::getSandraDocument();
+
+        $changedDocument = array_merge(self::getUtaDocument(), [
+            'lastname' => 'Schmidt',
+        ]);
+
+        $newDocument = [
+            'id' => 3,
+            'firstname' => 'Nina',
+            'lastname' => 'Neumann',
+            'gender' => 'female',
+            'departments' => ['Development'],
+            'colors' => ['Blue'],
+            'age' => 33,
+        ];
+
+        $loupe->addDocuments([
+            $unchangedDocument, // unchanged -> skip path
+            $changedDocument, // changed -> must be re-tokenized
+            $newDocument, // new -> must be indexed
+        ]);
+
+        $this->assertSame(3, $loupe->countDocuments());
+
+        // Sandra (unchanged) untouched
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+
+        // Uta's old term is gone, new term is searchable
+        $this->assertSame(0, $loupe->search(SearchParameters::create()->withQuery('koertig'))->getTotalHits());
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('schmidt'))->getTotalHits());
+
+        // New document searchable
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('neumann'))->getTotalHits());
+
+        // Filtering across all three still works
+        $params = SearchParameters::create()
+            ->withFilter("departments = 'Development'")
+            ->withAttributesToRetrieve(['id', 'firstname'])
+            ->withSort(['firstname:asc'])
+        ;
+
+        $this->searchAndAssertResults(
+            $loupe,
+            $params,
+            [
+                'hits' => [
+                    [
+                        'id' => 3,
+                        'firstname' => 'Nina',
+                    ],
+                    [
+                        'id' => 1,
+                        'firstname' => 'Sandra',
+                    ],
+                    [
+                        'id' => 2,
+                        'firstname' => 'Uta',
+                    ],
+                ],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 3,
+            ],
+        );
+    }
+
     public function testCanFilterAndSortOnNonExistingSchema(): void
     {
         $configuration = Configuration::create()
@@ -151,59 +238,75 @@ class IndexTest extends TestCase
         // Not existing field on positive filter should return nothing as partial Uta does not have "Development" in "departments"
         $searchParameters = $searchParameters->withFilter('departments = \'Development\'');
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [],
-            'query' => '',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 0,
-            'totalHits' => 0,
-        ]);
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 0,
+                'totalHits' => 0,
+            ],
+        );
 
         // Not existing field on negative filter should return partial Uta as this matches
         $searchParameters = $searchParameters->withFilter('departments != \'Development\'');
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [[
-                'id' => 2,
-                'lastname' => 'Koertig',
-            ]],
-            'query' => '',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 1,
-        ]);
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [[
+                    'id' => 2,
+                    'lastname' => 'Koertig',
+                ]],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        );
 
         // Adding the entire document should allow to filter by it now
         $loupe->addDocument(self::getUtaDocument());
 
         $searchParameters = $searchParameters->withFilter('departments = \'Development\'');
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [[
-                'id' => 2,
-                'firstname' => 'Uta',
-                'lastname' => 'Koertig',
-                'departments' => ['Development', 'Backoffice'],
-            ]],
-            'query' => '',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 1,
-        ]);
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [[
+                    'id' => 2,
+                    'firstname' => 'Uta',
+                    'lastname' => 'Koertig',
+                    'departments' => ['Development', 'Backoffice'],
+                ]],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
+            ],
+        );
 
         $searchParameters = $searchParameters->withFilter('departments != \'Development\'');
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [],
-            'query' => '',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 0,
-            'totalHits' => 0,
-        ]);
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 0,
+                'totalHits' => 0,
+            ],
+        );
     }
 
     public function testCanUseUserIdAndDocumentProperties(): void
@@ -239,6 +342,7 @@ class IndexTest extends TestCase
 
         // Delete all documents and assert they're gone
         $loupe->deleteAllDocuments();
+
         foreach (range(11, 20) as $id) {
             $this->assertNull($loupe->getDocument($id));
         }
@@ -299,6 +403,29 @@ class IndexTest extends TestCase
         $this->assertNull($loupe->getDocument('not_existing_identifier'));
     }
 
+    public function testIdenticalReAddDoesNotPoisonLaterRealUpdate(): void
+    {
+        // Re-add an identical document, then change it. The earlier skip must not prevent the real update from being applied
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname', 'lastname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument(self::getSandraDocument());
+
+        // Identical re-add -> skip path
+        $loupe->addDocument(self::getSandraDocument());
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+
+        // Now a real change to the same id
+        $loupe->addDocument(array_merge(self::getSandraDocument(), [
+            'lastname' => 'Schmidt',
+        ]));
+
+        $this->assertSame(0, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('schmidt'))->getTotalHits());
+    }
+
     public function testIndexingIdenticalDocumentWorksIfConfigChanges(): void
     {
         $dir = $this->createTemporaryDirectory();
@@ -349,51 +476,60 @@ class IndexTest extends TestCase
     {
         // Copy the fixture to a temporary directory to prevent other files being created within our git repository
         $tempDir = $this->createTemporaryDirectory();
-        (new Filesystem())->copy(Util::fixturesPath('OldDatabaseSchema/v012/loupe.db'), $tempDir . '/loupe.db');
+        (new Filesystem())->copy(Util::fixturesPath('OldDatabaseSchema/v012/loupe.db'), $tempDir.'/loupe.db');
         $loupe = $this->setupLoupeWithDepartments(null, $tempDir);
 
         $searchParameters = SearchParameters::create()
             ->withFilter("departments = 'Development'")
             ->withAttributesToRetrieve(['id', 'firstname'])
-            ->withSort(['firstname:asc']);
+            ->withSort(['firstname:asc'])
+        ;
 
         // Searching now results in 0 results because the schema has not been migrated - can only do that on indexing
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [],
-            'query' => '',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 0,
-            'totalHits' => 0,
-        ]);
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 0,
+                'totalHits' => 0,
+            ],
+        );
 
         // Index new data should not fail and migrate existing data
         $loupe->addDocument(self::getSandraDocument());
 
         // Should definitely find Sandra now because we've added that, but we should also find the other's of that
         // department, due to auto-migration
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => [
-                [
-                    'id' => 1,
-                    'firstname' => 'Sandra',
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [
+                    [
+                        'id' => 1,
+                        'firstname' => 'Sandra',
+                    ],
+                    [
+                        'id' => 2,
+                        'firstname' => 'Uta',
+                    ],
                 ],
-                [
-                    'id' => 2,
-                    'firstname' => 'Uta',
-                ],
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 2,
             ],
-            'query' => '',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => 2,
-        ]);
+        );
     }
 
     /**
      * @param array<array<string, mixed>> $documents
-     * @param class-string<\Throwable> $expectedException
+     * @param class-string<\Throwable>    $expectedException
      */
     #[DataProvider('invalidSchemaChangesProvider')]
     public function testInvalidSchemaChanges(array $documents, string $expectedException, string $expectedExceptionMessage): void
@@ -420,7 +556,7 @@ class IndexTest extends TestCase
         $loupe = $this->createLoupe($configuration);
         $loupe->addDocument(self::getSandraDocument());
 
-        $this->assertNotSame(0, \count($logger->getRecords()));
+        $this->assertNotCount(0, $logger->getRecords());
     }
 
     public function testNullValueIsIrrelevantForDocumentSchema(): void
@@ -443,6 +579,65 @@ class IndexTest extends TestCase
         ]);
 
         $this->assertSame(2, $loupe->countDocuments());
+    }
+
+    public function testReAddingIdenticalDocumentPreservesSearchFilterAndSort(): void
+    {
+        // Re-adding an identical document must not drop its terms, attributes or multi attributes
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['firstname', 'lastname'])
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocument(self::getSandraDocument());
+        $loupe->addDocument(self::getUtaDocument());
+
+        $assetSearchResults = function () use (&$loupe): void {
+            // Terms (search) still present
+            $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+            $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('koertig'))->getTotalHits());
+
+            // Multi attribute filter + single attribute sort still work
+            $params = SearchParameters::create()
+                ->withFilter("departments = 'Development'")
+                ->withAttributesToRetrieve(['id', 'firstname'])
+                ->withSort(['firstname:asc'])
+            ;
+
+            $this->assertSame(2, $loupe->countDocuments());
+
+            $this->searchAndAssertResults(
+                $loupe,
+                $params,
+                [
+                    'hits' => [
+                        [
+                            'id' => 1,
+                            'firstname' => 'Sandra',
+                        ],
+                        [
+                            'id' => 2,
+                            'firstname' => 'Uta',
+                        ],
+                    ],
+                    'query' => '',
+                    'hitsPerPage' => 20,
+                    'page' => 1,
+                    'totalPages' => 1,
+                    'totalHits' => 2,
+                ],
+            );
+        };
+
+        // Baseline
+        $assetSearchResults();
+
+        // Re-add the exact same documents -> skip tokenization, should still work
+        $loupe->addDocument(self::getSandraDocument());
+        $loupe->addDocument(self::getUtaDocument());
+        $assetSearchResults();
     }
 
     public function testReindex(): void
@@ -565,14 +760,18 @@ class IndexTest extends TestCase
             ->withSort(['firstname:asc'])
         ;
 
-        $this->searchAndAssertResults($loupe, $searchParameters, [
-            'hits' => $expectedHits,
-            'query' => '',
-            'hitsPerPage' => 20,
-            'page' => 1,
-            'totalPages' => 1,
-            'totalHits' => \count($expectedHits),
-        ]);
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => $expectedHits,
+                'query' => '',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => \count($expectedHits),
+            ],
+        );
     }
 
     public function testVacuumProbabilityEnsured(): void
@@ -610,7 +809,7 @@ class IndexTest extends TestCase
 
         $this->assertCount(0, $this->getLoggedStatements($logger, 'PRAGMA incremental_vacuum'));
 
-        for ($i = 0; $i < 1000; $i++) {
+        for ($i = 0; $i < 1000; ++$i) {
             $loupe->addDocument([
                 'id' => $i,
                 'title' => 'Test',
@@ -636,7 +835,10 @@ class IndexTest extends TestCase
         $this->assertSame(\count($documents), $loupe->countDocuments());
     }
 
-    public static function validSchemaChangesProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function validSchemaChangesProvider(): iterable
     {
         yield 'Schema matches exactly' => [
             [
@@ -694,13 +896,13 @@ class IndexTest extends TestCase
     /**
      * @return array<string>
      */
-    private function getLoggedStatements(InMemoryLogger $logger, ?string $filter = null): array
+    private function getLoggedStatements(InMemoryLogger $logger, string|null $filter = null): array
     {
-        $records = array_filter($logger->getRecords(), fn (array $record) => str_contains((string) $record['message'], 'Executing statement'));
-        $queries = array_map(fn (array $record) => $record['context']['sql'], $records);
+        $records = array_filter($logger->getRecords(), static fn (array $record) => str_contains((string) $record['message'], 'Executing statement'));
+        $queries = array_map(static fn (array $record) => $record['context']['sql'], $records);
 
         if ($filter) {
-            return array_filter($queries, fn (string $query) => str_contains($query, $filter));
+            return array_filter($queries, static fn (string $query) => str_contains($query, $filter));
         }
 
         return $queries;

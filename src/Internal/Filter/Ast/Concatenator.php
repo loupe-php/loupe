@@ -6,9 +6,8 @@ namespace Loupe\Loupe\Internal\Filter\Ast;
 
 class Concatenator extends Node
 {
-    public function __construct(
-        private string $concatenator
-    ) {
+    public function __construct(private readonly string $concatenator)
+    {
     }
 
     public static function fromString(string $concatenator): self
@@ -16,7 +15,7 @@ class Concatenator extends Node
         return new self(match ($concatenator) {
             'AND', '&&' => 'AND',
             'OR', '||' => 'OR',
-            default => throw new \InvalidArgumentException('Invalid concatenator.')
+            default => throw new \InvalidArgumentException('Invalid concatenator.'),
         });
     }
 
@@ -30,13 +29,13 @@ class Concatenator extends Node
         return match ($this->concatenator) {
             'AND' => 'INTERSECT',
             'OR' => 'UNION',
-            default => throw new \InvalidArgumentException('Invalid concatenator.')
+            default => throw new \InvalidArgumentException('Invalid concatenator.'),
         };
     }
 
     public function isConjunctive(): bool
     {
-        return $this->concatenator === 'AND';
+        return 'AND' === $this->concatenator;
     }
 
     public function toArray(): array

@@ -6,10 +6,9 @@ namespace Loupe\Loupe\Internal\LanguageDetection;
 
 class PreselectedLanguageDetector implements LanguageDetectorInterface
 {
-    public function __construct(
-        private readonly string $language
-    ) {
-        \assert($this->language !== '');
+    public function __construct(private readonly string $language)
+    {
+        \assert('' !== $this->language);
     }
 
     public function detectForDocument(array $document): DocumentResult
@@ -17,7 +16,12 @@ class PreselectedLanguageDetector implements LanguageDetectorInterface
         return new DocumentResult([], $this->language);
     }
 
-    public function detectForString(string $string): ?string
+    public function detectForQuery(string $query): string|null
+    {
+        return $this->language;
+    }
+
+    public function detectForString(string $string): string|null
     {
         return $this->language;
     }

@@ -22,13 +22,15 @@ class Parser
 {
     private Ast $ast;
 
-    private \SplStack $groups;
+    /**
+     * @var \SplStack<Group>
+     */
+    private readonly \SplStack $groups;
 
-    private Lexer $lexer;
+    private readonly Lexer $lexer;
 
-    public function __construct(
-        private Engine $engine
-    ) {
+    public function __construct(private readonly Engine $engine)
+    {
         $this->lexer = new Lexer();
         $this->groups = new \SplStack();
     }
@@ -49,28 +51,30 @@ class Parser
 
             $this->lexer->moveNext();
 
-            if ($start && !$this->lexer->token?->isA(
-                Lexer::T_ATTRIBUTE_NAME,
-                Lexer::T_GEO_RADIUS,
-                Lexer::T_GEO_BOUNDING_BOX,
-                Lexer::T_OPEN_PARENTHESIS
-            )) {
+            if (
+                $start && !$this->lexer->token?->isA(
+                    Lexer::T_ATTRIBUTE_NAME,
+                    Lexer::T_GEO_RADIUS,
+                    Lexer::T_GEO_BOUNDING_BOX,
+                    Lexer::T_OPEN_PARENTHESIS,
+                )
+            ) {
                 $this->syntaxError('an attribute name, _geoRadius() or \'(\'');
             }
 
             $start = false;
 
-            if ($this->lexer->token?->type === Lexer::T_GEO_RADIUS) {
+            if (Lexer::T_GEO_RADIUS === $this->lexer->token?->type) {
                 $this->handleGeoRadius();
                 continue;
             }
 
-            if ($this->lexer->token?->type === Lexer::T_GEO_BOUNDING_BOX) {
+            if (Lexer::T_GEO_BOUNDING_BOX === $this->lexer->token?->type) {
                 $this->handleGeoBoundingBox();
                 continue;
             }
 
-            if ($this->lexer->token?->type === Lexer::T_ATTRIBUTE_NAME) {
+            if (Lexer::T_ATTRIBUTE_NAME === $this->lexer->token?->type) {
                 $this->handleAttribute();
                 continue;
             }
@@ -112,6 +116,7 @@ class Parser
 
         if ($activeGroup instanceof Group) {
             $activeGroup->addChild($node);
+
             return $this;
         }
 
@@ -120,40 +125,59 @@ class Parser
         return $this;
     }
 
-    private function assertAndExtractFloat(?Token $token, bool $allowNegative = false): float
+    /**
+     * @param Token<int, string>|null $token
+     */
+    private function assertAndExtractFloat(Token|null $token, bool $allowNegative = false): float
     {
         $multipler = 1;
-        if ($allowNegative && $token !== null && $token->type === Lexer::T_MINUS) {
+        if ($allowNegative && null !== $token && Lexer::T_MINUS === $token->type) {
             $multipler = -1;
             $this->lexer->moveNext();
             $token = $this->lexer->token;
         }
 
         $this->assertFloat($token);
+
         return (float) $this->lexer->token?->value * $multipler;
     }
 
-    private function assertClosingParenthesis(?Token $token): void
+    /**
+     * @param Token<int, string>|null $token
+     */
+    private function assertClosingParenthesis(Token|null $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_CLOSE_PARENTHESIS], "')'");
     }
 
-    private function assertComma(?Token $token): void
+    /**
+     * @param Token<int, string>|null $token
+     */
+    private function assertComma(Token|null $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_COMMA], "','");
     }
 
-    private function assertFloat(?Token $token): void
+    /**
+     * @param Token<int, string>|null $token
+     */
+    private function assertFloat(Token|null $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_FLOAT], 'valid float value');
     }
 
-    private function assertOpeningParenthesis(?Token $token): void
+    /**
+     * @param Token<int, string>|null $token
+     */
+    private function assertOpeningParenthesis(Token|null $token): void
     {
         $this->assertTokenTypes($token, [Lexer::T_OPEN_PARENTHESIS], "'('");
     }
 
-    private function assertOperator(?Token $token): void
+    /**
+     * @param Token<int, string>|null $token
+     */
+    private function assertOperator(Token|null $token): void
     {
         $type = $token->type ?? null;
 
@@ -162,33 +186,41 @@ class Parser
         }
     }
 
-    private function assertStringOrFloatOrBoolean(?Token $token): void
+    /**
+     * @param Token<int, string>|null $token
+     */
+    private function assertStringOrFloatOrBoolean(Token|null $token): void
     {
-        $this->assertTokenTypes($token, [
-            Lexer::T_FLOAT,
-            Lexer::T_STRING,
-            Lexer::T_TRUE,
-            Lexer::T_FALSE,
-        ], 'valid string, float or boolean value');
+        $this->assertTokenTypes(
+            $token,
+            [
+                Lexer::T_FLOAT,
+                Lexer::T_STRING,
+                Lexer::T_TRUE,
+                Lexer::T_FALSE,
+            ],
+            'valid string, float or boolean value',
+        );
     }
 
     /**
-     * @param array<int> $types
+     * @param Token<int, string>|null $token
+     * @param array<int, int>         $types
      */
-    private function assertTokenTypes(?Token $token, array $types, string $error): void
+    private function assertTokenTypes(Token|null $token, array $types, string $error): void
     {
         $type = $token->type ?? null;
 
-        if ($type === null || !\in_array($type, $types, true)) {
+        if (null === $type || !\in_array($type, $types, true)) {
             $this->syntaxError($error, $token);
         }
     }
 
-    private function getTokenValueBasedOnType(): float|string|bool
+    private function getTokenValueBasedOnType(): bool|float|string
     {
         $value = $this->lexer->token?->value;
 
-        if ($value === null) {
+        if (null === $value) {
             $this->syntaxError('NULL is not supported, use IS NULL or IS NOT NULL');
         }
 
@@ -197,7 +229,7 @@ class Parser
             Lexer::T_STRING => LoupeTypes::convertToString($value),
             Lexer::T_FALSE => false,
             Lexer::T_TRUE => true,
-            default => throw new FilterFormatException('This should never happen, please file a bug report.')
+            default => throw new FilterFormatException('This should never happen, please file a bug report.'),
         };
     }
 
@@ -211,33 +243,36 @@ class Parser
         $this->lexer->moveNext();
         $operator = (string) $this->lexer->token?->value;
 
-        if ($this->lexer->token?->type === Lexer::T_IS) {
+        if (Lexer::T_IS === $this->lexer->token?->type) {
             $this->handleIs($attributeName);
+
             return;
         }
 
         // Greater than or smaller than operators
-        if ($this->lexer->lookahead?->type === Lexer::T_EQUALS) {
+        if (Lexer::T_EQUALS === $this->lexer->lookahead?->type) {
             $this->lexer->moveNext();
             $operator .= $this->lexer->token?->value;
         }
 
-        if ($this->lexer->token?->type === Lexer::T_NOT) {
+        if (Lexer::T_NOT === $this->lexer->token?->type) {
             if (!\in_array($this->lexer->lookahead?->type, [Lexer::T_IN, Lexer::T_BETWEEN], true)) {
                 $this->syntaxError('NOT must be followed by IN () or BETWEEN', $this->lexer->lookahead);
             }
 
             $this->lexer->moveNext();
-            $operator .= ' ' . $this->lexer->token?->value;
+            $operator .= ' '.$this->lexer->token?->value;
         }
 
-        if ($this->lexer->token?->type === Lexer::T_BETWEEN) {
+        if (Lexer::T_BETWEEN === $this->lexer->token?->type) {
             $this->handleBetween($attributeName, $operator);
+
             return;
         }
 
-        if ($this->lexer->token?->type === Lexer::T_IN) {
+        if (Lexer::T_IN === $this->lexer->token?->type) {
             $this->handleIn($attributeName, $operator);
+
             return;
         }
 
@@ -350,11 +385,11 @@ class Parser
             $this->assertStringOrFloatOrBoolean($this->lexer->token);
             $values[] = $this->getTokenValueBasedOnType();
 
-            if ($this->lexer->lookahead === null) {
+            if (null === $this->lexer->lookahead) {
                 $this->assertClosingParenthesis($this->lexer->token);
             }
 
-            if ($this->lexer->lookahead?->type === Lexer::T_CLOSE_PARENTHESIS) {
+            if (Lexer::T_CLOSE_PARENTHESIS === $this->lexer->lookahead?->type) {
                 $this->lexer->moveNext();
                 break;
             }
@@ -369,40 +404,47 @@ class Parser
 
     private function handleIs(mixed $attributeName): void
     {
-        if ($this->lexer->lookahead?->type === Lexer::T_NULL) {
+        if (Lexer::T_NULL === $this->lexer->lookahead?->type) {
             $this->addNode(new Filter($attributeName, Operator::Equals, FilterValue::createNull()));
+
             return;
         }
 
-        if ($this->lexer->lookahead?->type === Lexer::T_EMPTY) {
+        if (Lexer::T_EMPTY === $this->lexer->lookahead?->type) {
             $this->addNode(new Filter($attributeName, Operator::Equals, FilterValue::createEmpty()));
+
             return;
         }
 
-        if ($this->lexer->lookahead?->type === Lexer::T_NOT && $this->lexer->glimpse()?->type === Lexer::T_NULL) {
+        if (Lexer::T_NOT === $this->lexer->lookahead?->type && Lexer::T_NULL === $this->lexer->glimpse()?->type) {
             $this->addNode(new Filter($attributeName, Operator::NotEquals, FilterValue::createNull()));
+
             return;
         }
 
-        if ($this->lexer->lookahead?->type === Lexer::T_NOT && $this->lexer->glimpse()?->type === Lexer::T_EMPTY) {
+        if (Lexer::T_NOT === $this->lexer->lookahead?->type && Lexer::T_EMPTY === $this->lexer->glimpse()?->type) {
             $this->addNode(new Filter($attributeName, Operator::NotEquals, FilterValue::createEmpty()));
+
             return;
         }
 
         $this->syntaxError('"NULL", "NOT NULL", "EMPTY" or "NOT EMPTY" after is', $this->lexer->lookahead);
     }
 
-    private function syntaxError(string $expected = '', ?Token $token = null): void
+    /**
+     * @param Token<int, string>|Token<int, non-falsy-string>|null $token
+     */
+    private function syntaxError(string $expected = '', Token|null $token = null): void
     {
-        if ($token === null) {
+        if (null === $token) {
             $token = $this->lexer->token;
         }
 
         $tokenPos = $token->position ?? '-1';
 
         $message = \sprintf('Col %d: Error: ', $tokenPos);
-        $message .= $expected !== '' ? \sprintf('Expected %s, got ', $expected) : 'Unexpected ';
-        $message .= $this->lexer->lookahead === null ? 'end of string.' : \sprintf("'%s'", $token?->value);
+        $message .= '' !== $expected ? \sprintf('Expected %s, got ', $expected) : 'Unexpected ';
+        $message .= null === $this->lexer->lookahead ? 'end of string.' : \sprintf("'%s'", $token?->value);
 
         throw new FilterFormatException($message);
     }

@@ -13,9 +13,12 @@ use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class ParserTest extends TestCase
+final class ParserTest extends TestCase
 {
-    public static function filterProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function filterProvider(): iterable
     {
         yield 'Basic string filter' => [
             "genres = 'Drama'",
@@ -29,7 +32,7 @@ class ParserTest extends TestCase
         ];
 
         yield 'Special string filter' => [
-            'foobar = ' . SearchParameters::escapeFilterValue("The 17\" O'Conner && O`Series \n OR a || 1%2 book?"),
+            'foobar = '.SearchParameters::escapeFilterValue("The 17\" O'Conner && O`Series \n OR a || 1%2 book?"),
             [
                 [
                     'attribute' => 'foobar',
@@ -244,7 +247,6 @@ class ParserTest extends TestCase
                         ],
                     ],
                 ],
-
             ],
         ];
 
@@ -321,7 +323,6 @@ class ParserTest extends TestCase
             "(((genres > 42 AND genres < 50 OR (genres IS NULL)) OR foobar = 'test'))",
             [
                 [
-
                     [
                         [
                             [
@@ -356,7 +357,10 @@ class ParserTest extends TestCase
         ];
     }
 
-    public static function invalidFilterProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function invalidFilterProvider(): iterable
     {
         yield 'Must begin with either ( or an attribute name' => [
             '$whatever',

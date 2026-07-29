@@ -9,6 +9,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
+use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Searcher;
 
 /**
@@ -25,15 +26,18 @@ use Loupe\Loupe\Internal\Search\Searcher;
  */
 class MultiAttribute extends AbstractSorter
 {
-    private const MULTI_RGXP = '^(max|min)\((' . Configuration::ATTRIBUTE_NAME_RGXP . ')\)$';
+    private const MULTI_RGXP = '^(max|min)\(('.Configuration::ATTRIBUTE_NAME_RGXP.')\)$';
 
     public function __construct(
-        private string $attributeName,
-        private Aggregate $aggregate,
-        private Direction $direction
+        private readonly string $attributeName,
+        private readonly Aggregate $aggregate,
+        private readonly Direction $direction,
     ) {
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     public function apply(Searcher $searcher, Engine $engine): void
     {
         $isFloatType = $engine->getIndexInfo()->isNumericAttribute($this->attributeName);
@@ -42,7 +46,7 @@ class MultiAttribute extends AbstractSorter
         $multiFilterCte = $searcher->addAllMultiFiltersCte($this->attributeName, $this->getFilterSelectAlias());
 
         // There are filters for this attribute, we have to apply those filters to our multi attribute
-        if ($multiFilterCte !== null) {
+        if (null !== $multiFilterCte) {
             $qb = $this->createQueryBuilderForFilterCte($engine, $multiFilterCte);
         } else {
             // Otherwise we join with the general matches
@@ -51,7 +55,7 @@ class MultiAttribute extends AbstractSorter
 
         $qb->groupBy('document_id');
 
-        $cteName = 'order_' . $this->attributeName;
+        $cteName = 'order_'.$this->attributeName;
         $this->addAndOrderByCte($searcher, $engine, $this->direction, $cteName, $qb);
     }
 
@@ -59,7 +63,7 @@ class MultiAttribute extends AbstractSorter
     {
         $matches = self::split($value);
 
-        if ($matches === null) {
+        if (null === $matches) {
             throw new \InvalidArgumentException('Invalid string, call supports() first.');
         }
 
@@ -75,21 +79,21 @@ class MultiAttribute extends AbstractSorter
     {
         return $this->aggregate->buildSql(
             $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES)
-            . '.'
-            . $this->getColumnName($engine)
+            .'.'
+            .$this->getColumnName($engine),
         );
     }
 
     public function getFilterSelectAlias(): string
     {
-        return 'sort_value_' . $this->getId();
+        return 'sort_value_'.$this->getId();
     }
 
     public static function supports(string $value, Engine $engine): bool
     {
         $matches = self::split($value);
 
-        if ($matches === null) {
+        if (null === $matches) {
             return false;
         }
 
@@ -117,13 +121,17 @@ class MultiAttribute extends AbstractSorter
         return $qb;
     }
 
+    /**
+     * @param Searcher<AbstractQueryParameters> $searcher
+     */
     private function createQueryBuilderWithoutFilterCte(Engine $engine, Searcher $searcher, string $column): QueryBuilder
     {
         $qb = $engine->getConnection()->createQueryBuilder()
             ->addSelect(
-                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS) . '.document AS document_id',
-                $this->aggregate->buildSql($column) . ' AS sort_order'
-            );
+                $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS).'.document AS document_id',
+                $this->aggregate->buildSql($column).' AS sort_order',
+            )
+        ;
 
         $searcher->addFromMultiAttributesAndJoinMatches($qb, $this->attributeName);
 
@@ -133,15 +141,16 @@ class MultiAttribute extends AbstractSorter
     private function getColumnName(Engine $engine): string
     {
         $isFloatType = LoupeTypes::isFloatType($engine->getIndexInfo()->getLoupeTypeForAttribute($this->attributeName));
+
         return $isFloatType ? 'numeric_value' : 'string_value';
     }
 
     /**
-     * @return null|array{aggregate: Aggregate, attribute: string}
+     * @return array{aggregate: Aggregate, attribute: string}|null
      */
-    private static function split(string $value): ?array
+    private static function split(string $value): array|null
     {
-        $supports = preg_match('@' . self::MULTI_RGXP . '@', $value, $matches);
+        $supports = preg_match('@'.self::MULTI_RGXP.'@', $value, $matches);
 
         if (!$supports) {
             return null;
@@ -149,13 +158,13 @@ class MultiAttribute extends AbstractSorter
 
         $aggregate = Aggregate::tryFromCaseInsensitive((string) $matches[1]);
 
-        if ($aggregate === null) {
+        if (null === $aggregate) {
             return null;
         }
 
         return [
             'aggregate' => $aggregate,
-            'attribute' => (string) $matches[2],
+            'attribute' => $matches[2],
         ];
     }
 }

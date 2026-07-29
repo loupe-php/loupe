@@ -7,8 +7,15 @@ namespace Loupe\Loupe\Tests\Unit\Internal\LanguageDetection;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use PHPUnit\Framework\TestCase;
 
-class NitotmLanguageDetectorTest extends TestCase
+final class NitotmLanguageDetectorTest extends TestCase
 {
+    public function testQueryDetectionUsesBestMatchWithoutReliabilityGate(): void
+    {
+        $detector = new NitotmLanguageDetector([]);
+
+        $this->assertSame('de', $detector->detectForQuery('thomas müller'));
+    }
+
     public function testWeightedLanguageDetection(): void
     {
         $detector = new NitotmLanguageDetector([]);

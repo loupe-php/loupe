@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Unit\Internal\Tokenizer;
 
+use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
@@ -12,25 +13,28 @@ use Loupe\Matcher\StopWords\InMemoryStopWords;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class TokenizerTest extends TestCase
+final class TokenizerTest extends TestCase
 {
     public function testMaximumTokens(): void
     {
         $tokenizer = $this->createTokenizer();
         $tokens = $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.', true, 5);
 
-        $this->assertSame(5, $tokens->count());
+        $this->assertCount(5, $tokens);
 
-        $this->assertSame([
-            'hallo',
-            'mein',
-            'name',
-            'nam',
-            'ist',
-            'hase',
-            'has',
-        ], $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.', true, 5)
-            ->allTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'mein',
+                'name',
+                'nam',
+                'ist',
+                'hase',
+                'has',
+            ],
+            $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.', true, 5)
+                ->allTermsWithVariants(),
+        );
     }
 
     public function testNegatedPhrases(): void
@@ -38,29 +42,35 @@ class TokenizerTest extends TestCase
         $tokenizer = $this->createTokenizer();
         $tokens = $tokenizer->tokenize('Hallo, -mein -"Name ist Hase" und -ich "weiß von" -nichts.');
 
-        $this->assertSame([
-            'hallo',
-            'mein',
-            'name',
-            'ist',
-            'hase',
-            'und',
-            'ich',
-            'weiss',
-            'von',
-            'nichts',
-            'nicht',
-        ], $tokens->allTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'mein',
+                'name',
+                'ist',
+                'hase',
+                'und',
+                'ich',
+                'weiss',
+                'von',
+                'nichts',
+                'nicht',
+            ],
+            $tokens->allTermsWithVariants(),
+        );
 
-        $this->assertSame([
-            'mein',
-            'name',
-            'ist',
-            'hase',
-            'ich',
-            'nichts',
-            'nicht',
-        ], $tokens->allNegatedTermsWithVariants());
+        $this->assertSame(
+            [
+                'mein',
+                'name',
+                'ist',
+                'hase',
+                'ich',
+                'nichts',
+                'nicht',
+            ],
+            $tokens->allNegatedTermsWithVariants(),
+        );
     }
 
     public function testNegatedTokens(): void
@@ -68,30 +78,36 @@ class TokenizerTest extends TestCase
         $tokenizer = $this->createTokenizer();
         $tokens = $tokenizer->tokenize('Hallo, mein -Name ist -Hase und ich weiß von -nichts.');
 
-        $this->assertSame([
-            'hallo',
-            'mein',
-            'name',
-            'nam',
-            'ist',
-            'hase',
-            'has',
-            'und',
-            'ich',
-            'weiss',
-            'von',
-            'nichts',
-            'nicht',
-        ], $tokens->allTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'mein',
+                'name',
+                'nam',
+                'ist',
+                'hase',
+                'has',
+                'und',
+                'ich',
+                'weiss',
+                'von',
+                'nichts',
+                'nicht',
+            ],
+            $tokens->allTermsWithVariants(),
+        );
 
-        $this->assertSame([
-            'name',
-            'nam',
-            'hase',
-            'has',
-            'nichts',
-            'nicht',
-        ], $tokens->allNegatedTermsWithVariants());
+        $this->assertSame(
+            [
+                'name',
+                'nam',
+                'hase',
+                'has',
+                'nichts',
+                'nicht',
+            ],
+            $tokens->allNegatedTermsWithVariants(),
+        );
     }
 
     public function testNegatedWordPartPhraseTokens(): void
@@ -99,34 +115,40 @@ class TokenizerTest extends TestCase
         $tokenizer = $this->createTokenizer();
         $tokens = $tokenizer->tokenize('-Hallo, mein -Name-ist-Hase und -"ich weiß" von 64-bit-Dingen.');
 
-        $this->assertSame([
-            'hallo',
-            'mein',
-            'name',
-            'nam',
-            'ist',
-            'hase',
-            'has',
-            'und',
-            'ich',
-            'weiss',
-            'von',
-            '64',
-            'bit',
-            'dingen',
-            'ding',
-        ], $tokens->allTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'mein',
+                'name',
+                'nam',
+                'ist',
+                'hase',
+                'has',
+                'und',
+                'ich',
+                'weiss',
+                'von',
+                '64',
+                'bit',
+                'dingen',
+                'ding',
+            ],
+            $tokens->allTermsWithVariants(),
+        );
 
-        $this->assertSame([
-            'hallo',
-            'name',
-            'nam',
-            'ist',
-            'hase',
-            'has',
-            'ich',
-            'weiss',
-        ], $tokens->allNegatedTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'name',
+                'nam',
+                'ist',
+                'hase',
+                'has',
+                'ich',
+                'weiss',
+            ],
+            $tokens->allNegatedTermsWithVariants(),
+        );
     }
 
     public function testNegatedWordPartTokens(): void
@@ -134,32 +156,38 @@ class TokenizerTest extends TestCase
         $tokenizer = $this->createTokenizer();
         $tokens = $tokenizer->tokenize('Hallo, mein -Name-ist-Hase und -ich weiß von 64-bit-Dingen.');
 
-        $this->assertSame([
-            'hallo',
-            'mein',
-            'name',
-            'nam',
-            'ist',
-            'hase',
-            'has',
-            'und',
-            'ich',
-            'weiss',
-            'von',
-            '64',
-            'bit',
-            'dingen',
-            'ding',
-        ], $tokens->allTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'mein',
+                'name',
+                'nam',
+                'ist',
+                'hase',
+                'has',
+                'und',
+                'ich',
+                'weiss',
+                'von',
+                '64',
+                'bit',
+                'dingen',
+                'ding',
+            ],
+            $tokens->allTermsWithVariants(),
+        );
 
-        $this->assertSame([
-            'name',
-            'nam',
-            'ist',
-            'hase',
-            'has',
-            'ich',
-        ], $tokens->allNegatedTermsWithVariants());
+        $this->assertSame(
+            [
+                'name',
+                'nam',
+                'ist',
+                'hase',
+                'has',
+                'ich',
+            ],
+            $tokens->allNegatedTermsWithVariants(),
+        );
     }
 
     public function testStopWords(): void
@@ -169,18 +197,21 @@ class TokenizerTest extends TestCase
             'Hallo, mein Name ist Hase und ich weiß von nichts.',
         )->withoutStopwords(new InMemoryStopWords(['ist', 'und', 'von']), true);
 
-        $this->assertSame([
-            'hallo',
-            'mein',
-            'name',
-            'nam',
-            'hase',
-            'has',
-            'ich',
-            'weiss',
-            'nichts',
-            'nicht',
-        ], $tokens->allTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'mein',
+                'name',
+                'nam',
+                'hase',
+                'has',
+                'ich',
+                'weiss',
+                'nichts',
+                'nicht',
+            ],
+            $tokens->allTermsWithVariants(),
+        );
     }
 
     public function testStopWordsOnly(): void
@@ -215,44 +246,62 @@ class TokenizerTest extends TestCase
     public function testTokenize(): void
     {
         $tokenizer = $this->createTokenizer();
-        $this->assertSame([
-            'hallo',
-            'mein',
-            'name',
-            'nam',
-            'ist',
-            'hase',
-            'has',
-            'und',
-            'ich',
-            'weiss',
-            'von',
-            'nichts',
-            'nicht',
-        ], $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.')
-            ->allTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'mein',
+                'name',
+                'nam',
+                'ist',
+                'hase',
+                'has',
+                'und',
+                'ich',
+                'weiss',
+                'von',
+                'nichts',
+                'nicht',
+            ],
+            $tokenizer->tokenize('Hallo, mein Name ist Hase und ich weiß von nichts.')
+                ->allTermsWithVariants(),
+        );
+    }
+
+    public function testTokenizeWithoutTypoToleranceDoesNotStem(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()->withTypoTolerance(TypoTolerance::disabled()),
+        );
+
+        $this->assertSame(['name'], $tokenizer->tokenize('Name')->allTermsWithVariants());
     }
 
     public function testTokenizeWithPhrases(): void
     {
         $tokenizer = $this->createTokenizer();
-        $this->assertSame([
-            'hallo',
-            'mein',
-            'name',
-            'ist',
-            'hase',
-            'und',
-            'ich',
-            'weiss',
-            'von',
-            'nichts',
-            'nicht',
-        ], $tokenizer->tokenize('Hallo, mein "Name ist Hase" und ich weiß von nichts.')
-            ->allTermsWithVariants());
+        $this->assertSame(
+            [
+                'hallo',
+                'mein',
+                'name',
+                'ist',
+                'hase',
+                'und',
+                'ich',
+                'weiss',
+                'von',
+                'nichts',
+                'nicht',
+            ],
+            $tokenizer->tokenize('Hallo, mein "Name ist Hase" und ich weiß von nichts.')
+                ->allTermsWithVariants(),
+        );
     }
 
-    public static function tokenizationWithLanguageSubsetProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function tokenizationWithLanguageSubsetProvider(): iterable
     {
         yield 'Test German extracts as expected on German text' => [
             'Hallo, mein Name ist Hase und ich weiß von nichts.',
@@ -294,9 +343,15 @@ class TokenizerTest extends TestCase
 
     private function createTokenizer(Configuration|null $configuration = null): Tokenizer
     {
-        $configuration = $configuration ?? Configuration::create();
+        $configuration ??= Configuration::create();
         $languageDetector = new NitotmLanguageDetector($configuration->getLanguages());
 
-        return new Tokenizer($this->createMock(Engine::class), $languageDetector);
+        $engine = $this->createMock(Engine::class);
+        $engine
+            ->method('getConfiguration')
+            ->willReturn($configuration)
+        ;
+
+        return new Tokenizer($engine, $languageDetector);
     }
 }

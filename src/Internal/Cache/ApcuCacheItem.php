@@ -4,37 +4,31 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Cache;
 
-use DateInterval;
-use DateTimeInterface;
 use Psr\Cache\CacheItemInterface;
 
 final class ApcuCacheItem implements CacheItemInterface
 {
-    private bool $hit;
-
-    private ?int $ttl = null;
-
-    private mixed $value;
+    private int|null $ttl = null;
 
     public function __construct(
-        private string $key,
-        mixed $value = null,
-        bool $hit = false
+        private readonly string $key,
+        private mixed $value = null,
+        private bool $hit = false,
     ) {
-        $this->value = $value;
-        $this->hit = $hit;
     }
 
-    public function expiresAfter(int|DateInterval|null $time): static
+    public function expiresAfter(\DateInterval|int|null $time): static
     {
-        if ($time === null) {
+        if (null === $time) {
             $this->ttl = null;
+
             return $this;
         }
 
-        if ($time instanceof DateInterval) {
+        if ($time instanceof \DateInterval) {
             $now = new \DateTimeImmutable();
             $this->ttl = max(0, $now->add($time)->getTimestamp() - $now->getTimestamp());
+
             return $this;
         }
 
@@ -43,10 +37,11 @@ final class ApcuCacheItem implements CacheItemInterface
         return $this;
     }
 
-    public function expiresAt(?DateTimeInterface $expiration): static
+    public function expiresAt(\DateTimeInterface|null $expiration): static
     {
-        if ($expiration === null) {
+        if (null === $expiration) {
             $this->ttl = null;
+
             return $this;
         }
 
@@ -66,7 +61,7 @@ final class ApcuCacheItem implements CacheItemInterface
         return $this->key;
     }
 
-    public function getTtl(): ?int
+    public function getTtl(): int|null
     {
         return $this->ttl;
     }

@@ -18,7 +18,7 @@ enum Direction: string
     {
         return match ($this) {
             self::ASC => self::DESC,
-            self::DESC => self::ASC
+            self::DESC => self::ASC,
         };
     }
 }

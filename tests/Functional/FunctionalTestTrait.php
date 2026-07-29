@@ -21,12 +21,10 @@ trait FunctionalTestTrait
         $results = $loupe->browse($browseParameters)->toArray();
 
         // Browse results are never sorted, let's sort them manually by 'id' which is just required for those tests
-        uasort($results['hits'], static function (array $hitA, array $hitB) {
-            return $hitA['id'] <=> $hitB['id'];
-        });
+        uasort($results['hits'], static fn (array $hitA, array $hitB) => $hitA['id'] <=> $hitB['id']);
 
-        unset($results['processingTimeMs']);
-        unset($loupe);
+        unset($results['processingTimeMs'], $loupe);
+
         $this->assertSame($expectedResults, $results);
     }
 
@@ -34,7 +32,7 @@ trait FunctionalTestTrait
     {
         $factory = new LoupeFactory();
 
-        if ($dataDir === '') {
+        if ('' === $dataDir) {
             $loupe = $factory->createInMemory($configuration);
         } else {
             $loupe = $factory->create($dataDir, $configuration);
@@ -45,13 +43,13 @@ trait FunctionalTestTrait
 
     protected function indexFixture(Loupe $loupe, string $indexFixture = ''): void
     {
-        if ($indexFixture === '') {
+        if ('' === $indexFixture) {
             return;
         }
 
-        $contents = file_get_contents(Util::fixturesPath('Data/' . $indexFixture . '.json'));
+        $contents = file_get_contents(Util::fixturesPath('Data/'.$indexFixture.'.json'));
 
-        if ($contents === false) {
+        if (false === $contents) {
             throw new \InvalidArgumentException(\sprintf('Fixture "%s" does not exist.', $indexFixture));
         }
 
@@ -70,14 +68,15 @@ trait FunctionalTestTrait
 
     protected function setupLoupeWithDepartments(Configuration|null $configuration = null, string $dataDir = ''): Loupe
     {
-        if ($configuration === null) {
+        if (null === $configuration) {
             $configuration = Configuration::create();
         }
 
         $configuration = $configuration
             ->withFilterableAttributes(['departments', 'gender', 'isActive', 'colors', 'age', 'recentPerformanceScores'])
             ->withSortableAttributes(['firstname'])
-            ->withSearchableAttributes(['firstname', 'lastname']);
+            ->withSearchableAttributes(['firstname', 'lastname'])
+        ;
 
         return $this->createLoupe($configuration, $dataDir);
     }
@@ -92,14 +91,15 @@ trait FunctionalTestTrait
 
     protected function setupLoupeWithMoviesFixture(Configuration|null $configuration = null, string $dataDir = ''): Loupe
     {
-        if ($configuration === null) {
+        if (null === $configuration) {
             $configuration = Configuration::create();
         }
 
         $configuration = $configuration
             ->withFilterableAttributes(['genres'])
             ->withSortableAttributes(['title'])
-            ->withSearchableAttributes(['title', 'overview']);
+            ->withSearchableAttributes(['title', 'overview'])
+        ;
 
         $loupe = $this->createLoupe($configuration, $dataDir);
         $this->indexFixture($loupe, 'movies');
@@ -109,7 +109,7 @@ trait FunctionalTestTrait
 
     protected function setupLoupeWitProductsFixture(Configuration|null $configuration = null, string $dataDir = ''): Loupe
     {
-        if ($configuration === null) {
+        if (null === $configuration) {
             $configuration = Configuration::create();
         }
 
@@ -117,7 +117,8 @@ trait FunctionalTestTrait
             ->withPrimaryKey('sku')
             ->withFilterableAttributes(['product_id', 'categories', 'price', 'isAvailable', 'ratings'])
             ->withSortableAttributes(['name', 'price'])
-            ->withSearchableAttributes(['name', 'variant']);
+            ->withSearchableAttributes(['name', 'variant'])
+        ;
 
         $loupe = $this->createLoupe($configuration, $dataDir);
         $this->indexFixture($loupe, 'products');

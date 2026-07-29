@@ -8,7 +8,7 @@ use Loupe\Loupe\Exception\InvalidSearchParametersException;
 use Loupe\Loupe\SearchParameters;
 use PHPUnit\Framework\TestCase;
 
-class SearchParametersTest extends TestCase
+final class SearchParametersTest extends TestCase
 {
     public function testHash(): void
     {
@@ -16,7 +16,7 @@ class SearchParametersTest extends TestCase
 
         $this->assertNotSame(
             $searchParameters->getHash(),
-            $searchParameters->withPage(2)->getHash()
+            $searchParameters->withPage(2)->getHash(),
         );
     }
 
@@ -73,7 +73,8 @@ class SearchParametersTest extends TestCase
             ->withAttributesToSearchOn(['title'])
             ->withShowMatchesPosition(true)
             ->withShowRankingScore(true)
-            ->withSort(['popularity:desc']);
+            ->withSort(['popularity:desc'])
+        ;
 
         $array = $original->toArray();
         $reconstructed = SearchParameters::fromArray($array);

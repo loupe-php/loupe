@@ -8,9 +8,12 @@ use Loupe\Loupe\Internal\Filter\Ast\Operator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class OperatorTest extends TestCase
+final class OperatorTest extends TestCase
 {
-    public static function negativeAndOppositeProvider(): \Generator
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function negativeAndOppositeProvider(): iterable
     {
         yield 'IN' => [
             Operator::In,

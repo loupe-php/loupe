@@ -12,85 +12,113 @@ use Toflar\StateSetIndex\StateSet\StateSetInterface;
 
 class StateSet implements StateSetInterface
 {
+    private bool $dirty = false;
+
     private bool $initialized = false;
 
     private InMemoryStateSet $inMemoryStateSet;
 
-    public function __construct(
-        private Engine $engine
-    ) {
+    public function __construct(private readonly Engine $engine)
+    {
     }
 
     public function add(int $state): void
     {
         $this->initialize();
+
+        if ($this->inMemoryStateSet->has($state)) {
+            return;
+        }
+
         $this->inMemoryStateSet->add($state);
+        $this->dirty = true;
     }
 
     public function all(): array
     {
         $this->initialize();
+
         return $this->inMemoryStateSet->all();
     }
 
     public function clear(): void
     {
         $this->initialize();
+
+        if ([] === $this->inMemoryStateSet->all()) {
+            return;
+        }
+
         $this->inMemoryStateSet = new InMemoryStateSet([]);
+        $this->dirty = true;
     }
 
     public function has(int $state): bool
     {
         $this->initialize();
+
         return $this->inMemoryStateSet->has($state);
     }
 
     public function persist(): void
     {
         $this->initialize();
-        $this->engine->getConnection()->executeStatement('DELETE FROM ' . IndexInfo::TABLE_NAME_STATE_SET);
-        $this->engine->getConnection()->executeStatement('DELETE FROM sqlite_sequence WHERE name = ?', [IndexInfo::TABLE_NAME_STATE_SET]);
-        $values = [];
-        foreach ($this->inMemoryStateSet->all() as $state) {
-            $values[] = '(' . $state . ')';
+
+        if (!$this->dirty) {
+            return;
         }
 
-        if ($values !== []) {
-            $this->engine->getConnection()->executeStatement(\sprintf('INSERT INTO ' . IndexInfo::TABLE_NAME_STATE_SET . ' (state) VALUES %s', implode(',', $values)));
+        $this->engine->getConnection()->executeStatement('DELETE FROM '.IndexInfo::TABLE_NAME_STATE_SET);
+        $this->engine->getConnection()->executeStatement('DELETE FROM sqlite_sequence WHERE name = ?', [IndexInfo::TABLE_NAME_STATE_SET]);
+        $values = [];
+
+        foreach ($this->inMemoryStateSet->all() as $state) {
+            $values[] = '('.$state.')';
+        }
+
+        if ([] !== $values) {
+            $this->engine->getConnection()->executeStatement(\sprintf('INSERT INTO '.IndexInfo::TABLE_NAME_STATE_SET.' (state) VALUES %s', implode(',', $values)));
         }
 
         $all = $this->inMemoryStateSet->all();
         $all = array_combine($this->inMemoryStateSet->all(), array_fill(0, \count($all), true));
         $this->dumpStateSetCache($all);
+        $this->dirty = false;
     }
 
     public function remove(int $state): void
     {
         $this->initialize();
+
+        if (!$this->inMemoryStateSet->has($state)) {
+            return;
+        }
+
         $this->inMemoryStateSet->remove($state);
+        $this->dirty = true;
     }
 
     /**
      * @param array<int, bool> $stateSet
-^     */
+     * ^ */
     private function dumpStateSetCache(array $stateSet): void
     {
         $cacheFile = $this->getStateSetCacheFile();
 
-        if ($cacheFile === null) {
+        if (null === $cacheFile) {
             return;
         }
 
         file_put_contents($cacheFile, pack('Q*', ...array_keys($stateSet)));
     }
 
-    private function getStateSetCacheFile(): ?string
+    private function getStateSetCacheFile(): string|null
     {
-        if ($this->engine->getDataDir() === null) {
+        if (null === $this->engine->getDataDir()) {
             return null;
         }
 
-        return $this->engine->getDataDir() . '/state_set.bin';
+        return $this->engine->getDataDir().'/state_set.bin';
     }
 
     private function initialize(): void
@@ -101,7 +129,7 @@ class StateSet implements StateSetInterface
 
         $cacheFile = $this->getStateSetCacheFile();
 
-        if ($cacheFile === null) {
+        if (null === $cacheFile) {
             $data = $this->loadFromStorage();
         } else {
             if (!file_exists($cacheFile)) {

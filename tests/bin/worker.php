@@ -6,7 +6,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\LoupeFactory;
 use Loupe\Loupe\Tests\WorkerLogger;
 
-require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__.'/../../vendor/autoload.php';
 
 $env = getenv();
 $configuration = $env['LOUPE_FUNCTIONAL_TEST_CONFIGURATION'] ?? null;
@@ -16,16 +16,16 @@ $numberOfWordsPerDocument = (int) ($env['LOUPE_FUNCTIONAL_TEST_NUMBER_OF_WORDS_P
 $preDocuments = json_decode($env['LOUPE_FUNCTIONAL_TEST_PRE_DOCUMENTS'] ?? '{}', true);
 $postDocuments = json_decode($env['LOUPE_FUNCTIONAL_TEST_POST_DOCUMENTS'] ?? '{}', true);
 
-$generateRandomWords = function () use ($numberOfWordsPerDocument): string {
+$generateRandomWords = static function () use ($numberOfWordsPerDocument): string {
     static $alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $words = [];
 
-    for ($i = 0; $i < $numberOfWordsPerDocument; $i++) {
-        $length = rand(3, 10); // each word will be between 3–10 chars
+    for ($i = 0; $i < $numberOfWordsPerDocument; ++$i) {
+        $length = random_int(3, 10); // each word will be between 3–10 chars
         $word = '';
 
-        for ($j = 0; $j < $length; $j++) {
-            $word .= $alphabet[rand(0, \strlen($alphabet) - 1)];
+        for ($j = 0; $j < $length; ++$j) {
+            $word .= $alphabet[random_int(0, strlen((string) $alphabet) - 1)];
         }
 
         $words[] = $word;
@@ -34,10 +34,10 @@ $generateRandomWords = function () use ($numberOfWordsPerDocument): string {
     return implode(' ', $words);
 };
 
-$generateDocuments = function (int $count) use ($generateRandomWords): array {
+$generateDocuments = static function (int $count) use ($generateRandomWords): array {
     $documents = [];
 
-    for ($i = 0; $i < $count; $i++) {
+    for ($i = 0; $i < $count; ++$i) {
         $documents[] = [
             'id' => uniqid(),
             'content' => $generateRandomWords(),
@@ -55,16 +55,16 @@ if (!$configuration || !$tempDir) {
 try {
     $configuration = Configuration::fromString($configuration);
     $configuration = $configuration->withLogger(new WorkerLogger($configuration->getProcessName()));
-} catch (\Throwable $exception) {
-    echo 'Could not instantiate the configuration for this test: ' . $exception->getMessage();
+} catch (Throwable $exception) {
+    echo 'Could not instantiate the configuration for this test: '.$exception->getMessage();
     exit(1);
 }
 
 try {
     $loupeFactory = new LoupeFactory();
     $loupe = $loupeFactory->create($tempDir, $configuration);
-} catch (\Throwable $exception) {
-    echo 'Could not instantiate the loupe factory for this test: ' . $exception->getMessage();
+} catch (Throwable $exception) {
+    echo 'Could not instantiate the loupe factory for this test: '.$exception->getMessage();
     exit(1);
 }
 
@@ -72,12 +72,12 @@ try {
     $documents = array_merge(
         $preDocuments,
         $generateDocuments($numberOfRandomDocuments),
-        $postDocuments
+        $postDocuments,
     );
 
     $loupe->addDocuments($documents);
-} catch (\Throwable $exception) {
-    echo 'Could not add documents for this test: ' . $exception->getMessage();
+} catch (Throwable $exception) {
+    echo 'Could not add documents for this test: '.$exception->getMessage();
     exit(1);
 }
 

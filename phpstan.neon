@@ -3,6 +3,8 @@ parameters:
     ignoreErrors:
         -
             identifier: missingType.generics
+        -
+            identifier: filesystemcall.unsafe
     treatPhpDocTypesAsCertain: false
     paths:
         - src
