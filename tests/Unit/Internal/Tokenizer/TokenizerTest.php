@@ -287,6 +287,22 @@ final class TokenizerTest extends TestCase
         $this->assertContains('tv', $tokens->allTermsWithVariants());
     }
 
+    public function testSynonymChainsOffStemVariant(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()
+                ->withLanguages(['en'])
+                ->withSynonyms([
+                    'go' => ['run'],
+                ]),
+        );
+
+        $token = $this->findToken($tokenizer->tokenize('running fast'), 'running');
+
+        $this->assertContains('run', $token->getVariants());
+        $this->assertContains('go', $token->getVariants());
+    }
+
     public function testSynonymDirectionIsOneWay(): void
     {
         $tokenizer = $this->createTokenizer(
