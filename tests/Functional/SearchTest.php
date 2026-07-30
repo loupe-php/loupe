@@ -2282,7 +2282,7 @@ final class SearchTest extends TestCase
         $loupe = $this->setupLoupeWithMoviesFixture();
 
         $searchParametersWithoutNegation = SearchParameters::create()
-            ->withQuery('friendly mother -boy -"depressed suburban father" father')
+            ->withQuery('mother -boy -"depressed suburban father" father')
             ->withAttributesToRetrieve(['id', 'title'])
             ->withSort(['title:asc'])
         ;
@@ -2305,7 +2305,7 @@ final class SearchTest extends TestCase
                         'title' => 'My Life Without Me',
                     ],
                 ],
-                'query' => 'friendly mother -boy -"depressed suburban father" father',
+                'query' => 'mother -boy -"depressed suburban father" father',
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
