@@ -81,7 +81,7 @@ final class Configuration
     private array $stopWords = [];
 
     /**
-     * Synonyms of terms: 'search term' => ['additional', 'terms', 'to', 'match']
+     * Synonyms of terms: 'search term' => ['additional', 'terms', 'to', 'match'].
      *
      * @var array<string, array<string>>
      */
@@ -598,7 +598,7 @@ final class Configuration
             }
 
             if (!\is_array($values) || !array_is_list($values) || [] === $values) {
-                throw InvalidConfigurationException::becauseInvalidSynonymValue(\is_scalar($values) ? (string) $values : get_debug_type($values));
+                throw InvalidConfigurationException::becauseInvalidSynonymValue(get_debug_type($values));
             }
 
             foreach ($values as $value) {
