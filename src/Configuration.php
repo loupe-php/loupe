@@ -80,6 +80,11 @@ final class Configuration
      */
     private array $stopWords = [];
 
+    /**
+     * @var array<string, array<string>>
+     */
+    private array $synonyms = [];
+
     private TypoTolerance $typoTolerance;
 
     /**
@@ -114,6 +119,7 @@ final class Configuration
      *     searchableAttributes?: array<string>,
      *     sortableAttributes?: array<string>,
      *     stopWords?: array<string>,
+     *     synonyms?: array<string, array<string>>,
      *     processName: ?string,
      *     typoTolerance?: array{
      *         alphabetSize?: int,
@@ -171,6 +177,10 @@ final class Configuration
 
         if (isset($data['stopWords'])) {
             $instance = $instance->withStopWords($data['stopWords']);
+        }
+
+        if (isset($data['synonyms'])) {
+            $instance = $instance->withSynonyms($data['synonyms']);
         }
 
         if (isset($data['processName'])) {
@@ -232,6 +242,7 @@ final class Configuration
         $hash[] = json_encode($this->getMaxTotalHits());
         $hash[] = json_encode($this->getSortableAttributes());
         $hash[] = json_encode($this->getStopWords());
+        $hash[] = json_encode($this->getSynonyms());
 
         $hash[] = $this->getTypoTolerance()->isDisabled() ? 'disabled' : 'enabled';
         $hash[] = $this->getTypoTolerance()->getAlphabetSize();
@@ -320,6 +331,14 @@ final class Configuration
         return $this->stopWords;
     }
 
+    /**
+     * @return array<string, array<string>>
+     */
+    public function getSynonyms(): array
+    {
+        return $this->synonyms;
+    }
+
     public function getTypoTolerance(): TypoTolerance
     {
         return $this->typoTolerance;
@@ -348,6 +367,7 @@ final class Configuration
      *     searchableAttributes: array<string>,
      *     sortableAttributes: array<string>,
      *     stopWords: array<string>,
+     *     synonyms: array<string, array<string>>,
      *     processName: ?string,
      *     typoTolerance: array{
      *         alphabetSize: int,
@@ -373,6 +393,7 @@ final class Configuration
             'searchableAttributes' => $this->searchableAttributes,
             'sortableAttributes' => $this->sortableAttributes,
             'stopWords' => $this->stopWords,
+            'synonyms' => $this->synonyms,
             'processName' => $this->processName,
             'typoTolerance' => $this->typoTolerance->toArray(),
         ];
@@ -562,6 +583,40 @@ final class Configuration
         return $clone;
     }
 
+    /**
+     * @param array<string, array<string>> $synonyms
+     */
+    public function withSynonyms(array $synonyms): self
+    {
+        $validated = [];
+
+        foreach ($synonyms as $key => $values) {
+            if (!\is_string($key) || !self::isValidSynonymTerm($key)) {
+                throw InvalidConfigurationException::becauseInvalidSynonym(\is_string($key) ? $key : (string) $key);
+            }
+
+            if (!\is_array($values) || !array_is_list($values) || [] === $values) {
+                throw InvalidConfigurationException::becauseInvalidSynonym($key);
+            }
+
+            foreach ($values as $value) {
+                if (!\is_string($value) || !self::isValidSynonymTerm($value)) {
+                    throw InvalidConfigurationException::becauseInvalidSynonym(\is_string($value) ? $value : $key);
+                }
+            }
+
+            sort($values);
+            $validated[$key] = $values;
+        }
+
+        ksort($validated);
+
+        $clone = clone $this;
+        $clone->synonyms = $validated;
+
+        return $clone;
+    }
+
     public function withTypoTolerance(TypoTolerance $tolerance): self
     {
         $clone = clone $this;
@@ -587,6 +642,11 @@ final class Configuration
         $clone->vacuumProbability = $probability;
 
         return $clone;
+    }
+
+    private static function isValidSynonymTerm(string $term): bool
+    {
+        return '' !== $term && !preg_match('/\s/u', $term);
     }
 
     /**

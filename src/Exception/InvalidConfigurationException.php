@@ -29,6 +29,16 @@ class InvalidConfigurationException extends \InvalidArgumentException implements
         );
     }
 
+    public static function becauseInvalidSynonym(string $value): self
+    {
+        return new self(
+            \sprintf(
+                'A valid synonym key or value is a non-empty single-word string (no whitespace). "%s" given.',
+                $value,
+            ),
+        );
+    }
+
     public static function becauseRequiredDataDirMissing(): self
     {
         return new self('Data directory argument is required and cannot be empty.');
