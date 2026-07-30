@@ -81,9 +81,9 @@ $configuration = \Loupe\Loupe\Configuration::create()
 
 ## Synonyms
 
-Synonyms let you define terms that should additionally match other terms during search. They are read **query-side**
-and are **one-way**. In the example below, searching for `jacket` also finds documents containing `parka` or `windbreaker`,
-but searching for `parka` does NOT find generic jackets.
+Synonyms let terms match other terms during search. Each mapping is **one-way**: the key is a query term and its values
+are matching document terms. In this example, searching for `jacket` also finds documents containing `parka` or
+`windbreaker`, but searching for `parka` does not find generic jackets.
 
 ```php
 $configuration = \Loupe\Loupe\Configuration::create()
@@ -103,8 +103,6 @@ $configuration = \Loupe\Loupe\Configuration::create()
     ])
 ;
 ```
-
-A few things to keep in mind:
 
 - **Single-word only.** Every synonym source and target must be a single word. Multi-word entries are unsupported.
 - **Changing synonyms requires a reindex.** The synonyms are resolved during indexing and only take effect after a reindex.
