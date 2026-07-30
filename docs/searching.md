@@ -440,20 +440,27 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withAttributesToCrop(['title', 'summary'], cropMarker: '∞');
 ```
 
-Loupe emits one fragment per match cluster. You can limit how many fragments are returned with `cropMaxFragments` (defaults to `5`).
+Loupe emits one fragment per match cluster. By default, at most `5` fragments are returned per attribute. Fragments are
+always emitted in document order, i.e. in the order they appear in the attribute.
+
+You can return a different number of fragments with `cropMaxFragments`. For example, to return at most three:
 
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create()
     ->withAttributesToCrop(['title', 'summary'], cropMaxFragments: 3);
 ```
 
-Fragments are emitted in document order, beginning from the first one. Set `prioritizeMatches` to `true` to rank the
-crop windows by density and number of distinct matches. This will still emit them in document order, but prefer the
-most relevant ones when limiting their number.
+When there are more match clusters than `cropMaxFragments`, Loupe has to decide which ones to keep. By default
+(`prioritizeMatches: true`) it keeps the highest-quality fragments — the crop windows with the highest density and the
+most distinct matches — so that the most relevant context is shown. Note that this only affects *which* fragments are
+selected; the selected fragments are still emitted in document order, not sorted by quality.
+
+Set `prioritizeMatches` to `false` to instead keep the first fragments in document order, discarding any beyond
+`cropMaxFragments`.
 
 ```php
 $searchParameters = \Loupe\Loupe\SearchParameters::create()
-    ->withAttributesToCrop(['title', 'summary'], prioritizeMatches: true);
+    ->withAttributesToCrop(['title', 'summary'], prioritizeMatches: false);
 ```
 
 ## Stop words
