@@ -29,11 +29,21 @@ class InvalidConfigurationException extends \InvalidArgumentException implements
         );
     }
 
-    public static function becauseInvalidSynonym(string $value): self
+    public static function becauseInvalidSynonymKey(string $key): self
     {
         return new self(
             \sprintf(
-                'A valid synonym key or value is a non-empty single-word string (no whitespace). "%s" given.',
+                'A valid synonym key is a non-empty single-word string. "%s" given.',
+                $key,
+            ),
+        );
+    }
+
+    public static function becauseInvalidSynonymValue(string $value): self
+    {
+        return new self(
+            \sprintf(
+                'A valid synonym value is an array of non-empty single-word strings. "%s" given.',
                 $value,
             ),
         );

@@ -594,16 +594,16 @@ final class Configuration
 
         foreach ($synonyms as $key => $values) {
             if (!\is_string($key) || !self::isValidSynonymTerm($key)) {
-                throw InvalidConfigurationException::becauseInvalidSynonym((string) $key);
+                throw InvalidConfigurationException::becauseInvalidSynonymKey((string) $key);
             }
 
             if (!\is_array($values) || !array_is_list($values) || [] === $values) {
-                throw InvalidConfigurationException::becauseInvalidSynonym($key);
+                throw InvalidConfigurationException::becauseInvalidSynonymValue(\is_scalar($values) ? (string) $values : get_debug_type($values));
             }
 
             foreach ($values as $value) {
                 if (!\is_string($value) || !self::isValidSynonymTerm($value)) {
-                    throw InvalidConfigurationException::becauseInvalidSynonym(\is_string($value) ? $value : $key);
+                    throw InvalidConfigurationException::becauseInvalidSynonymValue(\is_scalar($value) ? (string) $value : get_debug_type($value));
                 }
             }
 
