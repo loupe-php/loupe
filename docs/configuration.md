@@ -79,6 +79,36 @@ $configuration = \Loupe\Loupe\Configuration::create()
 ;
 ```
 
+## Synonyms
+
+Synonyms let you define terms that should additionally match other terms during search. They are read **query-side**
+and are **one-way**. In the example below, searching for `jacket` also finds documents containing `parka` or `windbreaker`,
+but searching for `parka` does NOT find generic jackets.
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withSynonyms([
+        'jacket' => ['parka', 'windbreaker'],
+    ])
+;
+```
+
+Two-way synonyms are expressed by listing both directions explicitly.
+
+```php
+$configuration = \Loupe\Loupe\Configuration::create()
+    ->withSynonyms([
+        'couch' => ['sofa'],
+        'sofa' => ['couch'],
+    ])
+;
+```
+
+A few things to keep in mind:
+
+- **Single-word only.** Every synonym source and target must be a single word. Multi-word entries are unsupported.
+- **Changing synonyms requires a reindex.** The synonyms are resolved during indexing and only take effect after a reindex.
+- **Literal matches rank above synonym matches**. A document containing the original term outranks one that only matches via a synonym.
 
 ## Minimum length for prefix search
 
