@@ -588,8 +588,6 @@ final class Configuration
      */
     public function withSynonyms(array $synonyms): self
     {
-        $validated = [];
-
         foreach ($synonyms as $key => $values) {
             if (!\is_string($key) || !self::isValidSynonymTerm($key)) {
                 throw InvalidConfigurationException::becauseInvalidSynonymKey((string) $key);
@@ -606,13 +604,13 @@ final class Configuration
             }
 
             sort($values);
-            $validated[$key] = $values;
+            $synonyms[$key] = $values;
         }
 
-        ksort($validated);
+        ksort($synonyms);
 
         $clone = clone $this;
-        $clone->synonyms = $validated;
+        $clone->synonyms = $synonyms;
 
         return $clone;
     }
