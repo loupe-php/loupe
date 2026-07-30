@@ -42,7 +42,7 @@ final class SearchParameters extends AbstractQueryParameters
 
     private int $maxValuesPerFacet = 100;
 
-    private bool $prioritizeMatches = false;
+    private bool $prioritizeMatches = true;
 
     private float $rankingScoreThreshold = 0.0;
 
@@ -100,7 +100,7 @@ final class SearchParameters extends AbstractQueryParameters
                 $data['cropLength'] ?? 50,
                 $data['cropMarker'] ?? '…',
                 $data['cropMaxFragments'] ?? 5,
-                $data['prioritizeMatches'] ?? false,
+                $data['prioritizeMatches'] ?? true,
             );
         }
 
@@ -323,7 +323,7 @@ final class SearchParameters extends AbstractQueryParameters
     /**
      * @param array<string>|array<string, int> $attributesToCrop
      */
-    public function withAttributesToCrop(array $attributesToCrop, int $cropLength = 50, string $cropMarker = '…', int $cropMaxFragments = 5, bool $prioritizeMatches = false): self
+    public function withAttributesToCrop(array $attributesToCrop, int $cropLength = 50, string $cropMarker = '…', int $cropMaxFragments = 5, bool $prioritizeMatches = true): self
     {
         $clone = clone $this;
 
