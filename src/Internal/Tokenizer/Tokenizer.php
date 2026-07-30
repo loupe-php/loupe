@@ -198,35 +198,6 @@ class Tokenizer implements TokenizerInterface
         return $tokenCollectionWithVariants;
     }
 
-    /**
-     * Build (and cache) the inverted synonym lookup from the configuration.
-     *
-     * @return array<string, list<string>>
-     */
-    private function getSynonymLookup(): array
-    {
-        if (null !== $this->synonymLookup) {
-            return $this->synonymLookup;
-        }
-
-        $normalizer = new Normalizer();
-        $lookup = [];
-
-        foreach ($this->engine->getConfiguration()->getSynonyms() as $searchTerm => $documentTerms) {
-            $normalizedSearchTerm = $normalizer->normalize($searchTerm);
-
-            foreach ($documentTerms as $documentTerm) {
-                $lookup[$normalizer->normalize($documentTerm)][] = $normalizedSearchTerm;
-            }
-        }
-
-        foreach ($lookup as $documentTerm => $searchTerms) {
-            $lookup[$documentTerm] = array_values(array_unique($searchTerms));
-        }
-
-        return $this->synonymLookup = $lookup;
-    }
-
     private function getStemmerForLanguage(string $language): Stemmer|null
     {
         if (\array_key_exists($language, $this->stemmers)) {
@@ -255,5 +226,32 @@ class Tokenizer implements TokenizerInterface
         }
 
         return $this->stemmerCache[$language][$term] = mb_strtolower($stemmer->stem($term), 'UTF-8');
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function getSynonymLookup(): array
+    {
+        if (null !== $this->synonymLookup) {
+            return $this->synonymLookup;
+        }
+
+        $normalizer = new Normalizer();
+        $lookup = [];
+
+        foreach ($this->engine->getConfiguration()->getSynonyms() as $searchTerm => $documentTerms) {
+            $normalizedSearchTerm = $normalizer->normalize($searchTerm);
+
+            foreach ($documentTerms as $documentTerm) {
+                $lookup[$normalizer->normalize($documentTerm)][] = $normalizedSearchTerm;
+            }
+        }
+
+        foreach ($lookup as $documentTerm => $searchTerms) {
+            $lookup[$documentTerm] = array_values(array_unique($searchTerms));
+        }
+
+        return $this->synonymLookup = $lookup;
     }
 }
