@@ -17,6 +17,7 @@ Loupe…
 * supports filtering (and ordering) on Geo distance
 * supports search facets
 * orders relevance based on a number of factors such as number of matching terms, typos, proximity, word counts and exactness
+* crops attributes to show the most relevant context around matched terms
 * auto-detects languages
 * supports stemming
 * is very easy to use
