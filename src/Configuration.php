@@ -81,6 +81,8 @@ final class Configuration
     private array $stopWords = [];
 
     /**
+     * Synonyms of terms: 'search term' => ['additional', 'terms', 'to', 'match']
+     *
      * @var array<string, array<string>>
      */
     private array $synonyms = [];
