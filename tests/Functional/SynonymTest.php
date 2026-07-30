@@ -20,7 +20,6 @@ final class SynonymTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title'])
-            ->withSortableAttributes(['title'])
             ->withSynonyms([
                 'tv' => ['television'],
             ])
@@ -48,7 +47,6 @@ final class SynonymTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title', 'tags'])
-            ->withSortableAttributes(['title'])
             ->withSynonyms([
                 'tv' => ['television'],
             ])
@@ -77,7 +75,6 @@ final class SynonymTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title'])
-            ->withSortableAttributes(['title'])
             ->withSynonyms([
                 'tv' => ['television'],
             ])
@@ -109,7 +106,6 @@ final class SynonymTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title'])
-            ->withSortableAttributes(['title'])
             ->withSynonyms([
                 'phone' => ['iphone'],
             ])
@@ -121,10 +117,7 @@ final class SynonymTest extends TestCase
             ['id' => 2, 'title' => 'android phone'],
         ]);
 
-        // Searching the synonym key "phone" matches both the generic phone and the iphone reached via the synonym.
         $this->assertSame([1, 2], $this->searchIds($loupe, 'phone'));
-
-        // Searching "iphone" stays specific: it only matches the iphone document, not generic phones.
         $this->assertSame([1], $this->searchIds($loupe, 'iphone'));
     }
 
@@ -160,7 +153,6 @@ final class SynonymTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title'])
-            ->withSortableAttributes(['title'])
             ->withSynonyms([
                 'couch' => ['sofa'],
                 'sofa' => ['couch'],
@@ -181,7 +173,6 @@ final class SynonymTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title'])
-            ->withSortableAttributes(['title'])
             ->withSynonyms([
                 'television' => ['tv'],
             ])
@@ -199,7 +190,6 @@ final class SynonymTest extends TestCase
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['title'])
-            ->withSortableAttributes(['title'])
             ->withTypoTolerance(TypoTolerance::disabled())
             ->withSynonyms([
                 'phone' => ['iphone'],
