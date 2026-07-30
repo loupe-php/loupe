@@ -167,6 +167,27 @@ final class SynonymTest extends TestCase
         $this->assertSame([1], $this->searchIds($loupe, 'televsion'));
     }
 
+    public function testTypoToleranceDisabledStillMatchesSynonym(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title'])
+            ->withSortableAttributes(['title'])
+            ->withTypoTolerance(TypoTolerance::disabled())
+            ->withSynonyms([
+                'phone' => ['iphone'],
+            ])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            ['id' => 1, 'title' => 'iphone 15 pro'],
+            ['id' => 2, 'title' => 'android phone'],
+        ]);
+
+        $this->assertSame([1, 2], $this->searchIds($loupe, 'phone'));
+        $this->assertSame([1], $this->searchIds($loupe, 'iphone'));
+    }
+
     /**
      * @return array<int>
      */
