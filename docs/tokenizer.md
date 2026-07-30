@@ -66,6 +66,29 @@ Just like for optimal tokenization, for optimal stemming we need proper language
 mind because even though `Wars` in `Star Wars` would get correctly stemmed to `war` in English, this only works when 
 the English language can be detected reliably - which will not work for `Star Wars` if it were standalone.
 
+## Term decomposition
+
+Loupe automatically decomposes compound words into their individual terms. This is especially useful for languages
+that commonly join words together: a search for `brush` finds a document containing `toothbrush`, while a search for
+`Vertrag` finds `Wartungsvertrag`. The complete compound remains searchable as well.
+
+Decomposition is currently supported for English and German. It uses language-specific dictionaries and, for German,
+also understands connecting elements between the individual terms. As with stemming, reliable language detection is
+important. If you know which languages your documents use, configuring them explicitly helps Loupe select the right
+decomposition rules.
+
+Term decomposition happens while documents are indexed. Loupe stores the decomposed terms as variants of the original
+compound, without changing the document itself:
+
+| Indexed text | Also searchable by |
+| --- | --- |
+| `toothbrush` | `tooth`, `brush` |
+| `Wartungsvertrag` | `Wartung`, `Vertrag` |
+| `Zeitungspapier` | `Zeitung`, `Papier` |
+
+Queries are intentionally not decomposed. Consequently, indexing `tooth brush` as two separate words does not make it
+match a query for `toothbrush`; indexing `toothbrush` does make it match a query for `brush`.
+
 ## Configuration options in Loupe
 
 To improve the language detection during both, the indexing and the querying process, you can ask Loupe to only 

@@ -22,6 +22,10 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 
 This will return all documents matching `Hello` or `World` while considering the [typo tolerance settings][Config].
 
+English and German compound words in indexed documents are automatically decomposed. For example, a query for `brush`
+also matches `toothbrush`, and `Vertrag` matches `Wartungsvertrag`. See the
+[tokenizer documentation](./tokenizer.md#term-decomposition) for details and limitations.
+
 Loupe also supports phrase search, so if you want to query for documents containing exactly `Hello World`, you'll 
 have to use `"` to encapsulate your query:
 

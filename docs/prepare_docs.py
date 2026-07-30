@@ -24,7 +24,7 @@ DOC_PAGES: list[tuple[str, str, str]] = [
     ("searching.md", "Searching", "Query, filter, sort, facet, paginate, and highlight search results."),
     ("browsing.md", "Browsing", "Walk the index for exports, data inspection, or internal tooling."),
     ("ranking.md", "Ranking", "See how Loupe scores relevance and how to improve result quality."),
-    ("tokenizer.md", "Tokenizer", "Learn how language detection, tokenization, and stemming shape the index."),
+    ("tokenizer.md", "Tokenizer", "Learn how language detection, tokenization, stemming, and term decomposition shape the index."),
     ("performance.md", "Performance", "Benchmark the engine and understand the tradeoffs behind fast lookups."),
     ("blog_post.md", "Background / Blog Post", "Read the longer story behind the project and the constraints that shaped it."),
 ]

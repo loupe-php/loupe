@@ -20,6 +20,7 @@ Loupe…
 * crops attributes to show the most relevant context around matched terms
 * auto-detects languages
 * supports stemming
+* automatically decomposes English and German compound words, so searching for `brush` finds `toothbrush`
 * is very easy to use
 * is all-in-all just the easiest way to replace your good old SQL `LIKE %...%` queries with a way better search 
   experience but without all the hassle of an additional service to manage. SQLite is everywhere and all it needs is 
