@@ -592,7 +592,7 @@ final class Configuration
 
         foreach ($synonyms as $key => $values) {
             if (!\is_string($key) || !self::isValidSynonymTerm($key)) {
-                throw InvalidConfigurationException::becauseInvalidSynonym(\is_string($key) ? $key : (string) $key);
+                throw InvalidConfigurationException::becauseInvalidSynonym((string) $key);
             }
 
             if (!\is_array($values) || !array_is_list($values) || [] === $values) {
