@@ -23,6 +23,7 @@ use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
 use Loupe\Matcher\FormatterOptions;
 use Loupe\Matcher\FormatterResult;
+use Loupe\Matcher\Tokenizer\Phrase;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 
@@ -640,7 +641,9 @@ class Searcher
             ));
         }
 
-        $isPhraseContinuation = $token->isPartOfPhrase() && null !== $previousPhraseToken;
+        $isPhraseContinuation = $token->isPartOfPhrase()
+            && !$token->startsPhrase()
+            && null !== $previousPhraseToken;
         if ($isPhraseContinuation) {
             // Continuing inside "a phrase": drive query from small materialized previous token's match CTE
             // Use CROSS JOIN instead of INNER JOIN to pin join order and avoid full scans for common words like "his"
@@ -971,6 +974,12 @@ class Searcher
 
             foreach ($tokenOrPhrase->all() as $token) {
                 $statements[] = $this->createTermDocumentMatchesCTECondition($token);
+            }
+
+            // The final positional CTE of a phrase already proves that all preceding phrase tokens matched in order.
+            // Using only that CTE for negation lets every token exist independently as long as the exact phrase does not.
+            if ($tokenOrPhrase instanceof Phrase && $tokenOrPhrase->isNegated()) {
+                $statements = \array_slice($statements, -1);
             }
 
             if (\count(array_filter($statements))) {

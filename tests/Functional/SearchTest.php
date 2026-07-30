@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use Loupe\Loupe\Tests\Support\InMemoryCachePool;
@@ -2558,6 +2559,77 @@ final class SearchTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<string, array{query: string, expectedIds: array<int>}>
+     */
+    public static function adjacentPhraseQueryProvider(): iterable
+    {
+        yield 'one phrase remains contiguous' => [
+            'query' => '"young glaciologist"',
+            'expectedIds' => [1, 2, 5, 6, 7],
+        ];
+        yield 'two phrases allow tokens between them and both are required' => [
+            'query' => '"young glaciologist" "love affair"',
+            'expectedIds' => [1, 5, 6, 7],
+        ];
+        yield 'word order remains significant' => [
+            'query' => '"glaciologist young" "love affair"',
+            'expectedIds' => [4],
+        ];
+        yield 'three phrases have independent boundaries' => [
+            'query' => '"young glaciologist" "love affair" "rock concert"',
+            'expectedIds' => [5],
+        ];
+        yield 'quoted phrases can be mixed with unquoted terms' => [
+            'query' => '"young glaciologist" Lisa "love affair"',
+            'expectedIds' => [6, 7],
+        ];
+        yield 'a negated phrase retains its own adjacency rules' => [
+            'query' => '"young glaciologist" "love affair" -"rock concert"',
+            'expectedIds' => [1, 6, 7],
+        ];
+    }
+
+    /**
+     * @param array<int> $expectedIds
+     */
+    #[DataProvider('adjacentPhraseQueryProvider')]
+    public function testAdjacentQuotedPhraseBoundaries(string $query, array $expectedIds): void
+    {
+        $loupe = $this->setupLoupeWithAdjacentPhraseDocuments();
+        $searchParameters = SearchParameters::create()
+            ->withQuery($query)
+            ->withMatchingStrategy('all')
+            ->withAttributesToRetrieve(['id'])
+            ->withSort(['id:asc'])
+        ;
+
+        $result = $loupe->search($searchParameters);
+
+        $this->assertSame($expectedIds, array_column($result->getHits(), 'id'));
+    }
+
+    public function testAdjacentQuotedPhraseHighlightingAndRanking(): void
+    {
+        $loupe = $this->setupLoupeWithAdjacentPhraseDocuments();
+        $searchParameters = SearchParameters::create()
+            ->withQuery('"young glaciologist" "love affair"')
+            ->withMatchingStrategy('all')
+            ->withAttributesToRetrieve(['id', 'overview'])
+            ->withAttributesToHighlight(['overview'])
+            ->withShowRankingScore(true)
+        ;
+
+        $hitsById = array_column($loupe->search($searchParameters)->getHits(), null, 'id');
+
+        $this->assertSame(
+            '<em>young glaciologist</em> recalls his <em>love affair</em>',
+            $hitsById[1]['_formatted']['overview'],
+        );
+        $this->assertGreaterThan(0.0, $hitsById[1]['_rankingScore']);
+        $this->assertGreaterThan($hitsById[5]['_rankingScore'], $hitsById[1]['_rankingScore']);
+    }
+
     public function testPhraseSearchDoesNotInvokeTypoTolerance(): void
     {
         $loupe = $this->setupLoupeWithMoviesFixture();
@@ -4365,5 +4437,26 @@ final class SearchTest extends TestCase
                 'totalHits' => 1,
             ],
         ];
+    }
+
+    private function setupLoupeWithAdjacentPhraseDocuments(): Loupe
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['overview'])
+            ->withSortableAttributes(['id'])
+            ->withTypoTolerance(TypoTolerance::create()->disable())
+        ;
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            ['id' => 1, 'overview' => 'young glaciologist recalls his love affair'],
+            ['id' => 2, 'overview' => 'young glaciologist recalls his true love'],
+            ['id' => 3, 'overview' => 'young adventurous glaciologist recalls his love affair'],
+            ['id' => 4, 'overview' => 'glaciologist young recalls his love affair'],
+            ['id' => 5, 'overview' => 'young glaciologist soars across vast icebound immensities before his love affair begins at a rock concert'],
+            ['id' => 6, 'overview' => 'young glaciologist love affair with Lisa at a crowded rock music concert'],
+            ['id' => 7, 'overview' => 'young glaciologist love affair with Lisa'],
+        ]);
+
+        return $loupe;
     }
 }
