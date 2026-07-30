@@ -128,6 +128,34 @@ final class SynonymTest extends TestCase
         $this->assertSame([1], $this->searchIds($loupe, 'iphone'));
     }
 
+    public function testReindexIsRequiredWhenSynonymsChange(): void
+    {
+        $dataDir = $this->createTemporaryDirectory();
+
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title'])
+            ->withSynonyms([
+                'phone' => ['iphone'],
+            ])
+        ;
+
+        $loupe = $this->createLoupe($configuration, $dataDir);
+        $loupe->addDocument(['id' => 1, 'title' => 'iphone 15 pro']);
+
+        $this->assertFalse($loupe->needsReindex());
+
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title'])
+            ->withSynonyms([
+                'phone' => ['iphone', 'smartphone'],
+            ])
+        ;
+
+        $loupe = $this->createLoupe($configuration, $dataDir);
+
+        $this->assertTrue($loupe->needsReindex());
+    }
+
     public function testTwoWayMatch(): void
     {
         $configuration = Configuration::create()
