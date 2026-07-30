@@ -72,6 +72,36 @@ final class ConfigurationTest extends TestCase
             false,
         ];
 
+        yield 'Synonyms are relevant' => [
+            Configuration::create(),
+            Configuration::create()->withSynonyms([
+                'tv' => ['television'],
+            ]),
+            false,
+        ];
+
+        yield 'Differing synonyms produce differing hashes' => [
+            Configuration::create()->withSynonyms([
+                'tv' => ['television'],
+            ]),
+            Configuration::create()->withSynonyms([
+                'tv' => ['telly'],
+            ]),
+            false,
+        ];
+
+        yield 'Same synonyms in different order produce the same hash' => [
+            Configuration::create()->withSynonyms([
+                'sofa' => ['couch'],
+                'couch' => ['sofa', 'settee'],
+            ]),
+            Configuration::create()->withSynonyms([
+                'couch' => ['settee', 'sofa'],
+                'sofa' => ['couch'],
+            ]),
+            true,
+        ];
+
         yield 'Typo thresholds are irrelevant' => [
             Configuration::create(),
             Configuration::create()->withTypoTolerance(TypoTolerance::create()->withTypoThresholds([
@@ -98,10 +128,59 @@ final class ConfigurationTest extends TestCase
         yield ['invalid-dash'];
     }
 
+    /**
+     * @return iterable<array-key, array<mixed>>
+     */
+    public static function invalidSynonymProvider(): iterable
+    {
+        yield 'Multi-word key' => [['san francisco' => ['sf']]];
+        yield 'Multi-word value' => [['sf' => ['san francisco']]];
+        yield 'Empty string key' => [['' => ['x']]];
+        yield 'Empty string value' => [['x' => ['']]];
+        yield 'Non-string value in list' => [['x' => [123]]];
+        yield 'Empty value list' => [['x' => []]];
+        yield 'Non-list value' => [['x' => ['a' => 'b']]];
+    }
+
+    public function testSynonymsRoundTrip(): void
+    {
+        $synonyms = [
+            'jacket' => ['parka', 'windbreaker'],
+            'couch' => ['sofa'],
+        ];
+
+        $configuration = Configuration::create()->withSynonyms($synonyms);
+
+        $this->assertSame(
+            [
+                'couch' => ['sofa'],
+                'jacket' => ['parka', 'windbreaker'],
+            ],
+            $configuration->getSynonyms(),
+        );
+
+        $roundTripped = Configuration::fromArray($configuration->toArray());
+
+        $this->assertSame($configuration->getSynonyms(), $roundTripped->getSynonyms());
+        $this->assertSame($configuration->toArray()['synonyms'], $roundTripped->toArray()['synonyms']);
+    }
+
     #[DataProvider('indexHashProvider')]
     public function testGetIndexHash(Configuration $configurationA, Configuration $configurationB, bool $hashesShouldMatch): void
     {
         $this->assertSame($hashesShouldMatch, $configurationA->getIndexHash() === $configurationB->getIndexHash());
+    }
+
+    /**
+     * @param array<mixed> $synonyms
+     */
+    #[DataProvider('invalidSynonymProvider')]
+    public function testInvalidSynonyms(array $synonyms): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+
+        // @phpstan-ignore-next-line intentionally invalid input
+        Configuration::create()->withSynonyms($synonyms);
     }
 
     #[DataProvider('invalidAttributeNameProvider')]
