@@ -163,6 +163,7 @@ class Tokenizer implements TokenizerInterface
     {
         $tokenCollection = $this->getLanguageTokenizer($language)->tokenize($string, true, $maxTokens);
         $tokenCollectionWithVariants = new TokenCollection();
+        $synonymLookup = $this->getSynonymLookup();
 
         foreach ($tokenCollection->all() as $token) {
             $variants = [];
@@ -180,7 +181,6 @@ class Tokenizer implements TokenizerInterface
             }
 
             $token = $token->withAddedVariants($variants);
-            $synonymLookup = $this->getSynonymLookup();
             if ([] !== $synonymLookup) {
                 $synonymVariants = [];
 
