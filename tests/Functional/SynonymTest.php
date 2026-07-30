@@ -100,7 +100,7 @@ final class SynonymTest extends TestCase
         $this->assertSame('<em>television</em> set', $results['hits'][0]['_formatted']['title']);
 
         $this->assertSame(
-            [['start' => 0, 'length' => 10 ]],
+            [['start' => 0, 'length' => 10]],
             $results['hits'][0]['_matchesPosition']['title'],
         );
     }
