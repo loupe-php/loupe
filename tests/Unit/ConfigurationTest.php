@@ -66,6 +66,12 @@ final class ConfigurationTest extends TestCase
             false,
         ];
 
+        yield 'Languages are relevant' => [
+            Configuration::create(),
+            Configuration::create()->withLanguages(['fr', 'en']),
+            false,
+        ];
+
         yield 'Stop words are relevant' => [
             Configuration::create(),
             Configuration::create()->withStopWords(['a', 'the']),
