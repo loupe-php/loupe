@@ -231,6 +231,7 @@ final class Configuration
         $hash[] = json_encode($this->getFilterableAttributes());
         $hash[] = json_encode($this->getMaxTotalHits());
         $hash[] = json_encode($this->getSortableAttributes());
+        $hash[] = json_encode($this->getLanguages());
         $hash[] = json_encode($this->getStopWords());
 
         $hash[] = $this->getTypoTolerance()->isDisabled() ? 'disabled' : 'enabled';
