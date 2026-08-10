@@ -90,6 +90,7 @@ with Loupe either. You can combine your filters with `AND` and `OR`, nest them t
 following operators:
 
 * `=`
+* `!=`
 * `>`
 * `<`
 * `>=`
