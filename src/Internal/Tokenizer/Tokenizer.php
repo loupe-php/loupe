@@ -8,6 +8,7 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\LanguageDetectorInterface;
 use Loupe\Loupe\Internal\Levenshtein;
 use Loupe\Matcher\Locale;
+use Loupe\Matcher\Tokenizer\Normalizer\Normalizer;
 use Loupe\Matcher\Tokenizer\Token;
 use Loupe\Matcher\Tokenizer\TokenCollection;
 use Loupe\Matcher\Tokenizer\Tokenizer as LoupeMatcherTokenizer;
@@ -18,6 +19,11 @@ use Wamania\Snowball\StemmerFactory;
 
 class Tokenizer implements TokenizerInterface
 {
+    /**
+     * @var array<string, list<string>>|null
+     */
+    private array|null $synonymLookup = null;
+
     /**
      * @var array<string, LoupeMatcherTokenizer>
      */
@@ -157,6 +163,7 @@ class Tokenizer implements TokenizerInterface
     {
         $tokenCollection = $this->getLanguageTokenizer($language)->tokenize($string, true, $maxTokens);
         $tokenCollectionWithVariants = new TokenCollection();
+        $synonymLookup = $this->getSynonymLookup();
 
         foreach ($tokenCollection->all() as $token) {
             $variants = [];
@@ -173,7 +180,19 @@ class Tokenizer implements TokenizerInterface
                 }
             }
 
-            $tokenCollectionWithVariants->add($token->withAddedVariants($variants));
+            $token = $token->withAddedVariants($variants);
+            if ([] !== $synonymLookup) {
+                $synonymVariants = [];
+
+                foreach ($token->allTerms() as $term) {
+                    foreach ($synonymLookup[$term] ?? [] as $searchTerm) {
+                        $synonymVariants[] = $searchTerm;
+                    }
+                }
+                $token = $token->withAddedVariants($synonymVariants);
+            }
+
+            $tokenCollectionWithVariants->add($token);
         }
 
         return $tokenCollectionWithVariants;
@@ -207,5 +226,32 @@ class Tokenizer implements TokenizerInterface
         }
 
         return $this->stemmerCache[$language][$term] = mb_strtolower($stemmer->stem($term), 'UTF-8');
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function getSynonymLookup(): array
+    {
+        if (null !== $this->synonymLookup) {
+            return $this->synonymLookup;
+        }
+
+        $normalizer = new Normalizer();
+        $lookup = [];
+
+        foreach ($this->engine->getConfiguration()->getSynonyms() as $searchTerm => $documentTerms) {
+            $normalizedSearchTerm = $normalizer->normalize($searchTerm);
+
+            foreach ($documentTerms as $documentTerm) {
+                $lookup[$normalizer->normalize($documentTerm)][] = $normalizedSearchTerm;
+            }
+        }
+
+        foreach ($lookup as $documentTerm => $searchTerms) {
+            $lookup[$documentTerm] = array_values(array_unique($searchTerms));
+        }
+
+        return $this->synonymLookup = $lookup;
     }
 }

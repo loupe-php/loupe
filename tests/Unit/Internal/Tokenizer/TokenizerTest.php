@@ -10,6 +10,8 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
 use Loupe\Matcher\StopWords\InMemoryStopWords;
+use Loupe\Matcher\Tokenizer\Token;
+use Loupe\Matcher\Tokenizer\TokenCollection;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -231,6 +233,105 @@ final class TokenizerTest extends TestCase
         $this->assertSame(['ist', 'oder', 'nicht'], $tokensWithStopWordsOnly->allTermsWithVariants());
     }
 
+    public function testSynonymsAreNormalized(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()->withSynonyms([
+                'TV' => ['Télévision'],
+            ]),
+        );
+
+        $token = $this->findToken($tokenizer->tokenize('télévision'), 'television');
+
+        $this->assertContains('tv', $token->getVariants());
+    }
+
+    public function testSynonymsAreNotAppliedToQueries(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()->withSynonyms([
+                'tv' => ['television'],
+            ]),
+        );
+
+        $this->assertSame(['television'], $tokenizer->tokenizeQuery('television')->allTermsWithVariants());
+    }
+
+    public function testSynonymsAreNotChainedRecursively(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()->withSynonyms([
+                'a' => ['b'],
+                'b' => ['c'],
+            ]),
+        );
+
+        $token = $this->findToken($tokenizer->tokenize('c'), 'c');
+
+        $this->assertContains('b', $token->getVariants());
+        $this->assertNotContains('a', $token->getVariants());
+    }
+
+    public function testSynonymsExpandDocumentTokens(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()->withSynonyms([
+                'tv' => ['television'],
+            ]),
+        );
+
+        $tokens = $tokenizer->tokenize('my television is broken');
+        $token = $this->findToken($tokens, 'television');
+
+        $this->assertContains('tv', $token->getVariants());
+        $this->assertContains('tv', $tokens->allTermsWithVariants());
+    }
+
+    public function testSynonymChainsOffStemVariant(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()
+                ->withLanguages(['en'])
+                ->withSynonyms([
+                    'go' => ['run'],
+                ]),
+        );
+
+        $token = $this->findToken($tokenizer->tokenize('running fast'), 'running');
+
+        $this->assertContains('run', $token->getVariants());
+        $this->assertContains('go', $token->getVariants());
+    }
+
+    public function testSynonymDirectionIsOneWay(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()->withSynonyms([
+                'tv' => ['television'],
+            ]),
+        );
+
+        $token = $this->findToken($tokenizer->tokenize('watching tv tonight'), 'tv');
+
+        $this->assertNotContains('television', $token->getVariants());
+    }
+
+    public function testSynonymsWorkWithTypoToleranceDisabled(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()
+                ->withLanguages(['en'])
+                ->withTypoTolerance(TypoTolerance::disabled())
+                ->withSynonyms([
+                    'tv' => ['television'],
+                ]),
+        );
+
+        $token = $this->findToken($tokenizer->tokenize('my television is broken'), 'television');
+
+        $this->assertContains('tv', $token->getVariants());
+    }
+
     /**
      * @param array<string> $languages
      * @param array<string> $expectedTokens
@@ -353,5 +454,16 @@ final class TokenizerTest extends TestCase
         ;
 
         return new Tokenizer($engine, $languageDetector);
+    }
+
+    private function findToken(TokenCollection $tokens, string $term): Token
+    {
+        foreach ($tokens->all() as $token) {
+            if ($token->getTerm() === $term) {
+                return $token;
+            }
+        }
+
+        $this->fail(\sprintf('No token with term "%s" found. Terms: %s', $term, implode(', ', $tokens->allTerms())));
     }
 }
