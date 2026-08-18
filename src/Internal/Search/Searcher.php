@@ -652,7 +652,7 @@ class Searcher
             $cteSelectQb->from(\sprintf(
                 '%s %s'
                 .' CROSS JOIN %s'
-                .' CROSS JOIN %s %s INDEXED BY sqlite_autoindex_terms_documents_1'
+                .' CROSS JOIN %s %s INDEXED BY '.IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH
                 .' ON %s.id = %s.term'
                 .' AND %s.document = %s.document'
                 .' AND %s.attribute = %s.attribute'
@@ -672,12 +672,12 @@ class Searcher
                 $previousPhraseAlias,
             ));
         } else {
-            // Join from term_matches CTE — not from terms_documents - to force primary key usage
+            // Join from term_matches CTE — not from terms_documents - to force the intended occurrence index usage
             $cteSelectQb->from($termMatchesCTE);
             $cteSelectQb->innerJoin(
                 $termMatchesCTE,
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                $termsDocumentsAlias.' INDEXED BY sqlite_autoindex_terms_documents_1',
+                $termsDocumentsAlias.' INDEXED BY '.IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH,
                 \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias),
             );
         }
