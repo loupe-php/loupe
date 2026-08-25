@@ -142,10 +142,34 @@ class Tokenizer implements TokenizerInterface
 
         if (!isset($this->languageTokenizers[$language])) {
             $locale = Locale::fromString($language);
-            $this->languageTokenizers[$language] = LoupeMatcherTokenizer::createFromPreconfiguredLocaleConfiguration($locale);
+            $this->languageTokenizers[$language] = $this->createLanguageTokenizer($locale);
         }
 
         return $this->languageTokenizers[$language];
+    }
+
+    private function createLanguageTokenizer(Locale $locale): LoupeMatcherTokenizer
+    {
+        $dataDir = $this->engine->getDataDir();
+
+        if (null === $dataDir) {
+            return LoupeMatcherTokenizer::createFromPreconfiguredLocaleConfiguration($locale);
+        }
+
+        $lockHandle = fopen($dataDir.'/fastset.lock', 'c');
+
+        if (false === $lockHandle) {
+            throw new \RuntimeException('Could not open the FastSet cache lock file.');
+        }
+
+        try {
+            flock($lockHandle, LOCK_EX);
+
+            return LoupeMatcherTokenizer::createFromPreconfiguredLocaleConfiguration($locale, $dataDir.'/fastset');
+        } finally {
+            flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
+        }
     }
 
     private function tokenizeWithoutVariants(string $string, string|null $language, int|null $maxTokens = null): TokenCollection

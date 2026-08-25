@@ -9,12 +9,25 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
+use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use Loupe\Matcher\StopWords\InMemoryStopWords;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class TokenizerTest extends TestCase
 {
+    use StorageFixturesTestTrait;
+
+    public function testFastSetCacheIsStoredInDataDirectory(): void
+    {
+        $dataDir = $this->createTemporaryDirectory();
+        $tokenizer = $this->createTokenizer(Configuration::create()->withLanguages(['de']), $dataDir);
+
+        $tokenizer->tokenize('Dies ist ein deutscher Satz mit einem langen zusammengesetzten Zeitungspapierwort.');
+
+        $this->assertDirectoryExists($dataDir.'/fastset/de');
+    }
+
     public function testMaximumTokens(): void
     {
         $tokenizer = $this->createTokenizer();
@@ -341,7 +354,7 @@ final class TokenizerTest extends TestCase
         ];
     }
 
-    private function createTokenizer(Configuration|null $configuration = null): Tokenizer
+    private function createTokenizer(Configuration|null $configuration = null, string|null $dataDir = null): Tokenizer
     {
         $configuration ??= Configuration::create();
         $languageDetector = new NitotmLanguageDetector($configuration->getLanguages());
@@ -350,6 +363,11 @@ final class TokenizerTest extends TestCase
         $engine
             ->method('getConfiguration')
             ->willReturn($configuration)
+        ;
+
+        $engine
+            ->method('getDataDir')
+            ->willReturn($dataDir)
         ;
 
         return new Tokenizer($engine, $languageDetector);
