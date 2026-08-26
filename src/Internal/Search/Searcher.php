@@ -1672,7 +1672,7 @@ class Searcher
     {
         // COUNT() OVER() makes SQLite process the complete sorted result before LIMIT can apply. If the query preserves
         // the match count, count the materialized matches directly instead.
-        $count = $this->fullResultCountRequired
+        $count = $this->shouldUseWindowForTotalHits()
             ? 'COUNT() OVER()'
             : \sprintf('(SELECT COUNT(*) FROM %s)', self::CTE_MATCHES);
 
@@ -1681,6 +1681,23 @@ class Searcher
         }
 
         $this->queryBuilder->addSelect($count.' AS totalHits');
+    }
+
+    private function shouldUseWindowForTotalHits(): bool
+    {
+        if ($this->fullResultCountRequired) {
+            return true;
+        }
+
+        // Phrase queries already produce a small materialized match set, which is cheaper to count in the result window
+        // than to scan again in a scalar subquery.
+        foreach ($this->getSearchTokens()->all() as $token) {
+            if ($token->isPartOfPhrase()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function sortDocuments(): void
