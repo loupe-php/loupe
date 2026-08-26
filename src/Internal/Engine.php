@@ -432,6 +432,10 @@ class Engine
 
     private function wrapSQLiteMethodForCache(string $prefix, callable $callback): \Closure
     {
+        if ('loupe_relevance' === $prefix) {
+            return $this->wrapRelevanceForCache($callback);
+        }
+
         return function () use ($prefix, $callback) {
             $args = \func_get_args();
             $cacheKey = $prefix.':'.implode('--', $args);
@@ -442,6 +446,21 @@ class Engine
             }
 
             return $this->cache[$cacheKey] = $callback(...$args);
+        };
+    }
+
+    private function wrapRelevanceForCache(callable $callback): \Closure
+    {
+        // The configuration is immutable for an Engine instance, so only the per-document positions vary.
+        return function (string $searchableAttributes, string $rankingRules, string $termPositions) use ($callback): float {
+            $cacheKey = 'loupe_relevance:'.$termPositions;
+            $cachedValue = $this->cache[$cacheKey] ?? null;
+
+            if (null !== $cachedValue) {
+                return $cachedValue;
+            }
+
+            return $this->cache[$cacheKey] = $callback($searchableAttributes, $rankingRules, $termPositions);
         };
     }
 }
