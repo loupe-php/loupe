@@ -67,7 +67,9 @@ class TermPositions
         }
 
         foreach (explode(';', $positionsInDocumentPerTerm) as $termSearchedFor) {
-            [$positionsForTerm, $hasExactMatch] = array_pad(explode('|', $termSearchedFor, 2), 2, null);
+            $termParts = explode('|', $termSearchedFor, 2);
+            $positionsForTerm = $termParts[0];
+            $hasExactMatch = $termParts[1] ?? null;
 
             // Document did not match this term
             if ('0' === $positionsForTerm) {
@@ -80,8 +82,12 @@ class TermPositions
             $shouldInferExactMatch = null === $hasExactMatch;
             $hasExactMatch = '1' === $hasExactMatch;
 
-            foreach (explode(',', $positionsForTerm ?? '0') as $positionAttributeCombination) {
-                [$position, $attribute, $numberOfTypos, $foldingMismatch] = array_pad(explode(':', $positionAttributeCombination, 4), 4, '0');
+            foreach (explode(',', $positionsForTerm) as $positionAttributeCombination) {
+                $positionParts = explode(':', $positionAttributeCombination, 4);
+                $position = $positionParts[0];
+                $attribute = $positionParts[1];
+                $numberOfTypos = $positionParts[2] ?? '0';
+                $foldingMismatch = $positionParts[3] ?? '0';
                 $attributePositions[$attribute][] = new Position((int) $position, (int) $numberOfTypos);
                 if ($shouldInferExactMatch) {
                     $hasExactMatch = $hasExactMatch || (0 === (int) $numberOfTypos && '0' === $foldingMismatch);
