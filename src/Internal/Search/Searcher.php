@@ -843,30 +843,44 @@ class Searcher
             }
         }
 
+        $this->addCTE($this->createTermMatchesCte($token, $selects));
+    }
+
+    /**
+     * @param list<string> $selects
+     */
+    private function createTermMatchesCte(Token $token, array $selects): Cte
+    {
         // Precompute per-term typos + is_exact_term so _cte_term_document_matches_N can join this tiny CTE instead of the big `terms` table
         $queryTermParam = $this->bindQueryParameter($token->getTerm());
         $firstCharDouble = $this->engine->getConfiguration()->getTypoTolerance()->firstCharTypoCountsDouble() ? 'true' : 'false';
         $unionSql = implode(' UNION ALL ', $selects);
+        $mayContainDuplicates = \count($selects) > 1;
+
+        $typos = \sprintf('loupe_levensthein(inner_terms.term, %s, %s)', $queryTermParam, $firstCharDouble);
+        $isExactTerm = \sprintf('CASE WHEN inner_terms.term = %s THEN 1 ELSE 0 END', $queryTermParam);
+        if ($mayContainDuplicates) {
+            $typos = 'MIN('.$typos.')';
+            $isExactTerm = 'MAX('.$isExactTerm.')';
+        }
 
         $cteSelectQb = $this->engine->getConnection()->createQueryBuilder();
         $cteSelectQb->select('inner_terms.id AS id');
-        $cteSelectQb->addSelect(\sprintf(
-            'MIN(loupe_levensthein(inner_terms.term, %s, %s)) AS typos',
-            $queryTermParam,
-            $firstCharDouble,
-        ));
-        $cteSelectQb->addSelect(\sprintf(
-            'MAX(CASE WHEN inner_terms.term = %s THEN 1 ELSE 0 END) AS is_exact_term',
-            $queryTermParam,
-        ));
+        $cteSelectQb->addSelect($typos.' AS typos');
+        $cteSelectQb->addSelect($isExactTerm.' AS is_exact_term');
         $cteSelectQb->from('('.$unionSql.')', 'inner_terms');
-        $cteSelectQb->groupBy('inner_terms.id');
+        if ($mayContainDuplicates) {
+            $cteSelectQb->groupBy('inner_terms.id');
+        }
 
-        $this->addCTE(new Cte(
+        return new Cte(
             $this->getCTENameForToken(self::CTE_TERM_MATCHES_PREFIX, $token),
             ['id', 'typos', 'is_exact_term'],
             $cteSelectQb,
-        ));
+            [],
+            // Aggregation already materializes multiple inputs. Keep the same evaluation boundary for one unique input.
+            $mayContainDuplicates ? null : true,
+        );
     }
 
     private function addTermMatchesCTEs(TokenCollection $tokenCollection): void
