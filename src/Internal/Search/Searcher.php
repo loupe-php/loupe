@@ -652,7 +652,7 @@ class Searcher
             $cteSelectQb->from(\sprintf(
                 '%s %s'
                 .' CROSS JOIN %s'
-                .' CROSS JOIN %s %s INDEXED BY sqlite_autoindex_terms_documents_1'
+                .' CROSS JOIN %s %s INDEXED BY '.IndexInfo::getPrimaryKeyIndexName(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS)
                 .' ON %s.id = %s.term'
                 .' AND %s.document = %s.document'
                 .' AND %s.attribute = %s.attribute'
@@ -672,14 +672,7 @@ class Searcher
                 $previousPhraseAlias,
             ));
         } else {
-            // Join from term_matches CTE — not from terms_documents - to force primary key usage
-            $cteSelectQb->from($termMatchesCTE);
-            $cteSelectQb->innerJoin(
-                $termMatchesCTE,
-                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                $termsDocumentsAlias.' INDEXED BY sqlite_autoindex_terms_documents_1',
-                \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias),
-            );
+            $this->addTermDocumentsJoin($cteSelectQb, $termMatchesCTE, $termsDocumentsAlias);
         }
 
         // Restrict to shared candidate documents only for real multi-token queries.
@@ -728,6 +721,32 @@ class Searcher
             [],
             $materialized,
         ));
+    }
+
+    private function addTermDocumentsJoin(QueryBuilder $queryBuilder, string $termMatchesCTE, string $termsDocumentsAlias): void
+    {
+        if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
+            // Pin the join order so SQLite does not scan every term occurrence before applying the attribute filter.
+            $queryBuilder->from(\sprintf(
+                '%s CROSS JOIN %s %s INDEXED BY '.IndexInfo::getPrimaryKeyIndexName(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS).' ON %s.id = %s.term',
+                $termMatchesCTE,
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                $termsDocumentsAlias,
+                $termMatchesCTE,
+                $termsDocumentsAlias,
+            ));
+
+            return;
+        }
+
+        // Join from term_matches CTE — not from terms_documents — while allowing SQLite to optimize the join order.
+        $queryBuilder->from($termMatchesCTE);
+        $queryBuilder->innerJoin(
+            $termMatchesCTE,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            $termsDocumentsAlias.' INDEXED BY '.IndexInfo::getPrimaryKeyIndexName(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+            \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias),
+        );
     }
 
     private function addTermDocumentMatchesCTEs(TokenCollection $tokenCollection): void
