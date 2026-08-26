@@ -164,6 +164,12 @@ class Relevance extends AbstractSorter
         return new self($direction);
     }
 
+    public function requiresFullResultCount(AbstractQueryParameters $queryParameters): bool
+    {
+        return $queryParameters instanceof SearchParameters
+            && $queryParameters->getRankingScoreThreshold() > 0;
+    }
+
     public static function supports(string $value, Engine $engine): bool
     {
         return Searcher::RELEVANCE_ALIAS === $value;

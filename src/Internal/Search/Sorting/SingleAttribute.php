@@ -68,6 +68,11 @@ class SingleAttribute extends AbstractSorter
         return new self($value, $direction);
     }
 
+    public function requiresFullResultCount(AbstractQueryParameters $queryParameters): bool
+    {
+        return false;
+    }
+
     public static function supports(string $value, Engine $engine): bool
     {
         // We support if it's configured sortable
