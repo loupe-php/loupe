@@ -33,6 +33,10 @@ class Sorting
     {
         foreach ($this->sorters as $sorter) {
             $sorter->apply($searcher, $this->engine);
+
+            if ($sorter->requiresFullResultCount($searcher->getQueryParameters())) {
+                $searcher->markFullResultCountRequired();
+            }
         }
     }
 

@@ -104,6 +104,8 @@ class Searcher
 
     private Sorting $sorting;
 
+    private bool $fullResultCountRequired = false;
+
     /**
      * @param T $queryParameters
      */
@@ -243,6 +245,11 @@ class Searcher
         ];
 
         $this->queryBuilder->addOrderBy($sort, $order);
+    }
+
+    public function markFullResultCountRequired(): void
+    {
+        $this->fullResultCountRequired = true;
     }
 
     public function bindQueryParameter(mixed $value, mixed $type = ParameterType::STRING, string|null $parameterName = null): string
@@ -884,6 +891,8 @@ class Searcher
         if (null === $distinct) {
             return;
         }
+
+        $this->markFullResultCountRequired();
 
         if (!\in_array($distinct, $this->engine->getIndexInfo()->getSingleFilterableAttributes(), true)) {
             throw InvalidSearchParametersException::distinctAttributeMustBeASingleFilterableAttribute();
@@ -1620,6 +1629,8 @@ class Searcher
                     continue;
                 }
 
+                $this->markFullResultCountRequired();
+
                 $this->queryBuilder->addSelect($cteName.'.distance AS '.self::DISTANCE_ALIAS.'_'.$attribute);
                 $this->queryBuilder
                     ->innerJoin(
@@ -1659,14 +1670,17 @@ class Searcher
 
     private function selectTotalHits(): void
     {
-        // Only apply max total hits to search queries
+        // COUNT() OVER() makes SQLite process the complete sorted result before LIMIT can apply. If the query preserves
+        // the match count, count the materialized matches directly instead.
+        $count = $this->fullResultCountRequired
+            ? 'COUNT() OVER()'
+            : \sprintf('(SELECT COUNT(*) FROM %s)', self::CTE_MATCHES);
+
         if ($this->queryParameters instanceof SearchParameters) {
-            $select = \sprintf('MIN(%d, COUNT() OVER()) AS totalHits', $this->engine->getConfiguration()->getMaxTotalHits());
-        } else {
-            $select = 'COUNT() OVER() AS totalHits';
+            $count = \sprintf('MIN(%d, %s)', $this->engine->getConfiguration()->getMaxTotalHits(), $count);
         }
 
-        $this->queryBuilder->addSelect($select);
+        $this->queryBuilder->addSelect($count.' AS totalHits');
     }
 
     private function sortDocuments(): void

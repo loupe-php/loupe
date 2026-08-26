@@ -28,6 +28,11 @@ abstract class AbstractSorter
         return $this->id;
     }
 
+    public function requiresFullResultCount(AbstractQueryParameters $queryParameters): bool
+    {
+        return true;
+    }
+
     public function setId(int $id): self
     {
         $this->id = $id;
