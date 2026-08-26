@@ -26,7 +26,7 @@ jobs:
                   coverage: none
 
             - name: Checkout
-              uses: actions/checkout@v3
+              uses: actions/checkout@v7
 
             - name: Install lowest supported SQLite version "${{ matrix.sqlite }}"
               if: ${{ matrix.sqlite == '3.16.0' }}
