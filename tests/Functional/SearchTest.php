@@ -1020,6 +1020,57 @@ final class SearchTest extends TestCase
     }
 
     /**
+     * @return iterable<array-key, array{array{query: string, filter: string, distinct: string|null, facets: array<string>}, array<string, array<string, int>>, int}>
+     */
+    public static function distinctFacetCountsProvider(): iterable
+    {
+        yield 'single-value facet counts one distinct product' => [
+            ['query' => 'Galaxy', 'filter' => '', 'distinct' => 'product_id', 'facets' => ['price']],
+            ['price' => ['899.99' => 1]],
+            1,
+        ];
+
+        yield 'multi-value facet counts one distinct product' => [
+            ['query' => 'Galaxy', 'filter' => '', 'distinct' => 'product_id', 'facets' => ['categories']],
+            ['categories' => ['Electronics' => 1, 'Smartphones' => 1]],
+            1,
+        ];
+
+        yield 'single- and multi-value facets count the same distinct product' => [
+            ['query' => 'Galaxy', 'filter' => '', 'distinct' => 'product_id', 'facets' => ['price', 'categories']],
+            [
+                'price' => ['899.99' => 1],
+                'categories' => ['Electronics' => 1, 'Smartphones' => 1],
+            ],
+            1,
+        ];
+
+        yield 'multiple distinct products share facet values' => [
+            ['query' => '', 'filter' => '', 'distinct' => 'product_id', 'facets' => ['categories']],
+            ['categories' => ['Computers' => 1, 'Electronics' => 2, 'Laptops' => 1, 'Smartphones' => 2]],
+            3,
+        ];
+
+        yield 'one distinct product appears under multiple facet values' => [
+            ['query' => 'MacBook', 'filter' => '', 'distinct' => 'product_id', 'facets' => ['categories']],
+            ['categories' => ['Computers' => 1, 'Laptops' => 1]],
+            1,
+        ];
+
+        yield 'facet counts stay document-based without distinct' => [
+            ['query' => 'Galaxy', 'filter' => '', 'distinct' => null, 'facets' => ['categories']],
+            ['categories' => ['Electronics' => 2, 'Smartphones' => 2]],
+            2,
+        ];
+
+        yield 'filters limit distinct facet counts to matching products' => [
+            ['query' => '', 'filter' => 'isAvailable = true', 'distinct' => 'product_id', 'facets' => ['categories']],
+            ['categories' => ['Computers' => 1, 'Electronics' => 2, 'Laptops' => 1, 'Smartphones' => 2]],
+            3,
+        ];
+    }
+
+    /**
      * @return iterable<array-key, array<mixed>>
      */
     public static function sortOnMultiAttributesWithMinAndMaxModifiers(): iterable
@@ -1351,6 +1402,31 @@ final class SearchTest extends TestCase
                 'totalHits' => 1,
             ],
         );
+    }
+
+    /**
+     * @param array{query: string, filter: string, distinct: string|null, facets: array<string>} $scenario
+     * @param array<string, array<string, int>>                                                  $expectedFacetDistribution
+     */
+    #[DataProvider('distinctFacetCountsProvider')]
+    public function testDistinctFacetCounts(array $scenario, array $expectedFacetDistribution, int $expectedTotalHits): void
+    {
+        $loupe = $this->setupLoupeWitProductsFixture();
+        $searchParameters = SearchParameters::create()
+            ->withQuery($scenario['query'])
+            ->withFilter($scenario['filter'])
+            ->withFacets($scenario['facets'])
+        ;
+
+        if (null !== $scenario['distinct']) {
+            $searchParameters = $searchParameters->withDistinct($scenario['distinct']);
+        }
+
+        $result = $loupe->search($searchParameters);
+
+        $this->assertCount($expectedTotalHits, $result->getHits());
+        $this->assertSame($expectedTotalHits, $result->getTotalHits());
+        $this->assertSame($expectedFacetDistribution, $result->getFacetDistribution());
     }
 
     public function testDistinctUsesBestMatchingDocumentForHighlightingContext(): void
