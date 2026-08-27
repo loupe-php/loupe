@@ -39,6 +39,34 @@ class SearchBench extends AbstractBench
         );
     }
 
+    public function benchQueryWithDistinctAndFacets(): void
+    {
+        $this->loupe->search(
+            SearchParameters::create()
+                ->withQuery('star wars')
+                ->withFacets(['genres'])
+                ->withDistinct('release_date'),
+        );
+    }
+
+    public function benchQueryWithDistinct(): void
+    {
+        $this->loupe->search(
+            SearchParameters::create()
+                ->withQuery('star wars')
+                ->withDistinct('release_date'),
+        );
+    }
+
+    public function benchQueryWithFacets(): void
+    {
+        $this->loupe->search(
+            SearchParameters::create()
+                ->withQuery('star wars')
+                ->withFacets(['genres']),
+        );
+    }
+
     #[Revs(1)]
     public function benchMultiQueryOnAttributes(): void
     {

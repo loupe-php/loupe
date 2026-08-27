@@ -172,12 +172,13 @@ class Searcher
 
     public function addFromMultiAttributesAndJoinMatches(QueryBuilder $qb, string $attribute): void
     {
+        $multiDocumentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS);
         $qb->from(
             IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+            $multiDocumentsAlias,
         )
             ->innerJoin(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                $multiDocumentsAlias,
                 IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
                 $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                 \sprintf(
@@ -185,18 +186,14 @@ class Searcher
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
                     $this->bindQueryParameter($attribute),
                     $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                    $multiDocumentsAlias,
                 ),
             )
             ->innerJoin(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                $multiDocumentsAlias,
                 self::CTE_MATCHES,
                 self::CTE_MATCHES,
-                \sprintf(
-                    '%s.document_id = %s.document',
-                    self::CTE_MATCHES,
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                ),
+                \sprintf('%s.document_id = %s.document', self::CTE_MATCHES, $multiDocumentsAlias),
             )
         ;
     }
@@ -411,6 +408,32 @@ class Searcher
         return isset($this->ctesByName[$cteName]);
     }
 
+    private function addFromMatchesAndJoinMultiAttributes(QueryBuilder $qb, string $attribute): void
+    {
+        $multiDocumentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS);
+        $multiAttributesAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES);
+
+        // Pin the join order for selective searches so SQLite does not scan every multi-value relation first.
+        $qb->from(
+            \sprintf('%s CROSS JOIN %s', self::CTE_MATCHES, IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+            $multiDocumentsAlias,
+        )
+            ->andWhere(\sprintf('%s.document_id = %s.document', self::CTE_MATCHES, $multiDocumentsAlias))
+            ->innerJoin(
+                $multiDocumentsAlias,
+                IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES,
+                $multiAttributesAlias,
+                \sprintf(
+                    '%s.attribute=%s AND %s.id = %s.attribute',
+                    $multiAttributesAlias,
+                    $this->bindQueryParameter($attribute),
+                    $multiAttributesAlias,
+                    $multiDocumentsAlias,
+                ),
+            )
+        ;
+    }
+
     private function addFacets(): void
     {
         if (!$this->queryParameters instanceof SearchParameters) {
@@ -424,86 +447,112 @@ class Searcher
             return;
         }
 
-        $buildCommonQueryBuilder = function (string $attribute, string $facetAlias) use ($searchParameters): QueryBuilder {
-            $qb = $this->engine->getConnection()->createQueryBuilder();
-
-            if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($attribute)) {
-                $this->addFromMultiAttributesAndJoinMatches($qb, $attribute);
-            } else {
-                $qb->from(IndexInfo::TABLE_NAME_DOCUMENTS, $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS));
-                $qb->innerJoin(
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    self::CTE_MATCHES,
-                    self::CTE_MATCHES,
-                    \sprintf(
-                        '%s.document_id = %s._id',
-                        self::CTE_MATCHES,
-                        $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    ),
-                );
-            }
-
-            // Make sure null and empty values are not considered (MAX() would probably prefer those)
-            $qb->andWhere($facetAlias.'!= '.$this->bindQueryParameter(LoupeTypes::VALUE_NULL));
-            $qb->andWhere($facetAlias.'!= '.$this->bindQueryParameter(LoupeTypes::VALUE_EMPTY));
-
-            $qb->setMaxResults($searchParameters->getMaxValuesPerFacet()); // Limit the number of facet values
-
-            return $qb;
-        };
-
-        $addFacetCte = function (string $cteName, QueryBuilder $qb): void {
-            $this->addCTE(new Cte($cteName, ['facet_group', 'facet_value'], $qb));
-            $this->queryBuilder->addSelect(\sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $cteName));
-        };
+        $distinct = $searchParameters->getDistinct();
 
         foreach ($facets as $facet) {
+            $isMulti = $this->engine->getIndexInfo()->isMultiFilterableAttribute($facet);
             $isNumeric = $this->engine->getIndexInfo()->isNumericAttribute($facet);
+            $facetAlias = $this->getFacetAlias($facet, $isNumeric);
+            $countQb = $this->createFacetQueryBuilder($facet, $facetAlias, $searchParameters);
+            $minMaxQb = $isNumeric ? clone $countQb : null;
 
-            if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($facet)) {
-                $facetAlias = \sprintf(
-                    '%s.%s',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
-                    $isNumeric ? 'numeric_value' : 'string_value',
-                );
+            // Count facet, always needed
+            if (null !== $distinct && $isMulti) {
+                $this->joinDocumentsToMultiFacet($countQb);
+            }
 
-                $commonQb = $buildCommonQueryBuilder($facet, $facetAlias);
+            $countQb->select($facetAlias, $this->getFacetCountExpression($isMulti, $distinct));
+            $countQb->groupBy($facetAlias);
+            $this->addFacetCte(self::FACET_ALIAS_COUNT_PREFIX.$facet, $countQb);
 
-                // Count facet, always needed
-                $qb = clone $commonQb;
-                $qb->select($facetAlias, \sprintf('COUNT(%s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS)));
-                $qb->groupBy($facetAlias);
-                $addFacetCte(self::FACET_ALIAS_COUNT_PREFIX.$facet, $qb);
-
-                // MinMax facet for numeric fields
-                if ($isNumeric) {
-                    $qb = clone $commonQb;
-                    $qb->select(\sprintf('MIN(%s)', $facetAlias), \sprintf('MAX(%s)', $facetAlias));
-                    $addFacetCte(self::FACET_ALIAS_MIN_MAX_PREFIX.$facet, $qb);
-                }
-            } else {
-                $facetAlias = \sprintf(
-                    '%s.%s',
-                    $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                    $facet,
-                );
-
-                $commonQb = $buildCommonQueryBuilder($facet, $facetAlias);
-
-                // Count facet, always needed
-                $qb = clone $commonQb;
-                $qb->select($facetAlias, 'COUNT(*)');
-                $qb->groupBy($facetAlias);
-                $addFacetCte(self::FACET_ALIAS_COUNT_PREFIX.$facet, $qb);
-
-                // MinMax facet for numeric fields
-                if ($isNumeric) {
-                    $qb = clone $commonQb;
-                    $qb->select(\sprintf('MIN(%s)', $facetAlias), \sprintf('MAX(%s)', $facetAlias));
-                    $addFacetCte(self::FACET_ALIAS_MIN_MAX_PREFIX.$facet, $qb);
-                }
+            // MinMax facet for numeric fields
+            if (null !== $minMaxQb) {
+                $minMaxQb->select(\sprintf('MIN(%s)', $facetAlias), \sprintf('MAX(%s)', $facetAlias));
+                $this->addFacetCte(self::FACET_ALIAS_MIN_MAX_PREFIX.$facet, $minMaxQb);
             }
         }
+    }
+
+    private function addFacetCte(string $cteName, QueryBuilder $qb): void
+    {
+        $this->addCTE(new Cte($cteName, ['facet_group', 'facet_value'], $qb));
+        $this->queryBuilder->addSelect(\sprintf("(SELECT GROUP_CONCAT(facet_group || ':' || facet_value) FROM %s) AS %s", $cteName, $cteName));
+    }
+
+    private function createFacetQueryBuilder(string $attribute, string $facetAlias, SearchParameters $searchParameters): QueryBuilder
+    {
+        $qb = $this->engine->getConnection()->createQueryBuilder();
+
+        if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($attribute)) {
+            if (null !== $searchParameters->getDistinct() && !$this->getSearchTokens()->empty()) {
+                $this->addFromMatchesAndJoinMultiAttributes($qb, $attribute);
+            } else {
+                $this->addFromMultiAttributesAndJoinMatches($qb, $attribute);
+            }
+        } else {
+            $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+            $qb->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias);
+            $qb->innerJoin(
+                $documentsAlias,
+                self::CTE_MATCHES,
+                self::CTE_MATCHES,
+                \sprintf('%s.document_id = %s._id', self::CTE_MATCHES, $documentsAlias),
+            );
+        }
+
+        // Make sure null and empty values are not considered (MAX() would probably prefer those)
+        $qb->andWhere($facetAlias.'!= '.$this->bindQueryParameter(LoupeTypes::VALUE_NULL));
+        $qb->andWhere($facetAlias.'!= '.$this->bindQueryParameter(LoupeTypes::VALUE_EMPTY));
+
+        $qb->setMaxResults($searchParameters->getMaxValuesPerFacet()); // Limit the number of facet values
+
+        return $qb;
+    }
+
+    private function getFacetAlias(string $facet, bool $isNumeric): string
+    {
+        if ($this->engine->getIndexInfo()->isMultiFilterableAttribute($facet)) {
+            return \sprintf(
+                '%s.%s',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES),
+                $isNumeric ? 'numeric_value' : 'string_value',
+            );
+        }
+
+        return \sprintf(
+            '%s.%s',
+            $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+            $facet,
+        );
+    }
+
+    private function getFacetCountExpression(bool $isMulti, string|null $distinct): string
+    {
+        if (null !== $distinct) {
+            return \sprintf(
+                'COUNT(DISTINCT %s.%s)',
+                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
+                $distinct,
+            );
+        }
+
+        if ($isMulti) {
+            return \sprintf('COUNT(%s.document)', $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS));
+        }
+
+        return 'COUNT(*)';
+    }
+
+    private function joinDocumentsToMultiFacet(QueryBuilder $qb): void
+    {
+        $multiDocumentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS);
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $qb->innerJoin(
+            $multiDocumentsAlias,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+            $documentsAlias,
+            \sprintf('%s._id = %s.document', $documentsAlias, $multiDocumentsAlias),
+        );
     }
 
     /**
