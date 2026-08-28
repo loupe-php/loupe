@@ -479,6 +479,29 @@ class Indexer
                 return;
             }
 
+            $attributeStrings = [];
+
+            foreach ($preparedDocuments->all() as $document) {
+                foreach ($document->getTerms() as $term) {
+                    $attributeStrings[$term->getAttribute()] = true;
+                }
+            }
+
+            // Bulk insert attributes
+            $results = $this->engine->getBulkUpserterFactory()
+                ->create(BulkUpsertConfig::create(
+                    IndexInfo::TABLE_NAME_ATTRIBUTES,
+                    ['attribute'],
+                    array_map(static fn ($attr) => [$attr], array_keys($attributeStrings)),
+                    ['attribute'],
+                    ConflictMode::Ignore,
+                )->withReturningColumns(['attribute', 'id']))
+                ->execute()
+            ;
+
+            /** @var array<string, int> $attributesIdMapper */
+            $attributesIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
+
             // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the document-global "position", 3 the "start", 4 the "end" of the match, 5 if folded - need to optimize for memory here
             $termsMapper = [];
             $knownTermRows = [];
@@ -494,7 +517,7 @@ class Indexer
                         $rows[] = [$term->getTerm(), $term->getTermLength(), 0];
                     }
 
-                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition(), $term->getStart(), $term->getEnd(), $term->isVariant()];
+                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $attributesIdMapper[$term->getAttribute()], $term->getPosition(), $term->getStart(), $term->getEnd(), $term->isVariant()];
 
                     // Prefix relevant terms must not be variants
                     if ($indexPrefixes && !$term->isVariant()) {
