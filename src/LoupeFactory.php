@@ -20,6 +20,10 @@ final class LoupeFactory implements LoupeFactoryInterface
 {
     public const SQLITE_BUSY_TIMEOUT = 5000;
 
+    public const SQLITE_INDEX_CACHE_SIZE = 4000;
+
+    public const SQLITE_SEARCH_CACHE_SIZE = 32000;
+
     public function create(string $dataDir, Configuration $configuration): Loupe
     {
         if ('' === $dataDir) {
@@ -113,8 +117,8 @@ final class LoupeFactory implements LoupeFactoryInterface
     private function optimizeSQLiteConnection(Connection $connection): void
     {
         $optimizations = [
-            // Set cache size to 20MB to reduce disk i/o
-            'PRAGMA cache_size = -20000',
+            // Set cache size to 32MB to reduce disk i/o while searching
+            'PRAGMA cache_size = -'.self::SQLITE_SEARCH_CACHE_SIZE,
             // Set mmap size to 32MB to avoid i/o for database reads
             'PRAGMA mmap_size = 33554432',
             // Store temporary tables in memory instead of on disk
