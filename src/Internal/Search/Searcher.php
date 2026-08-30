@@ -106,6 +106,10 @@ class Searcher
 
     private bool $fullResultCountRequired = false;
 
+    private bool $matchesJoined = false;
+
+    private bool $resultConstrainedToMatches = false;
+
     /**
      * @param T $queryParameters
      */
@@ -249,6 +253,28 @@ class Searcher
         $this->fullResultCountRequired = true;
     }
 
+    public function markResultConstrainedToMatches(): void
+    {
+        $this->resultConstrainedToMatches = true;
+    }
+
+    public function requireMatchesJoin(): void
+    {
+        if ($this->matchesJoined) {
+            return;
+        }
+
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $this->queryBuilder->innerJoin(
+            $documentsAlias,
+            self::CTE_MATCHES,
+            self::CTE_MATCHES,
+            \sprintf('%s._id = %s.document_id', $documentsAlias, self::CTE_MATCHES),
+        );
+        $this->matchesJoined = true;
+        $this->resultConstrainedToMatches = true;
+    }
+
     public function bindQueryParameter(mixed $value, mixed $type = ParameterType::STRING, string|null $parameterName = null): string
     {
         if (null !== $parameterName) {
@@ -286,6 +312,7 @@ class Searcher
         $this->addFacets();
         $this->sortDocuments();
         $this->selectDistance();
+        $this->ensureResultConstrainedToMatches();
         $this->applyDistinct();
         $this->selectTotalHits();
         $this->limitPagination();
@@ -629,6 +656,8 @@ class Searcher
         if (!$this->askedForFormattingOrMatchesPosition()) {
             return;
         }
+
+        $this->requireMatchesJoin();
 
         foreach ($tokenCollection->all() as $token) {
             $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
@@ -1619,6 +1648,13 @@ class Searcher
         $this->queryBuilder->setMaxResults($limit);
     }
 
+    private function ensureResultConstrainedToMatches(): void
+    {
+        if (!$this->resultConstrainedToMatches) {
+            $this->requireMatchesJoin();
+        }
+    }
+
     private function needsFoldingState(): bool
     {
         return \in_array('exactness', $this->engine->getConfiguration()->getRankingRules(), true);
@@ -1693,6 +1729,7 @@ class Searcher
                 }
 
                 $this->markFullResultCountRequired();
+                $this->requireMatchesJoin();
 
                 $this->queryBuilder->addSelect($cteName.'.distance AS '.self::DISTANCE_ALIAS.'_'.$attribute);
                 $this->queryBuilder
@@ -1718,16 +1755,6 @@ class Searcher
             ->addSelect($documentsAlias.'._id AS '.self::DOCUMENT_ID_ALIAS)
             ->addSelect($documentsAlias.'._document')
             ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
-            ->innerJoin(
-                $documentsAlias,
-                self::CTE_MATCHES,
-                self::CTE_MATCHES,
-                \sprintf(
-                    '%s._id = %s.document_id',
-                    $documentsAlias,
-                    self::CTE_MATCHES,
-                ),
-            )
         ;
     }
 
