@@ -217,8 +217,10 @@ foreach ($thousandsOfQueries as $query) {
 }
 ```
 
-The same also applies when indexing documents. Do not pass 20.000 documents to `$loupe->addDocuments()` if memory is
-relevant. Try splitting them in smaller chunks and measure your process.
+When indexing a large dataset, avoid materializing all documents in one PHP array. Use a repeatable
+[`DocumentSource`](indexing.md#streaming-large-json-files) to stream them while retaining complete validation before
+anything is written. If the producer cannot be traversed twice, split the documents into smaller arrays and measure
+your process.
 
 > Hint: Do not measure using memory_get_usage(true), Blackfire, Tideways or any other PHP profiler. You will miss out on
 > all the allocations that are NOT created by PHP/your code. You won't see what SQLite itself is using so monitor your

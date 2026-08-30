@@ -11,6 +11,7 @@ use Loupe\Loupe\BrowseParameters;
 use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
+use Loupe\Loupe\Indexing\DocumentSourceInterface;
 use Loupe\Loupe\Internal\Cache\NamespacedCachePool;
 use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpserterFactory;
@@ -104,13 +105,13 @@ class Engine
     }
 
     /**
-     * @param array<array<string, mixed>> $documents
+     * @param array<array<string, mixed>>|DocumentSourceInterface $documents
      *
      * @throws InvalidDocumentException
      */
-    public function addDocuments(array $documents): self
+    public function addDocuments(DocumentSourceInterface|array $documents): self
     {
-        if ([] === $documents) {
+        if (\is_array($documents) && [] === $documents) {
             return $this;
         }
 

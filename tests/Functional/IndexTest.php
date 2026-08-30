@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
+use Loupe\Loupe\Indexing\DocumentSource;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\SearchParameters;
@@ -599,6 +600,49 @@ final class IndexTest extends TestCase
             ['PRAGMA cache_size = -4000', 'PRAGMA cache_size = -32000'],
             \array_slice($cacheStatements, -2),
         );
+    }
+
+    public function testDocumentsCanBeIndexedFromRewindableSource(): void
+    {
+        $iterations = 0;
+        $documents = [self::getSandraDocument(), self::getUtaDocument()];
+        $source = DocumentSource::fromFactory(
+            static function () use (&$iterations, $documents): iterable {
+                ++$iterations;
+
+                yield from $documents;
+            },
+        );
+        $loupe = $this->createLoupe(Configuration::create());
+
+        $loupe->addDocuments($source);
+
+        $this->assertSame(2, $iterations);
+        $this->assertSame(2, $loupe->countDocuments());
+    }
+
+    public function testDocumentSourceIsValidatedBeforeIndexing(): void
+    {
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+        ;
+        $source = DocumentSource::fromFactory(
+            static function (): iterable {
+                yield self::getSandraDocument();
+                yield array_merge(self::getUtaDocument(), ['departments' => [1, 3, 8]]);
+            },
+        );
+        $loupe = $this->createLoupe($configuration);
+
+        try {
+            $loupe->addDocuments($source);
+            $this->fail('Indexing should have failed.');
+        } catch (InvalidDocumentException) {
+            // The unchanged index is asserted below.
+        }
+
+        $this->assertSame(0, $loupe->countDocuments());
     }
 
     public function testNullValueIsIrrelevantForDocumentSchema(): void
