@@ -52,6 +52,8 @@ class Searcher
 
     public const CTE_TERM_DOCUMENT_MATCHES_PREFIX = '_cte_term_document_matches_';
 
+    public const CTE_TERM_DOCUMENT_POSITIONS_PREFIX = '_cte_term_document_positions_';
+
     public const CTE_TERM_DOCUMENTS_PREFIX = '_cte_term_documents_';
 
     public const CTE_TERM_MATCHES_PREFIX = '_cte_term_matches_';
@@ -631,26 +633,28 @@ class Searcher
         }
 
         foreach ($tokenCollection->all() as $token) {
-            $cteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+            $matchesCteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+            if (!$this->hasCTE($matchesCteName)) {
+                continue;
+            }
 
-            $this->queryBuilder->addSelect(\sprintf(
-                "(SELECT GROUP_CONCAT(attribute || ':' || position || ':' || start || ':' || end) FROM %s WHERE %s._id = %s.document) AS %s",
-                $cteName,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-                $cteName,
-                self::MATCH_POSITION_INFO_PREFIX.$token->getId(),
-            ));
+            $positionsCteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_POSITIONS_PREFIX, $token);
+            $positionsQueryBuilder = $this->engine->getConnection()->createQueryBuilder();
+            $positionsQueryBuilder
+                ->select('document')
+                ->addSelect("GROUP_CONCAT(attribute || ':' || position || ':' || start || ':' || end) AS positions")
+                ->from($matchesCteName)
+                ->groupBy('document')
+            ;
+            $this->addCTE(new Cte($positionsCteName, ['document_id', 'positions'], $positionsQueryBuilder));
 
             $this->queryBuilder
-                ->innerJoin(
+                ->addSelect($positionsCteName.'.positions AS '.self::MATCH_POSITION_INFO_PREFIX.$token->getId())
+                ->leftJoin(
                     self::CTE_MATCHES,
-                    self::CTE_MATCHES,
-                    $cteName,
-                    \sprintf(
-                        '%s.document_id = %s.document_id',
-                        $cteName,
-                        self::CTE_MATCHES,
-                    ),
+                    $positionsCteName,
+                    $positionsCteName,
+                    \sprintf('%s.document_id = %s.document_id', $positionsCteName, self::CTE_MATCHES),
                 )
             ;
         }
