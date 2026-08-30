@@ -122,6 +122,12 @@ class Indexer
         $this->changes[] = $change;
     }
 
+    public function discardPendingChanges(): void
+    {
+        $this->changes = [];
+        $this->existingHashes = [];
+    }
+
     /**
      * @param non-empty-array<array<string, mixed>> $documents
      */

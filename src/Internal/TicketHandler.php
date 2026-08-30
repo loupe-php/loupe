@@ -119,6 +119,36 @@ class TicketHandler
      */
     public function release(): void
     {
+        $this->releaseTicket();
+
+        if ($this->writeLockAlreadyAcquired) {
+            $this->commitExclusiveTransaction($this->connectionPool->loupeConnection);
+            $this->writeLockAlreadyAcquired = false;
+            $this->log('Writer lock released');
+        }
+    }
+
+    /**
+     * Delete our ticket and roll back the writer transaction.
+     */
+    public function abort(): void
+    {
+        try {
+            if ($this->writeLockAlreadyAcquired) {
+                $this->rollbackExclusiveTransaction($this->connectionPool->loupeConnection);
+                $this->log('Writer transaction aborted');
+            }
+        } finally {
+            if ($this->writeLockAlreadyAcquired) {
+                $this->writeLockAlreadyAcquired = false;
+            }
+
+            $this->releaseTicket();
+        }
+    }
+
+    private function releaseTicket(): void
+    {
         // Acknowledge/delete our ticket under ticket DB exclusive transaction
         if (0 !== $this->currentTicket) {
             try {
@@ -134,12 +164,6 @@ class TicketHandler
             } finally {
                 $this->currentTicket = 0;
             }
-        }
-
-        if ($this->writeLockAlreadyAcquired) {
-            $this->commitExclusiveTransaction($this->connectionPool->loupeConnection);
-            $this->writeLockAlreadyAcquired = false;
-            $this->log('Writer lock released');
         }
     }
 
