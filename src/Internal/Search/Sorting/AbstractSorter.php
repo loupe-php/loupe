@@ -51,6 +51,7 @@ abstract class AbstractSorter
             return;
         }
 
+        $searcher->requireMatchesJoin();
         $searcher->addCTE(new Cte($cteName, ['document_id', 'sort_order'], $queryBuilder));
 
         $searcher->getQueryBuilder()

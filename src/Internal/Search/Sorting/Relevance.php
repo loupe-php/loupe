@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
+use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
 use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
@@ -102,13 +103,15 @@ class Relevance extends AbstractSorter
 
         $searcher->addCTE(new Cte(self::CTE_NAME, ['document_id', 'relevance_per_term'], $qb));
 
-        // Join the CTE
-        $searcher->getQueryBuilder()->join(
-            Searcher::CTE_MATCHES,
+        // The relevance CTE starts from the complete matches relation, so it can constrain the final result directly.
+        $documentsAlias = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $searcher->getQueryBuilder()->innerJoin(
+            $documentsAlias,
             self::CTE_NAME,
             self::CTE_NAME,
-            \sprintf('%s.document_id = %s.document_id', self::CTE_NAME, Searcher::CTE_MATCHES),
+            \sprintf('%s.document_id = %s._id', self::CTE_NAME, $documentsAlias),
         );
+        $searcher->markResultConstrainedToMatches();
 
         // Searchable attributes to determine attribute weight
         $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
