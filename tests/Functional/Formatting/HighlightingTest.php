@@ -14,6 +14,27 @@ final class HighlightingTest extends TestCase
 {
     use FunctionalTestTrait;
 
+    public function testHighlightingPreservesAnyMatchingStrategy(): void
+    {
+        $loupe = $this->createLoupe(Configuration::create()->withSearchableAttributes(['title']));
+        $loupe->addDocuments([
+            ['id' => 1, 'title' => 'Alpha'],
+            ['id' => 2, 'title' => 'Beta'],
+        ]);
+
+        $result = $loupe->search(
+            SearchParameters::create()
+                ->withQuery('alpha beta')
+                ->withAttributesToHighlight(['title']),
+        );
+
+        $this->assertSame(2, $result->getTotalHits());
+        $this->assertSame(
+            ['<em>Alpha</em>', '<em>Beta</em>'],
+            array_column(array_column($result->getHits(), '_formatted'), 'title'),
+        );
+    }
+
     /**
      * @return iterable<array-key, array<mixed>>
      */
