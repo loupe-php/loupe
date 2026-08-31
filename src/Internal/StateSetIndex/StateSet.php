@@ -98,6 +98,17 @@ class StateSet implements StateSetInterface
         $this->dirty = true;
     }
 
+    public function reset(): void
+    {
+        $this->initialized = false;
+        $this->dirty = false;
+
+        $cacheFile = $this->getStateSetCacheFile();
+        if (null !== $cacheFile && file_exists($cacheFile)) {
+            unlink($cacheFile);
+        }
+    }
+
     /**
      * @param array<int, bool> $stateSet
      * ^ */

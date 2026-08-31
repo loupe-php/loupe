@@ -86,16 +86,7 @@ class Engine
         private readonly string|null $dataDir = null,
     ) {
         $this->indexInfo = new IndexInfo($this);
-        $stateSetIndex = new StateSetIndex(
-            new Config(
-                $this->configuration->getTypoTolerance()->getIndexLength(),
-                $this->configuration->getTypoTolerance()->getAlphabetSize(),
-            ),
-            new Utf8Alphabet(),
-            new StateSet($this),
-            new NullDataStore(),
-        );
-        $this->stateSetIndex = new DefaultStateSetIndex($stateSetIndex);
+        $this->stateSetIndex = $this->createStateSetIndex(new StateSet($this));
         $this->ticketHandler = new TicketHandler($this->connectionPool, $this->getLogger());
         $this->indexer = new Indexer($this, $this->ticketHandler);
         $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
@@ -367,18 +358,52 @@ class Engine
     private function executeIndexOperation(callable $operation): void
     {
         $this->ticketHandler->claimTicket();
+        $operationSucceeded = false;
 
         try {
             $this->getConnection()->executeStatement('PRAGMA cache_size = -'.LoupeFactory::SQLITE_INDEX_CACHE_SIZE);
             $this->getConnection()->executeStatement('PRAGMA shrink_memory');
             $operation();
+            $operationSucceeded = true;
         } finally {
             try {
                 $this->getConnection()->executeStatement('PRAGMA cache_size = -'.LoupeFactory::SQLITE_SEARCH_CACHE_SIZE);
             } finally {
-                $this->ticketHandler->release();
+                if ($operationSucceeded) {
+                    $this->ticketHandler->release();
+                } else {
+                    $this->abortIndexOperation();
+                }
             }
         }
+    }
+
+    private function abortIndexOperation(): void
+    {
+        try {
+            $this->ticketHandler->abort();
+        } finally {
+            $this->indexer->discardPendingChanges();
+            $this->indexInfo->reset();
+            $stateSet = new StateSet($this);
+            $stateSet->reset();
+            $this->stateSetIndex = $this->createStateSetIndex($stateSet);
+        }
+    }
+
+    private function createStateSetIndex(StateSet $stateSet): StateSetIndexInterface
+    {
+        $stateSetIndex = new StateSetIndex(
+            new Config(
+                $this->configuration->getTypoTolerance()->getIndexLength(),
+                $this->configuration->getTypoTolerance()->getAlphabetSize(),
+            ),
+            new Utf8Alphabet(),
+            $stateSet,
+            new NullDataStore(),
+        );
+
+        return new DefaultStateSetIndex($stateSetIndex);
     }
 
     private function maybeWrapStateSetIndexWithCache(): void
