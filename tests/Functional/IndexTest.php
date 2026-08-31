@@ -559,6 +559,48 @@ final class IndexTest extends TestCase
         $this->assertNotCount(0, $logger->getRecords());
     }
 
+    public function testSQLiteCacheIsAdjustedWhileIndexing(): void
+    {
+        $logger = new InMemoryLogger();
+        $loupe = $this->createLoupe(Configuration::create()->withLogger($logger));
+
+        $loupe->addDocument(self::getSandraDocument());
+
+        $cacheStatements = array_values($this->getLoggedStatements($logger, 'PRAGMA cache_size'));
+        $this->assertSame(
+            ['PRAGMA cache_size = -4000', 'PRAGMA cache_size = -32000'],
+            \array_slice($cacheStatements, -2),
+        );
+        $this->assertCount(1, $this->getLoggedStatements($logger, 'PRAGMA shrink_memory'));
+    }
+
+    public function testSQLiteSearchCacheIsRestoredWhenIndexingFails(): void
+    {
+        $logger = new InMemoryLogger();
+        $configuration = Configuration::create()
+            ->withFilterableAttributes(['departments', 'gender'])
+            ->withSortableAttributes(['firstname'])
+            ->withLogger($logger)
+        ;
+        $loupe = $this->createLoupe($configuration);
+
+        try {
+            $loupe->addDocuments([
+                self::getSandraDocument(),
+                array_merge(self::getUtaDocument(), ['departments' => [1, 3, 8]]),
+            ]);
+            $this->fail('Indexing should have failed.');
+        } catch (InvalidDocumentException) {
+            // Cache restoration is asserted below.
+        }
+
+        $cacheStatements = array_values($this->getLoggedStatements($logger, 'PRAGMA cache_size'));
+        $this->assertSame(
+            ['PRAGMA cache_size = -4000', 'PRAGMA cache_size = -32000'],
+            \array_slice($cacheStatements, -2),
+        );
+    }
+
     public function testNullValueIsIrrelevantForDocumentSchema(): void
     {
         $configuration = Configuration::create()

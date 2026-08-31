@@ -25,6 +25,7 @@ use Loupe\Loupe\Internal\StateSetIndex\DefaultStateSetIndex;
 use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Internal\StateSetIndex\StateSetIndexInterface;
 use Loupe\Loupe\Internal\Tokenizer\Tokenizer;
+use Loupe\Loupe\LoupeFactory;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
 use Loupe\Matcher\Formatter;
@@ -113,13 +114,11 @@ class Engine
             return $this;
         }
 
-        $this->ticketHandler->claimTicket();
-
-        try {
-            $this->indexer->addDocuments($documents);
-        } finally {
-            $this->ticketHandler->release();
-        }
+        $this->executeIndexOperation(
+            function () use ($documents): void {
+                $this->indexer->addDocuments($documents);
+            },
+        );
 
         return $this;
     }
@@ -160,13 +159,11 @@ class Engine
 
     public function deleteAllDocuments(): self
     {
-        $this->ticketHandler->claimTicket();
-
-        try {
-            $this->indexer->deleteAllDocuments();
-        } finally {
-            $this->ticketHandler->release();
-        }
+        $this->executeIndexOperation(
+            function (): void {
+                $this->indexer->deleteAllDocuments();
+            },
+        );
 
         return $this;
     }
@@ -176,13 +173,11 @@ class Engine
      */
     public function deleteDocuments(array $ids): self
     {
-        $this->ticketHandler->claimTicket();
-
-        try {
-            $this->indexer->deleteDocuments($ids);
-        } finally {
-            $this->ticketHandler->release();
-        }
+        $this->executeIndexOperation(
+            function () use ($ids): void {
+                $this->indexer->deleteDocuments($ids);
+            },
+        );
 
         return $this;
     }
@@ -364,6 +359,23 @@ class Engine
             ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
             ->fetchOne()
         ;
+    }
+
+    private function executeIndexOperation(callable $operation): void
+    {
+        $this->ticketHandler->claimTicket();
+
+        try {
+            $this->getConnection()->executeStatement('PRAGMA cache_size = -'.LoupeFactory::SQLITE_INDEX_CACHE_SIZE);
+            $this->getConnection()->executeStatement('PRAGMA shrink_memory');
+            $operation();
+        } finally {
+            try {
+                $this->getConnection()->executeStatement('PRAGMA cache_size = -'.LoupeFactory::SQLITE_SEARCH_CACHE_SIZE);
+            } finally {
+                $this->ticketHandler->release();
+            }
+        }
     }
 
     private function maybeWrapStateSetIndexWithCache(): void
