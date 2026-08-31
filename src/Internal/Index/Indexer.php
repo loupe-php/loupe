@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Index;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Loupe\Loupe\Exception\IndexException;
+use Loupe\Loupe\Indexing\DocumentSourceInterface;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpsertConfig;
 use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpserter;
@@ -33,6 +34,8 @@ class Indexer
      */
     private const MAX_TERMS_PER_BATCH = 16000;
 
+    private const SOURCE_HASH_BATCH_SIZE = 1000;
+
     /**
      * @var array<int, callable>
      */
@@ -52,79 +55,17 @@ class Indexer
     }
 
     /**
-     * @param non-empty-array<array<string, mixed>> $documents
+     * @param non-empty-array<array<string, mixed>>|DocumentSourceInterface $documents
      */
-    public function addDocuments(array $documents): void
+    public function addDocuments(DocumentSourceInterface|array $documents): void
     {
-        $firstDocument = reset($documents);
+        if ($documents instanceof DocumentSourceInterface) {
+            $this->addDocumentsFromSource($documents);
 
-        // Prepare setup if needed
-        if ($this->engine->getIndexInfo()->needsSetup()) {
-            $this->engine->getIndexInfo()->setup($firstDocument);
+            return;
         }
 
-        // Migrate the data if needed
-        if ($this->engine->needsReindex()) {
-            $this->migrateDatabase($firstDocument);
-        }
-
-        // Fix, validate and record schema updates if needed
-        foreach ($documents as $document) {
-            $this->engine->getIndexInfo()->fixAndValidateDocument($document);
-        }
-
-        // Pre-load existing content hashes so unchanged documents can skip tokenization
-        $this->existingHashes = $this->loadExistingHashes($documents);
-
-        $processBatch = function (PreparedDocumentCollection $preparedDocuments): void {
-            if ($preparedDocuments->empty()) {
-                return;
-            }
-
-            $this->recordChange(
-                function () use ($preparedDocuments): void {
-                    $prepared = $this->bulkInsertDocuments($preparedDocuments);
-                    $this->removeCurrentDocumentData($prepared);
-                    $this->bulkInsertMultiAttributes($prepared);
-                    $this->bulkInsertTerms($prepared);
-                },
-            );
-
-            $this->commitChanges();
-        };
-
-        // Now index the documents in chunks as preparing too many documents and keeping it all in memory before
-        // inserting would result in too much memory usage.
-        while (!empty($documents)) {
-            $preparedDocuments = new PreparedDocumentCollection();
-
-            foreach ($documents as $k => $document) {
-                $preparedDocument = $this->prepareDocument($document);
-                $userId = $preparedDocument->getUserId();
-                unset($documents[$k]);
-
-                // Do not add unchanged documents to the batch: they only contain the base columns and violate NOT NULL constraints
-                if (isset($this->existingHashes[$userId]) && $this->existingHashes[$userId] === $preparedDocument->getContentHash()) {
-                    continue;
-                }
-
-                $preparedDocuments->add($preparedDocument);
-
-                if ($preparedDocuments->getTermsCount() >= self::MAX_TERMS_PER_BATCH) {
-                    break;
-                }
-            }
-
-            $processBatch($preparedDocuments);
-        }
-
-        // Finally, revise storage once
-        $this->recordChange(
-            function (): void {
-                $this->reviseStorage(false);
-            },
-        );
-        $this->commitChanges();
+        $this->addDocumentsFromArray($documents);
     }
 
     public function deleteAllDocuments(): void
@@ -179,6 +120,176 @@ class Indexer
     public function recordChange(callable $change): void
     {
         $this->changes[] = $change;
+    }
+
+    /**
+     * @param non-empty-array<array<string, mixed>> $documents
+     */
+    private function addDocumentsFromArray(array $documents): void
+    {
+        $this->prepareIndex(reset($documents));
+
+        foreach ($documents as $document) {
+            $this->engine->getIndexInfo()->fixAndValidateDocument($document);
+        }
+
+        // Pre-load existing content hashes so unchanged documents can skip tokenization
+        $this->existingHashes = $this->loadExistingHashes($documents);
+        $this->indexPreparedDocuments($this->prepareDocumentArray($documents));
+        $this->reviseStorageAfterIndexing();
+    }
+
+    private function addDocumentsFromSource(DocumentSourceInterface $documents): void
+    {
+        if (!$this->validateDocumentSource($documents)) {
+            return;
+        }
+
+        $this->indexPreparedDocuments($this->prepareDocumentSource($documents));
+        $this->reviseStorageAfterIndexing();
+    }
+
+    /**
+     * @param array<string, mixed> $firstDocument
+     */
+    private function prepareIndex(array $firstDocument): void
+    {
+        // Prepare setup if needed
+        if ($this->engine->getIndexInfo()->needsSetup()) {
+            $this->engine->getIndexInfo()->setup($firstDocument);
+        }
+
+        // Migrate the data if needed
+        if ($this->engine->needsReindex()) {
+            $this->migrateDatabase($firstDocument);
+        }
+    }
+
+    private function validateDocumentSource(DocumentSourceInterface $documents): bool
+    {
+        $hasDocuments = false;
+
+        foreach ($documents as $document) {
+            if (!$hasDocuments) {
+                $this->prepareIndex($document);
+                $hasDocuments = true;
+            }
+
+            $this->engine->getIndexInfo()->fixAndValidateDocument($document);
+        }
+
+        return $hasDocuments;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $documents
+     *
+     * @return \Generator<PreparedDocument>
+     */
+    private function prepareDocumentArray(array $documents): \Generator
+    {
+        foreach ($documents as $key => $document) {
+            unset($documents[$key]);
+            $preparedDocument = $this->prepareDocument($document);
+
+            if ($this->documentChanged($preparedDocument)) {
+                yield $preparedDocument;
+            }
+        }
+    }
+
+    /**
+     * @return \Generator<PreparedDocument>
+     */
+    private function prepareDocumentSource(DocumentSourceInterface $documents): \Generator
+    {
+        $batch = [];
+
+        foreach ($documents as $document) {
+            $this->engine->getIndexInfo()->fixAndValidateDocument($document);
+            $batch[] = $document;
+
+            if (\count($batch) >= self::SOURCE_HASH_BATCH_SIZE) {
+                yield from $this->prepareDocumentBatch($batch);
+                $batch = [];
+            }
+        }
+
+        if ([] !== $batch) {
+            yield from $this->prepareDocumentBatch($batch);
+        }
+    }
+
+    /**
+     * @param non-empty-array<array<string, mixed>> $documents
+     *
+     * @return \Generator<PreparedDocument>
+     */
+    private function prepareDocumentBatch(array $documents): \Generator
+    {
+        $this->existingHashes = $this->loadExistingHashes($documents);
+
+        foreach ($documents as $document) {
+            $preparedDocument = $this->prepareDocument($document);
+
+            if ($this->documentChanged($preparedDocument)) {
+                yield $preparedDocument;
+            }
+        }
+    }
+
+    /**
+     * @param iterable<PreparedDocument> $documents
+     */
+    private function indexPreparedDocuments(iterable $documents): void
+    {
+        $batch = new PreparedDocumentCollection();
+
+        foreach ($documents as $document) {
+            $batch->add($document);
+
+            if ($batch->getTermsCount() >= self::MAX_TERMS_PER_BATCH) {
+                $this->processPreparedDocuments($batch);
+                $batch = new PreparedDocumentCollection();
+            }
+        }
+
+        $this->processPreparedDocuments($batch);
+    }
+
+    private function processPreparedDocuments(PreparedDocumentCollection $documents): void
+    {
+        if ($documents->empty()) {
+            return;
+        }
+
+        $this->recordChange(
+            function () use ($documents): void {
+                $prepared = $this->bulkInsertDocuments($documents);
+                $this->removeCurrentDocumentData($prepared);
+                $this->bulkInsertMultiAttributes($prepared);
+                $this->bulkInsertTerms($prepared);
+            },
+        );
+        $this->commitChanges();
+    }
+
+    private function documentChanged(PreparedDocument $document): bool
+    {
+        $userId = $document->getUserId();
+
+        return !isset($this->existingHashes[$userId]) || $this->existingHashes[$userId] !== $document->getContentHash();
+    }
+
+    private function reviseStorageAfterIndexing(): void
+    {
+        // Finally, revise storage once
+        $this->recordChange(
+            function (): void {
+                $this->reviseStorage(false);
+            },
+        );
+        $this->commitChanges();
     }
 
     /**

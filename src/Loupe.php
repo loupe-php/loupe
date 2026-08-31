@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Loupe\Loupe;
 
 use Loupe\Loupe\Exception\IndexException;
+use Loupe\Loupe\Indexing\DocumentSourceInterface;
 use Loupe\Loupe\Internal\Engine;
 
 final class Loupe
@@ -22,9 +23,9 @@ final class Loupe
     }
 
     /**
-     * @param array<int, array<string, mixed>> $documents
+     * @param array<int, array<string, mixed>>|DocumentSourceInterface $documents
      */
-    public function addDocuments(array $documents): void
+    public function addDocuments(DocumentSourceInterface|array $documents): void
     {
         $this->engine->addDocuments($documents);
     }
