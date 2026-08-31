@@ -6,8 +6,6 @@ namespace Loupe\Loupe\Internal\Index\PreparedDocument;
 
 class Term
 {
-    private readonly int $termLength;
-
     public function __construct(
         private readonly string $term,
         private readonly string $attribute,
@@ -16,7 +14,6 @@ class Term
         private readonly int $end,
         private readonly bool $isVariant,
     ) {
-        $this->termLength = mb_strlen($term, 'UTF-8');
     }
 
     public function getAttribute(): string
@@ -42,11 +39,6 @@ class Term
     public function getTerm(): string
     {
         return $this->term;
-    }
-
-    public function getTermLength(): int
-    {
-        return $this->termLength;
     }
 
     public function isVariant(): bool

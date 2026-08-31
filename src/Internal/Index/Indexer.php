@@ -585,100 +585,179 @@ class Indexer
 
     private function bulkInsertTerms(PreparedDocumentCollection $preparedDocuments): void
     {
-        $processBatch = function (PreparedDocumentCollection $preparedDocuments): void {
-            if ($preparedDocuments->empty()) {
-                return;
-            }
-
-            // Key is the term, 0 the "document" (id), 1 the "attribute" (as string), 2 the document-global "position", 3 the "start", 4 the "end" of the match, 5 if folded - need to optimize for memory here
-            $termsMapper = [];
-            $knownTermRows = [];
-            // 0 is the "term" (as string), 1 the "length", 2 the "state" - need to optimize for memory here
-            $rows = [];
-            $prefixRelevantTerms = [];
-            $indexPrefixes = $this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch();
-
-            foreach ($preparedDocuments->all() as $document) {
-                foreach ($document->getTerms() as $term) {
-                    if (!isset($knownTermRows[$term->getTerm()])) {
-                        $knownTermRows[$term->getTerm()] = true;
-                        $rows[] = [$term->getTerm(), $term->getTermLength(), 0];
-                    }
-
-                    $termsMapper[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition(), $term->getStart(), $term->getEnd(), $term->isVariant()];
-
-                    // Prefix relevant terms must not be variants
-                    if ($indexPrefixes && !$term->isVariant()) {
-                        $prefixRelevantTerms[$term->getTerm()][] = $document->getInternalId();
-                    }
-                }
-            }
-
-            if ([] === $rows) {
-                return;
-            }
-
-            // States
-            if (!$this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
-                $allStates = $this->engine->getStateSetIndex()->index(array_map(static fn (array $row) => $row[0], $rows));
-
-                foreach ($rows as $i => $row) {
-                    if (!isset($allStates[$row[0]])) {
-                        throw new IndexException('Could not find state for term. This should not happen.');
-                    }
-                    $rows[$i][2] = $allStates[$row[0]];
-                }
-            }
-
-            // Bulk insert terms
-            $relationRows = [];
-            $results = $this->engine->getBulkUpserterFactory()
-                ->create(BulkUpsertConfig::create(
-                    IndexInfo::TABLE_NAME_TERMS,
-                    ['term', 'length', 'state'],
-                    $rows,
-                    ['term', 'state', 'length'],
-                    ConflictMode::Ignore,
-                )->withReturningColumns(['term', 'id']))
-                ->execute()
-            ;
-
-            /** @var array<string, int> $termsIdMapper */
-            $termsIdMapper = BulkUpserter::convertResultsToKeyValueArray($results);
-
-            foreach ($termsMapper as $term => $occurrences) {
-                if (!isset($termsIdMapper[$term])) {
-                    throw new IndexException('Could not find term '.$term.'. This should not happen.');
-                }
-
-                foreach ($occurrences as $occurrence) {
-                    $relationRows[] = [...$occurrence, $termsIdMapper[$term]];
-                }
-            }
-
-            if ([] === $relationRows) {
-                return;
-            }
-
-            // Now bulk insert the relations to the documents
-            $this->engine->getBulkUpserterFactory()
-                ->create(BulkUpsertConfig::create(
-                    IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                    ['document', 'attribute', 'position', 'start', 'end', 'folded', 'term'],
-                    $relationRows,
-                    ['term', 'document', 'position'],
-                    ConflictMode::Ignore,
-                ))
-                ->execute()
-            ;
-
-            // Index prefixes if needed
-            $this->bulkInsertPrefixTerms($prefixRelevantTerms, $termsIdMapper);
-        };
-
         foreach ($preparedDocuments->chunkByNumberOfTerms(self::MAX_TERMS_PER_BATCH) as $batch) {
-            $processBatch($batch);
+            $this->processTermBatch($batch);
         }
+    }
+
+    /**
+     * @return array<string|int, array<int>>
+     */
+    private function collectPrefixRelevantTerms(PreparedDocumentCollection $documents): array
+    {
+        if (!$this->engine->getConfiguration()->getTypoTolerance()->isEnabledForPrefixSearch()) {
+            return [];
+        }
+
+        $prefixRelevantTerms = [];
+
+        foreach ($documents->all() as $document) {
+            foreach ($document->getTerms() as $term) {
+                // Prefix relevant terms must not be variants
+                if (!$term->isVariant()) {
+                    $prefixRelevantTerms[$term->getTerm()][] = $document->getInternalId();
+                }
+            }
+        }
+
+        return $prefixRelevantTerms;
+    }
+
+    /**
+     * @return list<array{string, int, int}>
+     */
+    private function collectTermRows(PreparedDocumentCollection $documents): array
+    {
+        $knownTerms = [];
+        $rows = [];
+
+        foreach ($documents->all() as $document) {
+            foreach ($document->getTerms() as $term) {
+                if (isset($knownTerms[$term->getTerm()])) {
+                    continue;
+                }
+
+                $knownTerms[$term->getTerm()] = true;
+                $rows[] = [$term->getTerm(), mb_strlen($term->getTerm(), 'UTF-8'), 0];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param array<string, int> $termsIdMapper
+     *
+     * @return list<array{int, string, int, int, int, bool, int}>
+     */
+    private function collectTermDocumentRows(PreparedDocumentCollection $documents, array $termsIdMapper): array
+    {
+        $rowsByTerm = [];
+
+        foreach ($documents->all() as $document) {
+            foreach ($document->getTerms() as $term) {
+                if (!isset($termsIdMapper[$term->getTerm()])) {
+                    throw new IndexException('Could not find term '.$term->getTerm().'. This should not happen.');
+                }
+
+                $rowsByTerm[$term->getTerm()][] = [$document->getInternalId(), $term->getAttribute(), $term->getPosition(), $term->getStart(), $term->getEnd(), $term->isVariant(), $termsIdMapper[$term->getTerm()]];
+            }
+        }
+
+        $rows = [];
+
+        // Keep relations grouped by term so SQLite can update its term-first indexes with minimal B-tree churn.
+        foreach ($rowsByTerm as $term => $termRows) {
+            foreach ($termRows as $row) {
+                $rows[] = $row;
+            }
+
+            unset($rowsByTerm[$term]);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param non-empty-list<array{string, int, int}> $rows
+     *
+     * @return array<string, int>
+     */
+    private function insertTermRows(array $rows): array
+    {
+        $this->engine->getBulkUpserterFactory()
+            ->create(BulkUpsertConfig::create(
+                IndexInfo::TABLE_NAME_TERMS,
+                ['term', 'length', 'state'],
+                $rows,
+                ['term', 'state', 'length'],
+                ConflictMode::Ignore,
+            ))
+            ->execute()
+        ;
+
+        $termsIdMapper = [];
+
+        foreach (Util::arrayChunk(array_column($rows, 0), 5000) as $terms) {
+            $results = $this->engine->getConnection()->executeQuery(
+                \sprintf('SELECT term, id FROM %s WHERE term IN (?)', IndexInfo::TABLE_NAME_TERMS),
+                [$terms],
+                [ArrayParameterType::STRING],
+            )->fetchAllKeyValue();
+
+            foreach ($results as $term => $id) {
+                $termsIdMapper[(string) $term] = (int) $id;
+            }
+        }
+
+        return $termsIdMapper;
+    }
+
+    /**
+     * @param list<array{int, string, int, int, int, bool, int}> $rows
+     */
+    private function insertTermDocumentRows(array $rows): void
+    {
+        if ([] === $rows) {
+            return;
+        }
+
+        $this->engine->getBulkUpserterFactory()
+            ->create(BulkUpsertConfig::create(
+                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+                ['document', 'attribute', 'position', 'start', 'end', 'folded', 'term'],
+                $rows,
+                ['term', 'document', 'position'],
+                ConflictMode::Ignore,
+            ))
+            ->execute()
+        ;
+    }
+
+    /**
+     * @param non-empty-list<array{string, int, int}> $rows
+     *
+     * @return non-empty-list<array{string, int, int}>
+     */
+    private function populateTermStates(array $rows): array
+    {
+        if ($this->engine->getConfiguration()->getTypoTolerance()->isDisabled()) {
+            return $rows;
+        }
+
+        $allStates = $this->engine->getStateSetIndex()->index(array_column($rows, 0));
+
+        foreach ($rows as $i => $row) {
+            if (!isset($allStates[$row[0]])) {
+                throw new IndexException('Could not find state for term. This should not happen.');
+            }
+            $rows[$i][2] = $allStates[$row[0]];
+        }
+
+        return $rows;
+    }
+
+    private function processTermBatch(PreparedDocumentCollection $documents): void
+    {
+        $rows = $this->collectTermRows($documents);
+
+        if ([] === $rows) {
+            return;
+        }
+
+        $termsIdMapper = $this->insertTermRows($this->populateTermStates($rows));
+        $this->insertTermDocumentRows($this->collectTermDocumentRows($documents, $termsIdMapper));
+        $this->bulkInsertPrefixTerms($this->collectPrefixRelevantTerms($documents), $termsIdMapper);
     }
 
     private function commitChanges(): void

@@ -45,6 +45,8 @@ class Engine
 {
     public const VERSION = '0.13.3'; // Increase this whenever a re-index of all documents is needed
 
+    private const SQLITE_FUNCTION_CACHE_MAX_ENTRIES = 100000;
+
     private const DEPENDENCY_HASH_RELEVANT_PACKAGES = [
         'wamania/php-stemmer', // Stemming algorithms might change
         'toflar/state-set-index', // State Set Index bugfixes might cause indexed and queried state mismatches
@@ -458,6 +460,8 @@ class Engine
                 return $cachedValue;
             }
 
+            $this->clearSQLiteFunctionCacheIfNeeded();
+
             return $this->cache[$cacheKey] = $callback(...$args);
         };
     }
@@ -473,7 +477,18 @@ class Engine
                 return $cachedValue;
             }
 
+            $this->clearSQLiteFunctionCacheIfNeeded();
+
             return $this->cache[$cacheKey] = $callback($searchableAttributes, $rankingRules, $termPositions);
         };
+    }
+
+    private function clearSQLiteFunctionCacheIfNeeded(): void
+    {
+        if (\count($this->cache) < self::SQLITE_FUNCTION_CACHE_MAX_ENTRIES) {
+            return;
+        }
+
+        $this->cache = [];
     }
 }
