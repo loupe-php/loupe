@@ -15,6 +15,7 @@ class BulkUpserter
         private readonly Connection $connection,
         private readonly BulkUpsertConfig $bulkUpsertConfig,
         private readonly int $variableLimit,
+        private readonly bool $jsonEachAvailable,
     ) {
     }
 
@@ -78,11 +79,19 @@ class BulkUpserter
      * @param array<array<int, mixed>>         $rows
      * @param array<int<0, max>|string, mixed> $parameters
      */
-    private function buildValuesClause(array $rows, array &$parameters): string
+    private function buildRowsClause(array $rows, array &$parameters): string
     {
+        if ($this->jsonEachAvailable) {
+            $parameters[] = Util::encodeJson($this->normalizeRows($rows));
+
+            return \sprintf(
+                'SELECT %s FROM json_each(?) WHERE true',
+                implode(', ', $this->jsonExtractColumns()),
+            );
+        }
+
         $columnKeys = array_keys($this->bulkUpsertConfig->getRowColumns());
         $columnsCount = \count($columnKeys);
-
         $tuples = [];
 
         foreach ($rows as $row) {
@@ -90,10 +99,10 @@ class BulkUpserter
                 $parameters[] = $row[$columnKey] ?? null;
             }
 
-            $tuples[] = $this->placeholdersRow($columnsCount);
+            $tuples[] = '('.implode(',', array_fill(0, $columnsCount, '?')).')';
         }
 
-        return implode(',', $tuples);
+        return 'VALUES '.implode(',', $tuples);
     }
 
     /**
@@ -105,7 +114,7 @@ class BulkUpserter
     private function executeModern(array $rows, array $updateColumns): array
     {
         $parameters = [];
-        $values = $this->buildValuesClause($rows, $parameters);
+        $rowsClause = $this->buildRowsClause($rows, $parameters);
         $conflictMode = $this->bulkUpsertConfig->getConflictMode();
         $returningColumns = $this->bulkUpsertConfig->getReturningColumns();
 
@@ -117,10 +126,10 @@ class BulkUpserter
         }
 
         $sql = \sprintf(
-            'INSERT INTO %s (%s) VALUES %s ON CONFLICT (%s) DO ',
+            'INSERT INTO %s (%s) %s ON CONFLICT (%s) DO ',
             $this->bulkUpsertConfig->getTable(),
             implode(', ', $this->bulkUpsertConfig->getRowColumns()),
-            $values,
+            $rowsClause,
             implode(', ', $this->bulkUpsertConfig->getUniqueColumns()),
         );
 
@@ -185,9 +194,41 @@ class BulkUpserter
         return $types;
     }
 
-    private function placeholdersRow(int $n): string
+    /**
+     * @return list<string>
+     */
+    private function jsonExtractColumns(): array
     {
-        return '('.implode(',', array_fill(0, $n, '?')).')';
+        $columns = [];
+
+        for ($column = 0; $column < \count($this->bulkUpsertConfig->getRowColumns()); ++$column) {
+            $columns[] = \sprintf("json_extract(value, '$[%d]')", $column);
+        }
+
+        return $columns;
+    }
+
+    /**
+     * @param array<array<int, mixed>> $rows
+     *
+     * @return list<list<mixed>>
+     */
+    private function normalizeRows(array $rows): array
+    {
+        $columnKeys = array_keys($this->bulkUpsertConfig->getRowColumns());
+        $normalizedRows = [];
+
+        foreach ($rows as $row) {
+            $normalizedRow = [];
+
+            foreach ($columnKeys as $columnKey) {
+                $normalizedRow[] = $row[$columnKey] ?? null;
+            }
+
+            $normalizedRows[] = $normalizedRow;
+        }
+
+        return $normalizedRows;
     }
 
     /**

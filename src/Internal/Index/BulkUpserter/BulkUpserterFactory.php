@@ -4,26 +4,42 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Index\BulkUpserter;
 
+use Doctrine\DBAL\Exception;
 use Loupe\Loupe\Internal\ConnectionPool;
 
 class BulkUpserterFactory
 {
     /**
-     * We tried using a higher variable limit fetching it dynamically using
-     * > SELECT * FROM pragma_compile_options WHERE compile_options LIKE 'MAX_VARIABLE_NUMBER=%'
-     * but there's no real positive effect. Longer UPSERT queries will be faster indeed but only by
-     * a neglectable amount of time. They will, however, use a lot more memory for the prepared
-     * statements. Hence, we hard code it to 999 which is also a limit that is supported in all
-     * SQLite configurations.
+     * JSON transport removes SQLite's variable limit, but larger chunks were slower in the full indexing benchmark
+     * and require larger temporary JSON strings. Keep the established limit as a memory-conscious batch-size target.
      */
     public const VARIABLE_LIMIT = 999;
 
+    private readonly bool $jsonEachAvailable;
+
     public function __construct(private readonly ConnectionPool $connectionPool)
     {
+        $this->jsonEachAvailable = $this->detectJsonEach();
     }
 
     public function create(BulkUpsertConfig $bulkUpsertConfig): BulkUpserter
     {
-        return new BulkUpserter($this->connectionPool->loupeConnection, $bulkUpsertConfig, self::VARIABLE_LIMIT);
+        return new BulkUpserter(
+            $this->connectionPool->loupeConnection,
+            $bulkUpsertConfig,
+            self::VARIABLE_LIMIT,
+            $this->jsonEachAvailable,
+        );
+    }
+
+    private function detectJsonEach(): bool
+    {
+        try {
+            return 1 === (int) $this->connectionPool->loupeConnection
+                ->fetchOne("SELECT value FROM json_each('[1]')")
+            ;
+        } catch (Exception) {
+            return false;
+        }
     }
 }
