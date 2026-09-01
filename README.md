@@ -37,7 +37,7 @@ Note that some implementation details (e.g. libraries used) referenced in this b
 Performance depends on many factors but here are some ballpark numbers based on indexing the 
 [~32k movies fixture][MeiliSearch_Movies] provided by MeiliSearch.
 
-* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes **< 20 ms**
+* **Querying** for `Amakin Dkywalker` with typo tolerance and relevance ranking takes **< 10 ms**
 * **Indexing** varies greatly because it depends on how much content per document you want to index
 
 Note that anything above 50k documents is probably not a use case for Loupe. You can run your own benchmarks
