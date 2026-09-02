@@ -730,7 +730,7 @@ class Indexer
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                 ['document', 'attribute', 'position', 'start', 'end', 'folded', 'term'],
                 $rows,
-                ['term', 'document', 'position'],
+                ['term', 'document', 'attribute', 'position', 'folded'],
                 ConflictMode::Ignore,
             ))
             ->execute()

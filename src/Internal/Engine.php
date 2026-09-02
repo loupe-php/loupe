@@ -43,7 +43,7 @@ use Toflar\StateSetIndex\StateSetIndex;
 
 class Engine
 {
-    public const VERSION = '0.13.3'; // Increase this whenever a re-index of all documents is needed
+    public const VERSION = '0.13.4'; // Increase this whenever a re-index of all documents is needed
 
     private const SQLITE_FUNCTION_CACHE_MAX_ENTRIES = 100000;
 

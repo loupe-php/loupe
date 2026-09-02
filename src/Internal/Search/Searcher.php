@@ -817,7 +817,7 @@ class Searcher
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             // Pin the join order so SQLite does not scan every term occurrence before applying the attribute filter.
             $queryBuilder->from(\sprintf(
-                '%s CROSS JOIN %s %s INDEXED BY '.IndexInfo::getPrimaryKeyIndexName(IndexInfo::TABLE_NAME_TERMS_DOCUMENTS).' ON %s.id = %s.term',
+                '%s CROSS JOIN %s %s INDEXED BY '.IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH.' ON %s.id = %s.term',
                 $termMatchesCTE,
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                 $termsDocumentsAlias,
