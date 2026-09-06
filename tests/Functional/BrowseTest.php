@@ -45,6 +45,35 @@ final class BrowseTest extends TestCase
         );
     }
 
+    public function testBrowseOnlyPrimaryKey(): void
+    {
+        foreach ([[1, 2], ['0001', '0002']] as $ids) {
+            $loupe = $this->createLoupe(Configuration::create()->withSearchableAttributes(['content']));
+            $loupe->addDocuments([
+                ['id' => $ids[0], 'content' => 'dog'],
+                ['id' => $ids[1], 'content' => 'cat'],
+            ]);
+
+            $result = $loupe->browse(
+                BrowseParameters::create()
+                    ->withAttributesToRetrieve(['id'])
+                    ->withLimit(1)
+                    ->withOffset(1),
+            );
+
+            $this->assertSame([['id' => $ids[1]]], $result->getHits());
+            $this->assertSame(2, $result->getTotalHits());
+            $this->assertSame(2, $result->getTotalPages());
+
+            $queriedResult = $loupe->browse(
+                BrowseParameters::create()
+                    ->withAttributesToRetrieve(['id'])
+                    ->withQuery('dog'),
+            );
+            $this->assertSame([['id' => $ids[0]]], $queriedResult->getHits());
+        }
+    }
+
     public function testMaxTotalHitsDoesNotApplyToBrowseApi(): void
     {
         $configuration = Configuration::create()

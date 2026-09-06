@@ -126,6 +126,14 @@ class Engine
         $this->maybeWrapStateSetIndexWithCache();
 
         try {
+            if (
+                '' === $parameters->getQuery()
+                && '' === $parameters->getFilter()
+                && [$this->configuration->getPrimaryKey()] === $parameters->getAttributesToRetrieve()
+            ) {
+                return $this->getConnection()->transactional(fn () => $this->browsePrimaryKeys($parameters));
+            }
+
             return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
         } catch (Exception $exception) {
             // If we need a re-index (e.g. schema has changed via an update from an old to a newer Loupe version)
@@ -353,6 +361,49 @@ class Engine
             ->executeQuery('SELECT (SELECT page_count FROM pragma_page_count) * (SELECT page_size FROM pragma_page_size)')
             ->fetchOne()
         ;
+    }
+
+    private function browsePrimaryKeys(BrowseParameters $parameters): BrowseResult
+    {
+        $start = (int) floor(microtime(true) * 1000);
+        $limit = $parameters->getLimit();
+        $offset = $parameters->getOffset();
+
+        if (null !== $parameters->getHitsPerPage() || null !== $parameters->getPage()) {
+            $limit = $parameters->getHitsPerPage() ?? SearchParameters::MAX_LIMIT;
+            $offset = (($parameters->getPage() ?? 1) - 1) * $limit;
+        }
+
+        $documentsAlias = $this->indexInfo->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $primaryKey = $this->configuration->getPrimaryKey();
+        $primaryKeyExpression = match ($this->indexInfo->getLoupeTypeForAttribute($primaryKey)) {
+            LoupeTypes::TYPE_NUMBER => \sprintf('CAST(%s._user_id AS NUMERIC)', $documentsAlias),
+            LoupeTypes::TYPE_STRING => $documentsAlias.'._user_id',
+            default => \sprintf("json_extract(%s._document, '$.%s')", $documentsAlias, $primaryKey),
+        };
+        $userIds = $this->getConnection()->createQueryBuilder()
+            ->select($primaryKeyExpression)
+            ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
+            ->orderBy($documentsAlias.'._id', 'ASC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->fetchFirstColumn()
+        ;
+        $hits = array_map(static fn (mixed $userId): array => [$primaryKey => $userId], $userIds);
+        $totalHits = [] === $hits ? 0 : $this->countDocuments();
+        $totalPages = 0 === $limit ? 0 : (int) ceil($totalHits / $limit);
+        $currentPage = 0 === $limit ? 0 : (int) floor($offset / $limit) + 1;
+        $end = (int) floor(microtime(true) * 1000);
+
+        return new BrowseResult(
+            $hits,
+            $parameters->getQuery(),
+            $end - $start,
+            $limit,
+            $currentPage,
+            $totalPages,
+            $totalHits,
+        );
     }
 
     private function executeIndexOperation(callable $operation): void
