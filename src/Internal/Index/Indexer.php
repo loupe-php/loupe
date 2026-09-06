@@ -1047,22 +1047,21 @@ class Indexer
 
     private function removeCurrentDocumentData(PreparedDocumentCollection $preparedDocuments): void
     {
-        // Batches are capped by term count, so tiny documents can still overflow the parameter limit
-        foreach (Util::arrayChunk($preparedDocuments->allInternalIds(), self::MAX_IDS_PER_QUERY) as $documentIds) {
-            // Remove term relations of this document
-            $this->engine->getConnection()->executeStatement(
-                \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
-                [$documentIds],
-                [ArrayParameterType::INTEGER],
-            );
+        $allDocumentIds = $preparedDocuments->allInternalIds();
 
-            // Remove multi-attribute relations of this document
-            $this->engine->getConnection()->executeStatement(
-                \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-                [$documentIds],
-                [ArrayParameterType::INTEGER],
-            );
-        }
+        // Remove term relations of this document
+        $this->engine->getConnection()->executeStatement(
+            \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+            [$allDocumentIds],
+            [ArrayParameterType::INTEGER],
+        );
+
+        // Remove multi-attribute relations of this document
+        $this->engine->getConnection()->executeStatement(
+            \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+            [$allDocumentIds],
+            [ArrayParameterType::INTEGER],
+        );
 
         // The rest (prefixes, state set, etc) is handled by reviseStorage()
     }
