@@ -37,6 +37,11 @@ class Indexer
     private const SOURCE_HASH_BATCH_SIZE = 1000;
 
     /**
+     * Well below SQLITE_MAX_VARIABLE_NUMBER (32766 since SQLite 3.32), which builds may lower at compile time.
+     */
+    private const MAX_IDS_PER_QUERY = 5000;
+
+    /**
      * @var array<int, callable>
      */
     private array $changes = [];
@@ -96,17 +101,19 @@ class Indexer
 
         $this->recordChange(
             function () use ($ids): void {
-                $this->engine->getConnection()
-                    ->executeStatement(
-                        \sprintf('DELETE FROM %s WHERE _user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
-                        [
-                            'ids' => LoupeTypes::convertToArrayOfStrings($ids),
-                        ],
-                        [
-                            'ids' => ArrayParameterType::STRING,
-                        ],
-                    )
-                ;
+                foreach (Util::arrayChunk(LoupeTypes::convertToArrayOfStrings($ids), self::MAX_IDS_PER_QUERY) as $chunk) {
+                    $this->engine->getConnection()
+                        ->executeStatement(
+                            \sprintf('DELETE FROM %s WHERE _user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                            [
+                                'ids' => $chunk,
+                            ],
+                            [
+                                'ids' => ArrayParameterType::STRING,
+                            ],
+                        )
+                    ;
+                }
 
                 $this->reviseStorage(true);
             },
@@ -694,7 +701,7 @@ class Indexer
 
         $termsIdMapper = [];
 
-        foreach (Util::arrayChunk(array_column($rows, 0), 5000) as $terms) {
+        foreach (Util::arrayChunk(array_column($rows, 0), self::MAX_IDS_PER_QUERY) as $terms) {
             $results = $this->engine->getConnection()->executeQuery(
                 \sprintf('SELECT term, id FROM %s WHERE term IN (?)', IndexInfo::TABLE_NAME_TERMS),
                 [$terms],
@@ -806,7 +813,7 @@ class Indexer
 
         $hashes = [];
 
-        foreach (array_chunk(array_keys($userIds), 5000) as $chunk) {
+        foreach (Util::arrayChunk(array_keys($userIds), self::MAX_IDS_PER_QUERY) as $chunk) {
             $rows = $this->engine->getConnection()->executeQuery(
                 \sprintf('SELECT _user_id, _hash FROM %s WHERE _user_id IN (?)', IndexInfo::TABLE_NAME_DOCUMENTS),
                 [$chunk],
@@ -1040,21 +1047,22 @@ class Indexer
 
     private function removeCurrentDocumentData(PreparedDocumentCollection $preparedDocuments): void
     {
-        $allDocumentIds = $preparedDocuments->allInternalIds();
+        // Batches are capped by term count, so tiny documents can still overflow the parameter limit
+        foreach (Util::arrayChunk($preparedDocuments->allInternalIds(), self::MAX_IDS_PER_QUERY) as $documentIds) {
+            // Remove term relations of this document
+            $this->engine->getConnection()->executeStatement(
+                \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+                [$documentIds],
+                [ArrayParameterType::INTEGER],
+            );
 
-        // Remove term relations of this document
-        $this->engine->getConnection()->executeStatement(
-            \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
-            [$allDocumentIds],
-            [ArrayParameterType::INTEGER],
-        );
-
-        // Remove multi-attribute relations of this document
-        $this->engine->getConnection()->executeStatement(
-            \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-            [$allDocumentIds],
-            [ArrayParameterType::INTEGER],
-        );
+            // Remove multi-attribute relations of this document
+            $this->engine->getConnection()->executeStatement(
+                \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
+                [$documentIds],
+                [ArrayParameterType::INTEGER],
+            );
+        }
 
         // The rest (prefixes, state set, etc) is handled by reviseStorage()
     }
