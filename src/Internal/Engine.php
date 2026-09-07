@@ -423,18 +423,24 @@ class Engine
             return array_map(static fn (mixed $id): array => [$primaryKey => $id], $ids);
         }
 
-        $documents = $queryBuilder->select($documentsAlias.'._document')->fetchFirstColumn();
+        $documents = $queryBuilder->select($documentsAlias.'._document')->executeQuery()->iterateColumn();
+        $hits = [];
 
         if (\in_array('*', $attributesToRetrieve, true)) {
-            return array_map(Util::decodeJson(...), $documents);
+            foreach ($documents as $document) {
+                $hits[] = Util::decodeJson($document);
+            }
+
+            return $hits;
         }
 
         $keep = array_flip($attributesToRetrieve);
 
-        return array_map(
-            static fn (string $document): array => array_intersect_key(Util::decodeJson($document), $keep),
-            $documents,
-        );
+        foreach ($documents as $document) {
+            $hits[] = array_intersect_key(Util::decodeJson($document), $keep);
+        }
+
+        return $hits;
     }
 
     private function primaryKeyExpression(string $documentsAlias, string $primaryKey): string
