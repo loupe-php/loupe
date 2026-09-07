@@ -230,7 +230,7 @@ class Engine
         ;
 
         if ($document) {
-            return Util::decodeJson($document);
+            return Util::decodeJson($document, $this->getConfiguration()->getJsonDecoder());
         }
 
         return null;

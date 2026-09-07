@@ -139,4 +139,18 @@ final class ConfigurationTest extends TestCase
 
         $this->assertNotInstanceOf(CacheItemPoolInterface::class, $configuration->getQueryCache());
     }
+
+    public function testJsonDecoderIsRuntimeOnly(): void
+    {
+        $configuration = Configuration::create()->withJsonDecoder(
+            static fn (string $json): array => json_decode($json, true, 512, JSON_THROW_ON_ERROR),
+        );
+
+        $decoder = $configuration->getJsonDecoder();
+        $this->assertInstanceOf(\Closure::class, $decoder);
+        $this->assertSame(['id' => 1], $decoder('{"id":1}'));
+
+        $this->assertSame(Configuration::create()->toString(), $configuration->toString());
+        $this->assertSame(Configuration::create()->getIndexHash(), $configuration->getIndexHash());
+    }
 }

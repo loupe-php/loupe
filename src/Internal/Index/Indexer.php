@@ -872,7 +872,7 @@ class Indexer
 
         foreach ($this->engine->getConnection()->executeQuery('SELECT '.$documentColumn.' FROM documents_migration')
             ->iterateAssociative() as $row) {
-            $chunk[] = json_decode($row[$documentColumn], true);
+            $chunk[] = Util::decodeJson($row[$documentColumn], $this->engine->getConfiguration()->getJsonDecoder());
 
             if (\count($chunk) >= 100) {
                 $this->addDocuments($chunk);

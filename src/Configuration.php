@@ -38,6 +38,8 @@ final class Configuration
 
     private LoggerInterface|null $logger = null;
 
+    private \Closure|null $jsonDecoder = null;
+
     private int $maxQueryTokens = 10;
 
     private int $maxTotalHits = 1000;
@@ -250,6 +252,11 @@ final class Configuration
         return $this->languages;
     }
 
+    public function getJsonDecoder(): \Closure|null
+    {
+        return $this->jsonDecoder;
+    }
+
     public function getLogger(): LoggerInterface|null
     {
         return $this->logger;
@@ -433,6 +440,14 @@ final class Configuration
 
         $clone = clone $this;
         $clone->languages = $languages;
+
+        return $clone;
+    }
+
+    public function withJsonDecoder(callable $jsonDecoder): self
+    {
+        $clone = clone $this;
+        $clone->jsonDecoder = \Closure::fromCallable($jsonDecoder);
 
         return $clone;
     }
