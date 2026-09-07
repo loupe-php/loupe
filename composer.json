@@ -56,8 +56,13 @@
             "@php vendor/bin/phpbench run --report=aggregate --group=index",
             "@bench-index-size"
         ],
+        "bench-browse": [
+            "@php vendor/bin/phpbench run --report=aggregate --group=browse",
+            "@bench-browse-size"
+        ],
         "bench-size": "@php tests/bin/report-database-size.php var/bench/movies-search/loupe.db",
         "bench-index-size": "@php tests/bin/report-database-size.php var/bench/movies-index/loupe.db",
+        "bench-browse-size": "@php tests/bin/report-database-size.php var/bench/browse-articles/loupe.db",
         "cs-fixer": "@php vendor/terminal42/code-quality-tools/tools/ecs/vendor/bin/ecs check src tests --config vendor/terminal42/code-quality-tools/tools/ecs/config.php --fix --ansi",
         "rector": "@php vendor/terminal42/code-quality-tools/tools/rector/vendor/bin/rector process src tests --config vendor/terminal42/code-quality-tools/tools/rector/config.php --ansi",
         "phpstan": "@php vendor/terminal42/code-quality-tools/tools/phpstan/vendor/bin/phpstan analyze src tests --configuration vendor/terminal42/code-quality-tools/tools/phpstan/config.php --ansi",
