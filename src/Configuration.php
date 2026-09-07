@@ -40,6 +40,8 @@ final class Configuration
 
     private \Closure|null $jsonDecoder = null;
 
+    private \Closure|null $jsonEncoder = null;
+
     private int $maxQueryTokens = 10;
 
     private int $maxTotalHits = 1000;
@@ -257,6 +259,11 @@ final class Configuration
         return $this->jsonDecoder;
     }
 
+    public function getJsonEncoder(): \Closure|null
+    {
+        return $this->jsonEncoder;
+    }
+
     public function getLogger(): LoggerInterface|null
     {
         return $this->logger;
@@ -448,6 +455,14 @@ final class Configuration
     {
         $clone = clone $this;
         $clone->jsonDecoder = \Closure::fromCallable($jsonDecoder);
+
+        return $clone;
+    }
+
+    public function withJsonEncoder(callable $jsonEncoder): self
+    {
+        $clone = clone $this;
+        $clone->jsonEncoder = \Closure::fromCallable($jsonEncoder);
 
         return $clone;
     }

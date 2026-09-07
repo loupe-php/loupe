@@ -69,8 +69,18 @@ class Util
     /**
      * @param array<mixed> $data
      */
-    public static function encodeJson(array $data, int $flags = 0): string
+    public static function encodeJson(array $data, int $flags = 0, callable|null $encoder = null): string
     {
+        if (null !== $encoder) {
+            $json = $encoder($data, $flags);
+
+            if (!\is_string($json)) {
+                throw new InvalidJsonException('The configured JSON encoder must return a string.');
+            }
+
+            return $json;
+        }
+
         $json = json_encode($data, $flags);
 
         if (false === $json) {

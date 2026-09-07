@@ -51,6 +51,27 @@ final class UtilTest extends TestCase
         Util::decodeJson($json);
     }
 
+    public function testEncodeJson(): void
+    {
+        $data = ['id' => 1, 'nested' => ['value', true, null]];
+
+        $this->assertSame($data, json_decode(Util::encodeJson($data), true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    public function testEncodeJsonWithEncoder(): void
+    {
+        $encoder = static fn (array $data, int $flags): string => json_encode($data, $flags | JSON_THROW_ON_ERROR);
+
+        $this->assertSame('{"id":2}', Util::encodeJson(['id' => 2], 0, $encoder));
+    }
+
+    public function testEncodeJsonWithEncoderReturningNonString(): void
+    {
+        $this->expectException(InvalidJsonException::class);
+
+        Util::encodeJson(['id' => 1], 0, static fn (array $data, int $flags): mixed => null);
+    }
+
     /**
      * @return iterable<string, array{string}>
      */

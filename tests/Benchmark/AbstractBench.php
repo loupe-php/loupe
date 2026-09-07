@@ -30,12 +30,26 @@ abstract class AbstractBench
 
     protected static function configuration(): Configuration
     {
-        return Configuration::create()
+        $configuration = Configuration::create()
             ->withSearchableAttributes(['title', 'overview'])
             ->withFilterableAttributes(['release_date', 'genres'])
             ->withSortableAttributes(['release_date'])
             ->withLanguages(['en'])
         ;
+
+        $encoderFunction = match (getenv('LOUPE_JSON_ENCODER')) {
+            'fastjson' => 'fastjson_encode',
+            'simdjson' => 'simdjson_encode',
+            default => null,
+        };
+
+        if (null === $encoderFunction || !\function_exists($encoderFunction)) {
+            return $configuration;
+        }
+
+        return $configuration->withJsonEncoder(
+            static fn (array $data, int $flags): mixed => $encoderFunction($data, $flags),
+        );
     }
 
     protected static function ensureMoviesJson(): void

@@ -153,4 +153,18 @@ final class ConfigurationTest extends TestCase
         $this->assertSame(Configuration::create()->toString(), $configuration->toString());
         $this->assertSame(Configuration::create()->getIndexHash(), $configuration->getIndexHash());
     }
+
+    public function testJsonEncoderIsRuntimeOnly(): void
+    {
+        $configuration = Configuration::create()->withJsonEncoder(
+            static fn (array $data, int $flags): string => json_encode($data, $flags | JSON_THROW_ON_ERROR),
+        );
+
+        $encoder = $configuration->getJsonEncoder();
+        $this->assertInstanceOf(\Closure::class, $encoder);
+        $this->assertSame('{"id":1}', $encoder(['id' => 1], 0));
+
+        $this->assertSame(Configuration::create()->toString(), $configuration->toString());
+        $this->assertSame(Configuration::create()->getIndexHash(), $configuration->getIndexHash());
+    }
 }

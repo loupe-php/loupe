@@ -947,7 +947,7 @@ class Indexer
 
         $preparedDocument = new PreparedDocument(
             $userId,
-            Util::encodeJson($documentData),
+            Util::encodeJson($documentData, 0, $this->engine->getConfiguration()->getJsonEncoder()),
         );
 
         // Terms and attributes of unchanged documents are excluded by the SQL change detection: skip expensive tokenization & attribute extraction
