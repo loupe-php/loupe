@@ -38,10 +38,6 @@ class BrowseBench extends AbstractBench
 
     private Loupe $loupe;
 
-    /**
-     * Large documents, narrow projection: the case where transferring and decoding
-     * the whole document is most wasteful.
-     */
     public function benchBrowseLargeSubset(): void
     {
         $this->browseAll($this->articles, $this->articlesCount, ['id', 'title']);
@@ -52,25 +48,16 @@ class BrowseBench extends AbstractBench
         $this->browseAll($this->articles, $this->articlesCount, ['*']);
     }
 
-    /**
-     * Only the primary key: the narrowest possible projection.
-     */
     public function benchBrowsePrimaryKey(): void
     {
         $this->browseAll($this->loupe, $this->documentCount, ['id']);
     }
 
-    /**
-     * A typical listing projection: a couple of small attributes out of a small document.
-     */
     public function benchBrowseSubset(): void
     {
         $this->browseAll($this->loupe, $this->documentCount, ['id', 'title', 'release_date']);
     }
 
-    /**
-     * Filtered browsing with a narrow projection.
-     */
     public function benchBrowseSubsetFiltered(): void
     {
         for ($offset = 0; $offset < $this->documentCount; $offset += self::PAGE_SIZE) {
@@ -84,9 +71,6 @@ class BrowseBench extends AbstractBench
         }
     }
 
-    /**
-     * Control: retrieving everything must not regress.
-     */
     public function benchBrowseWholeDocument(): void
     {
         $this->browseAll($this->loupe, $this->documentCount, ['*']);
@@ -107,10 +91,6 @@ class BrowseBench extends AbstractBench
         self::ensureArticleIndex();
     }
 
-    /**
-     * A corpus of documents that carry a large body, as produced by indexing pages,
-     * articles or file contents. Documents average roughly 4 KB.
-     */
     private static function articleDocuments(): \Generator
     {
         $lorem = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor ';
