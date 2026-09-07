@@ -391,6 +391,28 @@ final class IndexTest extends TestCase
         $this->assertSame('Forrest Gump', $loupe->getDocument(13)['title'] ?? '');
     }
 
+    public function testDeleteDocumentsChunksLargeIdListsToStayBelowTheSQLiteParameterLimit(): void
+    {
+        $logger = new InMemoryLogger();
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['title', 'overview'])
+            ->withLogger($logger)
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $this->indexFixture($loupe, 'movies');
+
+        // More IDs than SQLITE_MAX_VARIABLE_NUMBER allows in a single statement
+        $loupe->deleteDocuments(array_merge([11, 12], range(100_000, 140_000)));
+
+        $deletes = $this->getLoggedStatements($logger, 'DELETE FROM documents WHERE _user_id IN');
+        $this->assertCount(9, $deletes);
+
+        $this->assertNull($loupe->getDocument(11));
+        $this->assertNull($loupe->getDocument(12));
+        $this->assertSame('Forrest Gump', $loupe->getDocument(13)['title'] ?? '');
+    }
+
     public function testDeleteDocumentWhenNotSetUpYet(): void
     {
         $configuration = Configuration::create()
