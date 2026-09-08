@@ -45,6 +45,57 @@ final class BrowseTest extends TestCase
         );
     }
 
+    public function testBrowsePrimaryKeyOnly(): void
+    {
+        $loupe = $this->setupLoupeWithMoviesFixture();
+
+        $this->browseAndAssertResults(
+            $loupe,
+            BrowseParameters::create()
+                ->withAttributesToRetrieve(['id'])
+                ->withHitsPerPage(3)
+                ->withPage(2),
+            [
+                'hits' => [
+                    ['id' => 11],
+                    ['id' => 12],
+                    ['id' => 13],
+                ],
+                'query' => '',
+                'hitsPerPage' => 3,
+                'page' => 2,
+                'totalPages' => 7,
+                'totalHits' => 19,
+            ],
+        );
+    }
+
+    public function testBrowsePrimaryKeyOnlyKeepsIdTypeAndGaps(): void
+    {
+        $configuration = Configuration::create()
+            ->withPrimaryKey('sku')
+            ->withFilterableAttributes(['stock'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            ['sku' => '0042', 'stock' => 1],
+            ['sku' => 'a-1', 'stock' => 2],
+            ['sku' => '7', 'stock' => 3],
+        ]);
+        $loupe->deleteDocument('a-1');
+
+        $result = $loupe->browse(BrowseParameters::create()->withAttributesToRetrieve(['sku']));
+        $this->assertSame([['sku' => '0042'], ['sku' => '7']], $result->getHits());
+        $this->assertSame(2, $result->getTotalHits());
+
+        $result = $loupe->browse(
+            BrowseParameters::create()->withAttributesToRetrieve(['sku'])->withFilter('stock > 1'),
+        );
+        $this->assertSame([['sku' => '7']], $result->getHits());
+        $this->assertSame(1, $result->getTotalHits());
+    }
+
     public function testMaxTotalHitsDoesNotApplyToBrowseApi(): void
     {
         $configuration = Configuration::create()
