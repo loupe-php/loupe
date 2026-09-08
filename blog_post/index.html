@@ -1,0 +1,864 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="An SQLite-based, PHP-only full-text search engine for pragmatic applications.">
+      
+      
+      
+        <link rel="canonical" href="https://loupe-php.github.io/loupe/blog_post/">
+      
+      
+        <link rel="prev" href="../performance/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/logo/emblem.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Background / Blog Post - Loupe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="loupe" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#loupe-a-search-engine-with-only-php-and-sqlite" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Loupe" class="md-header__button md-logo" aria-label="Loupe" data-md-component="logo">
+      
+  <img src="../assets/logo/emblem.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Loupe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Background / Blog Post
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="loupe" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="loupe-dark" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/loupe-php/loupe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    loupe-php/loupe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Loupe" class="md-nav__button md-logo" aria-label="Loupe" data-md-component="logo">
+      
+  <img src="../assets/logo/emblem.svg" alt="logo">
+
+    </a>
+    Loupe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/loupe-php/loupe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    loupe-php/loupe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../indexing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Indexing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../searching/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Searching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../browsing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browsing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ranking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ranking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tokenizer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tokenizer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background / Blog Post
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background / Blog Post
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-came-about" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it came about
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-disclosure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Disclosure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#final-words" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final words
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-came-about" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it came about
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#full-disclosure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Disclosure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#final-words" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Final words
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+  <div class="loupe-longform-shell">
+    <div class="loupe-longform-shell__intro">
+      <span class="loupe-eyebrow">Background Article</span>
+      <p>
+        This long-form piece captures the original motivation behind Loupe. Some implementation details have
+        evolved since then, but the design intent is still useful context.
+      </p>
+    </div>
+
+    <h1 id="loupe-a-search-engine-with-only-php-and-sqlite">Loupe - a search engine with only PHP and SQLite<a class="headerlink" href="#loupe-a-search-engine-with-only-php-and-sqlite" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>IMPORTANT: Quite a few things have changed over time. Loupe does not use the same libraries anymore and also does not
+use a TF-IDF ranking order anymore. This blog post represents the initial version, make sure you also read the current
+state of the documentation. The blog post might still help for the big picture though.</p>
+</blockquote>
+<p>They say that when you want to explain something to people, you should tell them a story. After all, we all read and 
+hear stories every day, and it makes topics understandable and relatable. So here we go:</p>
+<p>At the beginning of 2023, I was tasked with a project involving the collection and management of property data in 
+the tourism industry. Hotels, restaurants and other POIs that could potentially be of interest to tourists. The 
+expected number of objects was manageable, 2-3000 maybe. And also otherwise the requirements were rather
+simple. A classic list with a detail view of the object for further information. In our industry actually 
+basic input/output. But: the list should of course also be searchable, filterable and sortable.</p>
+<p>That is the beginning of this story. And then I sat there, as you have probably sat there at least once in your life,
+and said to myself: "All right, as always: Actually content management and super simple, only for the search the 
+customer has to decide whether a simple <code>LIKE</code> query on an SQL database is enough, or whether it should be
+<a href="https://www.elastic.co">ElasticSearch</a>, <a href="https://www.meilisearch.com">MeiliSearch</a>, <a href="https://www.algolia.com">Algolia</a>, <a href="https://typesense.org">Typesense</a> and Co. Maybe 
+the full-text search of a database like MySQL or PostgreSQL will do. Same procedure as every year, James".</p>
+<p>Later in the discussion with the customer it came up that sorting the results by distance in kilometers from the 
+current location would also be nice. Of course. This would've been still doable with a regular SQL database but we 
+started to get into a direction where we definitely needed a search engine for this project.</p>
+<p>And if I'm honest, this story has been repeated an estimated 5274392 times in my professional life. No matter how 
+many objects and which data it was about. Each time, the choice of search engine has been a point of discussion. 
+Connected to that, of course, whether to choose a SAAS product or to host it yourself, and if so, which software to 
+choose. Always the same discussion, regardless of whether 500 objects or 10,000, the points to be clarified were 
+always the same. The only difference to 2023: This year I was fed up. I didn't want to have this discussion every 
+time - I didn't want to discuss the choice of search engine again because of a mere 3000 objects and a geo-distance 
+sort. I wanted a solution for this project and the years to come. Because one thing was clear to me: this discussion 
+will come again with the next project. That I am absolutely sure of.</p>
+<p>So I started to work a bit more extensively with search engines and out of that, after many, many hours of hard work, came
+my new baby, which I now opensource: <a href="https://github.com/loupe-php/loupe">Loupe</a>.</p>
+<p>"Loupe" is French and means magnifying glass and all it needs is PHP and an SQLite database. So you can even use 
+Loupe in-memory. This may be just the right thing for you, depending on the purpose.</p>
+<p>The question you may be asking yourself now is "Why?". Why yet another search engine? Why all this effort?</p>
+<h2 id="how-it-came-about">How it came about<a class="headerlink" href="#how-it-came-about" title="Permanent link">&para;</a></h2>
+<p>I simply wanted a solution for simple use cases. Loupe of course does not compete with any of the mentioned big 
+players. I only wanted to build a replacement for an SQL <code>LIKE</code> query. So what I initially started with, was tokenizing 
+a text and making this searchable. Then, things started to get a bit out of hand because I had been bitten by the bug!</p>
+<p>First, I noticed that when searching for <code>cars</code> I would get no matches for <code>car</code>. So I've combined the libraries 
+<code>patrickschur/language-detection</code> as well as <code>wamania/php-stemmer</code> and added automated language detection and 
+<a href="https://en.wikipedia.org/wiki/Stemming">stemming</a> support for better hits.</p>
+<p>Then, I needed to be able to filter on any attribute, no matter whether it was a single value attribute like <code>age &gt; 
+42</code> or an array value for operations such as <code>department IN ('Project Management', 'Backoffice')</code> and the likes. So 
+I read how to write a parser, took <code>doctrine/lexer</code> as an excellent foundation and wrote my own simple <a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a> 
+and after a few hours, I could basically filter and sort on any attribute in my index.</p>
+<p>Because my customer required filtering and sorting by geo distance, this was up next. Sorting on geo distance is 
+pretty straightforward as well. Here, I could make use of the excellent <code>mjaschen/phpgeo</code> library to calculate the 
+distance between two coordinates. Filtering happens just the same although here, I tried to be a bit smart. If you 
+have thousands of documents in the search index and you want to only list those that are e.g. within <code>2km</code> of a 
+given coordinate, you would like to exclude as many documents as possible before you actually calculate 
+the exact distance for every single one. You will need to calculate the exact distance eventually anyway because those 
+<code>2km</code> represent the radius of a circle. However, what you can do, is calculate a bounding box first. So essentially a 
+square around your coordinate. You can then filter for all the documents within that square using simple <code>&gt;=</code> and <code>&lt;=</code> 
+queries on indexed columns. Calculating the exact distance only needs to be done for the ones matching this 
+requirement which results in better performance.</p>
+<p>Up next was term highlighting. And after that I've finally managed to get around proper relevance sorting based on a 
+very typical combination of <a href="https://en.wikipedia.org/wiki/Tf%E2%80%93idf">normalized tf-idf</a> and <a href="https://en.wikipedia.org/wiki/Cosine_similarity">cosine similarity</a>.</p>
+<p>And then there was my final enemy: Typo tolerance. I had played around with simple <a href="https://en.wikipedia.org/wiki/Levenshtein_distance">Levenshtein distance</a> calculations but searching while allowing typos quickly got very slow because you need to effectively 
+calculate the distance for every single term and the bigger the search index, the more needed to be calculated 
+making it effectively useless. So I searched the Internet and eventually stumbled over an <a href="https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf">academic paper of 2012 
+called "Efficient Similarity Search in Very Large String Sets"</a> by Dandy Fenz, Dustin Lange, Astrid Rheinländer, Felix Naumann,
+and Ulf Leser from the Hasso Plattner Institute, Potsdam, Germany and Humboldt-Universität zu Berlin, Department of
+Computer Science, Berlin, Germany.</p>
+<p>I can't really explain the algorithm any better than what is done in this paper, so I suggest you read it, if you are 
+interested in details. But essentially, every letter in all the terms gets assigned a number and because we now have 
+numbers instead of letters, we are able to calculate possible outcomes with an allowed distance of e.g. <code>2</code> and 
+search the database much more efficiently. I've implemented the algorithm in a <a href="https://github.com/Toflar/state-set-index">standalone library 
+<code>toflar/state-set-index</code></a> which you may checkout and use in your own projects as well.</p>
+<p>Performant typo tolerance - yay! 🎉</p>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p>So, yes! Over time, it may have gotten a bit out of hand and I added more features than originally planned. But 
+at the end of the day, still, Loupe only requires PHP and SQLite! You don't have to worry about anything, all the 
+work has been done for you.</p>
+<p>I also don't plan to add support for other databases, because SQLite is everywhere and offers the possibility to 
+register your own SQL functions, which Loupe benefits from.</p>
+<p>Thanks to SQLite, Loupe could also become interesting for embedded systems such as apps built with <a href="https://nativephp.com">NativePHP</a>
+or similar.</p>
+<p>So let's recap! Loupe…</p>
+<ul>
+<li>…only requires PHP and SQLite, you don't need anything else - no containers, no nothing</li>
+<li>…is typo-tolerant (based on the State Set Index Algorithm and Levenshtein)</li>
+<li>…supports phrase search using <code>"</code> quotation marks</li>
+<li>…supports filtering (and ordering) on any attribute with any SQL-inspired filter statement</li>
+<li>…supports filtering (and ordering) on Geo distance</li>
+<li>…orders relevance based on a typical TF-IDF Cosine similarity algorithm</li>
+<li>…auto-detects languages</li>
+<li>…supports stemming</li>
+<li>…is very easy to use</li>
+<li>…is all-in-all just the easiest way to replace your good old SQL <code>LIKE %...%</code> queries with a way better search
+  experience but without all the hassle of an additional service to manage. SQLite is everywhere and all it needs is
+  your filesystem.</li>
+</ul>
+<h2 id="full-disclosure">Full Disclosure<a class="headerlink" href="#full-disclosure" title="Permanent link">&para;</a></h2>
+<p>If you are familiar with MeiliSearch, you will notice that the API is very much inspired by 
+MeiliSearch. The reasons for this are simple:</p>
+<ol>
+<li>First and foremost: I think, they did an amazing job of keeping configuration simple and understandable from a
+   developer's perspective. Basic search tools shouldn't be complicated.</li>
+<li>If Loupe shouldn't be enough for your use case anymore (you need advanced features, better performance etc.),
+   switching to MeiliSearch instead should be a piece of cake.</li>
+</ol>
+<h2 id="final-words">Final words<a class="headerlink" href="#final-words" title="Permanent link">&para;</a></h2>
+<p>I've created Loupe 100% by myself in my spare time. If it helps you - great! If it doesn't: There are a great 
+deal of excellent search engines on the market. I have no clue how performant Loupe is with e.g. 50,000 documents. 
+Maybe it is, maybe it's not. Remember: Use a hammer to bang in a nail. Use a screwdriver to tighten screws. Use the 
+right tool for the job - maybe Loupe is not.</p>
+<p>If you want to sponsor my Open Source work you may do so via <a href="https://github.com/sponsors/Toflar">GitHub Sponsors</a> and you can always 
+find me on <a href="https://phpc.social/@toflar">Mastodon</a> and <a href="https://twitter.com/toflar">Twitter</a> (or whatever this thing is called now).</p>
+<p>Thanks for reading!</p>
+<p>Yanick</p>
+  </div>
+
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tracking", "navigation.sections", "navigation.top", "search.highlight", "search.suggest", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
