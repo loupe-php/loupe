@@ -232,7 +232,7 @@ class IndexInfo
             if (false === $schema) {
                 $this->documentSchema = [];
             } else {
-                $this->documentSchema = Util::decodeJson($schema);
+                $this->documentSchema = Util::decodeJson($schema, $this->engine->getConfiguration()->getJsonDecoder());
             }
         }
 

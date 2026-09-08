@@ -325,7 +325,7 @@ class Searcher
         $hits = [];
 
         foreach ($this->query()->iterateAssociative() as $result) {
-            $document = Util::decodeJson($result['_document']);
+            $document = Util::decodeJson($result['_document'], $this->engine->getConfiguration()->getJsonDecoder());
 
             foreach ($result as $k => $v) {
                 if (str_starts_with($k, self::DISTANCE_ALIAS)) {
