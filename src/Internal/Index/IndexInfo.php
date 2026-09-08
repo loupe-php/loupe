@@ -110,12 +110,6 @@ class IndexInfo
         );
     }
 
-    public static function getPrimaryKeyIndexName(string $tableName): string
-    {
-        // SQLite exposes the implicit index for our composite primary keys using this generated name.
-        return 'sqlite_autoindex_'.$tableName.'_1';
-    }
-
     /**
      * @param array<string, mixed> $document
      */
@@ -648,9 +642,10 @@ class IndexInfo
             ->setNotnull(true)
         ;
 
-        $table->setPrimaryKey(['term', 'document', 'position']);
         $table->addIndex(['document']);
-        $table->addIndex(
+        // The covering search index also enforces occurrence uniqueness.
+        // This avoids maintaining a redundant primary-key index.
+        $table->addUniqueIndex(
             ['term', 'document', 'attribute', 'position', 'folded'],
             self::INDEX_NAME_TERMS_DOCUMENTS_SEARCH,
         );
