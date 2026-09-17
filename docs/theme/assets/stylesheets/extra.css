@@ -690,7 +690,7 @@ pre {
 .md-typeset pre {
   background: var(--loupe-code-bg);
   border: 1px solid rgba(240, 163, 95, 0.18);
-  border-radius: 1.1rem;
+  border-radius: 0.45rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -739,7 +739,30 @@ pre {
 }
 
 .md-top {
-  background: rgba(32, 25, 20, 0.88);
+  background-color: color-mix(in srgb, var(--loupe-code-bg) 88%, transparent);
+  color: var(--loupe-code-fg);
+
+  &:hover {
+    background-color: var(--md-primary-fg-color--dark);
+  }
+}
+
+.md-code__nav {
+  border-radius: .35em;
+  background-color: color-mix(in srgb, var(--md-primary-fg-color) 40%, transparent);
+}
+
+:hover > .md-code__nav {
+    background-color: color-mix(in srgb, var(--md-primary-fg-color) 80%, transparent);
+}
+
+.md-code__button {
+  color: var(--loupe-code-fg);
+}
+
+:hover > * > .md-code__button,
+.md-code__button:hover {
+    color: #fff;
 }
 
 @keyframes loupe-card-rise {
