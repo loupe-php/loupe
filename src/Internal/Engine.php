@@ -19,6 +19,7 @@ use Loupe\Loupe\Internal\Index\Indexer;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LanguageDetection\NitotmLanguageDetector;
 use Loupe\Loupe\Internal\LanguageDetection\PreselectedLanguageDetector;
+use Loupe\Loupe\Internal\Search\Browser;
 use Loupe\Loupe\Internal\Search\Searcher;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
 use Loupe\Loupe\Internal\StateSetIndex\CachedStateSetIndex;
@@ -126,7 +127,7 @@ class Engine
         $this->maybeWrapStateSetIndexWithCache();
 
         try {
-            return (new Searcher($this, $this->filterParser, $parameters))->fetchResult();
+            return (new Browser($this, $this->filterParser, $parameters))->fetchResult();
         } catch (Exception $exception) {
             // If we need a re-index (e.g. schema has changed via an update from an old to a newer Loupe version)
             // we return an empty result. Otherwise, we want to see the exception
