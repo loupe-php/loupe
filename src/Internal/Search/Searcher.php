@@ -741,7 +741,7 @@ class Searcher
             $cteSelectQb->from(\sprintf(
                 '%s %s'
                 .' CROSS JOIN %s'
-                .' CROSS JOIN %s %s INDEXED BY '.IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH
+                .' CROSS JOIN %s %s INDEXED BY '.$this->engine->getIndexInfo()->getTermsDocumentsSearchIndexName()
                 .' ON %s.id = %s.term'
                 .' AND %s.document = %s.document'
                 .' AND %s.attribute = %s.attribute'
@@ -817,7 +817,7 @@ class Searcher
         if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
             // Pin the join order so SQLite does not scan every term occurrence before applying the attribute filter.
             $queryBuilder->from(\sprintf(
-                '%s CROSS JOIN %s %s INDEXED BY '.IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH.' ON %s.id = %s.term',
+                '%s CROSS JOIN %s %s INDEXED BY '.$this->engine->getIndexInfo()->getTermsDocumentsSearchIndexName().' ON %s.id = %s.term',
                 $termMatchesCTE,
                 IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
                 $termsDocumentsAlias,
@@ -833,7 +833,7 @@ class Searcher
         $queryBuilder->innerJoin(
             $termMatchesCTE,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            $termsDocumentsAlias.' INDEXED BY '.IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH,
+            $termsDocumentsAlias.' INDEXED BY '.$this->engine->getIndexInfo()->getTermsDocumentsSearchIndexName(),
             \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias),
         );
     }
