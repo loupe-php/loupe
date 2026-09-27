@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal\Index;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Types\Types;
 use Loupe\Loupe\Configuration;
@@ -46,6 +47,8 @@ class IndexInfo
     private string|null $indexUid = null;
 
     private bool|null $needsSetup = null;
+
+    private string|null $termsDocumentsSearchIndexName = null;
 
     public function __construct(private readonly Engine $engine)
     {
@@ -388,6 +391,22 @@ class IndexInfo
         return array_flip(array_intersect_key(array_flip($this->engine->getConfiguration()->getSortableAttributes()), $this->getDocumentSchema()));
     }
 
+    public function getTermsDocumentsSearchIndexName(): string
+    {
+        if (null === $this->termsDocumentsSearchIndexName) {
+            // Doctrine schema manager reports this index as "primary", not its physical SQLite name, so we cannot
+            // use the schema manager here
+            $primaryKeyIndex = $this->engine->getConnection()->fetchOne(
+                "SELECT name FROM pragma_index_list('".self::TABLE_NAME_TERMS_DOCUMENTS."') WHERE origin = 'pk'",
+            );
+
+            $this->termsDocumentsSearchIndexName = false === $primaryKeyIndex ?
+                self::INDEX_NAME_TERMS_DOCUMENTS_SEARCH : (string) $primaryKeyIndex;
+        }
+
+        return $this->termsDocumentsSearchIndexName;
+    }
+
     public function isMultiFilterableAttribute(string $attribute): bool
     {
         return \in_array($attribute, $this->getMultiFilterableAttributes(), true);
@@ -426,6 +445,21 @@ class IndexInfo
         $this->documentSchema = null;
         $this->indexUid = null;
         $this->needsSetup = null;
+        $this->termsDocumentsSearchIndexName = null;
+    }
+
+    public static function supportsWithoutRowid(Connection $connection): bool
+    {
+        $schema = new Schema();
+        $table = $schema->createTable('without_rowid_probe');
+        $table->addColumn('key', Types::STRING);
+        $table->setPrimaryKey(['key']);
+        $table->addOption('without_rowid', true);
+
+        return str_contains(
+            implode(' ', $connection->getDatabasePlatform()->getCreateTableSQL($table)),
+            'WITHOUT ROWID',
+        );
     }
 
     private function addDocumentsToSchema(Schema $schema): void
@@ -527,6 +561,7 @@ class IndexInfo
         ;
 
         $table->setPrimaryKey(['attribute', 'document'], 'attribute_document');
+        $table->addOption('without_rowid', true);
         $table->addIndex(['document']);
     }
 
@@ -596,6 +631,7 @@ class IndexInfo
         ;
 
         $table->setPrimaryKey(['prefix', 'term']);
+        $table->addOption('without_rowid', true);
         $table->addIndex(['term']);
     }
 
@@ -643,12 +679,16 @@ class IndexInfo
         ;
 
         $table->addIndex(['document']);
-        // The covering search index also enforces occurrence uniqueness.
-        // This avoids maintaining a redundant primary-key index.
-        $table->addUniqueIndex(
-            ['term', 'document', 'attribute', 'position', 'folded'],
-            self::INDEX_NAME_TERMS_DOCUMENTS_SEARCH,
-        );
+        // The occurrence key also supports term-driven searches.
+        // Older DBAL versions use a named covering index to avoid a redundant primary-key index.
+        $occurrenceKey = ['term', 'document', 'attribute', 'position', 'folded'];
+
+        if (self::supportsWithoutRowid($this->engine->getConnection())) {
+            $table->setPrimaryKey($occurrenceKey);
+            $table->addOption('without_rowid', true);
+        } else {
+            $table->addUniqueIndex($occurrenceKey, self::INDEX_NAME_TERMS_DOCUMENTS_SEARCH);
+        }
     }
 
     private function addTermsToSchema(Schema $schema): void
@@ -740,5 +780,6 @@ class IndexInfo
 
         $schemaDiff = $comparator->compareSchemas($schemaManager->introspectSchema(), $this->getSchema());
         $schemaManager->alterSchema($schemaDiff);
+        $this->termsDocumentsSearchIndexName = null;
     }
 }

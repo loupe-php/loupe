@@ -39,24 +39,43 @@ final class ConnectionTest extends TestCase
         $this->assertSame(8192, $this->createConnection($dir)->fetchOne('PRAGMA page_size'));
     }
 
-    public function testTermDocumentsSearchIndexIsUnique(): void
+    public function testTermDocumentsOccurrenceKeyIsUnique(): void
     {
         $dir = $this->createTemporaryDirectory();
         $loupe = (new LoupeFactory())->create($dir, Configuration::create());
         $loupe->addDocument(['id' => 1, 'title' => 'The quick brown fox']);
 
         $connection = $this->createConnection($dir);
-        $searchIndex = $connection->fetchAssociative(\sprintf(
-            "SELECT `unique`, origin FROM pragma_index_list('%s') WHERE name = '%s'",
+        $supportsWithoutRowid = IndexInfo::supportsWithoutRowid($connection);
+        $indexName = $supportsWithoutRowid ? 'sqlite_autoindex_terms_documents_1' : IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH;
+        $index = $connection->fetchAssociative(\sprintf(
+            "SELECT `unique`, origin FROM pragma_index_list('%s') WHERE name = ?",
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            IndexInfo::INDEX_NAME_TERMS_DOCUMENTS_SEARCH,
-        ));
+        ), [$indexName]);
 
-        $this->assertSame(['unique' => 1, 'origin' => 'c'], $searchIndex);
-        $this->assertFalse($connection->fetchOne(\sprintf(
-            "SELECT 1 FROM pragma_index_list('%s') WHERE origin = 'pk'",
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-        )));
+        $this->assertSame(
+            [
+                'unique' => 1,
+                'origin' => $supportsWithoutRowid ? 'pk' : 'c',
+            ],
+            $index,
+        );
+    }
+
+    public function testCompositeKeyRelationsUseWithoutRowidWhenSupported(): void
+    {
+        $dir = $this->createTemporaryDirectory();
+        $loupe = (new LoupeFactory())->create($dir, Configuration::create());
+        $loupe->addDocument(['id' => 1, 'title' => 'The quick brown fox']);
+
+        $connection = $this->createConnection($dir);
+        $platformSupportsWithoutRowid = IndexInfo::supportsWithoutRowid($connection);
+
+        foreach ([IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS, IndexInfo::TABLE_NAME_PREFIXES_TERMS, IndexInfo::TABLE_NAME_TERMS_DOCUMENTS] as $tableName) {
+            $sql = $connection->fetchOne('SELECT sql FROM sqlite_master WHERE type = ? AND name = ?', ['table', $tableName]);
+
+            $this->assertSame($platformSupportsWithoutRowid, str_contains((string) $sql, 'WITHOUT ROWID'));
+        }
     }
 
     private function createConnection(string $dir): Connection
