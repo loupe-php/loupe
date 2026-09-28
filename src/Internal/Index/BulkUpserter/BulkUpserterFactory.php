@@ -17,8 +17,10 @@ class BulkUpserterFactory
 
     private readonly bool $jsonEachAvailable;
 
-    public function __construct(private readonly ConnectionPool $connectionPool)
-    {
+    public function __construct(
+        private readonly ConnectionPool $connectionPool,
+        private readonly \Closure|null $jsonEncoder = null,
+    ) {
         $this->jsonEachAvailable = $this->detectJsonEach();
     }
 
@@ -29,6 +31,7 @@ class BulkUpserterFactory
             $bulkUpsertConfig,
             self::VARIABLE_LIMIT,
             $this->jsonEachAvailable,
+            $this->jsonEncoder,
         );
     }
 

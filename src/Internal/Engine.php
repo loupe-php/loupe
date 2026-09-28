@@ -92,7 +92,7 @@ class Engine
         $this->stopwords = new InMemoryStopWords($this->configuration->getStopWords());
         $this->formatter = new Formatter(new Matcher($this->getTokenizer(), $this->stopwords));
         $this->filterParser = new Parser($this);
-        $this->bulkUpserterFactory = new BulkUpserterFactory($this->connectionPool);
+        $this->bulkUpserterFactory = new BulkUpserterFactory($this->connectionPool, $this->configuration->getJsonEncoder());
 
         $this->registerSQLiteFunctions($this->connectionPool->loupeConnection);
     }
@@ -230,7 +230,7 @@ class Engine
         ;
 
         if ($document) {
-            return Util::decodeJson($document);
+            return Util::decodeJson($document, $this->getConfiguration()->getJsonDecoder());
         }
 
         return null;

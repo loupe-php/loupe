@@ -16,6 +16,7 @@ class BulkUpserter
         private readonly BulkUpsertConfig $bulkUpsertConfig,
         private readonly int $variableLimit,
         private readonly bool $jsonEachAvailable,
+        private readonly \Closure|null $jsonEncoder = null,
     ) {
     }
 
@@ -82,7 +83,7 @@ class BulkUpserter
     private function buildRowsClause(array $rows, array &$parameters): string
     {
         if ($this->jsonEachAvailable) {
-            $parameters[] = Util::encodeJson($this->normalizeRows($rows));
+            $parameters[] = Util::encodeJson($this->normalizeRows($rows), 0, $this->jsonEncoder);
 
             return \sprintf(
                 'SELECT %s FROM json_each(?) WHERE true',
