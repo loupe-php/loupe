@@ -96,6 +96,26 @@ final class BrowseTest extends TestCase
         $this->assertSame(1, $result->getTotalHits());
     }
 
+    public function testBrowsePrimaryKeyOnlyWithNumericPrimaryKey(): void
+    {
+        $loupe = $this->createLoupe(Configuration::create()->withPrimaryKey('product_id'));
+        $loupe->addDocuments([
+            ['product_id' => 11, 'title' => 'foo'],
+            ['product_id' => 7, 'title' => 'bar'],
+        ]);
+
+        $idsOnly = $loupe->browse(BrowseParameters::create()->withAttributesToRetrieve(['product_id']))->getHits();
+
+        $this->assertSame([['product_id' => 11], ['product_id' => 7]], $idsOnly);
+
+        $fullDocuments = $loupe->browse(BrowseParameters::create()->withAttributesToRetrieve(['*']))->getHits();
+
+        $this->assertSame(
+            array_map(static fn (array $hit): array => ['product_id' => $hit['product_id']], $fullDocuments),
+            $idsOnly,
+        );
+    }
+
     public function testMaxTotalHitsDoesNotApplyToBrowseApi(): void
     {
         $configuration = Configuration::create()
