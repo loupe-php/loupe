@@ -1161,7 +1161,7 @@ class Searcher
     }
 
     /**
-     * @return array{int, int} The current page and the total number of pages
+     * @return array{int, int}
      */
     private function calculatePagination(int $offset, int $limit, int $totalHits): array
     {
@@ -1173,8 +1173,7 @@ class Searcher
     }
 
     /**
-     * The browse API can read documents straight from the documents table if there is nothing to search or filter for.
-     * In that case, the entire CTE pipeline would only add overhead.
+     * Check if the documents table can be read directly, which is much faster than the CTE pipeline without a query or filter.
      */
     private function canScanDocuments(): bool
     {
@@ -1184,7 +1183,6 @@ class Searcher
 
         [$offset, $limit] = $this->resolveOffsetAndLimit();
 
-        // Negative values (e.g. page 0) are left to the regular query builder which knows how to deal with them
         return $offset >= 0 && $limit >= 0;
     }
 
@@ -1459,7 +1457,6 @@ class Searcher
             ? $this->primaryKeyExpression($documentsAlias, $primaryKey)
             : null;
 
-        // If only the primary key is requested, we do not have to decode the documents at all
         if (null !== $primaryKeyExpression) {
             $ids = $queryBuilder->select($primaryKeyExpression)->fetchFirstColumn();
 
@@ -1745,8 +1742,7 @@ class Searcher
     }
 
     /**
-     * Returns the SQL expression for the primary key of a document or null if the value cannot be restored from the
-     * _user_id column with the correct type (in which case the document has to be decoded).
+     * _user_id is always stored as a string, so the original type has to be restored.
      */
     private function primaryKeyExpression(string $documentsAlias, string $primaryKey): string|null
     {
@@ -1793,7 +1789,7 @@ class Searcher
     }
 
     /**
-     * @return array{int, int} The offset and limit, resolved from page and hits per page if provided
+     * @return array{int, int}
      */
     private function resolveOffsetAndLimit(): array
     {
