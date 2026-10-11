@@ -268,5 +268,14 @@ $reconstructed = \Loupe\Loupe\Configuration::fromString($serialized);
 
 Note that this does not work for instances such as the "logger" or "query cache".
 
+## JSON implementation
+
+Loupe uses PHP's JSON functions by default. To use another implementation, pass an object implementing
+`\Loupe\Loupe\Json\JsonInterface` to `Configuration::withJson($json)`. The same object is used for encoding
+and decoding stored documents and for JSON transport to SQLite. `encode()` receives an array and optional PHP JSON
+flags and returns a string; `decode()` must return an array. Implementations should throw
+`\Loupe\Loupe\Exception\InvalidJsonException` when encoding or decoding fails. `validate(string $json): bool`
+checks JSON syntax (including valid scalar JSON). This runtime setting is not serialized with the configuration.
+
 [Browse]: browsing.md
 [Paper]: https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/naumann/publications/PDFs/2012_fenz_efficient.pdf
