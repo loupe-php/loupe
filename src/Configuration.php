@@ -8,6 +8,8 @@ use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
 use Loupe\Loupe\Internal\Cache\ApcuCachePool;
 use Loupe\Loupe\Internal\Search\Sorting\Relevance;
+use Loupe\Loupe\Json\JsonInterface;
+use Loupe\Loupe\Json\NativeJson;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 
@@ -38,9 +40,7 @@ final class Configuration
 
     private LoggerInterface|null $logger = null;
 
-    private \Closure|null $jsonDecoder = null;
-
-    private \Closure|null $jsonEncoder = null;
+    private JsonInterface $json;
 
     private int $maxQueryTokens = 10;
 
@@ -94,6 +94,7 @@ final class Configuration
     public function __construct()
     {
         $this->typoTolerance = new TypoTolerance();
+        $this->json = new NativeJson();
 
         if (\function_exists('apcu_fetch') && \function_exists('apcu_store')) {
             $this->queryCache = new ApcuCachePool();
@@ -254,14 +255,9 @@ final class Configuration
         return $this->languages;
     }
 
-    public function getJsonDecoder(): \Closure|null
+    public function getJson(): JsonInterface
     {
-        return $this->jsonDecoder;
-    }
-
-    public function getJsonEncoder(): \Closure|null
-    {
-        return $this->jsonEncoder;
+        return $this->json;
     }
 
     public function getLogger(): LoggerInterface|null
@@ -451,18 +447,10 @@ final class Configuration
         return $clone;
     }
 
-    public function withJsonDecoder(callable $jsonDecoder): self
+    public function withJson(JsonInterface $json): self
     {
         $clone = clone $this;
-        $clone->jsonDecoder = \Closure::fromCallable($jsonDecoder);
-
-        return $clone;
-    }
-
-    public function withJsonEncoder(callable $jsonEncoder): self
-    {
-        $clone = clone $this;
-        $clone->jsonEncoder = \Closure::fromCallable($jsonEncoder);
+        $clone->json = $json;
 
         return $clone;
     }

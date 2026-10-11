@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Internal\Index\BulkUpserter;
 
 use Doctrine\DBAL\Exception;
 use Loupe\Loupe\Internal\ConnectionPool;
+use Loupe\Loupe\Json\JsonInterface;
 
 class BulkUpserterFactory
 {
@@ -19,7 +20,7 @@ class BulkUpserterFactory
 
     public function __construct(
         private readonly ConnectionPool $connectionPool,
-        private readonly \Closure|null $jsonEncoder = null,
+        private readonly JsonInterface $json,
     ) {
         $this->jsonEachAvailable = $this->detectJsonEach();
     }
@@ -31,7 +32,7 @@ class BulkUpserterFactory
             $bulkUpsertConfig,
             self::VARIABLE_LIMIT,
             $this->jsonEachAvailable,
-            $this->jsonEncoder,
+            $this->json,
         );
     }
 

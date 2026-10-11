@@ -872,7 +872,7 @@ class Indexer
 
         foreach ($this->engine->getConnection()->executeQuery('SELECT '.$documentColumn.' FROM documents_migration')
             ->iterateAssociative() as $row) {
-            $chunk[] = Util::decodeJson($row[$documentColumn], $this->engine->getConfiguration()->getJsonDecoder());
+            $chunk[] = $this->engine->getConfiguration()->getJson()->decode($row[$documentColumn]);
 
             if (\count($chunk) >= 100) {
                 $this->addDocuments($chunk);
@@ -947,7 +947,7 @@ class Indexer
 
         $preparedDocument = new PreparedDocument(
             $userId,
-            Util::encodeJson($documentData, 0, $this->engine->getConfiguration()->getJsonEncoder()),
+            $this->engine->getConfiguration()->getJson()->encode($documentData),
         );
 
         // Terms and attributes of unchanged documents are excluded by the SQL change detection: skip expensive tokenization & attribute extraction

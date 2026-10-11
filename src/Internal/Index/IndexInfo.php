@@ -14,7 +14,6 @@ use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpsertConfig;
 use Loupe\Loupe\Internal\Index\BulkUpserter\ConflictMode;
 use Loupe\Loupe\Internal\LoupeTypes;
-use Loupe\Loupe\Internal\Util;
 
 class IndexInfo
 {
@@ -238,7 +237,7 @@ class IndexInfo
             if (false === $schema) {
                 $this->documentSchema = [];
             } else {
-                $this->documentSchema = Util::decodeJson($schema, $this->engine->getConfiguration()->getJsonDecoder());
+                $this->documentSchema = $this->engine->getConfiguration()->getJson()->decode($schema);
             }
         }
 

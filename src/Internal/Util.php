@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Internal;
 
-use Loupe\Loupe\Exception\InvalidJsonException;
-
 class Util
 {
     /**
@@ -40,54 +38,6 @@ class Util
         if ($count > 0) {
             yield $chunk;
         }
-    }
-
-    /**
-     * @return array<mixed>
-     */
-    public static function decodeJson(string $data, callable|null $decoder = null): array
-    {
-        if (null !== $decoder) {
-            $decoded = $decoder($data);
-
-            if (!\is_array($decoded)) {
-                throw new InvalidJsonException('JSON must decode to an array.');
-            }
-
-            return $decoded;
-        }
-
-        $data = json_decode($data, true);
-
-        if (!\is_array($data)) {
-            throw new InvalidJsonException(JSON_ERROR_NONE === json_last_error() ? 'JSON must decode to an array.' : json_last_error_msg());
-        }
-
-        return $data;
-    }
-
-    /**
-     * @param array<mixed> $data
-     */
-    public static function encodeJson(array $data, int $flags = 0, callable|null $encoder = null): string
-    {
-        if (null !== $encoder) {
-            $json = $encoder($data, $flags);
-
-            if (!\is_string($json)) {
-                throw new InvalidJsonException('The configured JSON encoder must return a string.');
-            }
-
-            return $json;
-        }
-
-        $json = json_encode($data, $flags);
-
-        if (false === $json) {
-            throw new InvalidJsonException(json_last_error_msg());
-        }
-
-        return $json;
     }
 
     public static function log(float $num): float

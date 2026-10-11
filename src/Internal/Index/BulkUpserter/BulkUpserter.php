@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Result;
 use Loupe\Loupe\Internal\Util;
+use Loupe\Loupe\Json\JsonInterface;
 
 class BulkUpserter
 {
@@ -16,7 +17,7 @@ class BulkUpserter
         private readonly BulkUpsertConfig $bulkUpsertConfig,
         private readonly int $variableLimit,
         private readonly bool $jsonEachAvailable,
-        private readonly \Closure|null $jsonEncoder = null,
+        private readonly JsonInterface $json,
     ) {
     }
 
@@ -83,7 +84,7 @@ class BulkUpserter
     private function buildRowsClause(array $rows, array &$parameters): string
     {
         if ($this->jsonEachAvailable) {
-            $parameters[] = Util::encodeJson($this->normalizeRows($rows), 0, $this->jsonEncoder);
+            $parameters[] = $this->json->encode($this->normalizeRows($rows));
 
             return \sprintf(
                 'SELECT %s FROM json_each(?) WHERE true',

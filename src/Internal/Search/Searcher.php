@@ -18,7 +18,6 @@ use Loupe\Loupe\Internal\Filter\Parser;
 use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\LoupeTypes;
 use Loupe\Loupe\Internal\Search\FilterBuilder\FilterBuilder;
-use Loupe\Loupe\Internal\Util;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\SearchResult;
 use Loupe\Matcher\FormatterOptions;
@@ -325,7 +324,7 @@ class Searcher
         $hits = [];
 
         foreach ($this->query()->iterateAssociative() as $result) {
-            $document = Util::decodeJson($result['_document'], $this->engine->getConfiguration()->getJsonDecoder());
+            $document = $this->engine->getConfiguration()->getJson()->decode($result['_document']);
 
             foreach ($result as $k => $v) {
                 if (str_starts_with($k, self::DISTANCE_ALIAS)) {
