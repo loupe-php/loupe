@@ -13,6 +13,7 @@ use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpsertConfig;
 use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpserter;
 use Loupe\Loupe\Internal\Index\BulkUpserter\BulkUpserterFactory;
 use Loupe\Loupe\Internal\Index\BulkUpserter\ConflictMode;
+use Loupe\Loupe\Json\NativeJson;
 use Loupe\Loupe\Logger\InMemoryLogger;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -64,7 +65,7 @@ final class BulkUpserterTest extends TestCase
             ['id'],
             ConflictMode::Ignore,
         );
-        (new BulkUpserter($connection, $ignoreConfig, 999, $jsonEachAvailable))->execute();
+        (new BulkUpserter($connection, $ignoreConfig, 999, $jsonEachAvailable, new NativeJson()))->execute();
         $this->assertSame('updated', $connection->fetchOne('SELECT plain_string FROM test_values WHERE id = 1'));
     }
 
@@ -84,7 +85,7 @@ final class BulkUpserterTest extends TestCase
         $configuration->setMiddlewares([new Middleware($logger)]);
         $connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true], $configuration);
         $connection->executeStatement('CREATE TABLE test_values (id INTEGER PRIMARY KEY, value TEXT)');
-        $factory = new BulkUpserterFactory(new ConnectionPool($connection, $connection));
+        $factory = new BulkUpserterFactory(new ConnectionPool($connection, $connection), new NativeJson());
         $config = BulkUpsertConfig::create(
             'test_values',
             ['id', 'value'],
@@ -106,7 +107,7 @@ final class BulkUpserterTest extends TestCase
      */
     private function upsert(Connection $connection, BulkUpsertConfig $config, bool $jsonEachAvailable): array
     {
-        return (new BulkUpserter($connection, $config, 999, $jsonEachAvailable))->execute();
+        return (new BulkUpserter($connection, $config, 999, $jsonEachAvailable, new NativeJson()))->execute();
     }
 
     private function createConnection(): Connection
