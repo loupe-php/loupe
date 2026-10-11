@@ -7,6 +7,8 @@ namespace Loupe\Loupe\Tests\Unit;
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidConfigurationException;
+use Loupe\Loupe\Json\JsonInterface;
+use Loupe\Loupe\Json\NativeJson;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemPoolInterface;
@@ -140,31 +142,17 @@ final class ConfigurationTest extends TestCase
         $this->assertNotInstanceOf(CacheItemPoolInterface::class, $configuration->getQueryCache());
     }
 
-    public function testJsonDecoderIsRuntimeOnly(): void
+    public function testJsonIsRuntimeOnly(): void
     {
-        $configuration = Configuration::create()->withJsonDecoder(
-            static fn (string $json): array => json_decode($json, true, 512, JSON_THROW_ON_ERROR),
-        );
+        $default = Configuration::create();
+        $this->assertInstanceOf(NativeJson::class, $default->getJson());
 
-        $decoder = $configuration->getJsonDecoder();
-        $this->assertInstanceOf(\Closure::class, $decoder);
-        $this->assertSame(['id' => 1], $decoder('{"id":1}'));
+        $json = $this->createStub(JsonInterface::class);
+        $configuration = $default->withJson($json);
 
-        $this->assertSame(Configuration::create()->toString(), $configuration->toString());
-        $this->assertSame(Configuration::create()->getIndexHash(), $configuration->getIndexHash());
-    }
-
-    public function testJsonEncoderIsRuntimeOnly(): void
-    {
-        $configuration = Configuration::create()->withJsonEncoder(
-            static fn (array $data, int $flags): string => json_encode($data, $flags | JSON_THROW_ON_ERROR),
-        );
-
-        $encoder = $configuration->getJsonEncoder();
-        $this->assertInstanceOf(\Closure::class, $encoder);
-        $this->assertSame('{"id":1}', $encoder(['id' => 1], 0));
-
-        $this->assertSame(Configuration::create()->toString(), $configuration->toString());
-        $this->assertSame(Configuration::create()->getIndexHash(), $configuration->getIndexHash());
+        $this->assertSame($json, $configuration->getJson());
+        $this->assertInstanceOf(NativeJson::class, $default->getJson());
+        $this->assertSame($default->toString(), $configuration->toString());
+        $this->assertSame($default->getIndexHash(), $configuration->getIndexHash());
     }
 }
