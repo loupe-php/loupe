@@ -1540,10 +1540,11 @@ class Searcher
         // Use the stored original start positions to identify matching tokens.
         // Matching by original character position (rather than word-index position) is necessary because
         // normalization (e.g. ß → ss) can shift character positions between the indexed form and the display text.
+        // Variants are unnecessary because the index has already identified the matching positions.
         $startPositions = array_column($matchPositionInfo[$attribute], 'start');
         $matches = new TokenCollection();
 
-        foreach ($this->engine->getTokenizer()->tokenize($value)->all() as $token) {
+        foreach ($this->engine->getTokenizer()->tokenize($value, false)->all() as $token) {
             if (\in_array($token->getOriginalStartPosition(), $startPositions, true)) {
                 $matches->add($token);
             }
