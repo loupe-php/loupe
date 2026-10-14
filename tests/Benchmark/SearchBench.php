@@ -11,6 +11,7 @@ use PhpBench\Attributes\BeforeMethods;
 use PhpBench\Attributes\Groups;
 use PhpBench\Attributes\Iterations;
 use PhpBench\Attributes\OutputTimeUnit;
+use PhpBench\Attributes\ParamProviders;
 use PhpBench\Attributes\Revs;
 use PhpBench\Attributes\Warmup;
 
@@ -37,6 +38,54 @@ class SearchBench extends AbstractBench
                 ->withQuery('Anakin Skywalker')
                 ->withFacets(['genres']),
         );
+    }
+
+    /**
+     * @param array{query: string, filter: string} $params
+     */
+    #[ParamProviders('provideFilteredQueries')]
+    public function benchFilteredRankedQuery(array $params): void
+    {
+        $this->loupe->search(
+            SearchParameters::create()
+                ->withQuery($params['query'])
+                ->withFilter($params['filter']),
+        );
+    }
+
+    /**
+     * @param array{query: string, filter: string} $params
+     */
+    #[ParamProviders('provideFilteredQueries')]
+    public function benchFilteredFormattedQuery(array $params): void
+    {
+        $this->loupe->search(
+            SearchParameters::create()
+                ->withQuery($params['query'])
+                ->withFilter($params['filter'])
+                ->withAttributesToHighlight(['title', 'overview'])
+                ->withAttributesToCrop(['overview'], 80)
+                ->withShowMatchesPosition(true),
+        );
+    }
+
+    /**
+     * @return \Generator<string, array{query: string, filter: string}>
+     */
+    public function provideFilteredQueries(): \Generator
+    {
+        yield 'common term, selective filter' => [
+            'query' => 'family',
+            'filter' => 'release_date < 0',
+        ];
+        yield 'common term, broad filter' => [
+            'query' => 'family',
+            'filter' => 'release_date > 0',
+        ];
+        yield 'narrow typo query' => [
+            'query' => 'aircarft',
+            'filter' => "release_date < 1127433600 AND genres IN ('Drama', 'Western')",
+        ];
     }
 
     public function benchQueryWithDistinctAndFacets(): void
