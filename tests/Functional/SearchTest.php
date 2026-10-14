@@ -4515,6 +4515,66 @@ final class SearchTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<string, array{SearchParameters, list<string>}>
+     */
+    public static function filteredPositionAggregationProvider(): iterable
+    {
+        $parameters = SearchParameters::create()
+            ->withFilter('visible = true')
+            ->withShowRankingScore(true)
+            ->withAttributesToHighlight(['title', 'body'])
+            ->withAttributesToCrop(['body'], 20)
+            ->withShowMatchesPosition(true)
+            ->withSort(['_relevance:desc', 'id:asc'])
+        ;
+        $rules = ['words', 'typo', 'proximity', 'attribute', 'exactness'];
+        $ranked = SearchParameters::create()
+            ->withQuery('alpha beta')
+            ->withFilter('visible = true')
+            ->withShowRankingScore(true)
+            ->withSort(['_relevance:desc', 'id:asc'])
+        ;
+
+        yield 'ranking positions' => [$ranked, $rules];
+        yield 'ranking without exactness' => [$ranked, ['words', 'typo', 'proximity']];
+        yield 'highlight positions without relevance' => [$parameters->withQuery('alpha beta')->withSort(['id:asc']), $rules];
+        yield 'ranking and highlight positions' => [$parameters->withQuery('alpha beta'), $rules];
+    }
+
+    /**
+     * @param list<string> $rankingRules
+     */
+    #[DataProvider('filteredPositionAggregationProvider')]
+    public function testExcludedDocumentsDoNotAffectPositionsOrRanking(SearchParameters $parameters, array $rankingRules): void
+    {
+        $configuration = Configuration::create()
+            ->withLanguages(['en'])
+            ->withSearchableAttributes(['title', 'body'])
+            ->withFilterableAttributes(['visible'])
+            ->withSortableAttributes(['id'])
+            ->withRankingRules($rankingRules)
+        ;
+        $retained = [
+            ['id' => 1, 'title' => 'Alpha beta', 'body' => 'Before Café résumé alpha beta.', 'visible' => true],
+            ['id' => 2, 'title' => 'Beta delta', 'body' => 'Quiet alpha delta.', 'visible' => true],
+        ];
+        $excluded = [
+            ['id' => 3, 'title' => 'Alpha beta', 'body' => 'Alpha beta alpha beta Café résumé.', 'visible' => false],
+        ];
+        $filteredIndex = $this->createLoupe($configuration);
+        $filteredIndex->addDocuments([...$retained, ...$excluded]);
+        $retainedIndex = $this->createLoupe($configuration);
+        $retainedIndex->addDocuments($retained);
+
+        $expected = $retainedIndex->search($parameters)->toArray();
+        $actual = $filteredIndex->search($parameters)->toArray();
+        unset($expected['processingTimeMs'], $actual['processingTimeMs']);
+
+        $this->assertNotEmpty($expected['hits']);
+        $this->assertSame($expected, $actual);
+    }
+
     private function setupLoupeWithAdjacentPhraseDocuments(): Loupe
     {
         $configuration = Configuration::create()

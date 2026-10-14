@@ -679,6 +679,10 @@ class Searcher
                 ->from($matchesCteName)
                 ->groupBy('document')
             ;
+            // Do not aggregate positions for documents excluded by the user filters.
+            if ('' !== $this->queryParameters->getFilter()) {
+                $positionsQueryBuilder->andWhere('document IN (SELECT document_id FROM '.self::CTE_MATCHES.')');
+            }
             $this->addCTE(new Cte($positionsCteName, ['document_id', 'positions'], $positionsQueryBuilder));
 
             $this->queryBuilder

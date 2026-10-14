@@ -67,6 +67,10 @@ class Relevance extends AbstractSorter
                 ->from($cteName, 'dm')
                 ->groupBy('dm.document')
             ;
+            // Do not aggregate positions for documents excluded by the user filters.
+            if ('' !== $searcher->getQueryParameters()->getFilter()) {
+                $qb->andWhere('dm.document IN (SELECT document_id FROM '.Searcher::CTE_MATCHES.')');
+            }
 
             if ($needsFoldingState) {
                 $qb->addSelect("group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos) || '|' || COALESCE(MAX(dm.exact_match), 0) AS relevance");
