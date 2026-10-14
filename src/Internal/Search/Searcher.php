@@ -308,6 +308,10 @@ class Searcher
         $start = (int) floor(microtime(true) * 1000);
 
         $tokens = $this->getSearchTokens();
+        if ($this->queryParameters instanceof SearchParameters && $this->queryParameters->isFacetOnly()) {
+            return $this->fetchFacetOnlyResult($tokens, $start);
+        }
+
         $needsHitFormatting = $this->askedForFormattingOrMatchesPosition();
         $displayTokens = $needsHitFormatting ? $this->getDisplayTokens() : null;
 
@@ -439,6 +443,67 @@ class Searcher
     public function hasCTE(string $cteName): bool
     {
         return isset($this->ctesByName[$cteName]);
+    }
+
+    private function fetchFacetOnlyResult(TokenCollection $tokens, int $start): SearchResult
+    {
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $this->queryBuilder->select($documentsAlias.'._id')->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias);
+        $this->searchDocuments($tokens);
+        $this->filterDocuments($tokens);
+        $this->prepareFacetOnlyCount();
+        $this->addFacets();
+        $result = $this->query()->fetchAssociative() ?: [];
+
+        $searchResult = new SearchResult(
+            [],
+            $this->createAnalyzedQuery($tokens),
+            (int) floor(microtime(true) * 1000) - $start,
+            0,
+            0,
+            0,
+            (int) ($result['totalHits'] ?? 0),
+        );
+
+        // Searches without matching hits have always returned empty facet metadata.
+        return 0 === $searchResult->getTotalHits() ? $searchResult : $this->addFacetsToSearchResult($searchResult, $result);
+    }
+
+    private function prepareFacetOnlyCount(): void
+    {
+        $requiresDocumentCount = false;
+
+        // Retain sorters that constrain matches, such as a ranking threshold or multi-value sorting.
+        foreach ($this->sorting->getSorters() as $sorter) {
+            if ($sorter->requiresFullResultCount($this->queryParameters)) {
+                $requiresDocumentCount = true;
+                $sorter->apply($this, $this->engine);
+            }
+        }
+
+        $this->ensureResultConstrainedToMatches();
+        $distinct = $this->queryParameters instanceof SearchParameters ? $this->queryParameters->getDistinct() : null;
+
+        if (null !== $distinct) {
+            if (!\in_array($distinct, $this->engine->getIndexInfo()->getSingleFilterableAttributes(), true)) {
+                throw InvalidSearchParametersException::distinctAttributeMustBeASingleFilterableAttribute();
+            }
+
+            $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+            $this->queryBuilder->groupBy($documentsAlias.'.'.$distinct);
+        }
+
+        // Count matches directly when possible, otherwise count groups without loading document JSON or ordering hits.
+        $countQuery = $this->queryBuilder->resetOrderBy();
+        $countFrom = !$requiresDocumentCount && null === $distinct ? self::CTE_MATCHES : '('.$countQuery->getSQL().')';
+        $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder()
+            ->select(\sprintf(
+                '(SELECT MIN(%d, COUNT(*)) FROM %s) AS totalHits',
+                $this->engine->getConfiguration()->getMaxTotalHits(),
+                $countFrom,
+            ))
+            ->setParameters($countQuery->getParameters(), $countQuery->getParameterTypes())
+        ;
     }
 
     private function addFromMatchesAndJoinMultiAttributes(QueryBuilder $qb, string $attribute): void
@@ -1068,7 +1133,7 @@ class Searcher
 
     private function askedForFormattingOrMatchesPosition(): bool
     {
-        if (!$this->queryParameters instanceof SearchParameters) {
+        if (!$this->queryParameters instanceof SearchParameters || $this->queryParameters->isFacetOnly()) {
             return false;
         }
         if ([] !== $this->queryParameters->getAttributesToHighlight()) {
