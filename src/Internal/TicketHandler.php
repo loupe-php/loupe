@@ -96,22 +96,28 @@ class TicketHandler
             return $this->currentTicket;
         }
 
-        return $this->currentTicket = (int) $this->connectionPool->ticketConnection->transactional(
-            function () {
-                try {
-                    $this->connectionPool->ticketConnection->executeStatement(
-                        \sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME),
-                    );
-                } catch (TableNotFoundException) {
-                    $this->updateSchema();
-                    $this->connectionPool->ticketConnection->executeStatement(
-                        \sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME),
-                    );
-                }
+        $connection = $this->connectionPool->ticketConnection;
 
-                return $this->connectionPool->ticketConnection->lastInsertId();
-            },
-        );
+        // Serialize first-time schema creation before any worker reads an outdated schema snapshot.
+        $this->beginExclusiveTransaction($connection);
+
+        try {
+            try {
+                $connection->executeStatement(\sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME));
+            } catch (TableNotFoundException) {
+                $this->updateSchema();
+                $connection->executeStatement(\sprintf('INSERT INTO %s DEFAULT VALUES', self::TABLE_NAME));
+            }
+
+            $ticket = (int) $connection->lastInsertId();
+            $this->commitExclusiveTransaction($connection);
+        } catch (\Throwable $exception) {
+            $this->rollbackExclusiveTransaction($connection);
+
+            throw $exception;
+        }
+
+        return $this->currentTicket = $ticket;
     }
 
     /**
