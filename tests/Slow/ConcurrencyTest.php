@@ -30,6 +30,31 @@ final class ConcurrencyTest extends TestCase
         $this->workerLogFile = $this->tempDir.'/workers.log';
     }
 
+    public function testConcurrentWorkersInitializeTicketTable(): void
+    {
+        $processes = [];
+
+        for ($i = 1; $i <= 8; ++$i) {
+            $workerName = 'worker-'.$i;
+            $processes[$workerName] = $this->createWorkerProcess($workerName, [
+                'preDocuments' => [[
+                    'id' => $workerName,
+                    'content' => 'Concurrent initialization',
+                ]],
+            ]);
+        }
+
+        // Start together to exercise ticket table creation on a fresh database.
+        foreach ($processes as $process) {
+            $process->start();
+        }
+
+        $this->waitForProcesses($processes);
+        $loupe = $this->createLoupe($this->getConfiguration('parent'), $this->tempDir);
+
+        $this->assertSame(8, $loupe->countDocuments());
+    }
+
     public function testLoupeDoesNotGetStuckIfProcessIsKilled(): void
     {
         $processes = [
