@@ -255,6 +255,15 @@ final class SearchParameters extends AbstractQueryParameters
         return $this->sort;
     }
 
+    public function isFacetOnly(): bool
+    {
+        if (null !== $this->getHitsPerPage() || null !== $this->getPage()) {
+            return 0 === $this->getHitsPerPage();
+        }
+
+        return 0 === $this->getLimit();
+    }
+
     public function shouldPrioritizeMatches(): bool
     {
         return $this->prioritizeMatches;

@@ -296,6 +296,11 @@ $searchParameters = \Loupe\Loupe\SearchParameters::create()
 
 Note: You cannot go any higher than `1000` documents per page. The higher the value you choose, the slower Loupe gets.
 
+Use `withLimit(0)` to retrieve the total hit count and requested facets without returning hits. Loupe skips
+loading and formatting documents and ordering hits. Ranking is still evaluated when a ranking score threshold
+requires it. Filters, distinct counts and facet statistics keep their usual behavior. The result reports `0`
+for `hitsPerPage`, `page` and `totalPages`. For page-based pagination, use `withHitsPerPage(0)` instead.
+
 ## Grouping / Distinct attribute
 
 Sometimes you may want to group search results by a distinct attribute. This might be useful for cases where you want to reduce the final result set for a user, giving them an easier to browse catalog. If you e.g. index all variants of a certain sneaker (same model but exists in red, blue, green, size 10, 11, 12, etc.), you may want to list it only once in the result set, and it doesn't matter which of those variants. 

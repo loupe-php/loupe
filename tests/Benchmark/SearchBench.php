@@ -15,6 +15,9 @@ use PhpBench\Attributes\ParamProviders;
 use PhpBench\Attributes\Revs;
 use PhpBench\Attributes\Warmup;
 
+/**
+ * @phpstan-type FacetQueryParams array{query: string, facets: list<string>, filter?: string, distinct?: string, rankingScoreThreshold?: float}
+ */
 #[BeforeClassMethods('setUpClass')]
 #[BeforeMethods('setUp')]
 #[Revs(3)]
@@ -86,6 +89,37 @@ class SearchBench extends AbstractBench
             'query' => 'aircarft',
             'filter' => "release_date < 1127433600 AND genres IN ('Drama', 'Western')",
         ];
+    }
+
+    /**
+     * @param FacetQueryParams $params
+     */
+    #[ParamProviders('provideFacetQueries')]
+    public function benchFacetQueryWithOneHit(array $params): void
+    {
+        $this->loupe->search(SearchParameters::fromArray($params)->withLimit(1));
+    }
+
+    /**
+     * @param FacetQueryParams $params
+     */
+    #[ParamProviders('provideFacetQueries')]
+    public function benchFacetOnlyQuery(array $params): void
+    {
+        $this->loupe->search(SearchParameters::fromArray($params)->withLimit(0));
+    }
+
+    /**
+     * @return \Generator<string, FacetQueryParams>
+     */
+    public function provideFacetQueries(): \Generator
+    {
+        $params = ['query' => 'family', 'facets' => ['genres', 'release_date']];
+
+        yield 'common term' => $params;
+        yield 'selective filter' => [...$params, 'filter' => 'release_date < 0'];
+        yield 'distinct' => [...$params, 'distinct' => 'release_date'];
+        yield 'ranking threshold' => [...$params, 'rankingScoreThreshold' => 0.99];
     }
 
     public function benchQueryWithDistinctAndFacets(): void
