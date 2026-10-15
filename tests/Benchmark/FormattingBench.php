@@ -101,6 +101,9 @@ final class FormattingBench extends AbstractBench
         ;
     }
 
+    /**
+     * @return list<array{id: int, title: string, body: string}>
+     */
     private static function formattingDocuments(): array
     {
         return [
