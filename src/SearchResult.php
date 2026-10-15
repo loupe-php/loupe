@@ -20,12 +20,17 @@ final class SearchResult extends AbstractQueryResult
 
     public static function createEmptyFromSearchParameters(SearchParameters $searchParameters): self
     {
+        $hitsPerPage = $searchParameters->getLimit();
+        if (null !== $searchParameters->getHitsPerPage() || null !== $searchParameters->getPage()) {
+            $hitsPerPage = $searchParameters->getHitsPerPage() ?? SearchParameters::MAX_LIMIT;
+        }
+
         return new self(
             [],
             $searchParameters->getQuery(),
             0,
-            $searchParameters->getHitsPerPage() ?? $searchParameters->getLimit(),
-            1,
+            $hitsPerPage,
+            $searchParameters->isFacetOnly() ? 0 : 1,
             0,
             0,
         );

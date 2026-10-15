@@ -10,6 +10,7 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Result;
 use Location\Bounds;
+use Loupe\Loupe\BrowseParameters;
 use Loupe\Loupe\BrowseResult;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidSearchParametersException;
@@ -300,9 +301,17 @@ class Searcher
      */
     public function fetchResult(): AbstractQueryResult
     {
+        if ($this->queryParameters instanceof BrowseParameters && $this->canScanDocuments()) {
+            return $this->engine->getConnection()->transactional(fn (): BrowseResult => $this->scanDocuments());
+        }
+
         $start = (int) floor(microtime(true) * 1000);
 
         $tokens = $this->getSearchTokens();
+        if ($this->queryParameters instanceof SearchParameters && $this->queryParameters->isFacetOnly()) {
+            return $this->fetchFacetOnlyResult($tokens, $start);
+        }
+
         $needsHitFormatting = $this->askedForFormattingOrMatchesPosition();
         $displayTokens = $needsHitFormatting ? $this->getDisplayTokens() : null;
 
@@ -349,8 +358,7 @@ class Searcher
 
         $totalHits = $result['totalHits'] ?? 0;
         $hitsPerPage = $this->queryBuilder->getMaxResults() ?? 0;
-        $totalPages = 0 === $hitsPerPage ? 0 : ((int) ceil($totalHits / $hitsPerPage));
-        $currentPage = 0 === $hitsPerPage ? 0 : (int) floor($this->queryBuilder->getFirstResult() / $hitsPerPage) + 1;
+        [$currentPage, $totalPages] = $this->calculatePagination($this->queryBuilder->getFirstResult(), $hitsPerPage, $totalHits);
         $end = (int) floor(microtime(true) * 1000);
 
         $resultClass = $this->queryParameters instanceof SearchParameters ? SearchResult::class : BrowseResult::class;
@@ -435,6 +443,67 @@ class Searcher
     public function hasCTE(string $cteName): bool
     {
         return isset($this->ctesByName[$cteName]);
+    }
+
+    private function fetchFacetOnlyResult(TokenCollection $tokens, int $start): SearchResult
+    {
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $this->queryBuilder->select($documentsAlias.'._id')->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias);
+        $this->searchDocuments($tokens);
+        $this->filterDocuments($tokens);
+        $this->prepareFacetOnlyCount();
+        $this->addFacets();
+        $result = $this->query()->fetchAssociative() ?: [];
+
+        $searchResult = new SearchResult(
+            [],
+            $this->createAnalyzedQuery($tokens),
+            (int) floor(microtime(true) * 1000) - $start,
+            0,
+            0,
+            0,
+            (int) ($result['totalHits'] ?? 0),
+        );
+
+        // Searches without matching hits have always returned empty facet metadata.
+        return 0 === $searchResult->getTotalHits() ? $searchResult : $this->addFacetsToSearchResult($searchResult, $result);
+    }
+
+    private function prepareFacetOnlyCount(): void
+    {
+        $requiresDocumentCount = false;
+
+        // Retain sorters that constrain matches, such as a ranking threshold or multi-value sorting.
+        foreach ($this->sorting->getSorters() as $sorter) {
+            if ($sorter->requiresFullResultCount($this->queryParameters)) {
+                $requiresDocumentCount = true;
+                $sorter->apply($this, $this->engine);
+            }
+        }
+
+        $this->ensureResultConstrainedToMatches();
+        $distinct = $this->queryParameters instanceof SearchParameters ? $this->queryParameters->getDistinct() : null;
+
+        if (null !== $distinct) {
+            if (!\in_array($distinct, $this->engine->getIndexInfo()->getSingleFilterableAttributes(), true)) {
+                throw InvalidSearchParametersException::distinctAttributeMustBeASingleFilterableAttribute();
+            }
+
+            $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+            $this->queryBuilder->groupBy($documentsAlias.'.'.$distinct);
+        }
+
+        // Count matches directly when possible, otherwise count groups without loading document JSON or ordering hits.
+        $countQuery = $this->queryBuilder->resetOrderBy();
+        $countFrom = !$requiresDocumentCount && null === $distinct ? self::CTE_MATCHES : '('.$countQuery->getSQL().')';
+        $this->queryBuilder = $this->engine->getConnection()->createQueryBuilder()
+            ->select(\sprintf(
+                '(SELECT MIN(%d, COUNT(*)) FROM %s) AS totalHits',
+                $this->engine->getConfiguration()->getMaxTotalHits(),
+                $countFrom,
+            ))
+            ->setParameters($countQuery->getParameters(), $countQuery->getParameterTypes())
+        ;
     }
 
     private function addFromMatchesAndJoinMultiAttributes(QueryBuilder $qb, string $attribute): void
@@ -675,6 +744,10 @@ class Searcher
                 ->from($matchesCteName)
                 ->groupBy('document')
             ;
+            // Do not aggregate positions for documents excluded by the user filters.
+            if ('' !== $this->queryParameters->getFilter()) {
+                $positionsQueryBuilder->andWhere('document IN (SELECT document_id FROM '.self::CTE_MATCHES.')');
+            }
             $this->addCTE(new Cte($positionsCteName, ['document_id', 'positions'], $positionsQueryBuilder));
 
             $this->queryBuilder
@@ -1060,7 +1133,7 @@ class Searcher
 
     private function askedForFormattingOrMatchesPosition(): bool
     {
-        if (!$this->queryParameters instanceof SearchParameters) {
+        if (!$this->queryParameters instanceof SearchParameters || $this->queryParameters->isFacetOnly()) {
             return false;
         }
         if ([] !== $this->queryParameters->getAttributesToHighlight()) {
@@ -1154,6 +1227,32 @@ class Searcher
         }
 
         return $qb->getSQL();
+    }
+
+    /**
+     * @return array{int, int}
+     */
+    private function calculatePagination(int $offset, int $limit, int $totalHits): array
+    {
+        if (0 === $limit) {
+            return [0, 0];
+        }
+
+        return [(int) floor($offset / $limit) + 1, (int) ceil($totalHits / $limit)];
+    }
+
+    /**
+     * Check if the documents table can be read directly, which is much faster than the CTE pipeline without a query or filter.
+     */
+    private function canScanDocuments(): bool
+    {
+        if ('' !== $this->queryParameters->getQuery() || '' !== $this->queryParameters->getFilter()) {
+            return false;
+        }
+
+        [$offset, $limit] = $this->resolveOffsetAndLimit();
+
+        return $offset >= 0 && $limit >= 0;
     }
 
     private function createAnalyzedQuery(TokenCollection $tokens): string
@@ -1415,6 +1514,44 @@ class Searcher
         return true;
     }
 
+    /**
+     * @param array<string> $attributesToRetrieve
+     *
+     * @return array<array<string, mixed>>
+     */
+    private function fetchHits(QueryBuilder $queryBuilder, string $documentsAlias, array $attributesToRetrieve): array
+    {
+        $primaryKey = $this->engine->getConfiguration()->getPrimaryKey();
+        $primaryKeyExpression = [$primaryKey] === $attributesToRetrieve
+            ? $this->primaryKeyExpression($documentsAlias, $primaryKey)
+            : null;
+
+        if (null !== $primaryKeyExpression) {
+            $ids = $queryBuilder->select($primaryKeyExpression)->fetchFirstColumn();
+
+            return array_map(static fn (mixed $id): array => [$primaryKey => $id], $ids);
+        }
+
+        $documents = $queryBuilder->select($documentsAlias.'._document')->executeQuery()->iterateColumn();
+        $hits = [];
+
+        if (\in_array('*', $attributesToRetrieve, true)) {
+            foreach ($documents as $document) {
+                $hits[] = Util::decodeJson($document);
+            }
+
+            return $hits;
+        }
+
+        $keep = array_flip($attributesToRetrieve);
+
+        foreach ($documents as $document) {
+            $hits[] = array_intersect_key(Util::decodeJson($document), $keep);
+        }
+
+        return $hits;
+    }
+
     private function filterDocuments(TokenCollection $tokenCollection): void
     {
         $froms = [];
@@ -1472,10 +1609,11 @@ class Searcher
         // Use the stored original start positions to identify matching tokens.
         // Matching by original character position (rather than word-index position) is necessary because
         // normalization (e.g. ß → ss) can shift character positions between the indexed form and the display text.
+        // Variants are unnecessary because the index has already identified the matching positions.
         $startPositions = array_column($matchPositionInfo[$attribute], 'start');
         $matches = new TokenCollection();
 
-        foreach ($this->engine->getTokenizer()->tokenize($value)->all() as $token) {
+        foreach ($this->engine->getTokenizer()->tokenize($value, false)->all() as $token) {
             if (\in_array($token->getOriginalStartPosition(), $startPositions, true)) {
                 $matches->add($token);
             }
@@ -1634,13 +1772,7 @@ class Searcher
 
     private function limitPagination(): void
     {
-        $offset = $this->queryParameters->getOffset();
-        $limit = $this->queryParameters->getLimit();
-
-        if (null !== $this->queryParameters->getHitsPerPage() || null !== $this->queryParameters->getPage()) {
-            $limit = $this->queryParameters->getHitsPerPage() ?? SearchParameters::MAX_LIMIT;
-            $offset = (($this->queryParameters->getPage() ?? 1) - 1) * $limit;
-        }
+        [$offset, $limit] = $this->resolveOffsetAndLimit();
 
         if ($this->queryParameters instanceof SearchParameters) {
             $maxTotalHits = $this->engine->getConfiguration()->getMaxTotalHits();
@@ -1679,6 +1811,18 @@ class Searcher
         return \in_array('exactness', $configuration->getRankingRules(), true) || \in_array('typo', $configuration->getRankingRules(), true);
     }
 
+    /**
+     * _user_id is always stored as a string, so the original type has to be restored.
+     */
+    private function primaryKeyExpression(string $documentsAlias, string $primaryKey): string|null
+    {
+        return match ($this->engine->getIndexInfo()->getDocumentSchema()[$primaryKey] ?? null) {
+            LoupeTypes::TYPE_STRING => $documentsAlias.'._user_id',
+            LoupeTypes::TYPE_NUMBER => \sprintf('CAST(%s._user_id AS NUMERIC)', $documentsAlias),
+            default => null,
+        };
+    }
+
     private function query(): Result
     {
         $queryParts = [];
@@ -1711,6 +1855,51 @@ class Searcher
             implode(' ', $queryParts),
             $this->queryBuilder->getParameters(),
             $this->queryBuilder->getParameterTypes(),
+        );
+    }
+
+    /**
+     * @return array{int, int}
+     */
+    private function resolveOffsetAndLimit(): array
+    {
+        $offset = $this->queryParameters->getOffset();
+        $limit = $this->queryParameters->getLimit();
+
+        if (null !== $this->queryParameters->getHitsPerPage() || null !== $this->queryParameters->getPage()) {
+            $limit = $this->queryParameters->getHitsPerPage() ?? SearchParameters::MAX_LIMIT;
+            $offset = (($this->queryParameters->getPage() ?? 1) - 1) * $limit;
+        }
+
+        return [$offset, $limit];
+    }
+
+    private function scanDocuments(): BrowseResult
+    {
+        $start = (int) floor(microtime(true) * 1000);
+
+        [$offset, $limit] = $this->resolveOffsetAndLimit();
+
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $queryBuilder = $this->engine->getConnection()->createQueryBuilder()
+            ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
+            ->orderBy($documentsAlias.'._id', 'ASC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+        ;
+
+        $hits = $this->fetchHits($queryBuilder, $documentsAlias, $this->queryParameters->getAttributesToRetrieve());
+        $totalHits = [] === $hits ? 0 : $this->engine->countDocuments();
+        [$currentPage, $totalPages] = $this->calculatePagination($offset, $limit, $totalHits);
+
+        return new BrowseResult(
+            $hits,
+            $this->queryParameters->getQuery(),
+            (int) floor(microtime(true) * 1000) - $start,
+            $limit,
+            $currentPage,
+            $totalPages,
+            $totalHits,
         );
     }
 

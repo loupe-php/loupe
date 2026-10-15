@@ -6,6 +6,8 @@ namespace Loupe\Loupe\Tests\Functional;
 
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
+use Loupe\Loupe\Exception\InvalidSearchParametersException;
+use Loupe\Loupe\Logger\InMemoryLogger;
 use Loupe\Loupe\Loupe;
 use Loupe\Loupe\SearchParameters;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
@@ -4513,6 +4515,209 @@ final class SearchTest extends TestCase
                 'totalHits' => 1,
             ],
         ];
+    }
+
+    /**
+     * @return iterable<string, array{SearchParameters, list<string>}>
+     */
+    public static function filteredPositionAggregationProvider(): iterable
+    {
+        $parameters = SearchParameters::create()
+            ->withFilter('visible = true')
+            ->withShowRankingScore(true)
+            ->withAttributesToHighlight(['title', 'body'])
+            ->withAttributesToCrop(['body'], 20)
+            ->withShowMatchesPosition(true)
+            ->withSort(['_relevance:desc', 'id:asc'])
+        ;
+        $rules = ['words', 'typo', 'proximity', 'attribute', 'exactness'];
+        $ranked = SearchParameters::create()
+            ->withQuery('alpha beta')
+            ->withFilter('visible = true')
+            ->withShowRankingScore(true)
+            ->withSort(['_relevance:desc', 'id:asc'])
+        ;
+
+        yield 'ranking positions' => [$ranked, $rules];
+        yield 'ranking without exactness' => [$ranked, ['words', 'typo', 'proximity']];
+        yield 'highlight positions without relevance' => [$parameters->withQuery('alpha beta')->withSort(['id:asc']), $rules];
+        yield 'ranking and highlight positions' => [$parameters->withQuery('alpha beta'), $rules];
+    }
+
+    /**
+     * @param list<string> $rankingRules
+     */
+    #[DataProvider('filteredPositionAggregationProvider')]
+    public function testExcludedDocumentsDoNotAffectPositionsOrRanking(SearchParameters $parameters, array $rankingRules): void
+    {
+        $configuration = Configuration::create()
+            ->withLanguages(['en'])
+            ->withSearchableAttributes(['title', 'body'])
+            ->withFilterableAttributes(['visible'])
+            ->withSortableAttributes(['id'])
+            ->withRankingRules($rankingRules)
+        ;
+        $retained = [
+            ['id' => 1, 'title' => 'Alpha beta', 'body' => 'Before Café résumé alpha beta.', 'visible' => true],
+            ['id' => 2, 'title' => 'Beta delta', 'body' => 'Quiet alpha delta.', 'visible' => true],
+        ];
+        $excluded = [
+            ['id' => 3, 'title' => 'Alpha beta', 'body' => 'Alpha beta alpha beta Café résumé.', 'visible' => false],
+        ];
+        $filteredIndex = $this->createLoupe($configuration);
+        $filteredIndex->addDocuments([...$retained, ...$excluded]);
+        $retainedIndex = $this->createLoupe($configuration);
+        $retainedIndex->addDocuments($retained);
+
+        $expected = $retainedIndex->search($parameters)->toArray();
+        $actual = $filteredIndex->search($parameters)->toArray();
+        unset($expected['processingTimeMs'], $actual['processingTimeMs']);
+
+        $this->assertNotEmpty($expected['hits']);
+        $this->assertSame($expected, $actual);
+    }
+
+    /**
+     * @return iterable<string, array{SearchParameters}>
+     */
+    public static function facetOnlySearchProvider(): iterable
+    {
+        $parameters = SearchParameters::create()
+            ->withQuery('alpha beta')
+            ->withFacets(['category', 'price', 'tags'])
+        ;
+
+        yield 'query and numeric facet stats' => [$parameters];
+        yield 'placeholder search' => [$parameters->withQuery('')];
+        yield 'single-value filter' => [$parameters->withFilter('price >= 20')];
+        yield 'multi-value filter' => [$parameters->withFilter("tags IN ('blue')")];
+        yield 'distinct' => [$parameters->withDistinct('category')];
+        yield 'ranking threshold' => [$parameters->withRankingScoreThreshold(0.99)];
+        yield 'threshold excludes every document' => [$parameters->withQuery('alpha beta gamma')->withRankingScoreThreshold(0.99)];
+        yield 'threshold and distinct' => [$parameters->withRankingScoreThreshold(0.99)->withDistinct('category')];
+        yield 'single-value sorting' => [$parameters->withSort(['price:desc'])];
+        yield 'threshold without relevance sorting' => [$parameters->withSort(['price:desc'])->withRankingScoreThreshold(0.99)];
+        yield 'multi-value sorting' => [$parameters->withSort(['min(numbers):asc'])];
+        yield 'filtered multi-value sorting' => [$parameters->withSort(['min(numbers):asc'])->withFilter('numbers > 1')];
+        yield 'geo sorting' => [$parameters->withSort(['_geoPoint(location, 0, 0):asc'])];
+        yield 'geo filter' => [$parameters->withFilter('_geoRadius(location, 0, 0, 100000)')];
+        yield 'phrase' => [$parameters->withQuery('"alpha beta"')];
+        yield 'count only' => [$parameters->withFacets([])];
+        yield 'ignored formatting options' => [$parameters->withAttributesToHighlight(['title'])->withAttributesToCrop(['title'])->withShowMatchesPosition(true)->withShowRankingScore(true)];
+        yield 'no matching terms' => [$parameters->withQuery('unfindable')];
+        yield 'filter excludes every document' => [$parameters->withFilter('price > 999')];
+    }
+
+    #[DataProvider('facetOnlySearchProvider')]
+    public function testFacetOnlySearchPreservesMetadata(SearchParameters $parameters): void
+    {
+        $loupe = $this->setupLoupeForFacetOnlySearch();
+        $expected = $loupe->search($parameters)->toArray();
+        unset($expected['hits'], $expected['processingTimeMs'], $expected['hitsPerPage'], $expected['page'], $expected['totalPages']);
+
+        foreach ([$parameters->withLimit(0)->withOffset(100), $parameters->withHitsPerPage(0)->withPage(2)] as $facetOnly) {
+            $result = $loupe->search($facetOnly);
+            $this->assertSame([], $result->getHits());
+            $this->assertSame(0, $result->getHitsPerPage());
+            $this->assertSame(0, $result->getPage());
+            $this->assertSame(0, $result->getTotalPages());
+            $actual = $result->toArray();
+            unset($actual['hits'], $actual['processingTimeMs'], $actual['hitsPerPage'], $actual['page'], $actual['totalPages']);
+            $this->assertSame($expected, $actual);
+        }
+    }
+
+    public function testFacetOnlySearchPreservesHitCountCap(): void
+    {
+        $loupe = $this->setupLoupeForFacetOnlySearch(Configuration::create()->withMaxTotalHits(2));
+        $result = $loupe->search(SearchParameters::create()->withLimit(0)->withFacets(['category', 'price']));
+
+        $this->assertSame(2, $result->getTotalHits());
+        $this->assertSame(['a' => 2, 'b' => 1, 'c' => 1], $result->getFacetDistribution()['category']);
+        $this->assertSame(['min' => 10.0, 'max' => 40.0], $result->getFacetStats()['price']);
+    }
+
+    public function testFacetOnlySearchPreservesPaginationPrecedence(): void
+    {
+        $loupe = $this->setupLoupeForFacetOnlySearch();
+        $parameters = SearchParameters::create()->withLimit(0)->withHitsPerPage(2)->withPage(1);
+
+        $this->assertCount(2, $loupe->search($parameters)->getHits());
+        $this->assertCount(4, $loupe->search($parameters->withHitsPerPage(null))->getHits());
+    }
+
+    public function testFacetOnlySearchWithEmptyIndex(): void
+    {
+        $loupe = $this->createLoupe(Configuration::create());
+
+        foreach ([SearchParameters::create()->withLimit(0), SearchParameters::create()->withHitsPerPage(0)->withPage(1)] as $parameters) {
+            $result = $loupe->search($parameters);
+            $this->assertSame([], $result->getHits());
+            $this->assertSame(0, $result->getTotalHits());
+            $this->assertSame(0, $result->getHitsPerPage());
+            $this->assertSame(0, $result->getPage());
+            $this->assertSame(0, $result->getTotalPages());
+        }
+    }
+
+    public function testFacetOnlyPaginationPrecedenceWithEmptyIndex(): void
+    {
+        $loupe = $this->createLoupe(Configuration::create());
+        $parameters = SearchParameters::create()->withLimit(0)->withPage(1);
+        $result = $loupe->search($parameters);
+
+        $this->assertSame(SearchParameters::MAX_LIMIT, $result->getHitsPerPage());
+        $this->assertSame(1, $result->getPage());
+        $this->assertSame(2, $loupe->search($parameters->withHitsPerPage(2))->getHitsPerPage());
+    }
+
+    public function testFacetOnlySearchRejectsInvalidDistinctAttribute(): void
+    {
+        $loupe = $this->setupLoupeForFacetOnlySearch();
+        $this->expectException(InvalidSearchParametersException::class);
+
+        $loupe->search(SearchParameters::create()->withLimit(0)->withDistinct('missing'));
+    }
+
+    public function testFacetOnlySearchSkipsHitWork(): void
+    {
+        $logger = new InMemoryLogger();
+        $loupe = $this->setupLoupeForFacetOnlySearch(Configuration::create()->withLogger($logger));
+        $loupe->search(SearchParameters::create()->withQuery('alpha beta')->withLimit(0)->withFacets(['category'])->withAttributesToHighlight(['title'])->withShowMatchesPosition(true));
+
+        $searchSql = null;
+
+        foreach ($logger->getRecords() as $record) {
+            $sql = $record['context']['sql'] ?? null;
+            if (\is_string($sql) && str_starts_with($sql, 'WITH ')) {
+                $searchSql = $sql;
+            }
+        }
+
+        $this->assertNotNull($searchSql);
+        $this->assertStringNotContainsString('loupe_relevance(', $searchSql);
+        $this->assertStringNotContainsString('_cte_term_document_positions_', $searchSql);
+        $this->assertStringNotContainsString('._document', $searchSql);
+        $this->assertStringNotContainsString('ORDER BY', $searchSql);
+    }
+
+    private function setupLoupeForFacetOnlySearch(Configuration|null $configuration = null): Loupe
+    {
+        $configuration = ($configuration ?? Configuration::create())
+            ->withLanguages(['en'])
+            ->withSearchableAttributes(['title'])
+            ->withFilterableAttributes(['category', 'price', 'tags', 'numbers', 'location'])
+            ->withSortableAttributes(['price', 'numbers', 'location'])
+        ;
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            ['id' => 1, 'title' => 'alpha beta', 'category' => 'a', 'price' => 10, 'tags' => ['red', 'blue'], 'numbers' => [1, 2], 'location' => ['lat' => 0, 'lng' => 0]],
+            ['id' => 2, 'title' => 'alpha', 'category' => 'a', 'price' => 20, 'tags' => ['blue'], 'numbers' => [], 'location' => ['lat' => 0.5, 'lng' => 0.5]],
+            ['id' => 3, 'title' => 'beta', 'category' => 'b', 'price' => 30, 'tags' => ['red'], 'numbers' => [4], 'location' => ['lat' => 1, 'lng' => 1]],
+            ['id' => 4, 'title' => 'gamma', 'category' => 'c', 'price' => 40, 'tags' => ['green'], 'numbers' => [8], 'location' => ['lat' => 2, 'lng' => 2]],
+        ]);
+
+        return $loupe;
     }
 
     private function setupLoupeWithAdjacentPhraseDocuments(): Loupe

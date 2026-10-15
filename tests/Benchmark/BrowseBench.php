@@ -38,6 +38,15 @@ class BrowseBench extends AbstractBench
 
     private Loupe $loupe;
 
+    public function setUp(): void
+    {
+        $this->loupe = self::loupe(self::searchIndexPath());
+        $this->documentCount = $this->loupe->countDocuments();
+
+        $this->articles = self::articlesLoupe();
+        $this->articlesCount = $this->articles->countDocuments();
+    }
+
     public function benchBrowseLargeSubset(): void
     {
         $this->browseAll($this->articles, $this->articlesCount, ['id', 'title']);
@@ -76,15 +85,6 @@ class BrowseBench extends AbstractBench
         $this->browseAll($this->loupe, $this->documentCount, ['*']);
     }
 
-    public function setUp(): void
-    {
-        $this->loupe = self::loupe(self::searchIndexPath());
-        $this->documentCount = $this->loupe->countDocuments();
-
-        $this->articles = self::articlesLoupe();
-        $this->articlesCount = $this->articles->countDocuments();
-    }
-
     public static function setUpClass(): void
     {
         self::ensureSearchIndex();
@@ -95,7 +95,7 @@ class BrowseBench extends AbstractBench
     {
         $lorem = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor ';
 
-        for ($i = 1; $i <= self::ARTICLE_COUNT; $i++) {
+        for ($i = 1; $i <= self::ARTICLE_COUNT; ++$i) {
             yield [
                 'id' => $i,
                 'title' => 'Article number '.$i,
@@ -136,7 +136,7 @@ class BrowseBench extends AbstractBench
     {
         $loupe = self::articlesLoupe();
 
-        if (!$loupe->needsReindex() && $loupe->countDocuments() === self::ARTICLE_COUNT) {
+        if (!$loupe->needsReindex() && self::ARTICLE_COUNT === $loupe->countDocuments()) {
             return;
         }
 
