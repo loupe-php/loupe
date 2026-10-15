@@ -73,6 +73,39 @@ class SearchBench extends AbstractBench
     }
 
     /**
+     * @param array{attributesToHighlight?: list<string>, attributesToCrop?: list<string>} $params
+     */
+    #[ParamProviders('providePartialFormatting')]
+    #[Revs(1)]
+    public function benchPartiallyFormattedQueries(array $params): void
+    {
+        $queries = [
+            'love',
+            'war',
+            'family',
+            'dark',
+            'the world',
+            'young woman',
+            'police detective',
+            'school friends',
+        ];
+
+        foreach ($queries as $q) {
+            $this->loupe->search(SearchParameters::fromArray([...$params, 'query' => $q]));
+        }
+    }
+
+    /**
+     * @return \Generator<string, array{attributesToHighlight?: list<string>, attributesToCrop?: list<string>}>
+     */
+    public function providePartialFormatting(): \Generator
+    {
+        yield 'highlight title' => ['attributesToHighlight' => ['title']];
+        yield 'crop title' => ['attributesToCrop' => ['title']];
+        yield 'highlight title and overview' => ['attributesToHighlight' => ['title', 'overview']];
+    }
+
+    /**
      * @return \Generator<string, array{query: string, filter: string}>
      */
     public function provideFilteredQueries(): \Generator

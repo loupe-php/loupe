@@ -60,7 +60,6 @@
             "@php vendor/bin/phpbench run --report=aggregate --group=browse",
             "@bench-browse-size"
         ],
-        "bench-formatting": "@php vendor/bin/phpbench run --report=aggregate --group=formatting",
         "bench-size": "@php tests/bin/report-database-size.php var/bench/movies-search/loupe.db",
         "bench-index-size": "@php tests/bin/report-database-size.php var/bench/movies-index/loupe.db",
         "bench-browse-size": "@php tests/bin/report-database-size.php var/bench/browse-articles/loupe.db",
