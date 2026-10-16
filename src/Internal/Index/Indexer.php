@@ -148,8 +148,8 @@ class Indexer
 
         // Pre-load existing content hashes so unchanged documents can skip tokenization
         $this->existingHashes = $this->loadExistingHashes($documents);
-        $this->indexPreparedDocuments($this->prepareDocumentArray($documents));
-        $this->reviseStorageAfterIndexing();
+        $documentsChanged = $this->indexPreparedDocuments($this->prepareDocumentArray($documents));
+        $this->reviseStorageAfterIndexing($documentsChanged);
     }
 
     private function addDocumentsFromSource(DocumentSourceInterface $documents): void
@@ -158,8 +158,8 @@ class Indexer
             return;
         }
 
-        $this->indexPreparedDocuments($this->prepareDocumentSource($documents));
-        $this->reviseStorageAfterIndexing();
+        $documentsChanged = $this->indexPreparedDocuments($this->prepareDocumentSource($documents));
+        $this->reviseStorageAfterIndexing($documentsChanged);
     }
 
     /**
@@ -253,27 +253,33 @@ class Indexer
 
     /**
      * @param iterable<PreparedDocument> $documents
+     *
+     * @return bool Whether any document was written
      */
-    private function indexPreparedDocuments(iterable $documents): void
+    private function indexPreparedDocuments(iterable $documents): bool
     {
+        $documentsChanged = false;
         $batch = new PreparedDocumentCollection();
 
         foreach ($documents as $document) {
             $batch->add($document);
 
             if ($batch->getTermsCount() >= self::MAX_TERMS_PER_BATCH) {
-                $this->processPreparedDocuments($batch);
+                $documentsChanged = $this->processPreparedDocuments($batch) || $documentsChanged;
                 $batch = new PreparedDocumentCollection();
             }
         }
 
-        $this->processPreparedDocuments($batch);
+        return $this->processPreparedDocuments($batch) || $documentsChanged;
     }
 
-    private function processPreparedDocuments(PreparedDocumentCollection $documents): void
+    /**
+     * @return bool Whether any document was written
+     */
+    private function processPreparedDocuments(PreparedDocumentCollection $documents): bool
     {
         if ($documents->empty()) {
-            return;
+            return false;
         }
 
         $this->recordChange(
@@ -285,6 +291,8 @@ class Indexer
             },
         );
         $this->commitChanges();
+
+        return true;
     }
 
     private function documentChanged(PreparedDocument $document): bool
@@ -294,14 +302,18 @@ class Indexer
         return !isset($this->existingHashes[$userId]) || $this->existingHashes[$userId] !== $document->getContentHash();
     }
 
-    private function reviseStorageAfterIndexing(): void
+    private function reviseStorageAfterIndexing(bool $documentsChanged): void
     {
-        // Finally, revise storage once
-        $this->recordChange(
-            function (): void {
-                $this->reviseStorage(false);
-            },
-        );
+        // Revising storage scans the whole index for orphans. If no document was written, nothing can have become
+        // orphaned and the state set is unchanged, so skip it. Still commit pending changes such as schema updates.
+        if ($documentsChanged) {
+            $this->recordChange(
+                function (): void {
+                    $this->reviseStorage(false);
+                },
+            );
+        }
+
         $this->commitChanges();
     }
 
