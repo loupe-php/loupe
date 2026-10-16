@@ -1128,25 +1128,27 @@ class Indexer
 
     private function removeOrphansFromTermsTable(string $table, string $relationTable, string $column): void
     {
-        // Iterate over all terms of documents which no longer exist
-        // and remove them from the state set index
+        // Find orphans once: the anti-join probes the relation index for every row, so it is the expensive part.
+        // Remove them from the state set index while iterating and delete them by id afterwards.
         $query = \sprintf(
-            'SELECT %s FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
+            'SELECT id, %s FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
             $column,
             $table,
             $column,
             $relationTable,
         );
 
-        $iterator = $this->engine->getConnection()->executeQuery($query)->iterateAssociative();
+        $iterator = $this->engine->getConnection()->executeQuery($query)->iterateNumeric();
 
         $stateSetIndex = $this->engine->getStateSetIndex();
 
         $chunkSize = 1000;
         $termsChunk = [];
+        $orphanIds = [];
 
-        foreach ($iterator as $row) {
-            $termsChunk[] = reset($row);
+        foreach ($iterator as [$id, $term]) {
+            $orphanIds[] = (int) $id;
+            $termsChunk[] = $term;
 
             if (\count($termsChunk) >= $chunkSize) {
                 $stateSetIndex->removeFromIndex($termsChunk);
@@ -1158,15 +1160,14 @@ class Indexer
             $stateSetIndex->removeFromIndex($termsChunk);
         }
 
-        // Remove all orphaned terms from the terms table
-        $query = \sprintf(
-            'DELETE FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
-            $table,
-            $column,
-            $relationTable,
-        );
-
-        $this->engine->getConnection()->executeStatement($query);
+        // Delete after the cursor is exhausted, modifying a table while iterating it is unsafe in SQLite
+        foreach (Util::arrayChunk($orphanIds, self::MAX_IDS_PER_QUERY) as $chunk) {
+            $this->engine->getConnection()->executeStatement(
+                \sprintf('DELETE FROM %s WHERE id IN (?)', $table),
+                [$chunk],
+                [ArrayParameterType::INTEGER],
+            );
+        }
     }
 
     private function reviseStorage(bool $removeDocumentOrphans): void
