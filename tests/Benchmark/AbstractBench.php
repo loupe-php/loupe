@@ -35,6 +35,7 @@ abstract class AbstractBench
             ->withFilterableAttributes(['release_date', 'genres'])
             ->withSortableAttributes(['release_date'])
             ->withLanguages(['en'])
+            ->withVacuumProbability(0)
         ;
     }
 
