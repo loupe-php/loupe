@@ -1704,9 +1704,16 @@ class Searcher
                 continue;
             }
 
+            $shouldCrop = \in_array($attribute, $attributesToCrop, true);
+            $shouldHighlight = \in_array($attribute, $attributesToHighlight, true);
+
+            if (!$shouldCrop && !$shouldHighlight && !$showMatchesPosition) {
+                continue;
+            }
+
             $attributeOptions = $options;
 
-            if (\in_array($attribute, $attributesToCrop, true)) {
+            if ($shouldCrop) {
                 $attributeOptions = $attributeOptions->withEnableCrop();
 
                 if (isset($this->queryParameters->getAttributesToCrop()[$attribute])) {
@@ -1714,7 +1721,7 @@ class Searcher
                 }
             }
 
-            if (\in_array($attribute, $attributesToHighlight, true)) {
+            if ($shouldHighlight) {
                 $attributeOptions = $attributeOptions->withEnableHighlight();
             }
 
