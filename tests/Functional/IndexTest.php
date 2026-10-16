@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Functional;
 
+use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
 use Loupe\Loupe\Indexing\DocumentSource;
@@ -689,6 +690,40 @@ final class IndexTest extends TestCase
         $this->assertSame(2, $loupe->countDocuments());
     }
 
+    public function testOrphanedTermsAndPrefixesAreRemoved(): void
+    {
+        $tempDir = $this->createTemporaryDirectory();
+        $loupe = $this->createLoupe(
+            Configuration::create()
+                ->withSearchableAttributes(['text'])
+                ->withTypoTolerance(TypoTolerance::create()->withEnabledForPrefixSearch(true)),
+            $tempDir,
+        );
+
+        $loupe->addDocuments([
+            ['id' => 1, 'text' => 'xylophone quartet'],
+            ['id' => 2, 'text' => 'quartet'],
+        ]);
+
+        $connection = new \PDO('sqlite:'.$tempDir.'/loupe.db');
+
+        $this->assertContains('xylophone', self::getTerms($connection));
+        $this->assertGreaterThan(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes')->fetchColumn());
+
+        $loupe->addDocument(['id' => 1, 'text' => 'zebra quartet']);
+        $this->assertNotContains('xylophone', self::getTerms($connection));
+        $this->assertContains('zebra', self::getTerms($connection));
+        $this->assertContains('quartet', self::getTerms($connection));
+        $this->assertNoOrphans($connection);
+
+        $loupe->deleteDocument(1);
+        $this->assertNotContains('zebra', self::getTerms($connection));
+        $this->assertContains('quartet', self::getTerms($connection));
+        $this->assertNoOrphans($connection);
+
+        $this->assertSame([2], array_column($loupe->search(SearchParameters::create()->withQuery('quartet'))->toArray()['hits'], 'id'));
+    }
+
     public function testReAddingIdenticalDocumentPreservesSearchFilterAndSort(): void
     {
         // Re-adding an identical document must not drop its terms, attributes or multi attributes
@@ -1001,6 +1036,13 @@ final class IndexTest extends TestCase
         ];
     }
 
+    private function assertNoOrphans(\PDO $connection): void
+    {
+        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM terms WHERE id NOT IN (SELECT term FROM terms_documents)')->fetchColumn());
+        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes_terms WHERE term NOT IN (SELECT id FROM terms)')->fetchColumn());
+        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes WHERE id NOT IN (SELECT prefix FROM prefixes_terms)')->fetchColumn());
+    }
+
     /**
      * @return array<string>
      */
@@ -1030,6 +1072,14 @@ final class IndexTest extends TestCase
             'colors' => ['Green', 'Blue'],
             'age' => 40,
         ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    private static function getTerms(\PDO $connection): array
+    {
+        return $connection->query('SELECT term FROM terms')->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     /**
