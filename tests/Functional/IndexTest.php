@@ -690,19 +690,57 @@ final class IndexTest extends TestCase
         $this->assertSame(2, $loupe->countDocuments());
     }
 
+    public function testOccasionalMaintenanceRemovesOrphansOutsideOfTheCurrentOperation(): void
+    {
+        $tempDir = $this->createTemporaryDirectory();
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['text'])
+            ->withFilterableAttributes(['tags'])
+            ->withTypoTolerance(TypoTolerance::create()->withEnabledForPrefixSearch(true))
+        ;
+
+        $loupe = $this->createLoupe($configuration->withVacuumProbability(0), $tempDir);
+        $loupe->addDocuments([
+            ['id' => 1, 'text' => 'quartet', 'tags' => ['music']],
+            ['id' => 2, 'text' => 'kazoo', 'tags' => ['toy']],
+        ]);
+
+        // Simulate orphans left behind by something else than the current operation
+        $connection = new \PDO('sqlite:'.$tempDir.'/loupe.db');
+        $connection->exec("INSERT INTO terms (term, state, length) VALUES ('ghost', 0, 5), ('phantom', 0, 7)");
+        $connection->exec("INSERT INTO prefixes (prefix, length, state) VALUES ('gho', 3, 0)");
+        $connection->exec("INSERT INTO prefixes_terms (prefix, term) SELECT p.id, t.id FROM prefixes p, terms t WHERE p.prefix = 'gho' AND t.term = 'ghost'");
+        $connection->exec("INSERT INTO terms_documents (term, document, attribute, position, start, \"end\", folded) SELECT id, 999, 'text', 1, 0, 7, 0 FROM terms WHERE term = 'phantom'");
+        $connection->exec('INSERT INTO multi_attributes_documents (attribute, document) SELECT attribute, 999 FROM multi_attributes_documents LIMIT 1');
+
+        // Incremental cleanup only checks what the operation touched
+        $loupe->addDocument(['id' => 2, 'text' => 'kazoo whistle', 'tags' => ['toy']]);
+        $this->assertContains('ghost', self::getTerms($connection));
+        $this->assertContains('phantom', self::getTerms($connection));
+
+        $loupe = $this->createLoupe($configuration->withVacuumProbability(100), $tempDir);
+        $loupe->addDocument(['id' => 2, 'text' => 'kazoo', 'tags' => ['toy']]);
+        $this->assertNotContains('ghost', self::getTerms($connection));
+        $this->assertNotContains('phantom', self::getTerms($connection));
+        $this->assertContains('quartet', self::getTerms($connection));
+        $this->assertNoOrphans($connection);
+    }
+
     public function testOrphanedTermsAndPrefixesAreRemoved(): void
     {
         $tempDir = $this->createTemporaryDirectory();
         $loupe = $this->createLoupe(
             Configuration::create()
                 ->withSearchableAttributes(['text'])
+                ->withFilterableAttributes(['tags'])
                 ->withTypoTolerance(TypoTolerance::create()->withEnabledForPrefixSearch(true)),
             $tempDir,
         );
 
         $loupe->addDocuments([
-            ['id' => 1, 'text' => 'xylophone quartet'],
-            ['id' => 2, 'text' => 'quartet'],
+            ['id' => 1, 'text' => 'xylophone quartet', 'tags' => ['music']],
+            ['id' => 2, 'text' => 'quartet', 'tags' => ['music']],
+            ['id' => 3, 'text' => 'kazoo', 'tags' => ['toy']],
         ]);
 
         $connection = new \PDO('sqlite:'.$tempDir.'/loupe.db');
@@ -710,7 +748,7 @@ final class IndexTest extends TestCase
         $this->assertContains('xylophone', self::getTerms($connection));
         $this->assertGreaterThan(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes')->fetchColumn());
 
-        $loupe->addDocument(['id' => 1, 'text' => 'zebra quartet']);
+        $loupe->addDocument(['id' => 1, 'text' => 'zebra quartet', 'tags' => ['animal']]);
         $this->assertNotContains('xylophone', self::getTerms($connection));
         $this->assertContains('zebra', self::getTerms($connection));
         $this->assertContains('quartet', self::getTerms($connection));
@@ -722,6 +760,11 @@ final class IndexTest extends TestCase
         $this->assertNoOrphans($connection);
 
         $this->assertSame([2], array_column($loupe->search(SearchParameters::create()->withQuery('quartet'))->toArray()['hits'], 'id'));
+
+        $loupe->deleteAllDocuments();
+        $this->assertSame([], self::getTerms($connection));
+        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes')->fetchColumn());
+        $this->assertNoOrphans($connection);
     }
 
     public function testReAddingIdenticalDocumentPreservesSearchFilterAndSort(): void
@@ -793,7 +836,7 @@ final class IndexTest extends TestCase
         );
         $documents = [self::getSandraDocument(), self::getUtaDocument()];
 
-        $this->assertNotSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments($documents)));
+        $loupe->addDocuments($documents);
 
         $this->assertSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments($documents)));
         $this->assertSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments(DocumentSource::fromFactory(static fn () => $documents))));
@@ -1060,6 +1103,8 @@ final class IndexTest extends TestCase
 
     private function assertNoOrphans(\PDO $connection): void
     {
+        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM terms_documents WHERE document NOT IN (SELECT _id FROM documents)')->fetchColumn());
+        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM multi_attributes_documents WHERE document NOT IN (SELECT _id FROM documents)')->fetchColumn());
         $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM terms WHERE id NOT IN (SELECT term FROM terms_documents)')->fetchColumn());
         $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes_terms WHERE term NOT IN (SELECT id FROM terms)')->fetchColumn());
         $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes WHERE id NOT IN (SELECT prefix FROM prefixes_terms)')->fetchColumn());
