@@ -21,7 +21,6 @@ use Symfony\Component\Filesystem\Filesystem;
  * Warmup must be disabled here to ensure an empty index during runs.
  */
 #[BeforeClassMethods('setUpClass')]
-#[BeforeMethods('setUp')]
 #[Revs(1)]
 #[Iterations(1)]
 #[Warmup(0)]
@@ -57,6 +56,7 @@ class IndexBench extends AbstractBench
     /**
      * Measures a cold insert of new documents into an empty index.
      */
+    #[BeforeMethods('setUp')]
     #[ParamProviders('provideCorpus')]
     public function benchAddDocuments(): void
     {
@@ -77,6 +77,21 @@ class IndexBench extends AbstractBench
     #[ParamProviders('provideBatch')]
     #[Iterations(5)]
     public function benchAddBatchToPopulatedIndex(): void
+    {
+        $this->loupe->addDocuments($this->movies);
+    }
+
+    #[BeforeMethods('setUpForSingleDocument')]
+    #[Iterations(10)]
+    public function benchDeleteSingleDocument(): void
+    {
+        $this->loupe->deleteDocument($this->movies[0]['id']);
+    }
+
+    #[BeforeMethods('setUpForSingleDocumentUpdate')]
+    #[ParamProviders('provideSingleDocumentUpdate')]
+    #[Iterations(10)]
+    public function benchUpdateSingleDocument(): void
     {
         $this->loupe->addDocuments($this->movies);
     }
@@ -106,6 +121,15 @@ class IndexBench extends AbstractBench
         ];
     }
 
+    public function provideSingleDocumentUpdate(): \Generator
+    {
+        foreach (['unchanged', 'known words', 'new word'] as $update) {
+            yield $update => [
+                'update' => $update,
+            ];
+        }
+    }
+
     public static function setUpClass(): void
     {
         self::ensureMoviesJson();
@@ -116,12 +140,7 @@ class IndexBench extends AbstractBench
      */
     public function setUpForBatchIntoPopulatedIndex(array $params): void
     {
-        self::ensurePopulatedIndex();
-
-        // Start every iteration from an identical copy of the populated index
-        $dir = self::indexScratchPath();
-        (new Filesystem())->mirror(self::populatedIndexPath(), $dir, null, ['override' => true, 'delete' => true]);
-        $this->loupe = self::loupe($dir);
+        $this->setUpPopulatedIndex();
 
         [$indexedMovies, $newMovies] = self::splitMoviesForPopulatedIndex();
         $newCount = intdiv($params['size'] * $params['newPercentage'], 100);
@@ -130,6 +149,26 @@ class IndexBench extends AbstractBench
             ...\array_slice($indexedMovies, 0, $params['size'] - $newCount),
             ...\array_slice($newMovies, 0, $newCount),
         ];
+    }
+
+    public function setUpForSingleDocument(): void
+    {
+        $this->setUpPopulatedIndex();
+        $this->movies = [self::splitMoviesForPopulatedIndex()[0][0]];
+    }
+
+    /**
+     * @param array{update: 'unchanged'|'known words'|'new word'} $params
+     */
+    public function setUpForSingleDocumentUpdate(array $params): void
+    {
+        $this->setUpForSingleDocument();
+
+        $this->movies[0]['overview'] = match ($params['update']) {
+            'unchanged' => $this->movies[0]['overview'],
+            'known words' => self::splitMoviesForPopulatedIndex()[0][1]['overview'],
+            'new word' => $this->movies[0]['overview'].' loupebenchmarkword',
+        };
     }
 
     /**
@@ -155,6 +194,15 @@ class IndexBench extends AbstractBench
 
         $loupe = self::loupe($dir);
         $loupe->addDocuments(self::splitMoviesForPopulatedIndex()[0]);
+    }
+
+    private function setUpPopulatedIndex(): void
+    {
+        self::ensurePopulatedIndex();
+
+        $dir = self::indexScratchPath();
+        (new Filesystem())->mirror(self::populatedIndexPath(), $dir, null, ['override' => true, 'delete' => true]);
+        $this->loupe = self::loupe($dir);
     }
 
     private static function populatedIndexPath(): string
