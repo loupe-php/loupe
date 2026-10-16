@@ -13,6 +13,7 @@ use PhpBench\Attributes\OutputTimeUnit;
 use PhpBench\Attributes\ParamProviders;
 use PhpBench\Attributes\Revs;
 use PhpBench\Attributes\Warmup;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Index benchmark.
@@ -28,6 +29,8 @@ use PhpBench\Attributes\Warmup;
 #[Groups(['index'])]
 class IndexBench extends AbstractBench
 {
+    private const BATCH_SIZES = [100, 1_000];
+
     private Loupe $loupe;
 
     /**
@@ -70,6 +73,26 @@ class IndexBench extends AbstractBench
         $this->loupe->addDocuments($this->movies);
     }
 
+    #[BeforeMethods('setUpForBatchIntoPopulatedIndex')]
+    #[ParamProviders('provideBatch')]
+    #[Iterations(5)]
+    public function benchAddBatchToPopulatedIndex(): void
+    {
+        $this->loupe->addDocuments($this->movies);
+    }
+
+    public function provideBatch(): \Generator
+    {
+        foreach (self::BATCH_SIZES as $size) {
+            foreach (['unchanged' => 0, 'half new' => 50, 'new' => 100] as $label => $newPercentage) {
+                yield \sprintf('%s, %s', number_format($size), $label) => [
+                    'size' => $size,
+                    'newPercentage' => $newPercentage,
+                ];
+            }
+        }
+    }
+
     public function provideCorpus(): \Generator
     {
         yield '1k' => [
@@ -89,11 +112,64 @@ class IndexBench extends AbstractBench
     }
 
     /**
+     * @param array{size: int, newPercentage: int} $params
+     */
+    public function setUpForBatchIntoPopulatedIndex(array $params): void
+    {
+        self::ensurePopulatedIndex();
+
+        // Start every iteration from an identical copy of the populated index
+        $dir = self::indexScratchPath();
+        (new Filesystem())->mirror(self::populatedIndexPath(), $dir, null, ['override' => true, 'delete' => true]);
+        $this->loupe = self::loupe($dir);
+
+        [$indexedMovies, $newMovies] = self::splitMoviesForPopulatedIndex();
+        $newCount = intdiv($params['size'] * $params['newPercentage'], 100);
+
+        $this->movies = [
+            ...\array_slice($indexedMovies, 0, $params['size'] - $newCount),
+            ...\array_slice($newMovies, 0, $newCount),
+        ];
+    }
+
+    /**
      * @param array{size: int} $params
      */
     public function setUpForUpdate(array $params): void
     {
         $this->setUp($params);
         $this->loupe->addDocuments($this->movies);
+    }
+
+    private static function ensurePopulatedIndex(): void
+    {
+        $dir = self::populatedIndexPath();
+        $loupe = self::loupe($dir);
+
+        if (!$loupe->needsReindex() && $loupe->countDocuments() > 0) {
+            return;
+        }
+
+        unset($loupe);
+        self::clearDir($dir);
+
+        $loupe = self::loupe($dir);
+        $loupe->addDocuments(self::splitMoviesForPopulatedIndex()[0]);
+    }
+
+    private static function populatedIndexPath(): string
+    {
+        return self::projectRoot().'/var/bench/movies-index-populated';
+    }
+
+    /**
+     * @return array{array<int, array<string, mixed>>, array<int, array<string, mixed>>} The indexed and the new movies
+     */
+    private static function splitMoviesForPopulatedIndex(): array
+    {
+        $movies = self::loadMovies();
+        $newCount = max(self::BATCH_SIZES);
+
+        return [\array_slice($movies, 0, -$newCount), \array_slice($movies, -$newCount)];
     }
 }
