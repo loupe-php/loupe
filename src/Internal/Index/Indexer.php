@@ -123,7 +123,7 @@ class Indexer
                         ->fetchFirstColumn()
                     ;
 
-                    $this->removeDocumentData(array_map('intval', $documentIds));
+                    $this->removeDocumentData(array_map(intval(...), $documentIds));
 
                     $this->engine->getConnection()
                         ->executeStatement(
@@ -1137,11 +1137,32 @@ class Indexer
             IndexInfo::TABLE_NAME_DOCUMENTS,
         ))->fetchFirstColumn();
 
-        return array_values(array_unique(array_map('intval', [...$termsDocuments, ...$multiAttributesDocuments])));
+        return array_values(array_unique(array_map(intval(...), [...$termsDocuments, ...$multiAttributesDocuments])));
+    }
+
+    /**
+     * @param array<int>|null $candidateIds
+     *
+     * @return \Generator<array<list<mixed>>>
+     */
+    private function findOrphans(string $query, array|null $candidateIds): \Generator
+    {
+        $connection = $this->engine->getConnection();
+
+        if (null === $candidateIds) {
+            yield from Util::arrayChunk($connection->executeQuery($query)->fetchAllNumeric(), self::MAX_IDS_PER_QUERY);
+
+            return;
+        }
+
+        foreach (Util::arrayChunk($candidateIds, self::MAX_IDS_PER_QUERY) as $chunk) {
+            yield $connection->executeQuery($query.' AND id IN (?)', [$chunk], [ArrayParameterType::INTEGER])->fetchAllNumeric();
+        }
     }
 
     /**
      * @param array<int> $termIds
+     *
      * @return array<int> The prefixes which lost relations
      */
     private function removePrefixRelations(array $termIds): array
@@ -1208,35 +1229,24 @@ class Indexer
 
     /**
      * @param array<int>|null $candidateIds The rows to check, null to check all
+     *
      * @return array<int> The removed ids
      */
     private function removeOrphansAmong(string $table, string $relationTable, string $column, array|null $candidateIds): array
     {
         $connection = $this->engine->getConnection();
         $query = \sprintf('SELECT id, %2$s FROM %1$s WHERE id NOT IN (SELECT %2$s FROM %3$s)', $table, $column, $relationTable);
-
-        if (null === $candidateIds) {
-            // Fetch all before deleting, modifying a table while iterating it is unsafe
-            $orphanChunks = Util::arrayChunk($connection->executeQuery($query)->fetchAllNumeric(), self::MAX_IDS_PER_QUERY);
-        } else {
-            $orphanChunks = (static function () use ($connection, $query, $candidateIds): \Generator {
-                foreach (Util::arrayChunk($candidateIds, self::MAX_IDS_PER_QUERY) as $chunk) {
-                    yield $connection->executeQuery($query.' AND id IN (?)', [$chunk], [ArrayParameterType::INTEGER])->fetchAllNumeric();
-                }
-            })();
-        }
-
         $stateSetIndex = $this->engine->getStateSetIndex();
         $removedIds = [];
 
-        foreach ($orphanChunks as $orphans) {
+        foreach ($this->findOrphans($query, $candidateIds) as $orphans) {
             if ([] === $orphans) {
                 continue;
             }
 
             $stateSetIndex->removeFromIndex(array_column($orphans, 1));
 
-            $orphanIds = array_map('intval', array_column($orphans, 0));
+            $orphanIds = array_map(intval(...), array_column($orphans, 0));
             $connection->executeStatement(
                 \sprintf('DELETE FROM %s WHERE id IN (?)', $table),
                 [$orphanIds],

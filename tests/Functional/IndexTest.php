@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Functional;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
 use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
@@ -706,12 +708,12 @@ final class IndexTest extends TestCase
         ]);
 
         // Simulate orphans left behind by something else than the current operation
-        $connection = new \PDO('sqlite:'.$tempDir.'/loupe.db');
-        $connection->exec("INSERT INTO terms (term, state, length) VALUES ('ghost', 0, 5), ('phantom', 0, 7)");
-        $connection->exec("INSERT INTO prefixes (prefix, length, state) VALUES ('gho', 3, 0)");
-        $connection->exec("INSERT INTO prefixes_terms (prefix, term) SELECT p.id, t.id FROM prefixes p, terms t WHERE p.prefix = 'gho' AND t.term = 'ghost'");
-        $connection->exec("INSERT INTO terms_documents (term, document, attribute, position, start, \"end\", folded) SELECT id, 999, 'text', 1, 0, 7, 0 FROM terms WHERE term = 'phantom'");
-        $connection->exec('INSERT INTO multi_attributes_documents (attribute, document) SELECT attribute, 999 FROM multi_attributes_documents LIMIT 1');
+        $connection = self::connectToDatabase($tempDir);
+        $connection->executeStatement("INSERT INTO terms (term, state, length) VALUES ('ghost', 0, 5), ('phantom', 0, 7)");
+        $connection->executeStatement("INSERT INTO prefixes (prefix, length, state) VALUES ('gho', 3, 0)");
+        $connection->executeStatement("INSERT INTO prefixes_terms (prefix, term) SELECT p.id, t.id FROM prefixes p, terms t WHERE p.prefix = 'gho' AND t.term = 'ghost'");
+        $connection->executeStatement("INSERT INTO terms_documents (term, document, attribute, position, start, \"end\", folded) SELECT id, 999, 'text', 1, 0, 7, 0 FROM terms WHERE term = 'phantom'");
+        $connection->executeStatement('INSERT INTO multi_attributes_documents (attribute, document) SELECT attribute, 999 FROM multi_attributes_documents LIMIT 1');
 
         // Incremental cleanup only checks what the operation touched
         $loupe->addDocument(['id' => 2, 'text' => 'kazoo whistle', 'tags' => ['toy']]);
@@ -743,10 +745,10 @@ final class IndexTest extends TestCase
             ['id' => 3, 'text' => 'kazoo', 'tags' => ['toy']],
         ]);
 
-        $connection = new \PDO('sqlite:'.$tempDir.'/loupe.db');
+        $connection = self::connectToDatabase($tempDir);
 
         $this->assertContains('xylophone', self::getTerms($connection));
-        $this->assertGreaterThan(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes')->fetchColumn());
+        $this->assertGreaterThan(0, $connection->fetchOne('SELECT COUNT(*) FROM prefixes'));
 
         $loupe->addDocument(['id' => 1, 'text' => 'zebra quartet', 'tags' => ['animal']]);
         $this->assertNotContains('xylophone', self::getTerms($connection));
@@ -763,7 +765,7 @@ final class IndexTest extends TestCase
 
         $loupe->deleteAllDocuments();
         $this->assertSame([], self::getTerms($connection));
-        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes')->fetchColumn());
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM prefixes'));
         $this->assertNoOrphans($connection);
     }
 
@@ -1101,13 +1103,18 @@ final class IndexTest extends TestCase
         ];
     }
 
-    private function assertNoOrphans(\PDO $connection): void
+    private function assertNoOrphans(Connection $connection): void
     {
-        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM terms_documents WHERE document NOT IN (SELECT _id FROM documents)')->fetchColumn());
-        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM multi_attributes_documents WHERE document NOT IN (SELECT _id FROM documents)')->fetchColumn());
-        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM terms WHERE id NOT IN (SELECT term FROM terms_documents)')->fetchColumn());
-        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes_terms WHERE term NOT IN (SELECT id FROM terms)')->fetchColumn());
-        $this->assertSame(0, (int) $connection->query('SELECT COUNT(*) FROM prefixes WHERE id NOT IN (SELECT prefix FROM prefixes_terms)')->fetchColumn());
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM terms_documents WHERE document NOT IN (SELECT _id FROM documents)'));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM multi_attributes_documents WHERE document NOT IN (SELECT _id FROM documents)'));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM terms WHERE id NOT IN (SELECT term FROM terms_documents)'));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM prefixes_terms WHERE term NOT IN (SELECT id FROM terms)'));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM prefixes WHERE id NOT IN (SELECT prefix FROM prefixes_terms)'));
+    }
+
+    private static function connectToDatabase(string $dataDir): Connection
+    {
+        return DriverManager::getConnection(['driver' => 'pdo_sqlite', 'path' => $dataDir.'/loupe.db']);
     }
 
     /**
@@ -1154,11 +1161,11 @@ final class IndexTest extends TestCase
     }
 
     /**
-     * @return array<string>
+     * @return list<mixed>
      */
-    private static function getTerms(\PDO $connection): array
+    private static function getTerms(Connection $connection): array
     {
-        return $connection->query('SELECT term FROM terms')->fetchAll(\PDO::FETCH_COLUMN);
+        return $connection->fetchFirstColumn('SELECT term FROM terms');
     }
 
     /**
