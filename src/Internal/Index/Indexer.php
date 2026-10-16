@@ -53,6 +53,11 @@ class Indexer
      */
     private array $existingHashes = [];
 
+    /**
+     * @var array<int, true>
+     */
+    private array $orphanCandidateTermIds = [];
+
     public function __construct(
         private readonly Engine $engine,
         private readonly TicketHandler $ticketHandler,
@@ -81,7 +86,10 @@ class Indexer
 
         $this->recordChange(
             function (): void {
-                $this->engine->getConnection()->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
+                $connection = $this->engine->getConnection();
+                $connection->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_TERMS_DOCUMENTS));
+                $connection->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS));
+                $connection->executeStatement(\sprintf('DELETE FROM %s', IndexInfo::TABLE_NAME_DOCUMENTS));
 
                 $this->reviseStorage(true);
             },
@@ -102,6 +110,21 @@ class Indexer
         $this->recordChange(
             function () use ($ids): void {
                 foreach (Util::arrayChunk(LoupeTypes::convertToArrayOfStrings($ids), self::MAX_IDS_PER_QUERY) as $chunk) {
+                    $documentIds = $this->engine->getConnection()
+                        ->executeQuery(
+                            \sprintf('SELECT _id FROM %s WHERE _user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
+                            [
+                                'ids' => $chunk,
+                            ],
+                            [
+                                'ids' => ArrayParameterType::STRING,
+                            ],
+                        )
+                        ->fetchFirstColumn()
+                    ;
+
+                    $this->removeDocumentData(array_map('intval', $documentIds));
+
                     $this->engine->getConnection()
                         ->executeStatement(
                             \sprintf('DELETE FROM %s WHERE _user_id IN(:ids)', IndexInfo::TABLE_NAME_DOCUMENTS),
@@ -115,7 +138,7 @@ class Indexer
                     ;
                 }
 
-                $this->reviseStorage(true);
+                $this->reviseStorage();
             },
         );
 
@@ -133,6 +156,7 @@ class Indexer
     {
         $this->changes = [];
         $this->existingHashes = [];
+        $this->orphanCandidateTermIds = [];
     }
 
     /**
@@ -304,12 +328,10 @@ class Indexer
 
     private function reviseStorageAfterIndexing(bool $documentsChanged): void
     {
-        // Revising storage scans the whole index for orphans. If no document was written, nothing can have become
-        // orphaned and the state set is unchanged, so skip it. Still commit pending changes such as schema updates.
         if ($documentsChanged) {
             $this->recordChange(
                 function (): void {
-                    $this->reviseStorage(false);
+                    $this->reviseStorage();
                 },
             );
         }
@@ -1059,143 +1081,188 @@ class Indexer
 
     private function removeCurrentDocumentData(PreparedDocumentCollection $preparedDocuments): void
     {
-        $allDocumentIds = $preparedDocuments->allInternalIds();
-
-        // Remove term relations of this document
-        $this->engine->getConnection()->executeStatement(
-            \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
-            [$allDocumentIds],
-            [ArrayParameterType::INTEGER],
-        );
-
-        // Remove multi-attribute relations of this document
-        $this->engine->getConnection()->executeStatement(
-            \sprintf('DELETE FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS),
-            [$allDocumentIds],
-            [ArrayParameterType::INTEGER],
-        );
-
-        // The rest (prefixes, state set, etc) is handled by reviseStorage()
+        $this->removeDocumentData($preparedDocuments->allInternalIds());
     }
 
-    private function removeOrphanedDocuments(): void
+    /**
+     * @param array<int> $documentIds
+     */
+    private function removeDocumentData(array $documentIds): void
     {
-        // Clean up term-document relations of documents which no longer exist
-        $query = \sprintf(
-            'DELETE FROM %s WHERE document NOT IN (SELECT _id FROM %s)',
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            IndexInfo::TABLE_NAME_DOCUMENTS,
-        );
+        $connection = $this->engine->getConnection();
 
-        $this->engine->getConnection()->executeStatement($query);
+        foreach (Util::arrayChunk($documentIds, self::MAX_IDS_PER_QUERY) as $chunk) {
+            $termIds = $connection->executeQuery(
+                \sprintf('SELECT DISTINCT term FROM %s WHERE document IN (?)', IndexInfo::TABLE_NAME_TERMS_DOCUMENTS),
+                [$chunk],
+                [ArrayParameterType::INTEGER],
+            )->iterateColumn();
 
-        // Clean up multi-attribute-document relations of documents which no longer exist
-        $query = \sprintf(
-            'DELETE FROM %s WHERE document NOT IN (SELECT _id FROM %s)',
-            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
-            IndexInfo::TABLE_NAME_DOCUMENTS,
-        );
+            foreach ($termIds as $termId) {
+                $this->orphanCandidateTermIds[(int) $termId] = true;
+            }
 
-        $this->engine->getConnection()->executeStatement($query);
-    }
-
-    private function removeOrphanedPrefixes(): void
-    {
-        // Clean up prefix-term relations of terms which no longer exist
-        $query = \sprintf(
-            'DELETE FROM %s WHERE term NOT IN (SELECT id FROM %s)',
-            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
-            IndexInfo::TABLE_NAME_TERMS,
-        );
-
-        $this->engine->getConnection()->executeStatement($query);
-
-        // Clean up prefixes which no longer have any relations
-        $this->removeOrphansFromTermsTable(
-            IndexInfo::TABLE_NAME_PREFIXES,
-            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
-            'prefix',
-        );
-    }
-
-    private function removeOrphanedTerms(): void
-    {
-        // Clean up terms which no longer have any relations
-        $this->removeOrphansFromTermsTable(
-            IndexInfo::TABLE_NAME_TERMS,
-            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            'term',
-        );
-    }
-
-    private function removeOrphans(bool $removeDocumentOrphans): void
-    {
-        if ($removeDocumentOrphans) {
-            $this->removeOrphanedDocuments();
-        }
-
-        $this->removeOrphanedTerms();
-        $this->removeOrphanedPrefixes();
-    }
-
-    private function removeOrphansFromTermsTable(string $table, string $relationTable, string $column): void
-    {
-        // Find orphans once: the anti-join probes the relation index for every row, so it is the expensive part.
-        // Remove them from the state set index while iterating and delete them by id afterwards.
-        $query = \sprintf(
-            'SELECT id, %s FROM %s WHERE id NOT IN (SELECT %s FROM %s)',
-            $column,
-            $table,
-            $column,
-            $relationTable,
-        );
-
-        $iterator = $this->engine->getConnection()->executeQuery($query)->iterateNumeric();
-
-        $stateSetIndex = $this->engine->getStateSetIndex();
-
-        $chunkSize = 1000;
-        $termsChunk = [];
-        $orphanIds = [];
-
-        foreach ($iterator as [$id, $term]) {
-            $orphanIds[] = (int) $id;
-            $termsChunk[] = $term;
-
-            if (\count($termsChunk) >= $chunkSize) {
-                $stateSetIndex->removeFromIndex($termsChunk);
-                $termsChunk = [];
+            foreach ([IndexInfo::TABLE_NAME_TERMS_DOCUMENTS, IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS] as $table) {
+                $connection->executeStatement(
+                    \sprintf('DELETE FROM %s WHERE document IN (?)', $table),
+                    [$chunk],
+                    [ArrayParameterType::INTEGER],
+                );
             }
         }
+    }
 
-        if (!empty($termsChunk)) {
-            $stateSetIndex->removeFromIndex($termsChunk);
-        }
+    /**
+     * @return array<int>
+     */
+    private function findOrphanedDocumentIds(): array
+    {
+        $connection = $this->engine->getConnection();
 
-        // Delete after the cursor is exhausted, modifying a table while iterating it is unsafe in SQLite
-        foreach (Util::arrayChunk($orphanIds, self::MAX_IDS_PER_QUERY) as $chunk) {
-            $this->engine->getConnection()->executeStatement(
-                \sprintf('DELETE FROM %s WHERE id IN (?)', $table),
+        // Walk the distinct documents of the relation index with one seek each instead of reading every relation
+        $termsDocuments = $connection->executeQuery(\sprintf(
+            'WITH RECURSIVE relation(document) AS (
+                SELECT MIN(document) FROM %1$s
+                UNION ALL
+                SELECT (SELECT MIN(document) FROM %1$s WHERE document > relation.document) FROM relation WHERE relation.document IS NOT NULL
+            )
+            SELECT document FROM relation WHERE document IS NOT NULL AND document NOT IN (SELECT _id FROM %2$s)',
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+        ))->fetchFirstColumn();
+
+        $multiAttributesDocuments = $connection->executeQuery(\sprintf(
+            'SELECT DISTINCT document FROM %s WHERE document NOT IN (SELECT _id FROM %s)',
+            IndexInfo::TABLE_NAME_MULTI_ATTRIBUTES_DOCUMENTS,
+            IndexInfo::TABLE_NAME_DOCUMENTS,
+        ))->fetchFirstColumn();
+
+        return array_values(array_unique(array_map('intval', [...$termsDocuments, ...$multiAttributesDocuments])));
+    }
+
+    /**
+     * @param array<int> $termIds
+     * @return array<int> The prefixes which lost relations
+     */
+    private function removePrefixRelations(array $termIds): array
+    {
+        $connection = $this->engine->getConnection();
+        $prefixIds = [];
+
+        foreach (Util::arrayChunk($termIds, self::MAX_IDS_PER_QUERY) as $chunk) {
+            $chunkPrefixIds = $connection->executeQuery(
+                \sprintf('SELECT DISTINCT prefix FROM %s WHERE term IN (?)', IndexInfo::TABLE_NAME_PREFIXES_TERMS),
+                [$chunk],
+                [ArrayParameterType::INTEGER],
+            )->iterateColumn();
+
+            foreach ($chunkPrefixIds as $prefixId) {
+                $prefixIds[(int) $prefixId] = true;
+            }
+
+            $connection->executeStatement(
+                \sprintf('DELETE FROM %s WHERE term IN (?)', IndexInfo::TABLE_NAME_PREFIXES_TERMS),
                 [$chunk],
                 [ArrayParameterType::INTEGER],
             );
         }
+
+        return array_keys($prefixIds);
     }
 
-    private function reviseStorage(bool $removeDocumentOrphans): void
+    private function removeOrphans(bool $checkEntireIndex): void
     {
-        $this->removeOrphans($removeDocumentOrphans);
-        $this->persistStateSet();
-        $this->vacuumDatabase();
-        $this->analyzeDatabase();
-    }
-
-    private function vacuumDatabase(): void
-    {
-        if (!$this->needsVacuum()) {
-            return;
+        if ($checkEntireIndex) {
+            $this->removeDocumentData($this->findOrphanedDocumentIds());
         }
 
-        $this->engine->getConnection()->executeStatement('PRAGMA incremental_vacuum');
+        $candidateTermIds = $checkEntireIndex ? null : array_keys($this->orphanCandidateTermIds);
+        $this->orphanCandidateTermIds = [];
+
+        $removedTermIds = $this->removeOrphansAmong(
+            IndexInfo::TABLE_NAME_TERMS,
+            IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
+            'term',
+            $candidateTermIds,
+        );
+
+        // Prefixes only lose relations when their terms are removed
+        if ($checkEntireIndex) {
+            $this->engine->getConnection()->executeStatement(\sprintf(
+                'DELETE FROM %s WHERE term NOT IN (SELECT id FROM %s)',
+                IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+                IndexInfo::TABLE_NAME_TERMS,
+            ));
+            $candidatePrefixIds = null;
+        } else {
+            $candidatePrefixIds = $this->removePrefixRelations($removedTermIds);
+        }
+
+        $this->removeOrphansAmong(
+            IndexInfo::TABLE_NAME_PREFIXES,
+            IndexInfo::TABLE_NAME_PREFIXES_TERMS,
+            'prefix',
+            $candidatePrefixIds,
+        );
+    }
+
+    /**
+     * @param array<int>|null $candidateIds The rows to check, null to check all
+     * @return array<int> The removed ids
+     */
+    private function removeOrphansAmong(string $table, string $relationTable, string $column, array|null $candidateIds): array
+    {
+        $connection = $this->engine->getConnection();
+        $query = \sprintf('SELECT id, %2$s FROM %1$s WHERE id NOT IN (SELECT %2$s FROM %3$s)', $table, $column, $relationTable);
+
+        if (null === $candidateIds) {
+            // Fetch all before deleting, modifying a table while iterating it is unsafe
+            $orphanChunks = Util::arrayChunk($connection->executeQuery($query)->fetchAllNumeric(), self::MAX_IDS_PER_QUERY);
+        } else {
+            $orphanChunks = (static function () use ($connection, $query, $candidateIds): \Generator {
+                foreach (Util::arrayChunk($candidateIds, self::MAX_IDS_PER_QUERY) as $chunk) {
+                    yield $connection->executeQuery($query.' AND id IN (?)', [$chunk], [ArrayParameterType::INTEGER])->fetchAllNumeric();
+                }
+            })();
+        }
+
+        $stateSetIndex = $this->engine->getStateSetIndex();
+        $removedIds = [];
+
+        foreach ($orphanChunks as $orphans) {
+            if ([] === $orphans) {
+                continue;
+            }
+
+            $stateSetIndex->removeFromIndex(array_column($orphans, 1));
+
+            $orphanIds = array_map('intval', array_column($orphans, 0));
+            $connection->executeStatement(
+                \sprintf('DELETE FROM %s WHERE id IN (?)', $table),
+                [$orphanIds],
+                [ArrayParameterType::INTEGER],
+            );
+
+            array_push($removedIds, ...$orphanIds);
+        }
+
+        return $removedIds;
+    }
+
+    /**
+     * @param bool $checkEntireIndex Check the entire index for orphans instead of only the data currently touched
+     */
+    private function reviseStorage(bool $checkEntireIndex = false): void
+    {
+        $runMaintenance = $this->needsVacuum();
+
+        $this->removeOrphans($checkEntireIndex || $runMaintenance);
+        $this->persistStateSet();
+
+        if ($runMaintenance) {
+            $this->engine->getConnection()->executeStatement('PRAGMA incremental_vacuum');
+        }
+
+        $this->analyzeDatabase();
     }
 }
