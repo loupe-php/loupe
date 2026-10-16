@@ -34,6 +34,11 @@ class SearchBench extends AbstractBench
         $this->loupe = self::loupe(self::searchIndexPath());
     }
 
+    public function setUpSmallIndex(): void
+    {
+        $this->loupe = self::loupe(self::smallSearchIndexPath());
+    }
+
     public function benchExactQueryWithFacets(): void
     {
         $this->loupe->search(
@@ -261,6 +266,26 @@ class SearchBench extends AbstractBench
         }
     }
 
+    /**
+     * Control run on a smaller index. SQLite picks query plans based on the index statistics, so plans that are
+     * fine on the shared index can degrade on smaller ones.
+     */
+    #[Revs(1)]
+    #[BeforeMethods('setUpSmallIndex')]
+    public function benchSmallIndexQueries(): void
+    {
+        $queries = [
+            'Anakin',
+            'Anakin Skywalker',
+            'Skywalkr',
+            'lov',
+        ];
+
+        foreach ($queries as $q) {
+            $this->loupe->search(SearchParameters::create()->withQuery($q));
+        }
+    }
+
     public function benchTypoQueryWithFacets(): void
     {
         $this->loupe->search(
@@ -273,5 +298,6 @@ class SearchBench extends AbstractBench
     public static function setUpClass(): void
     {
         self::ensureSearchIndex();
+        self::ensureSmallSearchIndex();
     }
 }
