@@ -6,6 +6,7 @@ namespace Loupe\Loupe\Tests\Unit\Internal\StateSetIndex;
 
 use Doctrine\DBAL\Configuration as DbalConfiguration;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Doctrine\DBAL\Tools\DsnParser;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\ConnectionPool;
@@ -218,8 +219,16 @@ final class StateSetTest extends TestCase
         $dump = array_combine($dump, array_fill(0, \count($dump), true));
         ksort($dump);
 
+        try {
+            $stored = array_map(intval(...), $engine->getConnection()->fetchFirstColumn('SELECT state FROM '.IndexInfo::TABLE_NAME_STATE_SET.' ORDER BY state'));
+        } catch (TableNotFoundException) {
+            // Created on first indexing
+            $stored = [];
+        }
+
         $this->assertSame($expected, $all);
         $this->assertSame(array_keys($dump), $all);
+        $this->assertSame($stored, $all);
     }
 
     private function createTestEngine(): Engine
