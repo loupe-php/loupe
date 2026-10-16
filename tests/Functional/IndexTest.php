@@ -783,6 +783,28 @@ final class IndexTest extends TestCase
         $assetSearchResults();
     }
 
+    public function testReAddingUnchangedDocumentsSkipsOrphanCleanup(): void
+    {
+        $logger = new InMemoryLogger();
+        $loupe = $this->createLoupe(
+            Configuration::create()
+                ->withSearchableAttributes(['firstname', 'lastname'])
+                ->withLogger($logger),
+        );
+        $documents = [self::getSandraDocument(), self::getUtaDocument()];
+
+        $this->assertNotSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments($documents)));
+
+        $this->assertSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments($documents)));
+        $this->assertSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments(DocumentSource::fromFactory(static fn () => $documents))));
+
+        // A batch with one changed document still cleans up
+        $documents[0]['lastname'] = 'Schmidt';
+        $this->assertNotSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments($documents)));
+        $this->assertSame(0, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('schmidt'))->getTotalHits());
+    }
+
     public function testReindex(): void
     {
         $tmpDataDir = $this->createTemporaryDirectory();
@@ -1056,6 +1078,18 @@ final class IndexTest extends TestCase
         }
 
         return $queries;
+    }
+
+    /**
+     * @return array<string>
+     */
+    private function getOrphanCleanupStatementsDuring(InMemoryLogger $logger, callable $operation): array
+    {
+        $offset = \count($logger->getRecords());
+        $operation();
+        $queries = array_column(array_column(\array_slice($logger->getRecords(), $offset), 'context'), 'sql');
+
+        return array_values(array_filter($queries, static fn (string $query) => str_contains($query, 'NOT IN')));
     }
 
     /**
