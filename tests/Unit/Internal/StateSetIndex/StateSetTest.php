@@ -12,6 +12,7 @@ use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\ConnectionPool;
 use Loupe\Loupe\Internal\Engine;
 use Loupe\Loupe\Internal\Index\IndexInfo;
+use Loupe\Loupe\Internal\StateSetIndex\StateSet;
 use Loupe\Loupe\Tests\StorageFixturesTestTrait;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -80,6 +81,59 @@ final class StateSetTest extends TestCase
             1, 8, 34,
             // Jane
             3, 14, 59, 238,
+        ]);
+    }
+
+    public function testStateSetPersistsOnlyChangedStates(): void
+    {
+        $engine = $this->createTestEngine();
+        $engine->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'Dog',
+            ],
+        ]);
+
+        $stateSet = $engine->getStateSetIndex()->getStateSet();
+        $this->assertInstanceOf(StateSet::class, $stateSet);
+
+        $stateSet->remove(36);
+        $stateSet->add(36);
+        $stateSet->add(500);
+        $stateSet->remove(500);
+        $stateSet->remove(8);
+        $stateSet->add(600);
+        $stateSet->persist();
+
+        $this->assertStateSetContents($engine, [1, 36, 600]);
+    }
+
+    public function testStateSetIsNotRewrittenWhenStatesAreAdded(): void
+    {
+        $engine = $this->createTestEngine();
+        $engine->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'Dog',
+            ],
+        ]);
+        $engine->getConnection()->executeStatement(
+            'CREATE TRIGGER prevent_state_set_rewrite BEFORE DELETE ON '.IndexInfo::TABLE_NAME_STATE_SET.
+            " BEGIN SELECT RAISE(ABORT, 'State set must not be rewritten.'); END",
+        );
+
+        $engine->addDocuments([
+            [
+                'id' => 2,
+                'content' => 'Cat',
+            ],
+        ]);
+
+        $this->assertStateSetContents($engine, [
+            // Dog
+            1, 8, 36,
+            // Cat
+            4, 18, 73,
         ]);
     }
 
