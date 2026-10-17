@@ -887,28 +887,15 @@ class Searcher
 
     private function addTermDocumentsJoin(QueryBuilder $queryBuilder, string $termMatchesCTE, string $termsDocumentsAlias): void
     {
-        if (['*'] !== $this->queryParameters->getAttributesToSearchOn()) {
-            // Pin the join order so SQLite does not scan every term occurrence before applying the attribute filter.
-            $queryBuilder->from(\sprintf(
-                '%s CROSS JOIN %s %s INDEXED BY '.$this->engine->getIndexInfo()->getTermsDocumentsSearchIndexName().' ON %s.id = %s.term',
-                $termMatchesCTE,
-                IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-                $termsDocumentsAlias,
-                $termMatchesCTE,
-                $termsDocumentsAlias,
-            ));
-
-            return;
-        }
-
-        // Join from term_matches CTE — not from terms_documents — while allowing SQLite to optimize the join order.
-        $queryBuilder->from($termMatchesCTE);
-        $queryBuilder->innerJoin(
+        // Pin the join order so SQLite never scans every term occurrence instead of starting from the matched terms.
+        $queryBuilder->from(\sprintf(
+            '%s CROSS JOIN %s %s INDEXED BY '.$this->engine->getIndexInfo()->getTermsDocumentsSearchIndexName().' ON %s.id = %s.term',
             $termMatchesCTE,
             IndexInfo::TABLE_NAME_TERMS_DOCUMENTS,
-            $termsDocumentsAlias.' INDEXED BY '.$this->engine->getIndexInfo()->getTermsDocumentsSearchIndexName(),
-            \sprintf('%s.id = %s.term', $termMatchesCTE, $termsDocumentsAlias),
-        );
+            $termsDocumentsAlias,
+            $termMatchesCTE,
+            $termsDocumentsAlias,
+        ));
     }
 
     private function addTermDocumentMatchesCTEs(TokenCollection $tokenCollection): void

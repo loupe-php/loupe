@@ -12,6 +12,8 @@ abstract class AbstractBench
 {
     protected const MOVIES_URL = 'https://www.meilisearch.com/movies.json';
 
+    protected const SMALL_INDEX_SIZE = 8000;
+
     protected static function clearDir(string $dir): void
     {
         if (!is_dir($dir)) {
@@ -74,30 +76,17 @@ abstract class AbstractBench
      */
     protected static function ensureSearchIndex(): void
     {
-        self::ensureMoviesJson();
+        self::ensureMoviesIndex(self::searchIndexPath(), null);
+    }
 
-        $dataDir = self::searchIndexPath();
-        $loupe = self::loupe($dataDir);
-
-        if (!$loupe->needsReindex() && $loupe->countDocuments() > 0) {
-            return;
-        }
-
-        // Rebuild from an empty database so schema benchmarks do not include freelist pages from the previous index.
-        unset($loupe);
-        self::clearDir($dataDir);
-
-        $movies = self::loadMovies();
-        self::progress(\sprintf(
-            'Building shared search index (%d documents, one-time) ...',
-            \count($movies),
-        ));
-        $start = microtime(true);
-
-        $loupe = self::loupe($dataDir);
-        $loupe->addDocuments($movies);
-
-        self::progress(\sprintf('Index built in %.1fs', microtime(true) - $start));
+    /**
+     * Same as ensureSearchIndex() but only with the first SMALL_INDEX_SIZE movies. SQLite picks
+     * different query plans depending on the index statistics, so this catches regressions that
+     * only show on small indexes.
+     */
+    protected static function ensureSmallSearchIndex(): void
+    {
+        self::ensureMoviesIndex(self::smallSearchIndexPath(), self::SMALL_INDEX_SIZE);
     }
 
     protected static function indexScratchPath(): string
@@ -140,6 +129,44 @@ abstract class AbstractBench
     protected static function searchIndexPath(): string
     {
         return self::projectRoot().'/var/bench/movies-search';
+    }
+
+    protected static function smallSearchIndexPath(): string
+    {
+        return self::projectRoot().'/var/bench/movies-search-'.self::SMALL_INDEX_SIZE;
+    }
+
+    private static function ensureMoviesIndex(string $dataDir, int|null $size): void
+    {
+        self::ensureMoviesJson();
+
+        $loupe = self::loupe($dataDir);
+        $count = $loupe->countDocuments();
+
+        if (!$loupe->needsReindex() && $count > 0 && (null === $size || $count === $size)) {
+            return;
+        }
+
+        // Rebuild from an empty database so schema benchmarks do not include freelist pages from the previous index.
+        unset($loupe);
+        self::clearDir($dataDir);
+
+        $movies = self::loadMovies();
+        if (null !== $size) {
+            $movies = \array_slice($movies, 0, $size);
+        }
+
+        self::progress(\sprintf(
+            'Building search index %s (%d documents, one-time) ...',
+            basename($dataDir),
+            \count($movies),
+        ));
+        $start = microtime(true);
+
+        $loupe = self::loupe($dataDir);
+        $loupe->addDocuments($movies);
+
+        self::progress(\sprintf('Index built in %.1fs', microtime(true) - $start));
     }
 
     private static function progress(string $message): void
