@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Loupe\Loupe\Tests\Functional;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
+use Loupe\Loupe\Config\TypoTolerance;
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Exception\InvalidDocumentException;
 use Loupe\Loupe\Indexing\DocumentSource;
@@ -689,6 +692,83 @@ final class IndexTest extends TestCase
         $this->assertSame(2, $loupe->countDocuments());
     }
 
+    public function testOccasionalMaintenanceRemovesOrphansOutsideOfTheCurrentOperation(): void
+    {
+        $tempDir = $this->createTemporaryDirectory();
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['text'])
+            ->withFilterableAttributes(['tags'])
+            ->withTypoTolerance(TypoTolerance::create()->withEnabledForPrefixSearch(true))
+        ;
+
+        $loupe = $this->createLoupe($configuration->withVacuumProbability(0), $tempDir);
+        $loupe->addDocuments([
+            ['id' => 1, 'text' => 'quartet', 'tags' => ['music']],
+            ['id' => 2, 'text' => 'kazoo', 'tags' => ['toy']],
+        ]);
+
+        // Simulate orphans left behind by something else than the current operation
+        $connection = self::connectToDatabase($tempDir);
+        $connection->executeStatement("INSERT INTO terms (term, state, length) VALUES ('ghost', 0, 5), ('phantom', 0, 7)");
+        $connection->executeStatement("INSERT INTO prefixes (prefix, length, state) VALUES ('gho', 3, 0)");
+        $connection->executeStatement("INSERT INTO prefixes_terms (prefix, term) SELECT p.id, t.id FROM prefixes p, terms t WHERE p.prefix = 'gho' AND t.term = 'ghost'");
+        $connection->executeStatement("INSERT INTO terms_documents (term, document, attribute, position, start, \"end\", folded) SELECT id, 999, 'text', 1, 0, 7, 0 FROM terms WHERE term = 'phantom'");
+        $connection->executeStatement('INSERT INTO multi_attributes_documents (attribute, document) SELECT attribute, 999 FROM multi_attributes_documents LIMIT 1');
+
+        // Incremental cleanup only checks what the operation touched
+        $loupe->addDocument(['id' => 2, 'text' => 'kazoo whistle', 'tags' => ['toy']]);
+        $this->assertContains('ghost', self::getTerms($connection));
+        $this->assertContains('phantom', self::getTerms($connection));
+
+        $loupe = $this->createLoupe($configuration->withVacuumProbability(100), $tempDir);
+        $loupe->addDocument(['id' => 2, 'text' => 'kazoo', 'tags' => ['toy']]);
+        $this->assertNotContains('ghost', self::getTerms($connection));
+        $this->assertNotContains('phantom', self::getTerms($connection));
+        $this->assertContains('quartet', self::getTerms($connection));
+        $this->assertNoOrphans($connection);
+    }
+
+    public function testOrphanedTermsAndPrefixesAreRemoved(): void
+    {
+        $tempDir = $this->createTemporaryDirectory();
+        $loupe = $this->createLoupe(
+            Configuration::create()
+                ->withSearchableAttributes(['text'])
+                ->withFilterableAttributes(['tags'])
+                ->withTypoTolerance(TypoTolerance::create()->withEnabledForPrefixSearch(true)),
+            $tempDir,
+        );
+
+        $loupe->addDocuments([
+            ['id' => 1, 'text' => 'xylophone quartet', 'tags' => ['music']],
+            ['id' => 2, 'text' => 'quartet', 'tags' => ['music']],
+            ['id' => 3, 'text' => 'kazoo', 'tags' => ['toy']],
+        ]);
+
+        $connection = self::connectToDatabase($tempDir);
+
+        $this->assertContains('xylophone', self::getTerms($connection));
+        $this->assertGreaterThan(0, $connection->fetchOne('SELECT COUNT(*) FROM prefixes'));
+
+        $loupe->addDocument(['id' => 1, 'text' => 'zebra quartet', 'tags' => ['animal']]);
+        $this->assertNotContains('xylophone', self::getTerms($connection));
+        $this->assertContains('zebra', self::getTerms($connection));
+        $this->assertContains('quartet', self::getTerms($connection));
+        $this->assertNoOrphans($connection);
+
+        $loupe->deleteDocument(1);
+        $this->assertNotContains('zebra', self::getTerms($connection));
+        $this->assertContains('quartet', self::getTerms($connection));
+        $this->assertNoOrphans($connection);
+
+        $this->assertSame([2], array_column($loupe->search(SearchParameters::create()->withQuery('quartet'))->toArray()['hits'], 'id'));
+
+        $loupe->deleteAllDocuments();
+        $this->assertSame([], self::getTerms($connection));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM prefixes'));
+        $this->assertNoOrphans($connection);
+    }
+
     public function testReAddingIdenticalDocumentPreservesSearchFilterAndSort(): void
     {
         // Re-adding an identical document must not drop its terms, attributes or multi attributes
@@ -746,6 +826,28 @@ final class IndexTest extends TestCase
         $loupe->addDocument(self::getSandraDocument());
         $loupe->addDocument(self::getUtaDocument());
         $assetSearchResults();
+    }
+
+    public function testReAddingUnchangedDocumentsSkipsOrphanCleanup(): void
+    {
+        $logger = new InMemoryLogger();
+        $loupe = $this->createLoupe(
+            Configuration::create()
+                ->withSearchableAttributes(['firstname', 'lastname'])
+                ->withLogger($logger),
+        );
+        $documents = [self::getSandraDocument(), self::getUtaDocument()];
+
+        $loupe->addDocuments($documents);
+
+        $this->assertSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments($documents)));
+        $this->assertSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments(DocumentSource::fromFactory(static fn () => $documents))));
+
+        // A batch with one changed document still cleans up
+        $documents[0]['lastname'] = 'Schmidt';
+        $this->assertNotSame([], $this->getOrphanCleanupStatementsDuring($logger, static fn () => $loupe->addDocuments($documents)));
+        $this->assertSame(0, $loupe->search(SearchParameters::create()->withQuery('maier'))->getTotalHits());
+        $this->assertSame(1, $loupe->search(SearchParameters::create()->withQuery('schmidt'))->getTotalHits());
     }
 
     public function testReindex(): void
@@ -1001,6 +1103,20 @@ final class IndexTest extends TestCase
         ];
     }
 
+    private function assertNoOrphans(Connection $connection): void
+    {
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM terms_documents WHERE document NOT IN (SELECT _id FROM documents)'));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM multi_attributes_documents WHERE document NOT IN (SELECT _id FROM documents)'));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM terms WHERE id NOT IN (SELECT term FROM terms_documents)'));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM prefixes_terms WHERE term NOT IN (SELECT id FROM terms)'));
+        $this->assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM prefixes WHERE id NOT IN (SELECT prefix FROM prefixes_terms)'));
+    }
+
+    private static function connectToDatabase(string $dataDir): Connection
+    {
+        return DriverManager::getConnection(['driver' => 'pdo_sqlite', 'path' => $dataDir.'/loupe.db']);
+    }
+
     /**
      * @return array<string>
      */
@@ -1017,6 +1133,18 @@ final class IndexTest extends TestCase
     }
 
     /**
+     * @return array<string>
+     */
+    private function getOrphanCleanupStatementsDuring(InMemoryLogger $logger, callable $operation): array
+    {
+        $offset = \count($logger->getRecords());
+        $operation();
+        $queries = array_column(array_column(\array_slice($logger->getRecords(), $offset), 'context'), 'sql');
+
+        return array_values(array_filter($queries, static fn (string $query) => str_contains($query, 'NOT IN')));
+    }
+
+    /**
      * @return array<mixed>
      */
     private static function getSandraDocument(): array
@@ -1030,6 +1158,14 @@ final class IndexTest extends TestCase
             'colors' => ['Green', 'Blue'],
             'age' => 40,
         ];
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    private static function getTerms(Connection $connection): array
+    {
+        return $connection->fetchFirstColumn('SELECT term FROM terms');
     }
 
     /**

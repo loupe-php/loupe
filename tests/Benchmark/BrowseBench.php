@@ -113,6 +113,7 @@ class BrowseBench extends AbstractBench
             ->withFilterableAttributes(['published_at'])
             ->withSortableAttributes(['published_at'])
             ->withLanguages(['en'])
+            ->withVacuumProbability(0) // See AbstractBench::configuration()
         ;
     }
 

@@ -12,11 +12,23 @@ use Toflar\StateSetIndex\StateSet\StateSetInterface;
 
 class StateSet implements StateSetInterface
 {
-    private bool $dirty = false;
+    private const STATES_PER_QUERY = 10_000;
+
+    /**
+     * @var array<int, true>
+     */
+    private array $addedStates = [];
+
+    private bool $cleared = false;
 
     private bool $initialized = false;
 
     private InMemoryStateSet $inMemoryStateSet;
+
+    /**
+     * @var array<int, true>
+     */
+    private array $removedStates = [];
 
     public function __construct(private readonly Engine $engine)
     {
@@ -31,7 +43,12 @@ class StateSet implements StateSetInterface
         }
 
         $this->inMemoryStateSet->add($state);
-        $this->dirty = true;
+
+        if (isset($this->removedStates[$state])) {
+            unset($this->removedStates[$state]);
+        } else {
+            $this->addedStates[$state] = true;
+        }
     }
 
     public function all(): array
@@ -50,7 +67,9 @@ class StateSet implements StateSetInterface
         }
 
         $this->inMemoryStateSet = new InMemoryStateSet([]);
-        $this->dirty = true;
+        $this->cleared = true;
+        $this->addedStates = [];
+        $this->removedStates = [];
     }
 
     public function has(int $state): bool
@@ -64,26 +83,30 @@ class StateSet implements StateSetInterface
     {
         $this->initialize();
 
-        if (!$this->dirty) {
+        if (!$this->cleared && [] === $this->addedStates && [] === $this->removedStates) {
             return;
         }
 
-        $this->engine->getConnection()->executeStatement('DELETE FROM '.IndexInfo::TABLE_NAME_STATE_SET);
-        $this->engine->getConnection()->executeStatement('DELETE FROM sqlite_sequence WHERE name = ?', [IndexInfo::TABLE_NAME_STATE_SET]);
-        $values = [];
+        $connection = $this->engine->getConnection();
 
-        foreach ($this->inMemoryStateSet->all() as $state) {
-            $values[] = '('.$state.')';
+        if ($this->cleared) {
+            $connection->executeStatement('DELETE FROM '.IndexInfo::TABLE_NAME_STATE_SET);
+            $connection->executeStatement('DELETE FROM sqlite_sequence WHERE name = ?', [IndexInfo::TABLE_NAME_STATE_SET]);
         }
 
-        if ([] !== $values) {
-            $this->engine->getConnection()->executeStatement(\sprintf('INSERT INTO '.IndexInfo::TABLE_NAME_STATE_SET.' (state) VALUES %s', implode(',', $values)));
+        // States are integers, so they can be inlined instead of being bound as parameters
+        foreach (array_chunk(array_keys($this->removedStates), self::STATES_PER_QUERY) as $chunk) {
+            $connection->executeStatement(\sprintf('DELETE FROM %s WHERE state IN (%s)', IndexInfo::TABLE_NAME_STATE_SET, implode(',', $chunk)));
+        }
+
+        foreach (array_chunk(array_keys($this->addedStates), self::STATES_PER_QUERY) as $chunk) {
+            $connection->executeStatement(\sprintf('INSERT OR IGNORE INTO %s (state) VALUES (%s)', IndexInfo::TABLE_NAME_STATE_SET, implode('),(', $chunk)));
         }
 
         $all = $this->inMemoryStateSet->all();
         $all = array_combine($this->inMemoryStateSet->all(), array_fill(0, \count($all), true));
         $this->dumpStateSetCache($all);
-        $this->dirty = false;
+        $this->resetChanges();
     }
 
     public function remove(int $state): void
@@ -95,13 +118,18 @@ class StateSet implements StateSetInterface
         }
 
         $this->inMemoryStateSet->remove($state);
-        $this->dirty = true;
+
+        if (isset($this->addedStates[$state])) {
+            unset($this->addedStates[$state]);
+        } else {
+            $this->removedStates[$state] = true;
+        }
     }
 
     public function reset(): void
     {
         $this->initialized = false;
-        $this->dirty = false;
+        $this->resetChanges();
 
         $cacheFile = $this->getStateSetCacheFile();
         if (null !== $cacheFile && file_exists($cacheFile)) {
@@ -178,5 +206,12 @@ class StateSet implements StateSetInterface
         } catch (TableNotFoundException) {
             return [];
         }
+    }
+
+    private function resetChanges(): void
+    {
+        $this->addedStates = [];
+        $this->removedStates = [];
+        $this->cleared = false;
     }
 }
