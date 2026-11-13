@@ -41,6 +41,8 @@ use Loupe\Matcher\Tokenizer\TokenCollection;
  *               -> _cte_term_document_matches_<token> (per-token positional matches, restricted to candidate documents)
  *                    -> _cte_matches (final per-document aggregation feeding ranking/selection)
  *
+ * Ranking and formatting share one aggregate per token to avoid expanding the same positional chain twice
+ *
  * @template T of AbstractQueryParameters
  */
 class Searcher
@@ -175,6 +177,36 @@ class Searcher
         foreach ($cte->getTags() as $tag) {
             $this->ctesByTag[$tag][$cte->getName()] = $cte;
         }
+    }
+
+    public function addTermDocumentAggregateCTE(Token $token): string|null
+    {
+        $matchesCte = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+
+        if (!$this->hasCTE($matchesCte)) {
+            return null;
+        }
+
+        $aggregateCte = $this->getCTENameForToken('_cte_term_document_aggregate_', $token);
+
+        if (!$this->hasCTE($aggregateCte)) {
+            $columns = ['document_id', 'relevance'];
+
+            if ($this->askedForFormattingOrMatchesPosition()) {
+                $columns[] = 'positions';
+            }
+
+            $this->addCTE(new Cte($aggregateCte, $columns, $this->createTermDocumentAggregateQuery($matchesCte)));
+            $this->requireMatchesJoin();
+            $this->queryBuilder->leftJoin(
+                self::CTE_MATCHES,
+                $aggregateCte,
+                $aggregateCte,
+                $aggregateCte.'.document_id = '.self::CTE_MATCHES.'.document_id',
+            );
+        }
+
+        return $aggregateCte;
     }
 
     public function addFromMultiAttributesAndJoinMatches(QueryBuilder $qb, string $attribute): void
@@ -728,38 +760,44 @@ class Searcher
             return;
         }
 
-        $this->requireMatchesJoin();
-
         foreach ($tokenCollection->all() as $token) {
-            $matchesCteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
-            if (!$this->hasCTE($matchesCteName)) {
-                continue;
-            }
+            $cteName = $this->addTermDocumentAggregateCTE($token);
 
-            $positionsCteName = $this->getCTENameForToken(self::CTE_TERM_DOCUMENT_POSITIONS_PREFIX, $token);
-            $positionsQueryBuilder = $this->engine->getConnection()->createQueryBuilder();
-            $positionsQueryBuilder
-                ->select('document')
-                ->addSelect("GROUP_CONCAT(attribute || ':' || position || ':' || start || ':' || end) AS positions")
-                ->from($matchesCteName)
-                ->groupBy('document')
-            ;
-            // Do not aggregate positions for documents excluded by the user filters.
-            if ('' !== $this->queryParameters->getFilter()) {
-                $positionsQueryBuilder->andWhere('document IN (SELECT document_id FROM '.self::CTE_MATCHES.')');
+            if (null !== $cteName) {
+                $this->queryBuilder->addSelect($cteName.'.positions AS '.self::MATCH_POSITION_INFO_PREFIX.$token->getId());
             }
-            $this->addCTE(new Cte($positionsCteName, ['document_id', 'positions'], $positionsQueryBuilder));
-
-            $this->queryBuilder
-                ->addSelect($positionsCteName.'.positions AS '.self::MATCH_POSITION_INFO_PREFIX.$token->getId())
-                ->leftJoin(
-                    self::CTE_MATCHES,
-                    $positionsCteName,
-                    $positionsCteName,
-                    \sprintf('%s.document_id = %s.document_id', $positionsCteName, self::CTE_MATCHES),
-                )
-            ;
         }
+    }
+
+    private function createTermDocumentAggregateQuery(string $matchesCte): QueryBuilder
+    {
+        $qb = $this->engine->getConnection()->createQueryBuilder()
+            ->select('dm.document')
+            ->from($matchesCte, 'dm')
+            ->groupBy('dm.document')
+        ;
+        $relevance = "group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos)";
+
+        if ($this->needsFoldingState()) {
+            $relevance .= " || '|' || COALESCE(MAX(dm.exact_match), 0)";
+        }
+
+        $qb->addSelect($relevance.' AS relevance');
+
+        if ($this->askedForFormattingOrMatchesPosition()) {
+            $qb->addSelect("GROUP_CONCAT(dm.attribute || ':' || dm.position || ':' || dm.start || ':' || dm.end) AS positions");
+        }
+
+        // Do not aggregate positions for documents excluded by the user filters
+        if ('' !== $this->queryParameters->getFilter()) {
+            // Single-token matches are cheap, avoid copying the multi-token search into every aggregate
+            $source = $this->getSearchTokens()->count() < 2
+                ? 'SELECT document_id FROM '.self::CTE_MATCHES
+                : $this->filterBuilder->buildFrom();
+            $qb->andWhere('dm.document IN ('.$source.')');
+        }
+
+        return $qb;
     }
 
     private function addTermDocumentMatchesCTE(Token $token, Token|null $previousPhraseToken): void
@@ -1140,45 +1178,10 @@ class Searcher
             return '';
         }
 
-        $qb = $this->engine->getConnection()->createQueryBuilder()
-            ->select(
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS).'._id AS document_id',
-            )
-            ->from(
-                IndexInfo::TABLE_NAME_DOCUMENTS,
-                $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS),
-            )
-        ;
-
-        $positiveConditions = [];
-        $negativeConditions = [];
-
-        foreach ($tokenCollection->phraseGroups() as $tokenOrPhrase) {
-            $statements = [];
-
-            foreach ($tokenOrPhrase->all() as $token) {
-                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
-            }
-
-            // The final positional CTE of a phrase already proves that all preceding phrase tokens matched in order.
-            // Using only that CTE for negation lets every token exist independently as long as the exact phrase does not.
-            if ($tokenOrPhrase instanceof Phrase && $tokenOrPhrase->isNegated()) {
-                $statements = \array_slice($statements, -1);
-            }
-
-            if (\count(array_filter($statements))) {
-                if ($tokenOrPhrase->isNegated()) {
-                    $negativeConditions[] = $statements;
-                } else {
-                    $positiveConditions[] = $statements;
-                }
-            }
-        }
-
+        $conditions = $this->createTokenConditions($tokenCollection);
         $strategy = $this->queryParameters instanceof SearchParameters
             ? MatchingStrategy::from($this->queryParameters->getMatchingStrategy())
             : MatchingStrategy::Any;
-
         $positiveOperator = match ($strategy) {
             MatchingStrategy::All => ' AND ',
             MatchingStrategy::Any => ' OR ',
@@ -1187,33 +1190,56 @@ class Searcher
         // Fast path: "any" strategy, only positive single-token groups: use _cte_candidate_documents directly
         if (
             MatchingStrategy::Any === $strategy
-            && [] === $negativeConditions
-            && [] !== $positiveConditions
+            && [] === $conditions['negative']
+            && [] !== $conditions['positive']
             && $this->hasCTE(self::CTE_CANDIDATE_DOCUMENTS)
-            && [] === array_filter($positiveConditions, static fn ($s) => 1 !== \count($s))
+            && [] === array_filter($tokenCollection->all(), static fn (Token $token) => $token->isPartOfPhrase())
         ) {
             return \sprintf('SELECT document AS document_id FROM %s', self::CTE_CANDIDATE_DOCUMENTS);
         }
 
-        $where = implode($positiveOperator, array_map(
-            static fn ($statements) => '('.implode(' AND ', $statements).')',
-            $positiveConditions,
-        ));
+        $documentsAlias = $this->engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
+        $qb = $this->engine->getConnection()->createQueryBuilder()
+            ->select($documentsAlias.'._id AS document_id')
+            ->from(IndexInfo::TABLE_NAME_DOCUMENTS, $documentsAlias)
+        ;
 
-        if ('' !== $where) {
-            $qb->andWhere('('.$where.')');
-        }
-
-        $whereNot = implode(' AND ', array_map(
-            static fn ($statements) => '('.implode(' AND ', $statements).')',
-            $negativeConditions,
-        ));
-
-        if ('' !== $whereNot) {
-            $qb->andWhere('('.$whereNot.')');
+        foreach ([implode($positiveOperator, $conditions['positive']), implode(' AND ', $conditions['negative'])] as $where) {
+            if ('' !== $where) {
+                $qb->andWhere('('.$where.')');
+            }
         }
 
         return $qb->getSQL();
+    }
+
+    /**
+     * @return array{positive: list<string>, negative: list<string>}
+     */
+    private function createTokenConditions(TokenCollection $tokenCollection): array
+    {
+        $conditions = ['positive' => [], 'negative' => []];
+
+        foreach ($tokenCollection->phraseGroups() as $tokenOrPhrase) {
+            $statements = [];
+
+            foreach ($tokenOrPhrase->all() as $token) {
+                $statements[] = $this->createTermDocumentMatchesCTECondition($token);
+            }
+
+            // The final positional CTE proves that all preceding phrase tokens matched in order
+            // For negation, every token may exist independently as long as the exact phrase does not
+            if ($tokenOrPhrase instanceof Phrase) {
+                $statements = \array_slice($statements, -1);
+            }
+
+            if (\count(array_filter($statements))) {
+                $key = $tokenOrPhrase->isNegated() ? 'negative' : 'positive';
+                $conditions[$key][] = '('.implode(' AND ', $statements).')';
+            }
+        }
+
+        return $conditions;
     }
 
     /**

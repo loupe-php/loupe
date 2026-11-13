@@ -6,9 +6,7 @@ namespace Loupe\Loupe\Internal\Search\Sorting;
 
 use Loupe\Loupe\Configuration;
 use Loupe\Loupe\Internal\Engine;
-use Loupe\Loupe\Internal\Index\IndexInfo;
 use Loupe\Loupe\Internal\Search\AbstractQueryParameters;
-use Loupe\Loupe\Internal\Search\Cte;
 use Loupe\Loupe\Internal\Search\Ranking\AttributeWeight;
 use Loupe\Loupe\Internal\Search\Ranking\Exactness;
 use Loupe\Loupe\Internal\Search\Ranking\Proximity;
@@ -28,8 +26,6 @@ class Relevance extends AbstractSorter
         'exactness' => Exactness::class,
     ];
 
-    private const CTE_NAME = 'relevances_per_document';
-
     public function __construct(private readonly Direction $direction)
     {
     }
@@ -42,93 +38,34 @@ class Relevance extends AbstractSorter
         $queryParameters = $searcher->getQueryParameters();
 
         $tokens = $searcher->getSearchTokens()->all();
+
         if (!\count($tokens) || !$queryParameters instanceof SearchParameters) {
             return;
         }
 
-        $ctes = [];
         $relevances = [];
-        $needsFoldingState = \in_array('exactness', $engine->getConfiguration()->getRankingRules(), true);
 
         foreach ($tokens as $token) {
-            $cteName = $searcher->getCTENameForToken(Searcher::CTE_TERM_DOCUMENT_MATCHES_PREFIX, $token);
+            $cteName = $searcher->addTermDocumentAggregateCTE($token);
 
             // Could be that the token is not being searched for, as it might be a stop word
-            if (!$searcher->hasCTE($cteName)) {
-                continue;
+            if (null !== $cteName) {
+                $relevances[] = 'COALESCE('.$cteName.".relevance, '0')";
             }
-
-            $termRelevanceCTE = $searcher->getCTENameForToken(self::CTE_NAME.'_term_', $token);
-
-            // Create the relevance CTE
-            $qb = $engine->getConnection()->createQueryBuilder();
-            $qb
-                ->addSelect('dm.document AS document')
-                ->from($cteName, 'dm')
-                ->groupBy('dm.document')
-            ;
-            // Do not aggregate positions for documents excluded by the user filters.
-            if ('' !== $searcher->getQueryParameters()->getFilter()) {
-                $qb->andWhere('dm.document IN (SELECT document_id FROM '.Searcher::CTE_MATCHES.')');
-            }
-
-            if ($needsFoldingState) {
-                $qb->addSelect("group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos) || '|' || COALESCE(MAX(dm.exact_match), 0) AS relevance");
-            } else {
-                $qb->addSelect("group_concat(dm.position || ':' || dm.attribute || ':' || dm.typos) AS relevance");
-            }
-
-            $searcher->addCTE(new Cte($termRelevanceCTE, ['document_id', 'relevance_per_term'], $qb));
-
-            $ctes[] = $termRelevanceCTE;
-            $relevances[] = $termRelevanceCTE.'.relevance_per_term';
         }
 
-        if ([] === $ctes) {
+        if ([] === $relevances) {
             return;
         }
 
-        // CTE for all documents
-        $qb = $engine->getConnection()->createQueryBuilder();
-        $relevancesWithFallback = array_map(
-            static fn (string $relevance): string => \sprintf("COALESCE(%s, '0')", $relevance),
-            $relevances,
-        );
-
-        $qb
-            ->addSelect(Searcher::CTE_MATCHES.'.document_id AS document')
-            ->addSelect(implode(" || ';' || ", $relevancesWithFallback).' AS relevance_per_term')
-            ->from(Searcher::CTE_MATCHES)
-        ;
-
-        foreach ($ctes as $cte) {
-            $qb->leftJoin(Searcher::CTE_MATCHES, $cte, $cte, \sprintf('%s.document_id = %s.document_id', $cte, Searcher::CTE_MATCHES));
-        }
-
-        $searcher->addCTE(new Cte(self::CTE_NAME, ['document_id', 'relevance_per_term'], $qb));
-
-        // The relevance CTE starts from the complete matches relation, so it can constrain the final result directly.
-        $documentsAlias = $engine->getIndexInfo()->getAliasForTable(IndexInfo::TABLE_NAME_DOCUMENTS);
-        $searcher->getQueryBuilder()->innerJoin(
-            $documentsAlias,
-            self::CTE_NAME,
-            self::CTE_NAME,
-            \sprintf('%s.document_id = %s._id', self::CTE_NAME, $documentsAlias),
-        );
-        $searcher->markResultConstrainedToMatches();
-
-        // Searchable attributes to determine attribute weight
-        $searchableAttributes = $engine->getConfiguration()->getSearchableAttributes();
-
-        $select = \sprintf(
+        // Searchable attributes determine attribute weight
+        $searcher->getQueryBuilder()->addSelect(\sprintf(
             "loupe_relevance('%s', '%s', %s) AS %s",
-            implode(':', $searchableAttributes),
+            implode(':', $engine->getConfiguration()->getSearchableAttributes()),
             implode(':', $engine->getConfiguration()->getRankingRules()),
-            self::CTE_NAME.'.relevance_per_term',
+            implode(" || ';' || ", $relevances),
             Searcher::RELEVANCE_ALIAS,
-        );
-
-        $searcher->getQueryBuilder()->addSelect($select);
+        ));
 
         // No need to use the abstract addOrderBy() here because the relevance alias cannot be of
         // our internal null or empty value
@@ -136,6 +73,7 @@ class Relevance extends AbstractSorter
 
         // Apply threshold
         $threshold = $queryParameters->getRankingScoreThreshold();
+
         if ($threshold > 0) {
             $searcher->getQueryBuilder()->andWhere(Searcher::RELEVANCE_ALIAS.'>= '.$threshold);
         }
