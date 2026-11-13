@@ -7,14 +7,10 @@ jobs:
     tests:
         name: 'PHP ${{ matrix.php }} with SQLite ${{ matrix.sqlite }} (Composer Flags: ${{ matrix.composer }})'
         runs-on: ubuntu-latest
-        # Share the bash between the steps:
-        defaults:
-            run:
-                shell: bash -l {0}
         strategy:
             fail-fast: false
             matrix:
-                sqlite: ['3.35.0', 'default']
+                sqlite: ['3.35.0', '3.54.1', 'default']
                 php: ['8.3', '8.4', '8.5']
                 composer: ['--prefer-stable', '--prefer-lowest']
         steps:
@@ -22,27 +18,61 @@ jobs:
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php }}
-                  extensions: intl, mbstring
+                  extensions: intl, mbstring, pdo_sqlite, :sqlite3
                   coverage: none
+                  tools: composer, phpize
+
+            - name: Install SQLite ${{ matrix.sqlite }}
+              if: ${{ matrix.sqlite != 'default' }}
+              env:
+                  SQLITE_VERSION: ${{ matrix.sqlite }}
+              run: |
+                  IFS='.' read -r major minor patch revision <<< "$SQLITE_VERSION"
+                  archive=$(printf 'sqlite-autoconf-%d%02d%02d%02d' "$major" "$minor" "$patch" "${revision:-0}")
+                  year=$(curl -fsSL "https://sqlite.org/releaselog/${SQLITE_VERSION//./_}.html" | sed -nE 's/.*SQLite Release.* On ([0-9]{4})-.*/\1/p' | sort -u)
+                  test -n "$year"
+                  curl -fsSL "https://sqlite.org/$year/$archive.tar.gz" | tar xz -C "$RUNNER_TEMP"
+                  cd "$RUNNER_TEMP/$archive"
+                  CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA=1 -DSQLITE_ENABLE_DESERIALIZE=1" ./configure --prefix="$RUNNER_TEMP/sqlite-$SQLITE_VERSION" --disable-static
+                  make -j2
+                  make install
+
+                  php_version=$(php -r 'echo PHP_VERSION;')
+                  curl -fsSL "https://www.php.net/distributions/php-$php_version.tar.xz" | tar xJ -C "$RUNNER_TEMP"
+                  export PKG_CONFIG_PATH="$RUNNER_TEMP/sqlite-$SQLITE_VERSION/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+                  cd "$RUNNER_TEMP/php-$php_version/ext/pdo_sqlite"
+                  phpize
+                  ./configure --with-php-config="$(command -v php-config)" --with-pdo-sqlite
+                  make -j2
+                  sudo make install
+
+                  echo "LD_LIBRARY_PATH=$RUNNER_TEMP/sqlite-$SQLITE_VERSION/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+
+            - name: Report default SQLite version used by PHP
+              if: ${{ matrix.sqlite == 'default' }}
+              run: |
+                  php -r 'printf("PHP %s, PDO SQLite %s\n", PHP_VERSION, (new PDO("sqlite::memory:"))->query("SELECT sqlite_version()")->fetchColumn());'
+
+            - name: Verify SQLite version used by PHP
+              if: ${{ matrix.sqlite != 'default' }}
+              env:
+                  EXPECTED_SQLITE_VERSION: ${{ matrix.sqlite }}
+              run: |
+                  php <<'PHP'
+                  <?php
+                  $version = (new PDO('sqlite::memory:'))->query('SELECT sqlite_version()')->fetchColumn();
+                  printf("PHP %s, PDO SQLite %s\n", PHP_VERSION, $version);
+                  $expected = getenv('EXPECTED_SQLITE_VERSION');
+
+                  if ($version !== $expected) {
+                      fwrite(STDERR, sprintf("Expected SQLite %s, got %s\n", $expected, $version));
+                      exit(1);
+                  }
+                  PHP
 
             - name: Checkout
               uses: actions/checkout@v7
-
-            - name: Install lowest supported SQLite version "${{ matrix.sqlite }}"
-              if: ${{ matrix.sqlite == '3.16.0' }}
-              run: |
-                  cd ~
-                  # SQLite 3.16.0
-                  wget https://sqlite.org/2017/sqlite-autoconf-3160000.tar.gz
-                  tar zxvf sqlite-autoconf-3160000.tar.gz
-                  cd sqlite-autoconf-3160000
-                  # CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA=1" ./configure --prefix=$HOME/opt/sqlite
-                  make
-                  make install
-                  echo "export PATH=$HOME/opt/sqlite/bin:$PATH" >> ~/.bash_profile
-                  echo "export LD_LIBRARY_PATH=$HOME/opt/sqlite/lib:$LD_LIBRARY_PATH" >> ~/.bash_profile
-                  echo "export LD_RUN_PATH=$HOME/opt/sqlite/lib:$LD_RUN_PATH" >> ~/.bash_profile
-                  source ~/.bash_profile
 
             - name: Install the dependencies
               run: composer update --no-interaction ${{ matrix.composer }}
