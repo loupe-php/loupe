@@ -2301,6 +2301,30 @@ final class SearchTest extends TestCase
         );
     }
 
+    public function testSearchAtMaximumQueryTokens(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withFilterableAttributes(['id'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $content = 'red blue green black white brown orange pink purple yellow';
+        $loupe->addDocument(['id' => 1, 'content' => $content]);
+
+        foreach ([$content, '"'.$content.'"'] as $query) {
+            $searchParameters = SearchParameters::create()
+                ->withQuery($query)
+                ->withFilter('id = 1')
+                ->withAttributesToHighlight(['content'])
+            ;
+
+            $result = $loupe->search($searchParameters);
+
+            $this->assertSame([1], array_column($result->getHits(), 'id'));
+        }
+    }
+
     public function testMaxHits(): void
     {
         $configuration = Configuration::create()
