@@ -131,7 +131,9 @@ class Tokenizer implements TokenizerInterface
     {
         $language = $this->languageDetector->detectForQuery($query);
 
-        return $this->tokenizeWithoutVariants($query, $language, $maxTokens);
+        // Queries are not decomposed, but they are stemmed (just like documents) so that e.g. "administrator" also
+        // finds "administrative" as both stem to "administr". Exact matches still rank higher.
+        return $this->addStemVariants($this->tokenizeWithoutVariants($query, $language, $maxTokens), $language);
     }
 
     private function getLanguageTokenizer(string|null $language): LoupeMatcherTokenizer
@@ -179,7 +181,11 @@ class Tokenizer implements TokenizerInterface
 
     private function tokenizeWithVariants(string $string, string|null $language, int|null $maxTokens = null): TokenCollection
     {
-        $tokenCollection = $this->getLanguageTokenizer($language)->tokenize($string, true, $maxTokens);
+        return $this->addStemVariants($this->getLanguageTokenizer($language)->tokenize($string, true, $maxTokens), $language);
+    }
+
+    private function addStemVariants(TokenCollection $tokenCollection, string|null $language): TokenCollection
+    {
         $tokenCollectionWithVariants = new TokenCollection();
 
         foreach ($tokenCollection->all() as $token) {

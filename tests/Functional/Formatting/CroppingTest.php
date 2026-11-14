@@ -236,6 +236,18 @@ final class CroppingTest extends TestCase
             [
                 'hits' => [
                     [
+                        'id' => 27,
+                        'title' => '9 Songs',
+                        'overview' => 'Matt, a young glaciologist, soars across the vast, silent, icebound immensities of the South Pole as he recalls his love affair with Lisa. They meet at a mobbed rock concert in a vast music hall - London\'s Brixton Academy. They are in bed at night\'s end. Together, over a period of several months, they pursue a mutual sexual passion whose inevitable stages unfold in counterpoint to nine live-concert songs.',
+                        'genres' => ['Drama', 'Music', 'Romance'],
+                        '_formatted' => [
+                            'id' => 27,
+                            'title' => '9 Songs',
+                            'overview' => '…music hall - London\'s Brixton…',
+                            'genres' => ['Drama', 'Music', 'Romance'],
+                        ],
+                    ],
+                    [
                         'id' => 16,
                         'title' => 'Dancer in the Dark',
                         'overview' => 'Selma, a Czech immigrant on the verge of blindness, struggles to make ends meet for herself and her son, who has inherited the same genetic disorder and will suffer the same fate without an expensive operation. When life gets too difficult, Selma learns to cope through her love of musicals, escaping life\'s troubles - even if just for a moment - by dreaming up little numbers to the rhythmic beats of her surroundings.',
@@ -252,7 +264,7 @@ final class CroppingTest extends TestCase
                 'hitsPerPage' => 20,
                 'page' => 1,
                 'totalPages' => 1,
-                'totalHits' => 1,
+                'totalHits' => 2,
             ],
             [],
             '<em>',

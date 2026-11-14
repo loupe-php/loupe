@@ -4146,7 +4146,7 @@ final class SearchTest extends TestCase
         );
     }
 
-    public function testStemmingAndDecompositionDoesNotHappenForQueries(): void
+    public function testDecompositionDoesNotHappenForQueries(): void
     {
         $configuration = Configuration::create()
             ->withSearchableAttributes(['content'])
@@ -4173,6 +4173,65 @@ final class SearchTest extends TestCase
                 'page' => 1,
                 'totalPages' => 0,
                 'totalHits' => 0,
+            ],
+        );
+    }
+
+    public function testQueryTermsAreStemmed(): void
+    {
+        $configuration = Configuration::create()
+            ->withSearchableAttributes(['content'])
+            ->withLanguages(['en'])
+        ;
+
+        $loupe = $this->createLoupe($configuration);
+        $loupe->addDocuments([
+            [
+                'id' => 1,
+                'content' => 'The administrative assistant managed the files.',
+            ],
+            [
+                'id' => 2,
+                'content' => 'The administrator organized the new files efficiently.',
+            ],
+        ]);
+
+        // "administrator" and "administrative" are too far apart for typo tolerance, but both stem to "administr".
+        // The exact match must still rank first.
+        $searchParameters = SearchParameters::create()
+            ->withQuery('administrator')
+            ->withAttributesToRetrieve(['id'])
+        ;
+
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters,
+            [
+                'hits' => [
+                    ['id' => 2],
+                    ['id' => 1],
+                ],
+                'query' => 'administrator',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 2,
+            ],
+        );
+
+        // Phrases are never stemmed
+        $this->searchAndAssertResults(
+            $loupe,
+            $searchParameters->withQuery('"administrator"'),
+            [
+                'hits' => [
+                    ['id' => 2],
+                ],
+                'query' => '"administrator"',
+                'hitsPerPage' => 20,
+                'page' => 1,
+                'totalPages' => 1,
+                'totalHits' => 1,
             ],
         );
     }
