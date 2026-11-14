@@ -289,6 +289,29 @@ final class TokenizerTest extends TestCase
         $this->assertSame(['name'], $tokenizer->tokenize('Name')->allTermsWithVariants());
     }
 
+    public function testTokenizeQueryStemsButDoesNotDecompose(): void
+    {
+        $tokenizer = $this->createTokenizer(Configuration::create()->withLanguages(['de']));
+
+        // Documents are decomposed ("vertrag", "wartung"), queries are only stemmed
+        $this->assertSame(
+            ['ich', 'moechte', 'moecht', 'einen', 'ein', 'wartungsvertrag', 'verkaufen', 'verkauf'],
+            $tokenizer->tokenizeQuery('Ich möchte einen Wartungsvertrag verkaufen')->allTermsWithVariants(),
+        );
+    }
+
+    public function testTokenizeQueryWithoutTypoToleranceDoesNotStem(): void
+    {
+        $tokenizer = $this->createTokenizer(
+            Configuration::create()->withLanguages(['de'])->withTypoTolerance(TypoTolerance::disabled()),
+        );
+
+        $this->assertSame(
+            ['ich', 'moechte', 'einen', 'wartungsvertrag', 'verkaufen'],
+            $tokenizer->tokenizeQuery('Ich möchte einen Wartungsvertrag verkaufen')->allTermsWithVariants(),
+        );
+    }
+
     public function testTokenizeWithPhrases(): void
     {
         $tokenizer = $this->createTokenizer();
